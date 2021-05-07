@@ -94,6 +94,12 @@ pub struct QueryServerWriteTransaction<'a> {
         Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
+pub(crate) struct ModifyPartial<'a> {
+    norm_cand: Vec<Entry<EntrySealed, EntryCommitted>>,
+    pre_candidates: Vec<Entry<EntrySealed, EntryCommitted>>,
+    me: &'a ModifyEvent,
+}
+
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
 // and get's everything ready to push back to the fe code
@@ -1452,9 +1458,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    #[allow(clippy::cognitive_complexity)]
-    pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
-        lperf_segment!(au, "server::modify", || {
+    /// Unsafety: This is unsafe because you need to be careful about how you handle and check
+    /// the Ok(None) case which occurs during internal operations, and that you DO NOT re-order
+    /// and call multiple pre-applies at the same time, else you can cause DB corruption.
+    pub(crate) unsafe fn modify_pre_apply<'x>(
+        &self,
+        au: &mut AuditScope,
+        me: &'x ModifyEvent,
+    ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
+        lperf_segment!(au, "server::modify_pre_apply", || {
             // Get the candidates.
             // Modify applies a modlist to a filter, so we need to internal search
             // then apply.
@@ -1498,7 +1510,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             "modify: no candidates match filter ... continuing {:?}",
                             me.filter
                         );
-                        return Ok(());
+                        return Ok(None);
                     }
                     _ => {
                         lrequest_error!(
@@ -1566,6 +1578,26 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             let norm_cand: Vec<Entry<_, _>> = res?;
 
+            Ok(Some(ModifyPartial {
+                norm_cand,
+                pre_candidates,
+                me,
+            }))
+        })
+    }
+
+    pub(crate) fn modify_apply(
+        &self,
+        au: &mut AuditScope,
+        mp: ModifyPartial<'_>,
+    ) -> Result<(), OperationError> {
+        lperf_segment!(au, "server::modify_apply", || {
+            let ModifyPartial {
+                norm_cand,
+                pre_candidates,
+                me,
+            } = mp;
+
             // Backend Modify
             self.be_txn
                 .modify(au, &pre_candidates, &norm_cand)
@@ -1625,6 +1657,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 ladmin_info!(au, "Modify operation success");
             }
             Ok(())
+        })
+    }
+
+    #[allow(clippy::cognitive_complexity)]
+    pub fn modify(&self, au: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
+        lperf_segment!(au, "server::modify", || {
+            let mp = unsafe { self.modify_pre_apply(au, me)? };
+            if let Some(mp) = mp {
+                self.modify_apply(au, mp)
+            } else {
+                // No action to apply, the pre-apply said nothing to be done.
+                Ok(())
+            }
         })
     }
 
@@ -1898,6 +1943,34 @@ impl<'a> QueryServerWriteTransaction<'a> {
             OperationError::SchemaViolation(e)
         })?;
         self.impersonate_modify_valid(audit, f_valid, f_intent_valid, m_valid, event)
+    }
+
+    pub fn impersonate_modify_gen_event(
+        &self,
+        audit: &mut AuditScope,
+        filter: &Filter<FilterInvalid>,
+        filter_intent: &Filter<FilterInvalid>,
+        modlist: &ModifyList<ModifyInvalid>,
+        event: &Event,
+    ) -> Result<ModifyEvent, OperationError> {
+        let f_valid = filter.validate(self.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "filter Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let f_intent_valid = filter_intent.validate(self.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "f_intent Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        let m_valid = modlist.validate(self.get_schema()).map_err(|e| {
+            ladmin_error!(audit, "modlist Schema Invalid {:?}", e);
+            OperationError::SchemaViolation(e)
+        })?;
+        Ok(ModifyEvent::new_impersonate(
+            event,
+            f_valid,
+            f_intent_valid,
+            m_valid,
+        ))
     }
 
     // internal server operation types.

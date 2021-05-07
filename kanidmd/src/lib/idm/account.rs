@@ -66,6 +66,10 @@ macro_rules! try_from_entry {
 
         let expire = $value.get_ava_single_datetime("account_expire");
 
+        let radius_secret = $value
+            .get_ava_single_radiuscred("radius_secret")
+            .map(|s| s.to_string());
+
         // Resolved by the caller
         let groups = $groups;
 
@@ -79,6 +83,7 @@ macro_rules! try_from_entry {
             primary,
             valid_from,
             expire,
+            radius_secret,
             spn,
         })
     }};
@@ -99,6 +104,7 @@ pub(crate) struct Account {
     pub primary: Option<Credential>,
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
+    pub radius_secret: Option<String>,
     // primary: Credential
     // app_creds: Vec<Credential>
     // account expiry? (as opposed to cred expiry)

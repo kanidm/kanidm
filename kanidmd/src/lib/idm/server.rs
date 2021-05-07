@@ -947,27 +947,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         pce: &PasswordChangeEvent,
     ) -> Result<(), OperationError> {
         let account = self.target_to_account(au, &pce.target)?;
-        // Ask if tis all good - this step checks pwpolicy and such
 
-        // Question: Is it a security issue to reveal pw policy checks BEFORE permission is
-        // determined over the credential modification?
-        //
-        // I don't think so - because we should only be showing how STRONG the pw is ...
+        // Deny the change if the account is anonymous!
+        if account.is_anonymous() {
+            return Err(OperationError::SystemProtectedObject);
+        }
 
-        // Get related inputs, such as account name, email, etc.
-        let related_inputs: Vec<&str> = vec![
-            account.name.as_str(),
-            account.displayname.as_str(),
-            account.spn.as_str(),
-        ];
-
-        self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
-            .map_err(|e| {
-                lrequest_error!(au, "check_password_quality -> {:?}", e);
-                e
-            })?;
-
-        // it returns a modify
+        // Get the modifications we *want* to perform.
         let modlist = account
             .gen_password_mod(pce.cleartext.as_str(), &pce.appid, self.crypto_policy)
             .map_err(|e| {
@@ -975,10 +961,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
         ltrace!(au, "processing change {:?}", modlist);
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
+
+        // Check with the QS if we would be ALLOWED to do this change.
+
+        let me = self
+            .qs_write
+            .impersonate_modify_gen_event(
                 au,
                 // Filter as executed
                 &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
@@ -991,6 +979,44 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 lrequest_error!(au, "error -> {:?}", e);
                 e
             })?;
+
+        let mp = unsafe {
+            self.qs_write
+                .modify_pre_apply(au, &me)
+                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+                .map_err(|e| {
+                    lrequest_error!(au, "error -> {:?}", e);
+                    e
+                })?
+        };
+
+        // If we got here, then pre-apply succedded, and that means access control
+        // passed. Now we can do the extra checks.
+
+        // Check the password quality.
+        // Ask if tis all good - this step checks pwpolicy and such
+        // Get related inputs, such as account name, email, etc.
+        let mut related_inputs: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+            account.spn.as_str(),
+        ];
+
+        if let Some(s) = account.radius_secret.as_ref() {
+            related_inputs.push(s.as_str())
+        };
+
+        self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
+            .map_err(|e| {
+                lrequest_error!(au, "check_password_quality -> {:?}", e);
+                e
+            })?;
+
+        // And actually really apply it now.
+        self.qs_write.modify_apply(au, mp).map_err(|e| {
+            lrequest_error!(au, "error -> {:?}", e);
+            e
+        })?;
 
         Ok(())
     }
@@ -1019,20 +1045,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             return Err(OperationError::SystemProtectedObject);
         }
 
-        // Get related inputs, such as account name, email, etc.
-        let related_inputs: Vec<&str> = vec![
-            account.name.as_str(),
-            account.displayname.as_str(),
-            account.spn.as_str(),
-        ];
-
-        self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
-            .map_err(|e| {
-                ladmin_error!(au, "Failed to checked password quality {:?}", e);
-                e
-            })?;
-
-        // it returns a modify
         let modlist = account
             .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
@@ -1040,10 +1052,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
         ltrace!(au, "processing change {:?}", modlist);
-        // given the new credential generate a modify
-        // We use impersonate here to get the event from ae
-        self.qs_write
-            .impersonate_modify(
+
+        // Check with the QS if we would be ALLOWED to do this change.
+
+        let me = self
+            .qs_write
+            .impersonate_modify_gen_event(
                 au,
                 // Filter as executed
                 &filter!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
@@ -1055,8 +1069,45 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
                 e
-            })
-            .map(|_| ())
+            })?;
+
+        let mp = unsafe {
+            self.qs_write
+                .modify_pre_apply(au, &me)
+                .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
+                .map_err(|e| {
+                    lrequest_error!(au, "error -> {:?}", e);
+                    e
+                })?
+        };
+
+        // If we got here, then pre-apply succedded, and that means access control
+        // passed. Now we can do the extra checks.
+
+        // Get related inputs, such as account name, email, etc.
+        let mut related_inputs: Vec<&str> = vec![
+            account.name.as_str(),
+            account.displayname.as_str(),
+            account.spn.as_str(),
+        ];
+
+        if let Some(s) = account.radius_secret.as_ref() {
+            related_inputs.push(s.as_str())
+        };
+
+        self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to checked password quality {:?}", e);
+                e
+            })?;
+
+        // And actually really apply it now.
+        self.qs_write.modify_apply(au, mp).map_err(|e| {
+            lrequest_error!(au, "error -> {:?}", e);
+            e
+        })?;
+
+        Ok(())
     }
 
     pub fn recover_account(
@@ -2082,6 +2133,32 @@ mod tests {
                 .regenerate_radius_secret(au, &rrse)
                 .expect("Failed to reset radius credential 2");
             assert!(r1 != r2);
+        })
+    }
+
+    #[test]
+    fn test_idm_radius_secret_rejected_from_account_credential() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
+            let rrse = RegenerateRadiusSecretEvent::new_internal(UUID_ADMIN.clone());
+
+            let r1 = idms_prox_write
+                .regenerate_radius_secret(au, &rrse)
+                .expect("Failed to reset radius credential 1");
+
+            // Try and set that as the main account password, should fail.
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, r1.as_str(), None);
+            let e = idms_prox_write.set_account_password(au, &pce);
+            assert!(e.is_err());
+
+            let pce = UnixPasswordChangeEvent::new_internal(&UUID_ADMIN, r1.as_str());
+            let e = idms_prox_write.set_unix_account_password(au, &pce);
+            assert!(e.is_err());
+
+            assert!(idms_prox_write.commit(au).is_ok());
         })
     }
 
