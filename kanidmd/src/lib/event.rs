@@ -7,16 +7,13 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
-    AuthCredential, AuthMech, AuthStep, SearchResponse, UserAuthToken, WhoamiResponse,
+    AuthCredential, AuthMech, AuthRequest, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
+    SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 // use error::OperationError;
 use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use kanidm_proto::v1::OperationError;
 
-use crate::actors::v1_read::{
-    AuthMessage, InternalSearchMessage, InternalSearchRecycledMessage, SearchMessage,
-};
-use crate::actors::v1_write::{CreateMessage, DeleteMessage, ModifyMessage};
 // Bring in schematransaction trait for validate
 // use crate::schema::SchemaTransaction;
 
@@ -274,11 +271,12 @@ pub struct SearchEvent {
 impl SearchEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: &SearchMessage,
+        uat: Option<&UserAuthToken>,
+        req: &SearchRequest,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_ro_uat(audit, qs, msg.uat.as_ref())?;
-        let f = Filter::from_ro(audit, &event, &msg.req.filter, qs)?;
+        let event = Event::from_ro_uat(audit, qs, uat)?;
+        let f = Filter::from_ro(audit, &event, &req.filter, qs)?;
         // We do need to do this twice to account for the ignore_hidden
         // changes.
         let filter_orig = f
@@ -297,11 +295,13 @@ impl SearchEvent {
 
     pub fn from_internal_message(
         audit: &mut AuditScope,
-        msg: InternalSearchMessage,
+        uat: Option<&UserAuthToken>,
+        filter: &Filter<FilterInvalid>,
+        attrs: Option<&[String]>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<AttrString>> = msg.attrs.map(|vs| {
-            vs.into_iter()
+        let r_attrs: Option<BTreeSet<AttrString>> = attrs.map(|vs| {
+            vs.iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
         });
@@ -313,9 +313,9 @@ impl SearchEvent {
             }
         }
 
-        let event = Event::from_ro_uat(audit, qs, msg.uat.as_ref())?;
+        let event = Event::from_ro_uat(audit, qs, uat)?;
 
-        let filter_orig = msg.filter.validate(qs.get_schema()).map_err(|e| {
+        let filter_orig = filter.validate(qs.get_schema()).map_err(|e| {
             lrequest_error!(audit, "filter schema violation -> {:?}", e);
             OperationError::SchemaViolation(e)
         })?;
@@ -331,11 +331,13 @@ impl SearchEvent {
 
     pub fn from_internal_recycle_message(
         audit: &mut AuditScope,
-        msg: InternalSearchRecycledMessage,
+        uat: Option<&UserAuthToken>,
+        filter: &Filter<FilterInvalid>,
+        attrs: Option<&[String]>,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let r_attrs: Option<BTreeSet<AttrString>> = msg.attrs.map(|vs| {
-            vs.into_iter()
+        let r_attrs: Option<BTreeSet<AttrString>> = attrs.map(|vs| {
+            vs.iter()
                 .filter_map(|a| qs.get_schema().normalise_attr_if_exists(a.as_str()))
                 .collect()
         });
@@ -346,9 +348,8 @@ impl SearchEvent {
             }
         }
 
-        let event = Event::from_ro_uat(audit, qs, msg.uat.as_ref())?;
-        let filter_orig = msg
-            .filter
+        let event = Event::from_ro_uat(audit, qs, uat)?;
+        let filter_orig = filter
             .validate(qs.get_schema())
             .map(|f| f.into_recycled())
             .map_err(OperationError::SchemaViolation)?;
@@ -529,11 +530,11 @@ pub struct CreateEvent {
 impl CreateEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: &CreateMessage,
+        uat: Option<&UserAuthToken>,
+        req: &CreateRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let rentries: Result<Vec<_>, _> = msg
-            .req
+        let rentries: Result<Vec<_>, _> = req
             .entries
             .iter()
             .map(|e| Entry::from_proto_entry(audit, e, qs))
@@ -543,7 +544,7 @@ impl CreateEvent {
                 // From ProtoEntry -> Entry
                 // What is the correct consuming iterator here? Can we
                 // even do that?
-                event: Event::from_rw_uat(audit, qs, msg.uat.as_ref())?,
+                event: Event::from_rw_uat(audit, qs, uat)?,
                 entries,
             }),
             Err(e) => Err(e),
@@ -615,11 +616,12 @@ pub struct DeleteEvent {
 impl DeleteEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: &DeleteMessage,
+        uat: Option<&UserAuthToken>,
+        req: &DeleteRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
-        let f = Filter::from_rw(audit, &event, &msg.req.filter, qs)?;
+        let event = Event::from_rw_uat(audit, qs, uat)?;
+        let f = Filter::from_rw(audit, &event, &req.filter, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -701,12 +703,13 @@ pub struct ModifyEvent {
 impl ModifyEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        msg: &ModifyMessage,
+        uat: Option<&UserAuthToken>,
+        req: &ModifyRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
-        let f = Filter::from_rw(audit, &event, &msg.req.filter, qs)?;
-        let m = ModifyList::from(audit, &msg.req.modlist, qs)?;
+        let event = Event::from_rw_uat(audit, qs, uat)?;
+        let f = Filter::from_rw(audit, &event, &req.filter, qs)?;
+        let m = ModifyList::from(audit, &req.modlist, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -979,10 +982,10 @@ pub struct AuthEvent {
 }
 
 impl AuthEvent {
-    pub fn from_message(msg: AuthMessage) -> Result<Self, OperationError> {
+    pub fn from_message(sessionid: Option<Uuid>, req: AuthRequest) -> Result<Self, OperationError> {
         Ok(AuthEvent {
             event: None,
-            step: AuthEventStep::from_authstep(msg.req.step, msg.sessionid)?,
+            step: AuthEventStep::from_authstep(req.step, sessionid)?,
         })
     }
 
@@ -1078,6 +1081,12 @@ pub struct PurgeTombstoneEvent {
     pub eventid: Uuid,
 }
 
+impl Default for PurgeTombstoneEvent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl PurgeTombstoneEvent {
     pub fn new() -> Self {
         PurgeTombstoneEvent {
@@ -1091,6 +1100,12 @@ impl PurgeTombstoneEvent {
 pub struct PurgeRecycledEvent {
     pub event: Event,
     pub eventid: Uuid,
+}
+
+impl Default for PurgeRecycledEvent {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl PurgeRecycledEvent {

@@ -1,4 +1,4 @@
-use crate::actors::v1_read::{LdapRequestMessage, QueryServerReadV1};
+use crate::actors::v1_read::QueryServerReadV1;
 use crate::ldap::{LdapBoundToken, LdapResponseState};
 use core::pin::Pin;
 use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
@@ -47,13 +47,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
         // Start the event
         let eventid = Uuid::new_v4();
         let uat = session.uat.clone();
-        let qs_result = qe_r_ref
-            .handle_ldaprequest(LdapRequestMessage {
-                eventid,
-                protomsg,
-                uat,
-            })
-            .await;
+        let qs_result = qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).await;
 
         match qs_result {
             Some(LdapResponseState::Unbind) => return,

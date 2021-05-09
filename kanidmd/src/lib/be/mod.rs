@@ -710,12 +710,12 @@ pub trait BackendTransaction {
                                 audit,
                                 "Invalid name2uuid state -> incorrect uuid association"
                             );
-                            return Err(ConsistencyError::BackendIndexSync);
+                            Err(ConsistencyError::BackendIndexSync)
                         }
                     }
                     r => {
                         ladmin_error!(audit, "Invalid name2uuid state -> {:?}", r);
-                        return Err(ConsistencyError::BackendIndexSync);
+                        Err(ConsistencyError::BackendIndexSync)
                     }
                 }
             })?;

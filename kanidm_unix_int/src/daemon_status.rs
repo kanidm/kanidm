@@ -52,7 +52,7 @@ fn main() {
             cfg.sock_path
         )
     } else {
-        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
             Ok(r) => match r {
                 ClientResponse::Ok => info!("working!"),
                 _ => {

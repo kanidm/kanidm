@@ -34,7 +34,7 @@ impl PasswdHooks for KanidmPasswd {
                 }
             };
         let req = ClientRequest::NssAccounts;
-        call_daemon_blocking(cfg.sock_path.as_str(), req)
+        call_daemon_blocking(cfg.sock_path.as_str(), &req)
             .map(|r| match r {
                 ClientResponse::NssAccounts(l) => l.into_iter().map(passwd_from_nssuser).collect(),
                 _ => Vec::new(),
@@ -52,7 +52,7 @@ impl PasswdHooks for KanidmPasswd {
                 }
             };
         let req = ClientRequest::NssAccountByUid(uid);
-        call_daemon_blocking(cfg.sock_path.as_str(), req)
+        call_daemon_blocking(cfg.sock_path.as_str(), &req)
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
@@ -72,7 +72,7 @@ impl PasswdHooks for KanidmPasswd {
                 }
             };
         let req = ClientRequest::NssAccountByName(name);
-        call_daemon_blocking(cfg.sock_path.as_str(), req)
+        call_daemon_blocking(cfg.sock_path.as_str(), &req)
             .map(|r| match r {
                 ClientResponse::NssAccount(opt) => opt
                     .map(passwd_from_nssuser)
@@ -97,7 +97,7 @@ impl GroupHooks for KanidmGroup {
                 }
             };
         let req = ClientRequest::NssGroups;
-        call_daemon_blocking(cfg.sock_path.as_str(), req)
+        call_daemon_blocking(cfg.sock_path.as_str(), &req)
             .map(|r| match r {
                 ClientResponse::NssGroups(l) => l.into_iter().map(group_from_nssgroup).collect(),
                 _ => Vec::new(),
@@ -115,7 +115,7 @@ impl GroupHooks for KanidmGroup {
                 }
             };
         let req = ClientRequest::NssGroupByGid(gid);
-        call_daemon_blocking(cfg.sock_path.as_str(), req)
+        call_daemon_blocking(cfg.sock_path.as_str(), &req)
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)
@@ -135,7 +135,7 @@ impl GroupHooks for KanidmGroup {
                 }
             };
         let req = ClientRequest::NssGroupByName(name);
-        call_daemon_blocking(cfg.sock_path.as_str(), req)
+        call_daemon_blocking(cfg.sock_path.as_str(), &req)
             .map(|r| match r {
                 ClientResponse::NssGroup(opt) => opt
                     .map(group_from_nssgroup)

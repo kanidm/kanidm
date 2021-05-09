@@ -28,117 +28,6 @@ use uuid::Uuid;
 use ldap3_server::simple::*;
 use std::convert::TryFrom;
 
-// These are used when the request (IE Get) has no intrising request
-// type. Additionally, they are used in some requests where we need
-// to supplement extra server state (IE userauthtokens) to a request.
-//
-// Generally we don't need to have the responses here because they are
-// part of the protocol.
-
-pub struct WhoamiMessage {
-    pub uat: Option<UserAuthToken>,
-    pub eventid: Uuid,
-}
-
-#[derive(Debug)]
-pub struct AuthMessage {
-    pub sessionid: Option<Uuid>,
-    pub req: AuthRequest,
-    pub eventid: Uuid,
-}
-
-impl AuthMessage {
-    pub fn new(req: AuthRequest, sessionid: Option<Uuid>, eventid: Uuid) -> Self {
-        AuthMessage {
-            sessionid,
-            req,
-            eventid,
-        }
-    }
-}
-
-pub struct SearchMessage {
-    pub uat: Option<UserAuthToken>,
-    pub req: SearchRequest,
-    pub eventid: Uuid,
-}
-
-impl SearchMessage {
-    pub fn new(uat: Option<UserAuthToken>, req: SearchRequest, eventid: Uuid) -> Self {
-        SearchMessage { uat, req, eventid }
-    }
-}
-
-pub struct InternalSearchMessage {
-    pub uat: Option<UserAuthToken>,
-    pub filter: Filter<FilterInvalid>,
-    pub attrs: Option<Vec<String>>,
-    pub eventid: Uuid,
-}
-
-pub struct InternalSearchRecycledMessage {
-    pub uat: Option<UserAuthToken>,
-    pub filter: Filter<FilterInvalid>,
-    pub attrs: Option<Vec<String>>,
-    pub eventid: Uuid,
-}
-
-pub struct InternalRadiusReadMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub eventid: Uuid,
-}
-
-pub struct InternalRadiusTokenReadMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub eventid: Uuid,
-}
-
-pub struct InternalUnixUserTokenReadMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub eventid: Uuid,
-}
-
-pub struct InternalUnixGroupTokenReadMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub eventid: Uuid,
-}
-
-pub struct InternalSshKeyReadMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub eventid: Uuid,
-}
-
-pub struct InternalSshKeyTagReadMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub tag: String,
-    pub eventid: Uuid,
-}
-
-pub struct IdmAccountUnixAuthMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub cred: String,
-    pub eventid: Uuid,
-}
-
-pub struct IdmCredentialStatusMessage {
-    pub uat: Option<UserAuthToken>,
-    pub uuid_or_name: String,
-    pub eventid: Uuid,
-}
-
-pub struct LdapRequestMessage {
-    pub eventid: Uuid,
-    pub protomsg: LdapMsg,
-    pub uat: Option<LdapBoundToken>,
-}
-
 // ===========================================================
 
 pub struct QueryServerReadV1 {
@@ -183,14 +72,21 @@ impl QueryServerReadV1 {
 
     pub async fn handle_search(
         &self,
-        msg: SearchMessage,
+        uat: Option<UserAuthToken>,
+        req: SearchRequest,
+        eventid: Uuid,
     ) -> Result<SearchResponse, OperationError> {
-        let mut audit = AuditScope::new("search", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("search", eventid, self.log_level);
         // Begin a read
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Make an event from the request
-            let srch = match SearchEvent::from_message(&mut audit, &msg, &idms_prox_read.qs_read) {
+            let srch = match SearchEvent::from_message(
+                &mut audit,
+                uat.as_ref(),
+                &req,
+                &idms_prox_read.qs_read,
+            ) {
                 Ok(s) => s,
                 Err(e) => {
                     ladmin_error!(audit, "Failed to begin search: {:?}", e);
@@ -214,20 +110,25 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_auth(&self, msg: AuthMessage) -> Result<AuthResult, OperationError> {
+    pub async fn handle_auth(
+        &self,
+        sessionid: Option<Uuid>,
+        req: AuthRequest,
+        eventid: Uuid,
+    ) -> Result<AuthResult, OperationError> {
         // This is probably the first function that really implements logic
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
-        let mut audit = AuditScope::new("auth", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("auth", eventid, self.log_level);
         let mut idm_auth = self.idms.auth_async().await;
         // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
-        lsecurity!(audit, "Begin auth event {:?}", msg);
+        lsecurity!(audit, "Begin auth event {:?} {:?}", sessionid, req);
 
         // Destructure it.
         // Convert the AuthRequest to an AuthEvent that the idm server
         // can use.
-        let ae = AuthEvent::from_message(msg).map_err(|e| {
+        let ae = AuthEvent::from_message(sessionid, req).map_err(|e| {
             ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
             e
         })?;
@@ -266,9 +167,10 @@ impl QueryServerReadV1 {
 
     pub async fn handle_whoami(
         &self,
-        msg: WhoamiMessage,
+        uat: Option<UserAuthToken>,
+        eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
-        let mut audit = AuditScope::new("whoami", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("whoami", eventid, self.log_level);
         // TODO #62: Move this to IdmServer!!!
         // Begin a read
         let idms_prox_read = self.idms.proxy_read_async().await;
@@ -280,11 +182,11 @@ impl QueryServerReadV1 {
             // trigger the failure, but if we can manage to work out async
             // then move this to core.rs, and don't allow Option<UAT> to get
             // this far.
-            let uat = msg.uat.clone().ok_or(OperationError::NotAuthenticated)?;
+            let uat = uat.ok_or(OperationError::NotAuthenticated)?;
 
             let srch = match SearchEvent::from_whoami_request(
                 &mut audit,
-                msg.uat.as_ref(),
+                Some(&uat),
                 &idms_prox_read.qs_read,
             ) {
                 Ok(s) => s,
@@ -327,9 +229,12 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsearch(
         &self,
-        msg: InternalSearchMessage,
+        uat: Option<UserAuthToken>,
+        filter: Filter<FilterInvalid>,
+        attrs: Option<Vec<String>>,
+        eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
-        let mut audit = AuditScope::new("internal_search_message", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("internal_search_message", eventid, self.log_level);
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
@@ -338,7 +243,9 @@ impl QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_internal_message(
                     &mut audit,
-                    msg,
+                    uat.as_ref(),
+                    &filter,
+                    attrs.as_deref(),
                     &idms_prox_read.qs_read,
                 ) {
                     Ok(s) => s,
@@ -366,13 +273,12 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsearchrecycled(
         &self,
-        msg: InternalSearchRecycledMessage,
+        uat: Option<UserAuthToken>,
+        filter: Filter<FilterInvalid>,
+        attrs: Option<Vec<String>>,
+        eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
-        let mut audit = AuditScope::new(
-            "internal_search_recycle_message",
-            msg.eventid,
-            self.log_level,
-        );
+        let mut audit = AuditScope::new("internal_search_recycle_message", eventid, self.log_level);
         let idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = lperf_op_segment!(
@@ -382,7 +288,9 @@ impl QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_internal_recycle_message(
                     &mut audit,
-                    msg,
+                    uat.as_ref(),
+                    &filter,
+                    attrs.as_deref(),
                     &idms_prox_read.qs_read,
                 ) {
                     Ok(s) => s,
@@ -410,10 +318,11 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalradiusread(
         &self,
-        msg: InternalRadiusReadMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let mut audit =
-            AuditScope::new("internal_radius_read_message", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("internal_radius_read_message", eventid, self.log_level);
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
@@ -421,7 +330,7 @@ impl QueryServerReadV1 {
             || {
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(&mut audit, "Error resolving id to target");
                         e
@@ -430,7 +339,7 @@ impl QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
                     &mut audit,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                     &idms_prox_read.qs_read,
                 ) {
@@ -468,11 +377,13 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalradiustokenread(
         &self,
-        msg: InternalRadiusTokenReadMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        eventid: Uuid,
     ) -> Result<RadiusAuthToken, OperationError> {
         let mut audit = AuditScope::new(
             "internal_radius_token_read_message",
-            msg.eventid,
+            eventid,
             self.log_level,
         );
         let mut idms_prox_read = self.idms.proxy_read_async().await;
@@ -483,7 +394,7 @@ impl QueryServerReadV1 {
             || {
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(&mut audit, "Error resolving id to target");
                         e
@@ -493,7 +404,7 @@ impl QueryServerReadV1 {
                 let rate = match RadiusAuthTokenEvent::from_parts(
                     &mut audit,
                     &idms_prox_read.qs_read,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -524,13 +435,12 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalunixusertokenread(
         &self,
-        msg: InternalUnixUserTokenReadMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        eventid: Uuid,
     ) -> Result<UnixUserToken, OperationError> {
-        let mut audit = AuditScope::new(
-            "internal_unix_token_read_message",
-            msg.eventid,
-            self.log_level,
-        );
+        let mut audit =
+            AuditScope::new("internal_unix_token_read_message", eventid, self.log_level);
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = lperf_op_segment!(
@@ -539,12 +449,12 @@ impl QueryServerReadV1 {
             || {
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_info!(
                             &mut audit,
                             "Error resolving {} as gidnumber continuing ... {:?}",
-                            msg.uuid_or_name,
+                            uuid_or_name,
                             e
                         );
                         e
@@ -554,7 +464,7 @@ impl QueryServerReadV1 {
                 let rate = match UnixUserTokenEvent::from_parts(
                     &mut audit,
                     &idms_prox_read.qs_read,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -585,11 +495,13 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalunixgrouptokenread(
         &self,
-        msg: InternalUnixGroupTokenReadMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        eventid: Uuid,
     ) -> Result<UnixGroupToken, OperationError> {
         let mut audit = AuditScope::new(
             "internal_unixgroup_token_read_message",
-            msg.eventid,
+            eventid,
             self.log_level,
         );
         let mut idms_prox_read = self.idms.proxy_read_async().await;
@@ -599,7 +511,7 @@ impl QueryServerReadV1 {
             || {
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                         e
@@ -609,7 +521,7 @@ impl QueryServerReadV1 {
                 let rate = match UnixGroupTokenEvent::from_parts(
                     &mut audit,
                     &idms_prox_read.qs_read,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -633,10 +545,11 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsshkeyread(
         &self,
-        msg: InternalSshKeyReadMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
-        let mut audit =
-            AuditScope::new("internal_sshkey_read_message", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("internal_sshkey_read_message", eventid, self.log_level);
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = lperf_op_segment!(
             &mut audit,
@@ -644,7 +557,7 @@ impl QueryServerReadV1 {
             || {
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(&mut audit, "Error resolving id to target");
                         e
@@ -653,7 +566,7 @@ impl QueryServerReadV1 {
                 // Make an event from the request
                 let srch = match SearchEvent::from_target_uuid_request(
                     &mut audit,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                     &idms_prox_read.qs_read,
                 ) {
@@ -695,14 +608,11 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsshkeytagread(
         &self,
-        msg: InternalSshKeyTagReadMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        tag: String,
+        eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let InternalSshKeyTagReadMessage {
-            uat,
-            uuid_or_name,
-            tag,
-            eventid,
-        } = msg;
         let mut audit =
             AuditScope::new("internal_sshkey_tag_read_message", eventid, self.log_level);
         let idms_prox_read = self.idms.proxy_read_async().await;
@@ -769,15 +679,18 @@ impl QueryServerReadV1 {
 
     pub async fn handle_idmaccountunixauth(
         &self,
-        msg: IdmAccountUnixAuthMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        cred: String,
+        eventid: Uuid,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        let mut audit = AuditScope::new("idm_account_unix_auth", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("idm_account_unix_auth", eventid, self.log_level);
         let mut idm_auth = self.idms.auth_async().await;
         // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<IdmAccountUnixAuthMessage>", || {
         // resolve the id
         let target_uuid = idm_auth
             .qs_read
-            .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+            .name_to_uuid(&mut audit, uuid_or_name.as_str())
             .map_err(|e| {
                 ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
                 e
@@ -786,9 +699,9 @@ impl QueryServerReadV1 {
         let uuae = match UnixUserAuthEvent::from_parts(
             &mut audit,
             &idm_auth.qs_read,
-            msg.uat.as_ref(),
+            uat.as_ref(),
             target_uuid,
-            msg.cred,
+            cred,
         ) {
             Ok(s) => s,
             Err(e) => {
@@ -823,10 +736,11 @@ impl QueryServerReadV1 {
 
     pub async fn handle_idmcredentialstatus(
         &self,
-        msg: IdmCredentialStatusMessage,
+        uat: Option<UserAuthToken>,
+        uuid_or_name: String,
+        eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {
-        let mut audit =
-            AuditScope::new("idm_credential_status_message", msg.eventid, self.log_level);
+        let mut audit = AuditScope::new("idm_credential_status_message", eventid, self.log_level);
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = lperf_op_segment!(
@@ -835,7 +749,7 @@ impl QueryServerReadV1 {
             || {
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, msg.uuid_or_name.as_str())
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
                         ladmin_error!(&mut audit, "Error resolving id to target");
                         e
@@ -845,7 +759,7 @@ impl QueryServerReadV1 {
                 let cse = match CredentialStatusEvent::from_parts(
                     &mut audit,
                     &idms_prox_read.qs_read,
-                    msg.uat.as_ref(),
+                    uat.as_ref(),
                     target_uuid,
                 ) {
                     Ok(s) => s,
@@ -867,12 +781,12 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_ldaprequest(&self, msg: LdapRequestMessage) -> Option<LdapResponseState> {
-        let LdapRequestMessage {
-            eventid,
-            protomsg,
-            uat,
-        } = msg;
+    pub async fn handle_ldaprequest(
+        &self,
+        eventid: Uuid,
+        protomsg: LdapMsg,
+        uat: Option<LdapBoundToken>,
+    ) -> Option<LdapResponseState> {
         let mut audit = AuditScope::new("ldap_request_message", eventid, self.log_level);
 
         /*

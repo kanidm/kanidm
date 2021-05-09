@@ -12,7 +12,7 @@ const TIMEOUT: u64 = 2000;
 
 pub fn call_daemon_blocking(
     path: &str,
-    req: ClientRequest,
+    req: &ClientRequest,
 ) -> Result<ClientResponse, Box<dyn Error>> {
     let mut stream = UnixStream::connect(path)
         .and_then(|socket| {

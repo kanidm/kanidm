@@ -1244,6 +1244,11 @@ impl FilterResolved {
                 } else {
                     // sort, but reverse so that sub-optimal elements are earlier
                     // to promote fast-failure.
+                    // We have to allow this on clippy, which attempts to suggest:
+                    //   f_list_new.sort_unstable_by_key(|&b| Reverse(b))
+                    // However, because these are references, it causes a lifetime
+                    // issue, and fails to compile.
+                    #[allow(clippy::unnecessary_sort_by)]
                     f_list_new.sort_unstable_by(|a, b| b.cmp(a));
                     f_list_new.dedup();
 

@@ -239,6 +239,12 @@ impl<STATE> Entry<EntryInit, STATE> {
     }
 }
 
+impl Default for Entry<EntryInit, EntryNew> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Entry<EntryInit, EntryNew> {
     pub fn new() -> Self {
         Entry {
@@ -1291,6 +1297,12 @@ impl Entry<EntrySealed, EntryCommitted> {
         })
     }
 
+    /// # Safety
+    /// This function bypasses the access control validation logic and should NOT
+    /// be used without special care and attention to ensure that no private data
+    /// is leaked incorrectly to clients. Generally this is ONLY used inside of
+    /// the access control processing functions which correctly applies the reduction
+    /// steps.
     pub unsafe fn into_reduced(self) -> Entry<EntryReduced, EntryCommitted> {
         Entry {
             valid: EntryReduced {

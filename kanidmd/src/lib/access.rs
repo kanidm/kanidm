@@ -393,6 +393,7 @@ pub trait AccessControlsTransaction<'a> {
     fn get_modify(&self) -> &Vec<AccessControlModify>;
     fn get_delete(&self) -> &Vec<AccessControlDelete>;
     // fn get_acp_related_search_cache(&self) -> &mut ARCacheReadTxn<'a, Uuid, Vec<Uuid>>;
+    #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
         &self,
     ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
