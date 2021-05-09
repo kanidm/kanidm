@@ -1,4 +1,3 @@
-use crate::actors::v1_write::IdmAccountSetPasswordMessage;
 use crate::event::Event;
 use crate::prelude::*;
 
@@ -26,16 +25,17 @@ impl PasswordChangeEvent {
 
     pub fn from_idm_account_set_password(
         audit: &mut AuditScope,
+        uat: Option<&UserAuthToken>,
+        cleartext: String,
         qs: &QueryServerWriteTransaction,
-        msg: IdmAccountSetPasswordMessage,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, msg.uat.as_ref())?;
+        let e = Event::from_rw_uat(audit, qs, uat)?;
         let u = e.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
             event: e,
             target: u,
-            cleartext: msg.cleartext,
+            cleartext,
             appid: None,
         })
     }

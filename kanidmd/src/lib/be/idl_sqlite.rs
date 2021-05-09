@@ -1357,6 +1357,7 @@ impl IdlSqlite {
 
     pub(crate) fn get_allids_count(&self, au: &mut AuditScope) -> Result<u64, OperationError> {
         ltrace!(au, "Counting allids...");
+        #[allow(clippy::expect_used)]
         self.pool
             .try_get()
             .expect("Unable to get connection from pool!!!")

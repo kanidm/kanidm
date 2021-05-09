@@ -122,6 +122,7 @@ pub trait QueryServerTransaction<'a> {
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
 
+    #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
         &self,
     ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;

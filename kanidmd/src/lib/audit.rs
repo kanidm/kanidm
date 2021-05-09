@@ -483,6 +483,7 @@ impl AuditScope {
         })
     }
 
+    #[allow(clippy::unreachable)]
     pub(crate) unsafe fn new_perfevent(&mut self, id: &str) -> &'static mut PerfEvent {
         // Does an active event currently exist?
         if self.active_perf.is_none() {
@@ -519,7 +520,6 @@ impl AuditScope {
                 let idx = iparent.contains.len() - 1;
                 iparent.contains.get_unchecked_mut(idx).as_mut() as *mut PerfEvent
             } else {
-                #[allow(clippy::unreachable)]
                 unreachable!("Invalid parent state");
             };
             // Alloc in the vec, set parnt to active, then get a mut pointer

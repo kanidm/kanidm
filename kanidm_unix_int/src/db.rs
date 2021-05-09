@@ -343,8 +343,7 @@ impl<'a> DbTxn<'a> {
             )
             .map_err(|e| {
                 debug!("sqlite delete account_t duplicate failure -> {:?}", e);
-            })
-            .map(|c| c)?;
+            })?;
 
         if updated == 0 {
             let mut stmt = self.conn
@@ -683,7 +682,7 @@ impl<'a> fmt::Debug for DbTxn<'a> {
 
 impl<'a> Drop for DbTxn<'a> {
     // Abort
-    fn drop(self: &mut Self) {
+    fn drop(&mut self) {
         if !self.committed {
             // debug!("Aborting BE WR txn");
             #[allow(clippy::expect_used)]

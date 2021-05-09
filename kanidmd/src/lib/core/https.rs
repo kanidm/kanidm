@@ -1,19 +1,5 @@
 use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_read::{
-    AuthMessage, IdmAccountUnixAuthMessage, IdmCredentialStatusMessage, InternalRadiusReadMessage,
-    InternalRadiusTokenReadMessage, InternalSearchMessage, InternalSearchRecycledMessage,
-    InternalSshKeyReadMessage, InternalSshKeyTagReadMessage, InternalUnixGroupTokenReadMessage,
-    InternalUnixUserTokenReadMessage, SearchMessage, WhoamiMessage,
-};
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::actors::v1_write::{
-    AppendAttributeMessage, CreateMessage, DeleteMessage, IdmAccountPersonExtendMessage,
-    IdmAccountSetPasswordMessage, IdmAccountUnixExtendMessage, IdmAccountUnixSetCredMessage,
-    IdmGroupUnixExtendMessage, InternalCredentialSetMessage, InternalDeleteMessage,
-    InternalRegenerateRadiusMessage, InternalSshKeyCreateMessage, ModifyMessage,
-    PurgeAttributeMessage, RemoveAttributeValuesMessage, ReviveRecycledMessage,
-    SetAttributeMessage,
-};
 use crate::config::{ServerRole, TlsConfiguration};
 use crate::event::AuthResult;
 use crate::filter::{Filter, FilterInvalid};
@@ -22,11 +8,10 @@ use crate::status::{StatusActor, StatusRequestEvent};
 use crate::value::PartialValue;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CreateRequest,
-    DeleteRequest, GroupUnixExtend, ModifyRequest, SearchRequest, SetCredentialRequest,
-    SingleStringRequest, UserAuthToken,
+    DeleteRequest, GroupUnixExtend, ModifyRequest, OperationError, SearchRequest,
+    SetCredentialRequest, SingleStringRequest, UserAuthToken,
 };
 
 use serde::Serialize;
@@ -192,9 +177,8 @@ pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
     let msg: CreateRequest = req.body_json().await?;
 
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = CreateMessage::new(uat, msg, eventid);
 
-    let res = req.state().qe_w_ref.handle_create(m_obj).await;
+    let res = req.state().qe_w_ref.handle_create(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
 
@@ -202,8 +186,7 @@ pub async fn modify(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let msg: ModifyRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = ModifyMessage::new(uat, msg, eventid);
-    let res = req.state().qe_w_ref.handle_modify(m_obj).await;
+    let res = req.state().qe_w_ref.handle_modify(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
 
@@ -211,8 +194,7 @@ pub async fn delete(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let msg: DeleteRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = DeleteMessage::new(uat, msg, eventid);
-    let res = req.state().qe_w_ref.handle_delete(m_obj).await;
+    let res = req.state().qe_w_ref.handle_delete(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
 
@@ -220,8 +202,7 @@ pub async fn search(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let msg: SearchRequest = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = SearchMessage::new(uat, msg, eventid);
-    let res = req.state().qe_r_ref.handle_search(m_obj).await;
+    let res = req.state().qe_r_ref.handle_search(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
 
@@ -229,9 +210,7 @@ pub async fn whoami(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = new_eventid!();
     // New event, feed current auth data from the token to it.
-    let m_obj = WhoamiMessage { uat, eventid };
-
-    let res = req.state().qe_r_ref.handle_whoami(m_obj).await;
+    let res = req.state().qe_r_ref.handle_whoami(uat, eventid).await;
     to_tide_response(res, hvalue)
 }
 
@@ -245,14 +224,12 @@ pub async fn json_rest_event_get(
     let uat = req.get_current_uat();
 
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
 
-    let res = req.state().qe_r_ref.handle_internalsearch(m_obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsearch(uat, filter, attrs, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -268,17 +245,10 @@ async fn json_rest_event_get_id(
 
     let (eventid, hvalue) = new_eventid!();
 
-    let m_obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
-
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalsearch(m_obj)
+        .handle_internalsearch(uat, filter, attrs, eventid)
         .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
@@ -294,16 +264,10 @@ async fn json_rest_event_delete_id(
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let (eventid, hvalue) = new_eventid!();
 
-    let m_obj = InternalDeleteMessage {
-        uat,
-        filter,
-        eventid,
-    };
-
     let res = req
         .state()
         .qe_w_ref
-        .handle_internaldelete(m_obj)
+        .handle_internaldelete(uat, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -320,17 +284,12 @@ async fn json_rest_event_get_id_attr(
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let (eventid, hvalue) = new_eventid!();
 
-    let m_obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs: Some(vec![attr.clone()]),
-        eventid,
-    };
+    let attrs = Some(vec![attr.clone()]);
 
     let res: Result<Option<_>, _> = req
         .state()
         .qe_r_ref
-        .handle_internalsearch(m_obj)
+        .handle_internalsearch(uat, filter, attrs, eventid)
         .await
         .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)));
     to_tide_response(res, hvalue)
@@ -341,15 +300,14 @@ async fn json_rest_event_post(
     classes: Vec<String>,
 ) -> tide::Result {
     debug_assert!(!classes.is_empty());
+    let (eventid, hvalue) = new_eventid!();
     // Read the json from the wire.
     let uat = req.get_current_uat();
     let mut obj: ProtoEntry = req.body_json().await?;
-
     obj.attrs.insert("class".to_string(), classes);
-    let (eventid, hvalue) = new_eventid!();
-    let m_obj = CreateMessage::new_entry(uat, obj, eventid);
+    let msg = CreateRequest { entries: vec![obj] };
 
-    let res = req.state().qe_w_ref.handle_create(m_obj).await;
+    let res = req.state().qe_w_ref.handle_create(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
 
@@ -358,23 +316,14 @@ async fn json_rest_event_post_id_attr(
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = AppendAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        values,
-        filter,
-        eventid,
-    };
-    // Add a msg here
     let res = req
         .state()
         .qe_w_ref
-        .handle_appendattribute(m_obj)
+        .handle_appendattribute(uat, uuid_or_name, attr, values, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -385,23 +334,15 @@ async fn json_rest_event_put_id_attr(
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
 
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = SetAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr,
-        values,
-        filter,
-        eventid,
-    };
     let res = req
         .state()
         .qe_w_ref
-        .handle_setattribute(m_obj)
+        .handle_setattribute(uat, uuid_or_name, attr, values, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -414,7 +355,7 @@ async fn json_rest_event_delete_id_attr(
     attr: String,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let (eventid, hvalue) = new_eventid!();
 
     // TODO #211: Attempt to get an option Vec<String> here?
@@ -427,35 +368,19 @@ async fn json_rest_event_delete_id_attr(
         body.into_json().await?
     };
 
-    if values.len() == 0 {
-        let m_obj = PurgeAttributeMessage {
-            uat,
-            uuid_or_name: id,
-            attr,
-            filter,
-            eventid,
-        };
+    if values.is_empty() {
         let res = req
             .state()
             .qe_w_ref
-            .handle_purgeattribute(m_obj)
+            .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
             .await
             .map(|()| true);
         to_tide_response(res, hvalue)
     } else {
-        let obj = RemoveAttributeValuesMessage {
-            uat,
-            uuid_or_name: id,
-            attr,
-            values,
-            filter,
-            eventid,
-        };
-
         let res = req
             .state()
             .qe_w_ref
-            .handle_removeattributevalues(obj)
+            .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
             .await
             .map(|()| true);
         to_tide_response(res, hvalue)
@@ -464,21 +389,18 @@ async fn json_rest_event_delete_id_attr(
 
 async fn json_rest_event_credential_put(
     mut req: tide::Request<AppState>,
-    cred_id: Option<String>,
+    appid: Option<String>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let obj: SetCredentialRequest = req.body_json().await?;
+    let uuid_or_name = req.get_url_param("id")?;
+    let sac: SetCredentialRequest = req.body_json().await?;
 
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = InternalCredentialSetMessage {
-        uat,
-        uuid_or_name: id,
-        appid: cred_id,
-        sac: obj,
-        eventid,
-    };
-    let res = req.state().qe_w_ref.handle_credentialset(m_obj).await;
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_credentialset(uat, uuid_or_name, appid, sac, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -521,17 +443,11 @@ pub async fn schema_attributetype_get_id(req: tide::Request<AppState>) -> tide::
     ]));
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs: None,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalsearch(obj)
+        .handle_internalsearch(uat, filter, None, eventid)
         .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
@@ -553,17 +469,11 @@ pub async fn schema_classtype_get_id(req: tide::Request<AppState>) -> tide::Resu
     ]));
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchMessage {
-        uat,
-        filter,
-        attrs: None,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalsearch(obj)
+        .handle_internalsearch(uat, filter, None, eventid)
         .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
@@ -635,54 +545,45 @@ pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> 
 
 pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = IdmCredentialStatusMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
 
-    let res = req.state().qe_r_ref.handle_idmcredentialstatus(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_idmcredentialstatus(uat, uuid_or_name, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
 // Return a vec of str
 pub async fn account_get_id_ssh_pubkeys(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSshKeyReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
 
-    let res = req.state().qe_r_ref.handle_internalsshkeyread(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsshkeyread(uat, uuid_or_name, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn account_post_id_ssh_pubkey(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let (tag, key): (String, String) = req.body_json().await?;
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = InternalSshKeyCreateMessage {
-        uat,
-        uuid_or_name: id,
-        tag,
-        key,
-        filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
-        eventid,
-    };
     // Add a msg here
     let res = req
         .state()
         .qe_w_ref
-        .handle_sshkeycreate(m_obj)
+        .handle_sshkeycreate(uat, uuid_or_name, tag, key, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -690,40 +591,33 @@ pub async fn account_post_id_ssh_pubkey(mut req: tide::Request<AppState>) -> tid
 
 pub async fn account_get_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let tag = req.get_url_param("tag")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSshKeyTagReadMessage {
-        uat,
-        uuid_or_name: id,
-        tag,
-        eventid,
-    };
 
-    let res = req.state().qe_r_ref.handle_internalsshkeytagread(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalsshkeytagread(uat, uuid_or_name, tag, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let tag = req.get_url_param("tag")?;
+    let attr = "ssh_publickey".to_string();
+    let values = vec![tag];
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = RemoveAttributeValuesMessage {
-        uat,
-        uuid_or_name: id,
-        attr: "ssh_publickey".to_string(),
-        values: vec![tag],
-        filter: filter_all!(f_eq("class", PartialValue::new_class("account"))),
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_w_ref
-        .handle_removeattributevalues(obj)
+        .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -732,28 +626,30 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
 // Get and return a single str
 pub async fn account_get_id_radius(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalRadiusReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
 
-    let res = req.state().qe_r_ref.handle_internalradiusread(obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_internalradiusread(uat, uuid_or_name, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn account_post_id_radius_regenerate(req: tide::Request<AppState>) -> tide::Result {
     // Need to to send the regen msg
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalRegenerateRadiusMessage::new(uat, id, eventid);
 
-    let res = req.state().qe_w_ref.handle_regenerateradius(obj).await;
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_regenerateradius(uat, uuid_or_name, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -765,36 +661,26 @@ pub async fn account_delete_id_radius(req: tide::Request<AppState>) -> tide::Res
 
 pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalRadiusTokenReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalradiustokenread(obj)
+        .handle_internalradiustokenread(uat, uuid_or_name, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn account_post_id_person_extend(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountPersonExtendMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
     let res = req
         .state()
         .qe_w_ref
-        .handle_idmaccountpersonextend(m_obj)
+        .handle_idmaccountpersonextend(uat, uuid_or_name, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -802,14 +688,13 @@ pub async fn account_post_id_person_extend(req: tide::Request<AppState>) -> tide
 
 pub async fn account_post_id_unix(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let obj: AccountUnixExtend = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountUnixExtendMessage::new(uat, id, obj, eventid);
     let res = req
         .state()
         .qe_w_ref
-        .handle_idmaccountunixextend(m_obj)
+        .handle_idmaccountunixextend(uat, uuid_or_name, obj, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -817,53 +702,42 @@ pub async fn account_post_id_unix(mut req: tide::Request<AppState>) -> tide::Res
 
 pub async fn account_get_id_unix_token(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalUnixUserTokenReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalunixusertokenread(obj)
+        .handle_internalunixusertokenread(uat, uuid_or_name, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn account_post_id_unix_auth(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let obj: SingleStringRequest = req.body_json().await?;
+    let cred = obj.value;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountUnixAuthMessage {
-        uat,
-        uuid_or_name: id,
-        cred: obj.value,
-        eventid,
-    };
-    let res = req.state().qe_r_ref.handle_idmaccountunixauth(m_obj).await;
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_idmaccountunixauth(uat, uuid_or_name, cred, eventid)
+        .await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn account_put_id_unix_credential(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let obj: SingleStringRequest = req.body_json().await?;
+    let cred = obj.value;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountUnixSetCredMessage {
-        uat,
-        uuid_or_name: id,
-        cred: obj.value,
-        eventid,
-    };
     let res = req
         .state()
         .qe_w_ref
-        .handle_idmaccountunixsetcred(m_obj)
+        .handle_idmaccountunixsetcred(uat, uuid_or_name, cred, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -871,21 +745,16 @@ pub async fn account_put_id_unix_credential(mut req: tide::Request<AppState>) ->
 
 pub async fn account_delete_id_unix_credential(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
+    let attr = "unix_password".to_string();
+    let filter = filter_all!(f_eq("class", PartialValue::new_class("posixaccount")));
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = PurgeAttributeMessage {
-        uat,
-        uuid_or_name: id,
-        attr: "unix_password".to_string(),
-        filter: filter_all!(f_eq("class", PartialValue::new_class("posixaccount"))),
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_w_ref
-        .handle_purgeattribute(obj)
+        .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -934,14 +803,13 @@ pub async fn group_id_delete(req: tide::Request<AppState>) -> tide::Result {
 
 pub async fn group_post_id_unix(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
     let obj: GroupUnixExtend = req.body_json().await?;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmGroupUnixExtendMessage::new(uat, id, &obj, eventid);
     let res = req
         .state()
         .qe_w_ref
-        .handle_idmgroupunixextend(m_obj)
+        .handle_idmgroupunixextend(uat, uuid_or_name, obj, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -949,19 +817,14 @@ pub async fn group_post_id_unix(mut req: tide::Request<AppState>) -> tide::Resul
 
 pub async fn group_get_id_unix_token(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
+    let uuid_or_name = req.get_url_param("id")?;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalUnixGroupTokenReadMessage {
-        uat,
-        uuid_or_name: id,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalunixgrouptokenread(obj)
+        .handle_internalunixgrouptokenread(uat, uuid_or_name, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
@@ -995,17 +858,11 @@ pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {
     let attrs = None;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchRecycledMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalsearchrecycled(obj)
+        .handle_internalsearchrecycled(uat, filter, attrs, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
@@ -1017,17 +874,11 @@ pub async fn recycle_bin_id_get(req: tide::Request<AppState>) -> tide::Result {
     let attrs = None;
 
     let (eventid, hvalue) = new_eventid!();
-    let obj = InternalSearchRecycledMessage {
-        uat,
-        filter,
-        attrs,
-        eventid,
-    };
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_internalsearchrecycled(obj)
+        .handle_internalsearchrecycled(uat, filter, attrs, eventid)
         .await
         .map(|mut r| r.pop());
     to_tide_response(res, hvalue)
@@ -1039,15 +890,10 @@ pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::R
     let filter = filter_all!(f_id(id.as_str()));
 
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = ReviveRecycledMessage {
-        uat,
-        filter,
-        eventid,
-    };
     let res = req
         .state()
         .qe_w_ref
-        .handle_reviverecycled(m_obj)
+        .handle_reviverecycled(uat, filter, eventid)
         .await
         .map(|()| true);
     to_tide_response(res, hvalue)
@@ -1073,8 +919,6 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
         e
     })?;
 
-    let auth_msg = AuthMessage::new(obj, maybe_sessionid, eventid);
-
     let mut auth_session_id_tok = None;
 
     // We probably need to know if we allocate the cookie, that this is a
@@ -1084,7 +928,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
         .state()
         // This may change in the future ...
         .qe_r_ref
-        .handle_auth(auth_msg)
+        .handle_auth(maybe_sessionid, obj, eventid)
         .await
     {
         // .and_then(|ar| {
@@ -1179,12 +1023,12 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
 pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let obj: SingleStringRequest = req.body_json().await?;
+    let cleartext = obj.value;
     let (eventid, hvalue) = new_eventid!();
-    let m_obj = IdmAccountSetPasswordMessage::new(uat, obj, eventid);
     let res = req
         .state()
         .qe_w_ref
-        .handle_idmaccountsetpassword(m_obj)
+        .handle_idmaccountsetpassword(uat, cleartext, eventid)
         .await;
     to_tide_response(res, hvalue)
 }

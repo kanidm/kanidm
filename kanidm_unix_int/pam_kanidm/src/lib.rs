@@ -91,7 +91,7 @@ impl PamHooks for PamKanidm {
         let req = ClientRequest::PamAccountAllowed(account_id);
         // PamResultCode::PAM_IGNORE
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     // println!("PAM_SUCCESS");
@@ -200,7 +200,7 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAuthenticate(account_id, authtok);
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
                     // println!("PAM_SUCCESS");
@@ -291,7 +291,7 @@ impl PamHooks for PamKanidm {
         };
         let req = ClientRequest::PamAccountBeginSession(account_id);
 
-        match call_daemon_blocking(cfg.sock_path.as_str(), req) {
+        match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
             Ok(ClientResponse::Ok) => {
                 // println!("PAM_SUCCESS");
                 PamResultCode::PAM_SUCCESS
