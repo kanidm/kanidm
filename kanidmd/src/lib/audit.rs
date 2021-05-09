@@ -62,19 +62,19 @@ impl fmt::Display for LogTag {
 }
 
 macro_rules! lqueue {
-    ($au:expr, $tag:expr, $($arg:tt)*) => ({
+    ($audit:expr, $tag:expr, $($arg:tt)*) => ({
         use crate::audit::{LogTag, AUDIT_LINE_SIZE};
         if cfg!(test) {
             println!($($arg)*)
         }
-        if ($au.level & $tag as u32) == $tag as u32 {
+        if ($audit.level & $tag as u32) == $tag as u32 {
             use std::fmt;
             // We have to buffer the string to over-alloc it.
             let mut output = String::with_capacity(AUDIT_LINE_SIZE);
             match fmt::write(&mut output, format_args!($($arg)*)) {
-                Ok(_) => $au.log_event($tag, output),
+                Ok(_) => $audit.log_event($tag, output),
                 Err(e) => {
-                    $au.log_event(
+                    $audit.log_event(
                         LogTag::AdminError,
                         format!("CRITICAL UNABLE TO WRITE LOG EVENT - {:?}", e)
                     )
@@ -85,103 +85,103 @@ macro_rules! lqueue {
 }
 
 macro_rules! ltrace {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::Trace, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::Trace, $($arg)*)
     })
 }
 
 macro_rules! lfilter {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::FilterTrace, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::FilterTrace, $($arg)*)
     })
 }
 
 macro_rules! lfilter_info {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::FilterInfo, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::FilterInfo, $($arg)*)
     })
 }
 
 /*
 macro_rules! lfilter_warning {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::FilterWarning, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::FilterWarning, $($arg)*)
     })
 }
 */
 
 macro_rules! lfilter_error {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::FilterError, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::FilterError, $($arg)*)
     })
 }
 
 macro_rules! ladmin_error {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::AdminError, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::AdminError, $($arg)*)
     })
 }
 
 macro_rules! ladmin_warning {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::AdminWarning, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::AdminWarning, $($arg)*)
     })
 }
 
 macro_rules! ladmin_info {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::AdminInfo, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::AdminInfo, $($arg)*)
     })
 }
 
 macro_rules! lrequest_error {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::RequestError, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::RequestError, $($arg)*)
     })
 }
 
 macro_rules! lsecurity {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::SecurityInfo, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::SecurityInfo, $($arg)*)
     })
 }
 
 macro_rules! lsecurity_critical {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::SecurityCritical, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::SecurityCritical, $($arg)*)
     })
 }
 
 macro_rules! lsecurity_access {
-    ($au:expr, $($arg:tt)*) => ({
-        lqueue!($au, LogTag::SecurityAccess, $($arg)*)
+    ($audit:expr, $($arg:tt)*) => ({
+        lqueue!($audit, LogTag::SecurityAccess, $($arg)*)
     })
 }
 
 macro_rules! lperf_op_segment {
-    ($au:expr, $id:expr, $fun:expr) => {{
+    ($audit:expr, $id:expr, $fun:expr) => {{
         use crate::audit::LogTag;
-        lperf_tag_segment!($au, $id, LogTag::PerfOp, $fun)
+        lperf_tag_segment!($audit, $id, LogTag::PerfOp, $fun)
     }};
 }
 
 macro_rules! lperf_trace_segment {
-    ($au:expr, $id:expr, $fun:expr) => {{
+    ($audit:expr, $id:expr, $fun:expr) => {{
         use crate::audit::LogTag;
-        lperf_tag_segment!($au, $id, LogTag::PerfTrace, $fun)
+        lperf_tag_segment!($audit, $id, LogTag::PerfTrace, $fun)
     }};
 }
 
 macro_rules! lperf_segment {
-    ($au:expr, $id:expr, $fun:expr) => {{
+    ($audit:expr, $id:expr, $fun:expr) => {{
         use crate::audit::LogTag;
-        lperf_tag_segment!($au, $id, LogTag::PerfCoarse, $fun)
+        lperf_tag_segment!($audit, $id, LogTag::PerfCoarse, $fun)
     }};
 }
 
 macro_rules! lperf_tag_segment {
-    ($au:expr, $id:expr, $tag:expr, $fun:expr) => {{
-        if ($au.level & $tag as u32) == $tag as u32 {
+    ($audit:expr, $id:expr, $tag:expr, $fun:expr) => {{
+        if ($audit.level & $tag as u32) == $tag as u32 {
             use std::time::Instant;
 
             // start timer.
@@ -191,7 +191,7 @@ macro_rules! lperf_tag_segment {
             // us as the current active, and the parent
             // correctly.
             #[allow(unused_unsafe)]
-            let pe = unsafe { $au.new_perfevent($id) };
+            let pe = unsafe { $audit.new_perfevent($id) };
 
             // fun run time
             let r = $fun();
@@ -203,7 +203,7 @@ macro_rules! lperf_tag_segment {
             // the active.
             #[allow(unused_unsafe)]
             unsafe {
-                $au.end_perfevent(pe, diff)
+                $audit.end_perfevent(pe, diff)
             };
 
             // Return the result. Hope this works!
@@ -216,9 +216,9 @@ macro_rules! lperf_tag_segment {
 
 /*
 macro_rules! limmediate_error {
-    ($au:expr, $($arg:tt)*) => ({
+    ($audit:expr, $($arg:tt)*) => ({
         use crate::audit::LogTag;
-        if ($au.level & LogTag::AdminError as u32) == LogTag::AdminError as u32 {
+        if ($audit.level & LogTag::AdminError as u32) == LogTag::AdminError as u32 {
             eprintln!($($arg)*)
         }
     })
@@ -226,9 +226,9 @@ macro_rules! limmediate_error {
 */
 
 macro_rules! limmediate_warning {
-    ($au:expr, $($arg:tt)*) => ({
+    ($audit:expr, $($arg:tt)*) => ({
         use crate::audit::LogTag;
-        if ($au.level & LogTag::AdminWarning as u32) == LogTag::AdminWarning as u32 {
+        if ($audit.level & LogTag::AdminWarning as u32) == LogTag::AdminWarning as u32 {
             eprint!($($arg)*)
         }
     })
