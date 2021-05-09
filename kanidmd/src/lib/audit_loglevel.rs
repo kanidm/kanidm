@@ -29,7 +29,7 @@ impl FromStr for LogLevel {
             "perfbasic" => Ok(LogLevel::PerfBasic),
             "perffull" => Ok(LogLevel::PerfFull),
             "fulltrace" => Ok(LogLevel::FullTrace),
-            _ => Err("Could not parse loglevel"),
+            _ => Err("Could not parse loglevel, should be one of (default|quiet|filter|verbose|perfbasic|perffull|fulltrace)"),
         }
     }
 }

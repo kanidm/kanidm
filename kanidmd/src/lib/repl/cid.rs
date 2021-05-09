@@ -45,7 +45,7 @@ impl Cid {
                     .expect("Invalid compiled s_uuid"),
                 ts: r,
             })
-            .ok_or(OperationError::InvalidReplCID)
+            .ok_or(OperationError::InvalidReplChangeId)
     }
 }
 

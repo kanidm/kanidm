@@ -79,7 +79,7 @@ pub enum OperationError {
     InvalidState,
     InvalidEntryState,
     InvalidUuid,
-    InvalidReplCID,
+    InvalidReplChangeId,
     InvalidAcpState(String),
     InvalidSchemaState(String),
     InvalidAccountState(String),

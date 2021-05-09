@@ -6,14 +6,14 @@ impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
 
-        debug!("Attempting to use config {}", "/etc/kanidm/config");
         let client_builder = match KanidmClientBuilder::new()
             .read_options_from_optional_config("/etc/kanidm/config")
-            .and_then(|cb| {
-                debug!("Attempting to use config {}", config_path);
-                cb.read_options_from_optional_config(config_path)
-            }) {
-            Ok(c) => c,
+            .and_then(|cb| cb.read_options_from_optional_config(&config_path))
+        {
+            Ok(c) => {
+                debug!("Successfully read configuration from {}", &config_path);
+                c
+            }
             Err(e) => {
                 error!("Failed to parse config (if present) -- {:?}", e);
                 std::process::exit(1);
