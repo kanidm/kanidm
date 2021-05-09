@@ -1,9 +1,9 @@
 #[derive(Debug, StructOpt)]
 struct CommonOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
     /// Logging level. quiet, default, filter, verbose, perffull
     debug: Option<LogLevel>,
-    #[structopt(parse(from_os_str), short = "c", long = "config")]
+    #[structopt(parse(from_os_str), short = "c", long = "config", env = "KANIDM_CONFIG")]
     /// Path to the server's configuration file. If it does not exist, it will be created.
     config_path: PathBuf,
 }
@@ -20,7 +20,7 @@ struct BackupOpt {
 #[derive(Debug, StructOpt)]
 struct RestoreOpt {
     #[structopt(parse(from_os_str))]
-    /// Restore from this path. Should be created with "backupu".
+    /// Restore from this path. Should be created with "backup".
     path: PathBuf,
     #[structopt(flatten)]
     commonopts: CommonOpt,

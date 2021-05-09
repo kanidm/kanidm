@@ -50,8 +50,8 @@ pub enum ClientError {
     AuthenticationFailed,
     EmptyResponse,
     TotpVerifyFailed(Uuid, TotpSecret),
-    JSONDecode(reqwest::Error, String),
-    JSONEncode(SerdeJsonError),
+    JsonDecode(reqwest::Error, String),
+    JsonEncode(SerdeJsonError),
     SystemError,
 }
 
@@ -151,6 +151,7 @@ impl KanidmClientBuilder {
         self,
         config_path: P,
     ) -> Result<Self, ()> {
+        debug!("Attempting to load configuration from {:#?}", &config_path);
         // If the file does not exist, we skip this function.
         let mut f = match File::open(&config_path) {
             Ok(f) => f,
@@ -158,13 +159,13 @@ impl KanidmClientBuilder {
                 match e.kind() {
                     ErrorKind::NotFound => {
                         debug!(
-                            "Configuration file {:#?} not found, skipping ...",
+                            "Configuration file {:#?} not found, skipping.",
                             &config_path
                         );
                     }
                     ErrorKind::PermissionDenied => {
                         warn!(
-                            "Permission denied loading configuration file {:#?}, skipping ...",
+                            "Permission denied loading configuration file {:#?}, skipping.",
                             &config_path
                         );
                     }

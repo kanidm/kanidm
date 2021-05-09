@@ -8,13 +8,13 @@ pub struct Named {
 
 #[derive(Debug, StructOpt)]
 pub struct CommonOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
     pub debug: bool,
-    #[structopt(short = "H", long = "url")]
+    #[structopt(short = "H", long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
-    #[structopt(short = "D", long = "name")]
+    #[structopt(short = "D", long = "name", env = "KANIDM_NAME")]
     pub username: Option<String>,
-    #[structopt(parse(from_os_str), short = "C", long = "ca")]
+    #[structopt(parse(from_os_str), short = "C", long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
 }
 

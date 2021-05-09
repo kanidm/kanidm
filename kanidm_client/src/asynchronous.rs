@@ -60,7 +60,7 @@ impl KanidmAsyncClient {
         // format doesn't work in async ?!
         // let dest = format!("{}{}", self.addr, dest);
 
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
@@ -120,7 +120,7 @@ impl KanidmAsyncClient {
         response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
     async fn perform_post_request<R: Serialize, T: DeserializeOwned>(
@@ -133,7 +133,7 @@ impl KanidmAsyncClient {
         // format doesn't work in async ?!
         // let dest = format!("{}{}", self.addr, dest);
 
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
             .post(dest.as_str())
@@ -172,7 +172,7 @@ impl KanidmAsyncClient {
         response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
     async fn perform_put_request<R: Serialize, T: DeserializeOwned>(
@@ -185,7 +185,7 @@ impl KanidmAsyncClient {
         // format doesn't work in async ?!
         // let dest = format!("{}{}", self.addr, dest);
 
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
         let response = self
             .client
@@ -228,7 +228,7 @@ impl KanidmAsyncClient {
         response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
     async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
@@ -270,7 +270,7 @@ impl KanidmAsyncClient {
         response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
     async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
@@ -313,7 +313,7 @@ impl KanidmAsyncClient {
         response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
     async fn perform_delete_request_with_body<R: Serialize>(
         &self,
@@ -322,7 +322,7 @@ impl KanidmAsyncClient {
     ) -> Result<bool, ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
-        let req_string = serde_json::to_string(&request).map_err(ClientError::JSONEncode)?;
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
             .client
             .delete(dest.as_str())
@@ -361,7 +361,7 @@ impl KanidmAsyncClient {
         response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))
+            .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
     pub async fn auth_step_init(&self, ident: &str) -> Result<Set<AuthMech>, ClientError> {
@@ -644,7 +644,7 @@ impl KanidmAsyncClient {
         let r: WhoamiResponse = response
             .json()
             .await
-            .map_err(|e| ClientError::JSONDecode(e, opid))?;
+            .map_err(|e| ClientError::JsonDecode(e, opid))?;
 
         Ok(Some((r.youare, r.uat)))
     }
