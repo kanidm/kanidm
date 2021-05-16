@@ -108,13 +108,14 @@ If these verifications pass you can now use these certificates with Kanidm. To p
 in place you can use a shell container that mounts the volume such as:
 
     docker run --rm -i -t -v kanidmd:/data -v /my/host/path/work:/work opensuse/leap:latest cp /work/* /data/
-    OR for a shell into the volume:
+
+OR for a shell into the volume:
+
     docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
 
 ## Configuration
 
-You will also need a config file in the volume named `server.toml` (Within the container it should be
-`/data/server.toml`). Its contents should be as follows:
+You will also need a config file in the volume named `server.toml` (Within the container it should be `/data/server.toml`). Its contents should be as follows:
 
     #   The webserver bind address. Will use HTTPS if tls_* is provided.
     #   Defaults to "127.0.0.1:8443"
@@ -166,6 +167,8 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #     and must have a replication agreement as a source of it's data.
     #   Defaults to "write_replica".
     # role = "write_replica"
+
+An example is located in [examples/server.toml](../../examples/server.toml).
 
 Then you can setup the initial admin account and initialise the database into your volume.
 

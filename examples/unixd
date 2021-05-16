@@ -1,0 +1,4 @@
+# this should be at /etc/kanidm/unixd, and configures kanidm-unixd
+uri = "https://idm.example.com"
+verify_ca = true
+verify_hostnames = true

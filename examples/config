@@ -1,0 +1,4 @@
+# This should be at /etc/kanidm/config or ~/.config/kanidm, and configures the kanidm command line tool
+uri = "https://idm.example.com"
+verify_ca = true
+verify_hostnames = true
