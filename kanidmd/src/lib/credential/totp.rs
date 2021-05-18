@@ -166,11 +166,14 @@ impl Totp {
     }
 
     pub fn verify(&self, chal: u32, time: &Duration) -> bool {
+        let secs = time.as_secs();
+        let counter = secs / self.step;
         // Any error becomes a failure.
-        match self.do_totp_duration_from_epoch(time) {
-            Ok(v) => v == chal,
-            Err(_) => false,
-        }
+        self.digest(counter).map(|v1| v1 == chal).unwrap_or(false)
+            || self
+                .digest(counter - 1)
+                .map(|v2| v2 == chal)
+                .unwrap_or(false)
     }
 
     pub fn to_proto(&self, accountname: &str, issuer: &str) -> ProtoTotp {
@@ -272,5 +275,26 @@ mod tests {
             TOTP_DEFAULT_STEP,
             Ok(952181),
         );
+    }
+
+    #[test]
+    fn totp_allow_one_previous() {
+        let key = vec![0x00, 0xaa, 0xbb, 0xcc];
+        let secs = 1585369780;
+        let otp = Totp::new(
+            "".to_string(),
+            key.clone(),
+            TOTP_DEFAULT_STEP,
+            TotpAlgo::Sha512,
+        );
+        let d = Duration::from_secs(secs);
+        // Step
+        assert!(otp.verify(952181, &d));
+        // Step - 1
+        assert!(otp.verify(685469, &d));
+        // This is step - 2
+        assert!(!otp.verify(217213, &d));
+        // This is step + 1
+        assert!(!otp.verify(972806, &d));
     }
 }
