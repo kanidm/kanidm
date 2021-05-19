@@ -72,6 +72,7 @@ pub struct KanidmClientBuilder {
     verify_hostnames: bool,
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
+    use_system_proxies: bool,
 }
 
 fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
@@ -92,6 +93,7 @@ impl KanidmClientBuilder {
             verify_hostnames: true,
             ca: None,
             connect_timeout: None,
+            use_system_proxies: true,
         }
     }
 
@@ -125,6 +127,7 @@ impl KanidmClientBuilder {
             verify_hostnames,
             ca,
             connect_timeout,
+            use_system_proxies,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -144,6 +147,7 @@ impl KanidmClientBuilder {
             verify_hostnames,
             ca,
             connect_timeout,
+            use_system_proxies,
         })
     }
 
@@ -197,6 +201,7 @@ impl KanidmClientBuilder {
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
             connect_timeout: self.connect_timeout,
+            use_system_proxies: self.use_system_proxies,
         }
     }
 
@@ -208,6 +213,7 @@ impl KanidmClientBuilder {
             verify_hostnames: !accept_invalid_hostnames,
             ca: self.ca,
             connect_timeout: self.connect_timeout,
+            use_system_proxies: self.use_system_proxies,
         }
     }
 
@@ -219,6 +225,7 @@ impl KanidmClientBuilder {
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
             connect_timeout: self.connect_timeout,
+            use_system_proxies: self.use_system_proxies,
         }
     }
 
@@ -229,6 +236,18 @@ impl KanidmClientBuilder {
             verify_hostnames: self.verify_hostnames,
             ca: self.ca,
             connect_timeout: Some(secs),
+            use_system_proxies: self.use_system_proxies,
+        }
+    }
+
+    pub fn no_proxy(self) -> Self {
+        KanidmClientBuilder {
+            address: self.address,
+            verify_ca: self.verify_ca,
+            verify_hostnames: self.verify_hostnames,
+            ca: self.ca,
+            connect_timeout: self.connect_timeout,
+            use_system_proxies: false,
         }
     }
 
@@ -242,6 +261,7 @@ impl KanidmClientBuilder {
             verify_hostnames: self.verify_hostnames,
             ca: Some(ca),
             connect_timeout: self.connect_timeout,
+            use_system_proxies: self.use_system_proxies,
         })
     }
 
@@ -282,6 +302,11 @@ impl KanidmClientBuilder {
         let client_builder = reqwest::Client::builder()
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
+
+        let client_builder = match self.use_system_proxies {
+            true => client_builder,
+            false => client_builder.no_proxy(),
+        };
 
         let client_builder = match &self.ca {
             Some(cert) => client_builder.add_root_certificate(cert.clone()),
