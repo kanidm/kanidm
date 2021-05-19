@@ -97,17 +97,20 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
     // Run fixtures
     let adminclient = KanidmClientBuilder::new()
         .address(addr.clone())
+        .no_proxy()
         .build()
         .expect("Failed to build sync client");
     fix_fn(&adminclient);
 
     let client = KanidmClientBuilder::new()
         .address(addr.clone())
+        .no_proxy()
         .build_async()
         .expect("Failed to build async admin client");
 
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
+        .no_proxy()
         .build_async()
         .expect("Failed to build client");
 

@@ -92,6 +92,7 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     let addr = format!("http://127.0.0.1:{}", port);
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
+        .no_proxy()
         .build()
         .expect("Failed to build client");
 
