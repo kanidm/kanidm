@@ -5,7 +5,7 @@ use crate::constants::{
 };
 use serde_derive::Deserialize;
 use std::fs::File;
-use std::io::Read;
+use std::io::{ErrorKind, Read};
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]
@@ -81,13 +81,33 @@ impl KanidmUnixdConfig {
         self,
         config_path: P,
     ) -> Result<Self, ()> {
+        debug!("Attempting to load configuration from {:#?}", &config_path);
         let mut f = match File::open(&config_path) {
-            Ok(f) => f,
+            Ok(f) => {
+                debug!("Successfully opened configuration file {:#?}", &config_path);
+                f
+            }
             Err(e) => {
-                debug!(
-                    "Unable to open config file {:#?} [{:?}], skipping ...",
-                    &config_path, e
-                );
+                match e.kind() {
+                    ErrorKind::NotFound => {
+                        debug!(
+                            "Configuration file {:#?} not found, skipping.",
+                            &config_path
+                        );
+                    }
+                    ErrorKind::PermissionDenied => {
+                        warn!(
+                            "Permission denied loading configuration file {:#?}, skipping.",
+                            &config_path
+                        );
+                    }
+                    _ => {
+                        debug!(
+                            "Unable to open config file {:#?} [{:?}], skipping ...",
+                            &config_path, e
+                        );
+                    }
+                };
                 return Ok(self);
             }
         };
