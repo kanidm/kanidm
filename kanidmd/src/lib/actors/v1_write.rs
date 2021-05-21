@@ -886,7 +886,7 @@ impl QueryServerWriteV1 {
             "class".into(),
             Value::new_class("person"),
         )))
-        .filter_map(|v| v)
+        .flatten()
         .collect();
 
         let ml = ModifyList::new_list(mods);
@@ -939,7 +939,7 @@ impl QueryServerWriteV1 {
         .chain(iter::once(shell.map(|s| {
             Modify::Present("loginshell".into(), Value::new_iutf8(s.as_str()))
         })))
-        .filter_map(|v| v)
+        .flatten()
         .collect();
 
         let ml = ModifyList::new_list(mods);
@@ -980,7 +980,7 @@ impl QueryServerWriteV1 {
         .chain(iter::once(gx.gidnumber.map(|n| {
             Modify::Present("gidnumber".into(), Value::new_uint32(n))
         })))
-        .filter_map(|v| v)
+        .flatten()
         .collect();
 
         let ml = ModifyList::new_list(mods);

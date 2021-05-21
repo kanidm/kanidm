@@ -46,14 +46,15 @@ Rate Limiting is the process of delaying authentication responses to slow the nu
 against an account to deter attackers. This is often used to prevent attackers from bruteforcing
 passwords at a high rate.
 
-The best defence again these attacks is MFA. Due to the design of Kanidm, the second factor
-(ie the webauthn token or the otp) is always checked *before* the password, meaning that the
-attacker is unable to attack the password *unless* they also have the corresponding MFA token.
+The best defence again these attacks is Multi-factor authentication (MFA). Due to the design of Kanidm,
+the second factor (ie the webauthn token or the OTP) is always checked *before* the password,
+meaning that the attacker is unable to attack the password *unless* they also have
+the corresponding MFA token.
 
 However, not all accounts will have MFA enabled, which means that defences are still required to
 prevent these attacks for password-only accounts. Accounts protected with TOTP must also be rate
-limited according to NIST sp800 63b. Webauthn does *not* require ratelimiting as a single factor
-or multi factor device.
+limited according to [NIST SP800-63B](https://pages.nist.gov/800-63-3/sp800-63b.html).
+Webauthn does *not* require rate-limiting as a single factor or multi factor device.
 
 As an account can only have a single proceeding authentication session at a time, this provides
 serialisation and rate limiting per account of the service. However, as Kanidm will in the future
@@ -78,7 +79,7 @@ For accounts with password-only:
 * If the attempts continue, the account is hard locked and signalled to an external system that this has occured.
 
 The value of X should be less than 100, so that the NIST guidelines can be met. This is beacuse when there are
-many replicas, each replica maintains it's own locking state, so "eventually" as each replica is attempted to be
+many replicas, each replica maintains its own locking state, so "eventually" as each replica is attempted to be
 bruteforced, then they will all eventually soft lock the account. In larger environments, we require
 external signalling to coordinate the locking of the account.
 
@@ -101,7 +102,7 @@ It must be possible to expire an account so it no longer operates (IE temporary 
 accounts that can only operate after a known point in time (Student enrollments and their course
 commencment date).
 
-This expiry must exist at the account level, but also on issued token/api password levels. This allows revocation of
+This expiry must exist at the account level, but also on issued token/API password levels. This allows revocation of
 individual tokens, but also the expiry of the account and all tokens as a whole. This expiry may be
 undone, allowing the credentials to become valid once again.
 
@@ -111,7 +112,7 @@ are stored on the server in unix epoch to account for timezones and geographic d
 * Interaction with already issued tokens.
     * it prevents them from working?
 
-Must prevent creation of radius auth tokens
+Must prevent creation of RADIUS auth tokens
 
 Must prevent login via unix.
 

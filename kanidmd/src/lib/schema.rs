@@ -708,7 +708,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("spn"),
                     uuid: *UUID_SCHEMA_ATTR_SPN,
                     description: String::from(
-                        "The service principle name of an object, unique across all domain trusts",
+                        "The Service Principal Name of an object, unique across all domain trusts",
                     ),
                     multivalue: false,
                     unique: true,
