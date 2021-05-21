@@ -158,7 +158,10 @@ impl KanidmClientBuilder {
         debug!("Attempting to load configuration from {:#?}", &config_path);
         // If the file does not exist, we skip this function.
         let mut f = match File::open(&config_path) {
-            Ok(f) => f,
+            Ok(f) => {
+                debug!("Successfully opened configuration file {:#?}", &config_path);
+                f
+            }
             Err(e) => {
                 match e.kind() {
                     ErrorKind::NotFound => {
