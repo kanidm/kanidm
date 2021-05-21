@@ -733,14 +733,13 @@ impl KanidmAsyncClient {
     ) -> Result<bool, ClientError> {
         debug!(
             "{}",
-            [
+            &[
                 "Asked to remove members ",
                 &members.join(","),
                 " from ",
                 group
             ]
             .concat()
-            .to_string()
         );
         self.perform_delete_request_with_body(
             ["/v1/group/", group, "/_attr/member"].concat().as_str(),

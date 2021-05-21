@@ -7,7 +7,7 @@ use rand::{thread_rng, Rng};
 #[derive(Debug)]
 pub struct DistinctAlpha;
 
-pub type SID = [u8; 4];
+pub type Sid = [u8; 4];
 
 pub fn uuid_to_gid_u32(u: &Uuid) -> u32 {
     let b_ref = u.as_bytes();
@@ -16,7 +16,7 @@ pub fn uuid_to_gid_u32(u: &Uuid) -> u32 {
     u32::from_be_bytes(x)
 }
 
-fn uuid_from_u64_u32(a: u64, b: u32, sid: SID) -> Uuid {
+fn uuid_from_u64_u32(a: u64, b: u32, sid: Sid) -> Uuid {
     let mut v: Vec<u8> = Vec::with_capacity(16);
     v.extend_from_slice(&a.to_be_bytes());
     v.extend_from_slice(&b.to_be_bytes());
@@ -28,7 +28,7 @@ fn uuid_from_u64_u32(a: u64, b: u32, sid: SID) -> Uuid {
         .build()
 }
 
-pub fn uuid_from_duration(d: Duration, sid: SID) -> Uuid {
+pub fn uuid_from_duration(d: Duration, sid: Sid) -> Uuid {
     uuid_from_u64_u32(d.as_secs(), d.subsec_nanos(), sid)
 }
 
@@ -69,7 +69,7 @@ pub fn duration_from_epoch_now() -> Duration {
 
 /*
 #[allow(dead_code)]
-pub fn uuid_from_now(sid: SID) -> Uuid {
+pub fn uuid_from_now(sid: Sid) -> Uuid {
     let d = SystemTime::now()
         .duration_since(SystemTime::UNIX_EPOCH)
         .unwrap();

@@ -16,7 +16,7 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::ldap::LdapBoundToken;
 use crate::prelude::*;
-use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, SID};
+use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{
@@ -88,7 +88,7 @@ pub struct IdmServerAuthTransaction<'a> {
     softlocks: &'a HashMap<Uuid, CredSoftLock>,
     pub qs_read: QueryServerReadTransaction<'a>,
     // thread/server id
-    sid: SID,
+    sid: Sid,
     // For flagging eventual actions.
     async_tx: Sender<DelayedAction>,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
@@ -107,7 +107,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub qs_write: QueryServerWriteTransaction<'a>,
     // Associate to an event origin ID, which has a TS and a UUID instead
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
-    sid: SID,
+    sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,

@@ -52,7 +52,7 @@ fn setup_backend_vacuum(
         .map(|s| s == "zfs")
         .unwrap_or(false)
     {
-        FsType::ZFS
+        FsType::Zfs
     } else {
         FsType::Generic
     };

@@ -45,7 +45,7 @@ pub enum Policy {
 // I don't really feel like adding in so many restrictions, so I'll use
 // pbkdf2 in openssl because it doesn't have the same limits.
 #[derive(Clone, Debug)]
-enum KDF {
+enum Kdf {
     //     cost, salt,   hash
     PBKDF2(usize, Vec<u8>, Vec<u8>),
     //      salt     hash
@@ -54,7 +54,7 @@ enum KDF {
 
 #[derive(Clone, Debug)]
 pub struct Password {
-    material: KDF,
+    material: Kdf,
 }
 
 impl TryFrom<DbPasswordV1> for Password {
@@ -63,10 +63,10 @@ impl TryFrom<DbPasswordV1> for Password {
     fn try_from(value: DbPasswordV1) -> Result<Self, Self::Error> {
         match value {
             DbPasswordV1::PBKDF2(c, s, h) => Ok(Password {
-                material: KDF::PBKDF2(c, s, h),
+                material: Kdf::PBKDF2(c, s, h),
             }),
             DbPasswordV1::SSHA512(s, h) => Ok(Password {
-                material: KDF::SSHA512(s, h),
+                material: Kdf::SSHA512(s, h),
             }),
         }
     }
@@ -96,7 +96,7 @@ impl TryFrom<&str> for Password {
                         return Err(());
                     }
                     return Ok(Password {
-                        material: KDF::PBKDF2(c, s, h),
+                        material: Kdf::PBKDF2(c, s, h),
                     });
                 }
                 _ => {}
@@ -111,7 +111,7 @@ impl TryFrom<&str> for Password {
                 return Err(());
             }
             return Ok(Password {
-                material: KDF::SSHA512(s.to_vec(), h.to_vec()),
+                material: Kdf::SSHA512(s.to_vec(), h.to_vec()),
             });
         }
 
@@ -142,7 +142,7 @@ impl Password {
         end.checked_duration_since(start)
     }
 
-    fn new_pbkdf2(pbkdf2_cost: usize, cleartext: &str) -> Result<KDF, OperationError> {
+    fn new_pbkdf2(pbkdf2_cost: usize, cleartext: &str) -> Result<Kdf, OperationError> {
         let mut rng = rand::thread_rng();
         let salt: Vec<u8> = (0..PBKDF2_SALT_LEN).map(|_| rng.gen()).collect();
         // This is 512 bits of output
@@ -157,7 +157,7 @@ impl Password {
         )
         .map(|()| {
             // Turn key to a vec.
-            KDF::PBKDF2(pbkdf2_cost, salt, key)
+            Kdf::PBKDF2(pbkdf2_cost, salt, key)
         })
         .map_err(|_| OperationError::CryptographyError)
     }
@@ -168,7 +168,7 @@ impl Password {
 
     pub fn verify(&self, cleartext: &str) -> Result<bool, OperationError> {
         match &self.material {
-            KDF::PBKDF2(cost, salt, key) => {
+            Kdf::PBKDF2(cost, salt, key) => {
                 // We have to get the number of bits to derive from our stored hash
                 // as some imported hash types may have variable lengths
                 let key_len = key.len();
@@ -187,7 +187,7 @@ impl Password {
                     &chal_key == key
                 })
             }
-            KDF::SSHA512(salt, key) => {
+            Kdf::SSHA512(salt, key) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
                 hasher.update(&salt);
@@ -199,15 +199,15 @@ impl Password {
 
     pub fn to_dbpasswordv1(&self) -> DbPasswordV1 {
         match &self.material {
-            KDF::PBKDF2(cost, salt, hash) => {
+            Kdf::PBKDF2(cost, salt, hash) => {
                 DbPasswordV1::PBKDF2(*cost, salt.clone(), hash.clone())
             }
-            KDF::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
+            Kdf::SSHA512(salt, hash) => DbPasswordV1::SSHA512(salt.clone(), hash.clone()),
         }
     }
 
     pub fn requires_upgrade(&self) -> bool {
-        !matches!(&self.material, KDF::PBKDF2(_, _, _))
+        !matches!(&self.material, Kdf::PBKDF2(_, _, _))
     }
 }
 
