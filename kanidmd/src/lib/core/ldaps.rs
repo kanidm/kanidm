@@ -21,18 +21,21 @@ use uuid::Uuid;
 
 struct LdapSession {
     uat: Option<LdapBoundToken>,
+    eventid: Uuid,
 }
 
 impl LdapSession {
-    fn new() -> Self {
+    fn new(eventid: &uuid::Uuid) -> Self {
         LdapSession {
             // We start un-authenticated
             uat: None,
+            eventid: *eventid,
         }
     }
 }
 
 async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
+    eventid: Uuid,
     mut r: FramedRead<R, LdapCodec>,
     mut w: FramedWrite<W, LdapCodec>,
     _paddr: net::SocketAddr,
@@ -40,12 +43,11 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
 ) {
     // This is a connected client session. we need to associate some state to the
     // session
-    let mut session = LdapSession::new();
+    let mut session = LdapSession::new(&eventid);
     // Now that we have the session we begin an event loop to process input OR
     // we return.
     while let Some(Ok(protomsg)) = r.next().await {
-        // Start the event
-        let eventid = Uuid::new_v4();
+        debug!("Processing LDAP eventid={:?}", session.eventid);
         let uat = session.uat.clone();
         let qs_result = qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).await;
 
@@ -97,29 +99,52 @@ async fn tls_acceptor(
     qe_r_ref: &'static QueryServerReadV1,
 ) {
     loop {
+        let eventid = Uuid::new_v4();
         match listener.accept().await {
-            Ok((tcpstream, paddr)) => {
+            Ok((tcpstream, client_socket_addr)) => {
+                // Start the event
+                info!(
+                    "TLS Connection from {:?} eventid={:?}",
+                    &client_socket_addr.ip(),
+                    &eventid
+                );
                 // From the parms we need to create an SslContext.
                 let mut tlsstream = match Ssl::new(tls_parms.context())
                     .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
                 {
                     Ok(ta) => ta,
                     Err(e) => {
-                        error!("tls setup error, continuing -> {:?}", e);
+                        error!(
+                            "TLS setup error, continuing -> {:?} eventid={:?}",
+                            e, eventid
+                        );
                         continue;
                     }
                 };
                 if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-                    error!("tls accept error, continuing -> {:?}", e);
+                    error!(
+                        "TLS accept error, continuing -> {:?} eventid={:?}",
+                        e, eventid
+                    );
                     continue;
                 };
-                let (r, w) = tokio::io::split(tlsstream);
-                let r = FramedRead::new(r, LdapCodec);
-                let w = FramedWrite::new(w, LdapCodec);
-                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
+                let (read_handle, write_handle) = tokio::io::split(tlsstream);
+                let read_handle = FramedRead::new(read_handle, LdapCodec);
+                let write_handle = FramedWrite::new(write_handle, LdapCodec);
+                // Let it rip.
+                tokio::spawn(client_process(
+                    eventid,
+                    read_handle,
+                    write_handle,
+                    client_socket_addr,
+                    qe_r_ref,
+                ));
             }
             Err(e) => {
-                error!("acceptor error, continuing -> {:?}", e);
+                error!(
+                    "LDAP connection acceptor error, continuing -> {:?} eventid={:?}",
+                    e, eventid
+                );
             }
         }
     }
@@ -127,16 +152,29 @@ async fn tls_acceptor(
 
 async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
     loop {
+        let eventid = Uuid::new_v4();
         match listener.accept().await {
-            Ok((tcpstream, paddr)) => {
-                let (r, w) = tokio::io::split(tcpstream);
-                let r = FramedRead::new(r, LdapCodec);
-                let w = FramedWrite::new(w, LdapCodec);
+            Ok((tcpstream, client_socket_addr)) => {
+                // Start the event
+                info!(
+                    "Connection from {:?} eventid={:?}",
+                    &client_socket_addr.ip(),
+                    eventid
+                );
+                let (read_handle, write_handle) = tokio::io::split(tcpstream);
+                let read_handle = FramedRead::new(read_handle, LdapCodec);
+                let write_handle = FramedWrite::new(write_handle, LdapCodec);
                 // Let it rip.
-                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
+                tokio::spawn(client_process(
+                    eventid,
+                    read_handle,
+                    write_handle,
+                    client_socket_addr,
+                    qe_r_ref,
+                ));
             }
             Err(e) => {
-                error!("acceptor error, continuing -> {:?}", e);
+                error!("LDAP connection acceptor error, continuing -> {:?}", e);
             }
         }
     }
