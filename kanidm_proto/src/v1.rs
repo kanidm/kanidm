@@ -58,6 +58,7 @@ pub enum ConsistencyError {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
+    SessionExpired,
     EmptyRequest,
     Backend,
     NoMatchingEntries,
@@ -165,7 +166,7 @@ pub struct UserAuthToken {
     pub session_id: Uuid,
     // When this data should be considered invalid. Interpretation
     // may depend on the client application.
-    pub expiry: Option<String>,
+    pub expiry: time::OffsetDateTime,
     pub name: String,
     pub spn: String,
     pub displayname: String,

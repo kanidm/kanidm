@@ -14,8 +14,8 @@ use kanidm_proto::v1::{
     SetCredentialRequest, SingleStringRequest, UserAuthToken,
 };
 
+use std::str::FromStr;
 use serde::Serialize;
-use std::time::Duration;
 use uuid::Uuid;
 
 // Temporary
@@ -33,7 +33,7 @@ pub struct AppState {
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub fernet_handle: fernet::Fernet,
+    pub bundy_handle: bundy::hs512::HS512,
 }
 
 pub trait RequestExtensions {
@@ -47,7 +47,7 @@ pub trait RequestExtensions {
 impl RequestExtensions for tide::Request<AppState> {
     fn get_current_uat(&self) -> Option<UserAuthToken> {
         // Contact the QS to get it to validate wtf is up.
-        let kref = &self.state().fernet_handle;
+        let kref = &self.state().bundy_handle;
         // self.session().get::<UserAuthToken>("uat")
         self.header(tide::http::headers::AUTHORIZATION)
             .and_then(|hv| {
@@ -61,17 +61,18 @@ impl RequestExtensions for tide::Request<AppState> {
             .and_then(|ts| {
                 // Take the token str and attempt to decrypt
                 // Attempt to re-inflate a UAT from bytes.
+                //
+                // NOTE: UAT expiry validation is performed in event.rs!
                 let uat: Option<UserAuthToken> = kref
-                    .decrypt_with_ttl(ts, 3600)
-                    .ok()
-                    .and_then(|b| serde_json::from_slice(&b).ok());
+                    .verify(ts)
+                    .ok();
                 uat
             })
     }
 
     fn get_current_auth_session_id(&self) -> Option<Uuid> {
         // We see if there is a signed header copy first.
-        let kref = &self.state().fernet_handle;
+        let kref = &self.state().bundy_handle;
         self.header("X-KANIDM-AUTH-SESSION-ID")
             .and_then(|hv| {
                 // Get the first header value.
@@ -81,9 +82,8 @@ impl RequestExtensions for tide::Request<AppState> {
                 // Take the token str and attempt to decrypt
                 // Attempt to re-inflate a uuid from bytes.
                 let uat: Option<Uuid> = kref
-                    .decrypt_with_ttl(h.as_str(), 3600)
-                    .ok()
-                    .and_then(|b| serde_json::from_slice(&b).ok());
+                    .verify(h.as_str())
+                    .ok();
                 uat
             })
             // If not there, get from the cookie instead.
@@ -954,7 +954,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .insert("auth-session-id", sessionid)
                         .map_err(|_| OperationError::InvalidSessionState)
                         .and_then(|_| {
-                            let kref = &req.state().fernet_handle;
+                            let kref = &req.state().bundy_handle;
                             // Get the header token ready.
                             serde_json::to_vec(&sessionid)
                                 .map(|data| {
@@ -973,7 +973,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .insert("auth-session-id", sessionid)
                         .map_err(|_| OperationError::InvalidSessionState)
                         .and_then(|_| {
-                            let kref = &req.state().fernet_handle;
+                            let kref = &req.state().bundy_handle;
                             // Get the header token ready.
                             serde_json::to_vec(&sessionid)
                                 .map(|data| {
@@ -989,7 +989,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     let msession = req.session_mut();
                     msession.remove("auth-session-id");
                     // Create the string "Bearer <token>"
-                    let kref = &req.state().fernet_handle;
+                    let kref = &req.state().bundy_handle;
                     serde_json::to_vec(&uat)
                         .map(|data| {
                             let tok = kref.encrypt(&data);
@@ -1155,30 +1155,30 @@ pub fn create_https_server(
     opt_tls_params: Option<&TlsConfiguration>,
     role: ServerRole,
     cookie_key: &[u8; 32],
+    bundy_key: &str,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
     info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
 
-    // Create the in memory fernet key
-    let fernet_handle = fernet::Fernet::new(&fernet::Fernet::generate_key()).ok_or_else(|| {
-        error!("Failed to generate fernet key");
+    let bundy_handle = bundy::hs512::HS512::from_str(bundy_key).map_err(|e| {
+        error!("Failed to generate bundy handle - {:?}", e);
     })?;
 
     let mut tserver = tide::Server::with_state(AppState {
         status_ref,
         qe_w_ref,
         qe_r_ref,
-        fernet_handle,
+        bundy_handle,
     });
 
     // Add middleware?
     tserver.with(tide::log::LogMiddleware::new()).with(
+        // We do not force a session ttl, because we validate this elsewhere in usage.
         tide::sessions::SessionMiddleware::new(tide::sessions::MemoryStore::new(), cookie_key)
             .with_cookie_name("kanidm-session")
-            .with_same_site_policy(tide::http::cookies::SameSite::Strict)
-            .with_session_ttl(Some(Duration::from_secs(3600))),
+            .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
 
     // Add routes
