@@ -659,7 +659,7 @@ impl AuthSession {
                         lsecurity!(au, "Successful cred handling");
                         let uat = self
                             .account
-                            .to_userauthtoken(au.uuid, &claims)
+                            .to_userauthtoken(au.uuid, &claims, *time)
                             .ok_or(OperationError::InvalidState)?;
 
                         // Now encrypt and prepare the token for return to the client.

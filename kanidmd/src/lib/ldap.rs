@@ -8,7 +8,6 @@ use ldap3_server::simple::*;
 use regex::Regex;
 use std::collections::BTreeSet;
 use std::iter;
-use std::time::SystemTime;
 use uuid::Uuid;
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
@@ -40,7 +39,8 @@ pub struct LdapServer {
 
 impl LdapServer {
     pub fn new(au: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
-        let idms_prox_read = task::block_on(idms.proxy_read_async());
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = task::block_on(idms.proxy_read_async(ct));
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -200,7 +200,8 @@ impl LdapServer {
 
             ladmin_info!(au, "LDAP Search Request Attrs -> {:?}", attrs);
 
-            let idm_read = idms.proxy_read_async().await;
+            let ct = duration_from_epoch_now();
+            let idm_read = idms.proxy_read_async(ct).await;
             lperf_segment!(au, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
 
@@ -298,7 +299,9 @@ impl LdapServer {
             "Attempt LDAP Bind for {}",
             if dn.is_empty() { "anonymous" } else { dn }
         );
-        let mut idm_auth = idms.auth_async().await;
+        let ct = duration_from_epoch_now();
+
+        let mut idm_auth = idms.auth_async(ct).await;
 
         let target_uuid: Uuid = if dn.is_empty() {
             if pw.is_empty() {
@@ -334,13 +337,6 @@ impl LdapServer {
                     e
                 })?
         };
-
-        let ct = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| {
-                ladmin_error!(au, "Clock Error -> {:?}", e);
-                OperationError::InvalidState
-            })?;
 
         let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
         idm_auth.auth_ldap(au, &lae, ct).await.and_then(|r| {

@@ -14,8 +14,8 @@ use kanidm_proto::v1::{
     SetCredentialRequest, SingleStringRequest, UserAuthToken,
 };
 
-use std::str::FromStr;
 use serde::Serialize;
+use std::str::FromStr;
 use uuid::Uuid;
 
 // Temporary
@@ -33,7 +33,7 @@ pub struct AppState {
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub bundy_handle: bundy::hs512::HS512,
+    pub bundy_handle: std::sync::Arc<bundy::hs512::HS512>,
 }
 
 pub trait RequestExtensions {
@@ -63,9 +63,7 @@ impl RequestExtensions for tide::Request<AppState> {
                 // Attempt to re-inflate a UAT from bytes.
                 //
                 // NOTE: UAT expiry validation is performed in event.rs!
-                let uat: Option<UserAuthToken> = kref
-                    .verify(ts)
-                    .ok();
+                let uat: Option<UserAuthToken> = kref.verify(ts).ok();
                 uat
             })
     }
@@ -81,9 +79,7 @@ impl RequestExtensions for tide::Request<AppState> {
             .and_then(|h| {
                 // Take the token str and attempt to decrypt
                 // Attempt to re-inflate a uuid from bytes.
-                let uat: Option<Uuid> = kref
-                    .verify(h.as_str())
-                    .ok();
+                let uat: Option<Uuid> = kref.verify(h.as_str()).ok();
                 uat
             })
             // If not there, get from the cookie instead.
@@ -956,9 +952,9 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .and_then(|_| {
                             let kref = &req.state().bundy_handle;
                             // Get the header token ready.
-                            serde_json::to_vec(&sessionid)
-                                .map(|data| {
-                                    auth_session_id_tok = Some(kref.encrypt(&data));
+                            kref.sign(&sessionid)
+                                .map(|t| {
+                                    auth_session_id_tok = Some(t);
                                 })
                                 .map_err(|_| OperationError::InvalidSessionState)
                         })
@@ -975,9 +971,9 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         .and_then(|_| {
                             let kref = &req.state().bundy_handle;
                             // Get the header token ready.
-                            serde_json::to_vec(&sessionid)
-                                .map(|data| {
-                                    auth_session_id_tok = Some(kref.encrypt(&data));
+                            kref.sign(&sessionid)
+                                .map(|t| {
+                                    auth_session_id_tok = Some(t);
                                 })
                                 .map_err(|_| OperationError::InvalidSessionState)
                         })
@@ -990,11 +986,8 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     msession.remove("auth-session-id");
                     // Create the string "Bearer <token>"
                     let kref = &req.state().bundy_handle;
-                    serde_json::to_vec(&uat)
-                        .map(|data| {
-                            let tok = kref.encrypt(&data);
-                            ProtoAuthState::Success(tok)
-                        })
+                    kref.sign(&uat)
+                        .map(ProtoAuthState::Success)
                         .map_err(|_| OperationError::InvalidSessionState)
                 }
                 AuthState::Denied(reason) => {
@@ -1165,6 +1158,8 @@ pub fn create_https_server(
     let bundy_handle = bundy::hs512::HS512::from_str(bundy_key).map_err(|e| {
         error!("Failed to generate bundy handle - {:?}", e);
     })?;
+
+    let bundy_handle = std::sync::Arc::new(bundy_handle);
 
     let mut tserver = tide::Server::with_state(AppState {
         status_ref,

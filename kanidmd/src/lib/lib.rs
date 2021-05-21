@@ -56,6 +56,7 @@ pub mod config;
 pub mod core;
 
 pub mod prelude {
+    pub use crate::utils::duration_from_epoch_now;
     pub use kanidm_proto::v1::OperationError;
     pub use smartstring::alias::String as AttrString;
     pub use uuid::Uuid;

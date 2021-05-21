@@ -38,8 +38,9 @@ serde = "1.0"
 serde_json = "1.0"
 shellexpand = "2.0"
 rayon = "1.2"
-time = "0.2"
+time = { version = "0.2", features = ["serde", "std"] }
 qrcode = { version = "0.12", default-features = false }
+bundy = "0.1"
 
 zxcvbn = "2.0"
 

@@ -22,7 +22,6 @@ use kanidm_proto::v1::{
     UserAuthToken, WhoamiResponse,
 };
 
-use std::time::SystemTime;
 use uuid::Uuid;
 
 use ldap3_server::simple::*;
@@ -78,7 +77,8 @@ impl QueryServerReadV1 {
     ) -> Result<SearchResponse, OperationError> {
         let mut audit = AuditScope::new("search", eventid, self.log_level);
         // Begin a read
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             // Make an event from the request
             let srch = match SearchEvent::from_message(
@@ -121,7 +121,8 @@ impl QueryServerReadV1 {
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
         let mut audit = AuditScope::new("auth", eventid, self.log_level);
-        let mut idm_auth = self.idms.auth_async().await;
+        let ct = duration_from_epoch_now();
+        let mut idm_auth = self.idms.auth_async(ct).await;
         // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
         lsecurity!(audit, "Begin auth event {:?} {:?}", sessionid, req);
 
@@ -132,13 +133,6 @@ impl QueryServerReadV1 {
             ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
             e
         })?;
-
-        let ct = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| {
-                ladmin_error!(audit, "Clock Error -> {:?}", e);
-                OperationError::InvalidState
-            })?;
 
         // Trigger a session clean *before* we take any auth steps.
         // It's important to do this before to ensure that timeouts on
@@ -173,7 +167,8 @@ impl QueryServerReadV1 {
         let mut audit = AuditScope::new("whoami", eventid, self.log_level);
         // TODO #62: Move this to IdmServer!!!
         // Begin a read
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
             // Make an event from the whoami request. This will process the event and
             // generate a selfuuid search.
@@ -235,7 +230,8 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
         let mut audit = AuditScope::new("internal_search_message", eventid, self.log_level);
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSearchMessage>",
@@ -279,7 +275,8 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
         let mut audit = AuditScope::new("internal_search_recycle_message", eventid, self.log_level);
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
 
         let res = lperf_op_segment!(
             &mut audit,
@@ -323,7 +320,8 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
         let mut audit = AuditScope::new("internal_radius_read_message", eventid, self.log_level);
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalRadiusReadMessage>",
@@ -386,7 +384,8 @@ impl QueryServerReadV1 {
             eventid,
             self.log_level,
         );
-        let mut idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read_async(ct).await;
 
         let res = lperf_op_segment!(
             &mut audit,
@@ -414,13 +413,6 @@ impl QueryServerReadV1 {
                     }
                 };
 
-                let ct = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Clock Error -> {:?}", e);
-                        OperationError::InvalidState
-                    })?;
-
                 ltrace!(audit, "Begin event {:?}", rate);
 
                 idms_prox_read.get_radiusauthtoken(&mut audit, &rate, ct)
@@ -441,7 +433,8 @@ impl QueryServerReadV1 {
     ) -> Result<UnixUserToken, OperationError> {
         let mut audit =
             AuditScope::new("internal_unix_token_read_message", eventid, self.log_level);
-        let mut idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read_async(ct).await;
 
         let res = lperf_op_segment!(
             &mut audit,
@@ -474,13 +467,6 @@ impl QueryServerReadV1 {
                     }
                 };
 
-                let ct = SystemTime::now()
-                    .duration_since(SystemTime::UNIX_EPOCH)
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Clock Error -> {:?}", e);
-                        OperationError::InvalidState
-                    })?;
-
                 ltrace!(audit, "Begin event {:?}", rate);
 
                 idms_prox_read.get_unixusertoken(&mut audit, &rate, ct)
@@ -504,7 +490,8 @@ impl QueryServerReadV1 {
             eventid,
             self.log_level,
         );
-        let mut idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
@@ -550,7 +537,8 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
         let mut audit = AuditScope::new("internal_sshkey_read_message", eventid, self.log_level);
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyReadMessage>",
@@ -615,7 +603,8 @@ impl QueryServerReadV1 {
     ) -> Result<Option<String>, OperationError> {
         let mut audit =
             AuditScope::new("internal_sshkey_tag_read_message", eventid, self.log_level);
-        let idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async(ct).await;
         let res = lperf_op_segment!(
             &mut audit,
             "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
@@ -685,7 +674,8 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<Option<UnixUserToken>, OperationError> {
         let mut audit = AuditScope::new("idm_account_unix_auth", eventid, self.log_level);
-        let mut idm_auth = self.idms.auth_async().await;
+        let ct = duration_from_epoch_now();
+        let mut idm_auth = self.idms.auth_async(ct).await;
         // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<IdmAccountUnixAuthMessage>", || {
         // resolve the id
         let target_uuid = idm_auth
@@ -712,13 +702,6 @@ impl QueryServerReadV1 {
 
         lsecurity!(audit, "Begin event {:?}", uuae);
 
-        let ct = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| {
-                ladmin_error!(audit, "Clock Error -> {:?}", e);
-                OperationError::InvalidState
-            })?;
-
         let res = idm_auth
             .auth_unix(&mut audit, &uuae, ct)
             .await
@@ -741,7 +724,8 @@ impl QueryServerReadV1 {
         eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {
         let mut audit = AuditScope::new("idm_credential_status_message", eventid, self.log_level);
-        let mut idms_prox_read = self.idms.proxy_read_async().await;
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read_async(ct).await;
 
         let res = lperf_op_segment!(
             &mut audit,

@@ -1822,6 +1822,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.4"
 dependencies = [
+ "bundy",
  "env_logger",
  "kanidm_client",
  "kanidm_proto",

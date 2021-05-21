@@ -165,6 +165,11 @@ impl Event {
         })?;
         */
 
+        if time::OffsetDateTime::unix_epoch() + qs.ts >= uat.expiry {
+            lsecurity!(audit, "Invalid Session UAT");
+            return Err(OperationError::SessionExpired);
+        }
+
         let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_ro_uat failed {:?}", e);
             e
@@ -195,6 +200,11 @@ impl Event {
             OperationError::InvalidUuid
         })?;
         */
+
+        if time::OffsetDateTime::unix_epoch() + qs.ts >= uat.expiry {
+            lsecurity!(audit, "Invalid Session UAT");
+            return Err(OperationError::SessionExpired);
+        }
 
         let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_rw_uat failed {:?}", e);

@@ -132,7 +132,7 @@ macro_rules! run_test {
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?
         // Make sure there are no errors.
-        let verifications = test_server.verify(&mut audit);
+        let verifications = test_server.verify(&mut audit, duration_from_epoch_now());
         ltrace!(audit, "Verification result: {:?}", verifications);
         assert!(verifications.len() == 0);
         audit.write_log();
@@ -170,8 +170,6 @@ macro_rules! run_idm_test_inner {
         use crate::prelude::*;
         #[allow(unused_imports)]
         use crate::schema::Schema;
-        #[allow(unused_imports)]
-        use crate::utils::duration_from_epoch_now;
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -189,6 +187,7 @@ macro_rules! run_idm_test_inner {
             &mut audit,
             test_server.clone(),
             "https://idm.example.com".to_string(),
+            duration_from_epoch_now(),
         )
         .expect("Failed to setup idms");
 
@@ -200,7 +199,12 @@ macro_rules! run_idm_test_inner {
         );
         // Any needed teardown?
         // Make sure there are no errors.
-        assert!(test_server.verify(&mut audit).len() == 0);
+        assert!(
+            test_server
+                .verify(&mut audit, duration_from_epoch_now())
+                .len()
+                == 0
+        );
         idms_delayed.is_empty_or_panic();
         audit
     }};
@@ -271,7 +275,7 @@ macro_rules! run_create_test {
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au);
+            let ver = qs.verify(&mut au, duration_from_epoch_now());
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
@@ -295,7 +299,6 @@ macro_rules! run_modify_test {
         use crate::event::ModifyEvent;
         use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
         lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
@@ -333,7 +336,7 @@ macro_rules! run_modify_test {
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au);
+            let ver = qs.verify(&mut au, duration_from_epoch_now());
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
@@ -386,7 +389,7 @@ macro_rules! run_delete_test {
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au);
+            let ver = qs.verify(&mut au, duration_from_epoch_now());
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });

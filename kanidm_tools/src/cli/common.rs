@@ -1,6 +1,7 @@
-use crate::login::read_tokens;
+use crate::session::read_tokens;
 use crate::CommonOpt;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_proto::v1::UserAuthToken;
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
@@ -88,6 +89,23 @@ impl CommonOpt {
                     error!("Multiple authentication tokens exist. Please select one with --name.");
                     std::process::exit(1);
                 }
+            }
+        };
+
+        // Is the token (probably) valid?
+        match unsafe { bundy::Data::parse_without_verification::<UserAuthToken>(&token) } {
+            Ok(uat) => {
+                if time::OffsetDateTime::now_utc() >= uat.expiry {
+                    error!(
+                        "Session has expired for {} - you may need to login again.",
+                        uat.spn
+                    );
+                    std::process::exit(1);
+                }
+            }
+            Err(_e) => {
+                error!("Unable to read token for requested user - you may need to login again.");
+                std::process::exit(1);
             }
         };
 

@@ -188,8 +188,13 @@ impl fmt::Display for UserAuthToken {
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "display: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
-        writeln!(f, "groups: {:?}", self.groups)?;
-        writeln!(f, "claims: {:?}", self.claims)
+        for group in &self.groups {
+            writeln!(f, "group: {:?}", group.name)?;
+        }
+        for claim in &self.claims {
+            writeln!(f, "claim: {:?}", claim)?;
+        }
+        writeln!(f, "expiry: {}", self.expiry)
     }
 }
 

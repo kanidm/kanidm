@@ -7,6 +7,12 @@ pub struct Named {
 }
 
 #[derive(Debug, StructOpt)]
+pub struct DebugOpt {
+    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
+    pub debug: bool,
+}
+
+#[derive(Debug, StructOpt)]
 pub struct CommonOpt {
     #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
     pub debug: bool,
@@ -268,6 +274,22 @@ pub struct LoginOpt {
 }
 
 #[derive(Debug, StructOpt)]
+pub struct LogoutOpt {
+    #[structopt(flatten)]
+    pub copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum SessionOpt {
+    #[structopt(name = "list")]
+    /// List current active sessions
+    List(DebugOpt),
+    #[structopt(name = "cleanup")]
+    /// Remove sessions that have expired or are invalid.
+    Cleanup(DebugOpt),
+}
+
+#[derive(Debug, StructOpt)]
 pub struct FilterOpt {
     #[structopt()]
     filter: String,
@@ -321,6 +343,12 @@ pub enum KanidmClientOpt {
     #[structopt(name = "login")]
     /// Login to an account to use with future cli operations
     Login(LoginOpt),
+    #[structopt(name = "logout")]
+    /// Logout of an active cli session
+    Logout(LogoutOpt),
+    #[structopt(name = "session")]
+    /// Manage active cli sessions
+    Session(SessionOpt),
     #[structopt(name = "self")]
     /// Actions for the current authenticated account
     CSelf(SelfOpt),

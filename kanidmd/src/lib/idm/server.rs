@@ -123,6 +123,7 @@ impl IdmServer {
         au: &mut AuditScope,
         qs: QueryServer,
         origin: String,
+        ct: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
@@ -136,7 +137,7 @@ impl IdmServer {
 
         // Get the domain name, as the relying party id.
         let (rp_id, pw_badlist_set) = {
-            let qs_read = task::block_on(qs.read_async());
+            let qs_read = task::block_on(qs.read_async(ct));
             (
                 qs_read.get_domain_name(au)?,
                 qs_read.get_password_badlist(au)?,
@@ -190,17 +191,17 @@ impl IdmServer {
     }
 
     #[cfg(test)]
-    pub fn auth(&self) -> IdmServerAuthTransaction {
-        task::block_on(self.auth_async())
+    pub fn auth(&self, ts: Duration) -> IdmServerAuthTransaction {
+        task::block_on(self.auth_async(ts))
     }
 
-    pub async fn auth_async(&self) -> IdmServerAuthTransaction<'_> {
+    pub async fn auth_async(&self, ts: Duration) -> IdmServerAuthTransaction<'_> {
         let mut sid = [0; 4];
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
 
         // let session_ticket = self.session_ticket.acquire().await;
-        let qs_read = self.qs.read_async().await;
+        let qs_read = self.qs.read_async(ts).await;
 
         IdmServerAuthTransaction {
             // _session_ticket: session_ticket,
@@ -218,13 +219,13 @@ impl IdmServer {
     }
 
     #[cfg(test)]
-    pub fn proxy_read<'a>(&'a self) -> IdmServerProxyReadTransaction<'a> {
-        task::block_on(self.proxy_read_async())
+    pub fn proxy_read<'a>(&'a self, ts: Duration) -> IdmServerProxyReadTransaction<'a> {
+        task::block_on(self.proxy_read_async(ts))
     }
 
-    pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
+    pub async fn proxy_read_async(&self, ts: Duration) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
-            qs_read: self.qs.read_async().await,
+            qs_read: self.qs.read_async(ts).await,
         }
     }
 
@@ -669,7 +670,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             Ok(Some(LdapBoundToken {
                 uuid: *UUID_ANONYMOUS,
                 effective_uat: account
-                    .to_userauthtoken(au.uuid, &[])
+                    .to_userauthtoken(au.uuid, &[], ct)
                     .ok_or(OperationError::InvalidState)
                     .map_err(|e| {
                         ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -731,7 +732,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         spn: account.spn,
                         uuid: account.uuid,
                         effective_uat: anon_account
-                            .to_userauthtoken(au.uuid, &[])
+                            .to_userauthtoken(au.uuid, &[], ct)
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
                                 ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -1645,7 +1646,7 @@ mod tests {
                        au: &mut AuditScope| {
             let sid = {
                 // Start and test anonymous auth.
-                let mut idms_auth = idms.auth();
+                let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
                 // Send the initial auth event for initialising the session
                 let anon_init = AuthEvent::anonymous_init();
                 // Expect success
@@ -1696,7 +1697,7 @@ mod tests {
                 sid
             };
             {
-                let mut idms_auth = idms.auth();
+                let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
                 let anon_begin = AuthEvent::begin_mech(sid, AuthMech::Anonymous);
 
                 let r2 = task::block_on(idms_auth.auth(
@@ -1739,7 +1740,7 @@ mod tests {
                 idms_auth.commit(au).expect("Must not fail");
             };
             {
-                let mut idms_auth = idms.auth();
+                let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
                 // Now send the anonymous request, given the session id.
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
@@ -1792,7 +1793,7 @@ mod tests {
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
             {
-                let mut idms_auth = idms.auth();
+                let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
                 let sid = Uuid::new_v4();
                 let anon_step = AuthEvent::cred_step_anonymous(sid);
 
@@ -1850,7 +1851,7 @@ mod tests {
         ct: Duration,
         name: &str,
     ) -> Uuid {
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth(ct);
         let admin_init = AuthEvent::named_init(name);
 
         let r1 = task::block_on(idms_auth.auth(au, &admin_init, ct));
@@ -1900,7 +1901,7 @@ mod tests {
         let sid =
             init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
 
-        let mut idms_auth = idms.auth();
+        let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
         let anon_step = AuthEvent::cred_step_password(sid, pw);
 
         // Expect success
@@ -1964,7 +1965,7 @@ mod tests {
                 "admin@example.com",
             );
 
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
@@ -2017,7 +2018,7 @@ mod tests {
                 Duration::from_secs(TEST_CURRENT_TIME),
                 "admin",
             );
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
             // Expect success
@@ -2099,7 +2100,7 @@ mod tests {
                 Duration::from_secs(TEST_CURRENT_TIME),
                 "admin",
             );
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             assert!(idms_auth.is_sessionid_present(&sid));
             // Expire like we are currently "now". Should not affect our session.
             task::block_on(idms_auth.expire_auth_sessions(Duration::from_secs(TEST_CURRENT_TIME)));
@@ -2110,7 +2111,7 @@ mod tests {
             );
             assert!(!idms_auth.is_sessionid_present(&sid));
             assert!(idms_auth.commit(au).is_ok());
-            let idms_auth = idms.auth();
+            let idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_EXPIRE));
             assert!(!idms_auth.is_sessionid_present(&sid));
         })
     }
@@ -2175,7 +2176,7 @@ mod tests {
                 .expect("Failed to reset radius credential 1");
             idms_prox_write.commit(au).expect("failed to commit");
 
-            let mut idms_prox_read = idms.proxy_read();
+            let mut idms_prox_read = idms.proxy_read(duration_from_epoch_now());
             let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
             let tok_r = idms_prox_read
                 .get_radiusauthtoken(au, &rate, duration_from_epoch_now())
@@ -2279,7 +2280,7 @@ mod tests {
 
             idms_prox_write.commit(au).expect("failed to commit");
 
-            let mut idms_prox_read = idms.proxy_read();
+            let mut idms_prox_read = idms.proxy_read(duration_from_epoch_now());
 
             let ugte = UnixGroupTokenEvent::new_internal(
                 Uuid::parse_str("01609135-a1c4-43d5-966b-a28227644445")
@@ -2345,7 +2346,7 @@ mod tests {
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             // Check auth verification of the password
 
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
@@ -2384,7 +2385,7 @@ mod tests {
 
             // And auth should now fail due to the lack of PW material (note that
             // softlocking WONT kick in because the cred_uuid is gone!)
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let a3 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae_good,
@@ -2612,7 +2613,7 @@ mod tests {
             idms_delayed.is_empty_or_panic();
             // Get the auth ready.
             let uuae = UnixUserAuthEvent::new_internal(&UUID_ADMIN, "password");
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let a1 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae,
@@ -2628,7 +2629,7 @@ mod tests {
             let da = idms_delayed.try_recv().expect("invalid");
             let _r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
             // Go again
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let a2 = task::block_on(idms_auth.auth_unix(
                 au,
                 &uuae,
@@ -2690,7 +2691,7 @@ mod tests {
             let time_low = Duration::from_secs(TEST_NOT_YET_VALID_TIME);
             let time_high = Duration::from_secs(TEST_AFTER_EXPIRY);
 
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(time_low);
             let admin_init = AuthEvent::named_init("admin");
             let r1 = task::block_on(idms_auth.auth(au, &admin_init, time_low));
 
@@ -2712,7 +2713,7 @@ mod tests {
             idms_auth.commit(au).expect("Must not fail");
 
             // And here!
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(time_high);
             let admin_init = AuthEvent::named_init("admin");
             let r1 = task::block_on(idms_auth.auth(au, &admin_init, time_high));
 
@@ -2770,7 +2771,7 @@ mod tests {
             assert!(idms_prox_write.commit(au).is_ok());
 
             // Now check auth when the time is too high or too low.
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(time_low);
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
 
             let a1 = task::block_on(idms_auth.auth_unix(au, &uuae_good, time_low));
@@ -2789,7 +2790,7 @@ mod tests {
 
             idms_auth.commit(au).expect("Must not fail");
             // Also check the generated unix tokens are invalid.
-            let mut idms_prox_read = idms.proxy_read();
+            let mut idms_prox_read = idms.proxy_read(time_low);
             let uute = UnixUserTokenEvent::new_internal(UUID_ADMIN.clone());
 
             let tok_r = idms_prox_read
@@ -2829,7 +2830,7 @@ mod tests {
                 .expect("Failed to reset radius credential 1");
             idms_prox_write.commit(au).expect("failed to commit");
 
-            let mut idms_prox_read = idms.proxy_read();
+            let mut idms_prox_read = idms.proxy_read(time_low);
             let rate = RadiusAuthTokenEvent::new_internal(UUID_ADMIN.clone());
             let tok_r = idms_prox_read.get_radiusauthtoken(au, &rate, time_low);
 
@@ -2864,7 +2865,7 @@ mod tests {
                 Duration::from_secs(TEST_CURRENT_TIME),
                 "admin",
             );
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD_INC);
 
             let r2 = task::block_on(idms_auth.auth(
@@ -2902,7 +2903,7 @@ mod tests {
             // Auth init, softlock present, count == 1, same time (so before unlock_at)
             // aka Auth valid immediate, (ct < exp), autofail
             // aka Auth invalid immediate, (ct < exp), autofail
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let admin_init = AuthEvent::named_init("admin");
 
             let r1 = task::block_on(idms_auth.auth(
@@ -2941,7 +2942,7 @@ mod tests {
                 "admin",
             );
 
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME + 2));
             let anon_step = AuthEvent::cred_step_password(sid, TEST_PASSWORD);
 
             // Expect success
@@ -3011,7 +3012,7 @@ mod tests {
                 "admin",
             );
             // Get the detail wrong in sid_later.
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let anon_step = AuthEvent::cred_step_password(sid_later, TEST_PASSWORD_INC);
 
             let r2 = task::block_on(idms_auth.auth(
@@ -3047,7 +3048,7 @@ mod tests {
             idms_auth.commit(au).expect("Must not fail");
 
             // Now check that sid_early is denied due to softlock.
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let anon_step = AuthEvent::cred_step_password(sid_early, TEST_PASSWORD);
 
             // Expect success
@@ -3111,7 +3112,7 @@ mod tests {
             assert!(idms_prox_write.set_unix_account_password(au, &pce).is_ok());
             assert!(idms_prox_write.commit(au).is_ok());
 
-            let mut idms_auth = idms.auth();
+            let mut idms_auth = idms.auth(Duration::from_secs(TEST_CURRENT_TIME));
             let uuae_good = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
             let uuae_bad = UnixUserAuthEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD_INC);
 
