@@ -5,7 +5,7 @@ use crate::constants::{
 };
 use serde_derive::Deserialize;
 use std::fs::File;
-use std::io::Read;
+use std::io::{ErrorKind, Read};
 use std::path::Path;
 
 #[derive(Debug, Deserialize)]

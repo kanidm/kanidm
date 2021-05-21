@@ -292,7 +292,7 @@ impl KanidmClientBuilder {
         let address = match &self.address {
             Some(a) => a.clone(),
             None => {
-                eprintln!("uri (-H) missing, can not proceed");
+                eprintln!("Configuration option 'uri' missing, cannot continue client startup.");
                 unimplemented!();
             }
         };
