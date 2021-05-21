@@ -102,7 +102,7 @@ macro_rules! get_identry {
                         result.append(&mut db_result);
                     }
                 }
-                IdList::ALLIDS => {
+                IdList::AllIds => {
                     // VERY similar to above, but we skip adding the entries to the cache
                     // on miss to prevent scan/invalidation attacks.
                     let idli = (*$self.allids).clone();

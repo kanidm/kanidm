@@ -1090,7 +1090,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                             None => Vec::new(),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
-                                    IndexType::EQUALITY => {
+                                    IndexType::Equality => {
                                         vs.flat_map(|v| {
                                             // Turn each idx_key to the tuple of
                                             // changes.
@@ -1100,10 +1100,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         })
                                         .collect()
                                     }
-                                    IndexType::PRESENCE => {
+                                    IndexType::Presence => {
                                         vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SUBSTRING => Vec::new(),
+                                    IndexType::SubString => Vec::new(),
                                 };
                                 changes
                             }
@@ -1120,7 +1120,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                             None => Vec::new(),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
-                                    IndexType::EQUALITY => {
+                                    IndexType::Equality => {
                                         vs.flat_map(|v| {
                                             // Turn each idx_key to the tuple of
                                             // changes.
@@ -1130,10 +1130,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                                         })
                                         .collect()
                                     }
-                                    IndexType::PRESENCE => {
+                                    IndexType::Presence => {
                                         vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SUBSTRING => Vec::new(),
+                                    IndexType::SubString => Vec::new(),
                                 };
                                 // For each value
                                 //
@@ -1159,7 +1159,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                             (Some(pre_vs), None) => {
                                 // It existed before, but not anymore
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
-                                    IndexType::EQUALITY => {
+                                    IndexType::Equality => {
                                         pre_vs
                                             .iter()
                                             .flat_map(|v| {
@@ -1173,17 +1173,17 @@ impl Entry<EntrySealed, EntryCommitted> {
                                             })
                                             .collect()
                                     }
-                                    IndexType::PRESENCE => {
+                                    IndexType::Presence => {
                                         vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SUBSTRING => Vec::new(),
+                                    IndexType::SubString => Vec::new(),
                                 };
                                 changes
                             }
                             (None, Some(post_vs)) => {
                                 // It was added now.
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
-                                    IndexType::EQUALITY => {
+                                    IndexType::Equality => {
                                         post_vs
                                             .iter()
                                             .flat_map(|v| {
@@ -1197,10 +1197,10 @@ impl Entry<EntrySealed, EntryCommitted> {
                                             })
                                             .collect()
                                     }
-                                    IndexType::PRESENCE => {
+                                    IndexType::Presence => {
                                         vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
-                                    IndexType::SUBSTRING => Vec::new(),
+                                    IndexType::SubString => Vec::new(),
                                 };
                                 changes
                             }
@@ -1211,7 +1211,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                     .map(|pre_v| {
                                         // Was in pre, now not in post
                                         match ikey.itype {
-                                            IndexType::EQUALITY => {
+                                            IndexType::Equality => {
                                                 // Remove the v
                                                 pre_v
                                                     .generate_idx_eq_keys()
@@ -1221,17 +1221,17 @@ impl Entry<EntrySealed, EntryCommitted> {
                                                     })
                                                     .collect()
                                             }
-                                            IndexType::PRESENCE => {
+                                            IndexType::Presence => {
                                                 // No action - we still are "present", so nothing to do!
                                                 Vec::new()
                                             }
-                                            IndexType::SUBSTRING => Vec::new(),
+                                            IndexType::SubString => Vec::new(),
                                         }
                                     })
                                     .chain(post_vs.difference(&pre_vs).map(|post_v| {
                                         // is in post, but not in pre (add)
                                         match ikey.itype {
-                                            IndexType::EQUALITY => {
+                                            IndexType::Equality => {
                                                 // Remove the v
                                                 post_v
                                                     .generate_idx_eq_keys()
@@ -1241,11 +1241,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                                                     })
                                                     .collect()
                                             }
-                                            IndexType::PRESENCE => {
+                                            IndexType::Presence => {
                                                 // No action - we still are "present", so nothing to do!
                                                 Vec::new()
                                             }
-                                            IndexType::SUBSTRING => Vec::new(),
+                                            IndexType::SubString => Vec::new(),
                                         }
                                     }))
                                     .flatten() // flatten all the inner vecs
@@ -2168,15 +2168,15 @@ mod tests {
         let mut idxmeta = HashSet::with_capacity(8);
         idxmeta.insert(IdxKey {
             attr: AttrString::from("userid"),
-            itype: IndexType::EQUALITY,
+            itype: IndexType::Equality,
         });
         idxmeta.insert(IdxKey {
             attr: AttrString::from("userid"),
-            itype: IndexType::PRESENCE,
+            itype: IndexType::Presence,
         });
         idxmeta.insert(IdxKey {
             attr: AttrString::from("extra"),
-            itype: IndexType::EQUALITY,
+            itype: IndexType::Equality,
         });
 
         // When we do None, None, we get nothing back.
@@ -2192,7 +2192,7 @@ mod tests {
             del_r[0]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::EQUALITY,
+                    &IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2200,7 +2200,7 @@ mod tests {
             del_r[1]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::PRESENCE,
+                    &IndexType::Presence,
                     "_".to_string()
                 ))
         );
@@ -2213,7 +2213,7 @@ mod tests {
             add_r[0]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::EQUALITY,
+                    &IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2221,7 +2221,7 @@ mod tests {
             add_r[1]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::PRESENCE,
+                    &IndexType::Presence,
                     "_".to_string()
                 ))
         );
@@ -2238,7 +2238,7 @@ mod tests {
             add_a_r[0]
                 == Ok((
                     &AttrString::from("extra"),
-                    &IndexType::EQUALITY,
+                    &IndexType::Equality,
                     "test".to_string()
                 ))
         );
@@ -2249,7 +2249,7 @@ mod tests {
             del_a_r[0]
                 == Err((
                     &AttrString::from("extra"),
-                    &IndexType::EQUALITY,
+                    &IndexType::Equality,
                     "test".to_string()
                 ))
         );
@@ -2262,7 +2262,7 @@ mod tests {
             chg_r[1]
                 == Err((
                     &AttrString::from("userid"),
-                    &IndexType::EQUALITY,
+                    &IndexType::Equality,
                     "william".to_string()
                 ))
         );
@@ -2271,7 +2271,7 @@ mod tests {
             chg_r[0]
                 == Ok((
                     &AttrString::from("userid"),
-                    &IndexType::EQUALITY,
+                    &IndexType::Equality,
                     "claire".to_string()
                 ))
         );

@@ -418,19 +418,19 @@ impl Filter<FilterInvalid> {
         // some core test idxs faster. This is never used in production, it's JUST for
         // test case speedups.
         let idxmeta = vec![
-            (AttrString::from("uuid"), IndexType::EQUALITY),
-            (AttrString::from("uuid"), IndexType::PRESENCE),
-            (AttrString::from("name"), IndexType::EQUALITY),
-            (AttrString::from("name"), IndexType::SUBSTRING),
-            (AttrString::from("name"), IndexType::PRESENCE),
-            (AttrString::from("class"), IndexType::EQUALITY),
-            (AttrString::from("class"), IndexType::PRESENCE),
-            (AttrString::from("member"), IndexType::EQUALITY),
-            (AttrString::from("member"), IndexType::PRESENCE),
-            (AttrString::from("memberof"), IndexType::EQUALITY),
-            (AttrString::from("memberof"), IndexType::PRESENCE),
-            (AttrString::from("directmemberof"), IndexType::EQUALITY),
-            (AttrString::from("directmemberof"), IndexType::PRESENCE),
+            (AttrString::from("uuid"), IndexType::Equality),
+            (AttrString::from("uuid"), IndexType::Presence),
+            (AttrString::from("name"), IndexType::Equality),
+            (AttrString::from("name"), IndexType::SubString),
+            (AttrString::from("name"), IndexType::Presence),
+            (AttrString::from("class"), IndexType::Equality),
+            (AttrString::from("class"), IndexType::Presence),
+            (AttrString::from("member"), IndexType::Equality),
+            (AttrString::from("member"), IndexType::Presence),
+            (AttrString::from("memberof"), IndexType::Equality),
+            (AttrString::from("memberof"), IndexType::Presence),
+            (AttrString::from("directmemberof"), IndexType::Equality),
+            (AttrString::from("directmemberof"), IndexType::Presence),
         ];
 
         let idxmeta_ref = idxmeta.iter().map(|(attr, itype)| (attr, itype)).collect();
@@ -991,17 +991,17 @@ impl FilterResolved {
     unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
-                let idx = idxmeta.contains(&(&a, &IndexType::EQUALITY));
+                let idx = idxmeta.contains(&(&a, &IndexType::Equality));
                 FilterResolved::Eq(a, v, idx)
             }
             FilterComp::Sub(a, v) => {
-                // let idx = idxmeta.contains(&(&a, &IndexType::SUBSTRING));
+                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 // TODO: For now, don't emit substring indexes.
                 let idx = false;
                 FilterResolved::Sub(a, v, idx)
             }
             FilterComp::Pres(a) => {
-                let idx = idxmeta.contains(&(&a, &IndexType::PRESENCE));
+                let idx = idxmeta.contains(&(&a, &IndexType::Presence));
                 FilterResolved::Pres(a, idx)
             }
             FilterComp::LessThan(a, v) => {
@@ -1043,22 +1043,22 @@ impl FilterResolved {
     fn resolve_idx(fc: FilterComp, ev: &Event, idxmeta: &HashSet<IdxKey>) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => {
-                let idxkref = IdxKeyRef::new(&a, &IndexType::EQUALITY);
+                let idxkref = IdxKeyRef::new(&a, &IndexType::Equality);
                 let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::Sub(a, v) => {
-                let idxkref = IdxKeyRef::new(&a, &IndexType::SUBSTRING);
+                let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
                 let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 Some(FilterResolved::Sub(a, v, idx))
             }
             FilterComp::Pres(a) => {
-                let idxkref = IdxKeyRef::new(&a, &IndexType::PRESENCE);
+                let idxkref = IdxKeyRef::new(&a, &IndexType::Presence);
                 let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 Some(FilterResolved::Pres(a, idx))
             }
             FilterComp::LessThan(a, v) => {
-                // let idx = idxmeta.contains(&(&a, &IndexType::SUBSTRING));
+                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 let idx = false;
                 Some(FilterResolved::LessThan(a, v, idx))
             }
@@ -1094,7 +1094,7 @@ impl FilterResolved {
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 let uuid_s = AttrString::from("uuid");
-                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::EQUALITY);
+                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
                 let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
                 FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
             }),

@@ -103,7 +103,7 @@ pub trait IdlSqliteTransaction {
     ) -> Result<Vec<IdRawEntry>, OperationError> {
         // is the idl allids?
         match idl {
-            IdList::ALLIDS => {
+            IdList::AllIds => {
                 let mut stmt = self
                     .get_conn()
                     .prepare("SELECT id, data FROM id2entry")

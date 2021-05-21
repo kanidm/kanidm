@@ -41,7 +41,7 @@ const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
 
 #[derive(Debug, Clone)]
 pub enum IdList {
-    ALLIDS,
+    AllIds,
     PartialThreshold(IDLBitRange),
     Partial(IDLBitRange),
     Indexed(IDLBitRange),
@@ -151,17 +151,17 @@ pub trait BackendTransaction {
                     // Get the idl for this
                     match self
                         .get_idlayer()
-                        .get_idl(au, attr, &IndexType::EQUALITY, &idx_key)?
+                        .get_idl(au, attr, &IndexType::Equality, &idx_key)?
                     {
                         Some(idl) => (
                             IdList::Indexed(idl),
                             FilterPlan::EqIndexed(attr.clone(), idx_key),
                         ),
-                        None => (IdList::ALLIDS, FilterPlan::EqCorrupt(attr.clone())),
+                        None => (IdList::AllIds, FilterPlan::EqCorrupt(attr.clone())),
                     }
                 } else {
                     // Schema believes this is not indexed
-                    (IdList::ALLIDS, FilterPlan::EqUnindexed(attr.clone()))
+                    (IdList::AllIds, FilterPlan::EqUnindexed(attr.clone()))
                 }
             }
             FilterResolved::Sub(attr, subvalue, idx) => {
@@ -171,17 +171,17 @@ pub trait BackendTransaction {
                     // Get the idl for this
                     match self
                         .get_idlayer()
-                        .get_idl(au, attr, &IndexType::SUBSTRING, &idx_key)?
+                        .get_idl(au, attr, &IndexType::SubString, &idx_key)?
                     {
                         Some(idl) => (
                             IdList::Indexed(idl),
                             FilterPlan::SubIndexed(attr.clone(), idx_key),
                         ),
-                        None => (IdList::ALLIDS, FilterPlan::SubCorrupt(attr.clone())),
+                        None => (IdList::AllIds, FilterPlan::SubCorrupt(attr.clone())),
                     }
                 } else {
                     // Schema believes this is not indexed
-                    (IdList::ALLIDS, FilterPlan::SubUnindexed(attr.clone()))
+                    (IdList::AllIds, FilterPlan::SubUnindexed(attr.clone()))
                 }
             }
             FilterResolved::Pres(attr, idx) => {
@@ -190,20 +190,20 @@ pub trait BackendTransaction {
                     match self.get_idlayer().get_idl(
                         au,
                         attr,
-                        &IndexType::PRESENCE,
+                        &IndexType::Presence,
                         &"_".to_string(),
                     )? {
                         Some(idl) => (IdList::Indexed(idl), FilterPlan::PresIndexed(attr.clone())),
-                        None => (IdList::ALLIDS, FilterPlan::PresCorrupt(attr.clone())),
+                        None => (IdList::AllIds, FilterPlan::PresCorrupt(attr.clone())),
                     }
                 } else {
                     // Schema believes this is not indexed
-                    (IdList::ALLIDS, FilterPlan::PresUnindexed(attr.clone()))
+                    (IdList::AllIds, FilterPlan::PresUnindexed(attr.clone()))
                 }
             }
             FilterResolved::LessThan(attr, _subvalue, _idx) => {
                 // We have no process for indexing this right now.
-                (IdList::ALLIDS, FilterPlan::LessThanUnindexed(attr.clone()))
+                (IdList::AllIds, FilterPlan::LessThanUnindexed(attr.clone()))
             }
             FilterResolved::Or(l) => {
                 // Importantly if this has no inner elements, this returns
@@ -234,12 +234,12 @@ pub trait BackendTransaction {
                             partial = true;
                             threshold = true;
                         }
-                        (IdList::ALLIDS, fp) => {
+                        (IdList::AllIds, fp) => {
                             plan.push(fp);
                             // If we find anything unindexed, the whole term is unindexed.
-                            lfilter!(au, "Term {:?} is ALLIDS, shortcut return", f);
+                            lfilter!(au, "Term {:?} is AllIds, shortcut return", f);
                             let setplan = FilterPlan::OrUnindexed(plan);
-                            return Ok((IdList::ALLIDS, setplan));
+                            return Ok((IdList::AllIds, setplan));
                         }
                     }
                 } // end or.iter()
@@ -302,7 +302,7 @@ pub trait BackendTransaction {
                             return Ok((IdList::Indexed(IDLBitRange::new()), setplan));
                         }
                     }
-                    IdList::ALLIDS => {}
+                    IdList::AllIds => {}
                 }
 
                 // Now, for all remaining,
@@ -352,15 +352,15 @@ pub trait BackendTransaction {
                                 IdList::PartialThreshold(r)
                             }
                         }
-                        (IdList::Indexed(i), IdList::ALLIDS)
-                        | (IdList::ALLIDS, IdList::Indexed(i))
-                        | (IdList::Partial(i), IdList::ALLIDS)
-                        | (IdList::ALLIDS, IdList::Partial(i)) => IdList::Partial(i),
-                        (IdList::PartialThreshold(i), IdList::ALLIDS)
-                        | (IdList::ALLIDS, IdList::PartialThreshold(i)) => {
+                        (IdList::Indexed(i), IdList::AllIds)
+                        | (IdList::AllIds, IdList::Indexed(i))
+                        | (IdList::Partial(i), IdList::AllIds)
+                        | (IdList::AllIds, IdList::Partial(i)) => IdList::Partial(i),
+                        (IdList::PartialThreshold(i), IdList::AllIds)
+                        | (IdList::AllIds, IdList::PartialThreshold(i)) => {
                             IdList::PartialThreshold(i)
                         }
-                        (IdList::ALLIDS, IdList::ALLIDS) => IdList::ALLIDS,
+                        (IdList::AllIds, IdList::AllIds) => IdList::AllIds,
                     };
                 }
 
@@ -424,18 +424,18 @@ pub trait BackendTransaction {
                             }
                         }
 
-                        (IdList::Indexed(_), IdList::ALLIDS)
-                        | (IdList::ALLIDS, IdList::Indexed(_))
-                        | (IdList::Partial(_), IdList::ALLIDS)
-                        | (IdList::ALLIDS, IdList::Partial(_))
-                        | (IdList::PartialThreshold(_), IdList::ALLIDS)
-                        | (IdList::ALLIDS, IdList::PartialThreshold(_)) => {
+                        (IdList::Indexed(_), IdList::AllIds)
+                        | (IdList::AllIds, IdList::Indexed(_))
+                        | (IdList::Partial(_), IdList::AllIds)
+                        | (IdList::AllIds, IdList::Partial(_))
+                        | (IdList::PartialThreshold(_), IdList::AllIds)
+                        | (IdList::AllIds, IdList::PartialThreshold(_)) => {
                             // We could actually generate allids here
                             // and then try to reduce the and-not set, but
                             // for now we just return all ids.
-                            IdList::ALLIDS
+                            IdList::AllIds
                         }
-                        (IdList::ALLIDS, IdList::ALLIDS) => IdList::ALLIDS,
+                        (IdList::AllIds, IdList::AllIds) => IdList::AllIds,
                     };
                 }
 
@@ -445,7 +445,7 @@ pub trait BackendTransaction {
                     IdList::Partial(_) | IdList::PartialThreshold(_) => {
                         FilterPlan::AndPartial(plan)
                     }
-                    IdList::ALLIDS => FilterPlan::AndUnindexed(plan),
+                    IdList::AllIds => FilterPlan::AndUnindexed(plan),
                 };
 
                 // Finally, return the result.
@@ -524,7 +524,7 @@ pub trait BackendTransaction {
             */
             lfilter!(au, "filter optimised --> {:?}", filt);
 
-            // Using the indexes, resolve the IdList here, or ALLIDS.
+            // Using the indexes, resolve the IdList here, or AllIds.
             // Also get if the filter was 100% resolved or not.
             let (idl, fplan) = lperf_trace_segment!(au, "be::search -> filter2idl", || {
                 self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
@@ -534,7 +534,7 @@ pub trait BackendTransaction {
 
             // Based on the IdList we determine if limits are required at this point.
             match &idl {
-                IdList::ALLIDS => {
+                IdList::AllIds => {
                     if !erl.unindexed_allow {
                         ladmin_error!(au, "filter (search) is fully unindexed, and not allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
@@ -569,7 +569,7 @@ pub trait BackendTransaction {
             })?;
 
             let entries_filtered = match idl {
-                IdList::ALLIDS => lperf_segment!(au, "be::search<entry::ftest::allids>", || {
+                IdList::AllIds => lperf_segment!(au, "be::search<entry::ftest::allids>", || {
                     entries
                         .into_iter()
                         .filter(|e| e.entry_match_no_index(&filt))
@@ -628,7 +628,7 @@ pub trait BackendTransaction {
             */
             lfilter!(au, "filter optimised --> {:?}", filt);
 
-            // Using the indexes, resolve the IdList here, or ALLIDS.
+            // Using the indexes, resolve the IdList here, or AllIds.
             // Also get if the filter was 100% resolved or not.
             let (idl, fplan) = lperf_trace_segment!(au, "be::exists -> filter2idl", || {
                 self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
@@ -638,7 +638,7 @@ pub trait BackendTransaction {
 
             // Apply limits to the IdList.
             match &idl {
-                IdList::ALLIDS => {
+                IdList::AllIds => {
                     if !erl.unindexed_allow {
                         ladmin_error!(au, "filter (exists) is fully unindexed, and not allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
@@ -765,7 +765,7 @@ pub trait BackendTransaction {
     }
 
     fn verify_indexes(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        let idl = IdList::ALLIDS;
+        let idl = IdList::AllIds;
         let entries = match self.get_idlayer().get_identry(audit, &idl) {
             Ok(s) => s,
             Err(e) => {
@@ -788,7 +788,7 @@ pub trait BackendTransaction {
     fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
-        let idl = IdList::ALLIDS;
+        let idl = IdList::AllIds;
         let raw_entries: Vec<IdRawEntry> = self.get_idlayer().get_identry_raw(audit, &idl)?;
 
         let entries: Result<Vec<DbEntry>, _> = raw_entries
@@ -1258,7 +1258,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Now, we need to iterate over everything in id2entry and index them
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
-        let idl = IdList::ALLIDS;
+        let idl = IdList::AllIds;
         let entries = idlayer.get_identry(audit, &idl).map_err(|e| {
             ladmin_error!(audit, "get_identry failure {:?}", e);
             e
@@ -1371,7 +1371,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
         // for debug
         /*
-        self.idlayer.get_identry(audit, &IdList::ALLIDS)
+        self.idlayer.get_identry(audit, &IdList::AllIds)
             .unwrap()
             .iter()
             .for_each(|dbe| {
@@ -1587,31 +1587,31 @@ mod tests {
             let mut idxmeta = Set::with_capacity(16);
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("name"),
-                itype: IndexType::EQUALITY,
+                itype: IndexType::Equality,
             });
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("name"),
-                itype: IndexType::PRESENCE,
+                itype: IndexType::Presence,
             });
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("name"),
-                itype: IndexType::SUBSTRING,
+                itype: IndexType::SubString,
             });
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("uuid"),
-                itype: IndexType::EQUALITY,
+                itype: IndexType::Equality,
             });
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("uuid"),
-                itype: IndexType::PRESENCE,
+                itype: IndexType::Presence,
             });
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("ta"),
-                itype: IndexType::EQUALITY,
+                itype: IndexType::Equality,
             });
             idxmeta.insert(IdxKey {
                 attr: AttrString::from("tb"),
-                itype: IndexType::EQUALITY,
+                itype: IndexType::Equality,
             });
 
             let be = Backend::new(&mut audit, BackendConfig::new_test(), idxmeta, false)
@@ -1973,7 +1973,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "william",
                 Some(vec![1])
             );
@@ -1982,7 +1982,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "claire",
                 Some(vec![2])
             );
@@ -1991,7 +1991,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::PRESENCE,
+                IndexType::Presence,
                 "_",
                 Some(vec![1, 2])
             );
@@ -2000,7 +2000,7 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
             );
@@ -2009,7 +2009,7 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
@@ -2018,7 +2018,7 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::PRESENCE,
+                IndexType::Presence,
                 "_",
                 Some(vec![1, 2])
             );
@@ -2029,7 +2029,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "not-exist",
                 Some(Vec::new())
             );
@@ -2038,7 +2038,7 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "fake-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
@@ -2047,7 +2047,7 @@ mod tests {
                 .load_test_idl(
                     audit,
                     &"not_indexed".to_string(),
-                    &IndexType::PRESENCE,
+                    &IndexType::Presence,
                     &"_".to_string(),
                 )
                 .unwrap(); // unwrap the result
@@ -2087,23 +2087,23 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "william",
                 Some(vec![1])
             );
 
-            idl_state!(audit, be, "name", IndexType::PRESENCE, "_", Some(vec![1]));
+            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![1]));
 
             idl_state!(
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(vec![1])
             );
 
-            idl_state!(audit, be, "uuid", IndexType::PRESENCE, "_", Some(vec![1]));
+            idl_state!(audit, be, "uuid", IndexType::Presence, "_", Some(vec![1]));
 
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
@@ -2117,7 +2117,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "william",
                 Some(Vec::new())
             );
@@ -2126,7 +2126,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::PRESENCE,
+                IndexType::Presence,
                 "_",
                 Some(Vec::new())
             );
@@ -2135,7 +2135,7 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
@@ -2144,7 +2144,7 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::PRESENCE,
+                IndexType::Presence,
                 "_",
                 Some(Vec::new())
             );
@@ -2190,23 +2190,23 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "claire",
                 Some(vec![2])
             );
 
-            idl_state!(audit, be, "name", IndexType::PRESENCE, "_", Some(vec![2]));
+            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![2]));
 
             idl_state!(
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "bd651620-00dd-426b-aaa0-4494f7b7906f",
                 Some(vec![2])
             );
 
-            idl_state!(audit, be, "uuid", IndexType::PRESENCE, "_", Some(vec![2]));
+            idl_state!(audit, be, "uuid", IndexType::Presence, "_", Some(vec![2]));
 
             let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
@@ -2259,16 +2259,16 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "claire",
                 Some(vec![1])
             );
 
-            idl_state!(audit, be, "name", IndexType::PRESENCE, "_", Some(vec![1]));
+            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![1]));
 
-            idl_state!(audit, be, "tb", IndexType::EQUALITY, "test", Some(vec![1]));
+            idl_state!(audit, be, "tb", IndexType::Equality, "test", Some(vec![1]));
 
-            idl_state!(audit, be, "ta", IndexType::EQUALITY, "test", Some(vec![]));
+            idl_state!(audit, be, "ta", IndexType::Equality, "test", Some(vec![]));
 
             // let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
@@ -2306,7 +2306,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "claire",
                 Some(vec![1])
             );
@@ -2315,19 +2315,19 @@ mod tests {
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "04091a7a-6ce4-42d2-abf5-c2ce244ac9e8",
                 Some(vec![1])
             );
 
-            idl_state!(audit, be, "name", IndexType::PRESENCE, "_", Some(vec![1]));
-            idl_state!(audit, be, "uuid", IndexType::PRESENCE, "_", Some(vec![1]));
+            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(audit, be, "uuid", IndexType::Presence, "_", Some(vec![1]));
 
             idl_state!(
                 audit,
                 be,
                 "uuid",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
@@ -2335,7 +2335,7 @@ mod tests {
                 audit,
                 be,
                 "name",
-                IndexType::EQUALITY,
+                IndexType::Equality,
                 "william",
                 Some(Vec::new())
             );
@@ -2376,7 +2376,7 @@ mod tests {
 
             let (r, _plan) = be.filter2idl(audit, f_un.to_inner(), 0).unwrap();
             match r {
-                IdList::ALLIDS => {}
+                IdList::AllIds => {}
                 _ => {
                     panic!("");
                 }
@@ -2463,7 +2463,7 @@ mod tests {
 
             let (r, _plan) = be.filter2idl(audit, f_no_and.to_inner(), 0).unwrap();
             match r {
-                IdList::ALLIDS => {}
+                IdList::AllIds => {}
                 _ => {
                     panic!("");
                 }
@@ -2493,7 +2493,7 @@ mod tests {
 
             let (r, _plan) = be.filter2idl(audit, f_un_or.to_inner(), 0).unwrap();
             match r {
-                IdList::ALLIDS => {}
+                IdList::AllIds => {}
                 _ => {
                     panic!("");
                 }
@@ -2594,7 +2594,7 @@ mod tests {
 
             let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
             match r {
-                IdList::ALLIDS => {}
+                IdList::AllIds => {}
                 _ => {
                     panic!("");
                 }
@@ -2609,7 +2609,7 @@ mod tests {
 
             let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
             match r {
-                IdList::ALLIDS => {}
+                IdList::AllIds => {}
                 _ => {
                     panic!("");
                 }
@@ -2654,7 +2654,7 @@ mod tests {
 
             let (r, _plan) = be.filter2idl(audit, f_eq.to_inner(), 0).unwrap();
             match r {
-                IdList::ALLIDS => {}
+                IdList::AllIds => {}
                 _ => {
                     panic!("");
                 }
