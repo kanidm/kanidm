@@ -486,15 +486,15 @@ pub trait QueryServerTransaction<'a> {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(Value::new_utf8(value.to_string())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(Value::new_iutf8(value)),
-                    SyntaxType::UTF8STRING_INAME => Ok(Value::new_iname(value)),
-                    SyntaxType::BOOLEAN => Value::new_bools(value)
+                    SyntaxType::Utf8StringInsensitive => Ok(Value::new_iutf8(value)),
+                    SyntaxType::Utf8StringIname => Ok(Value::new_iname(value)),
+                    SyntaxType::Boolean => Value::new_bools(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid boolean syntax".to_string())),
                     SyntaxType::SYNTAX_ID => Value::new_syntaxs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Syntax syntax".to_string())),
                     SyntaxType::INDEX_ID => Value::new_indexs(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Index syntax".to_string())),
-                    SyntaxType::UUID => {
+                    SyntaxType::Uuid => {
                         // It's a uuid - we do NOT check for existance, because that
                         // could be revealing or disclosing - it is up to acp to assert
                         // if we can see the value or not, and it's not up to us to
@@ -527,15 +527,15 @@ pub trait QueryServerTransaction<'a> {
                     }
                     SyntaxType::JSON_FILTER => Value::new_json_filter(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
-                    SyntaxType::CREDENTIAL => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::RADIUS_UTF8STRING => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::SSHKEY => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::SERVICE_PRINCIPLE_NAME => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
+                    SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::RadiusUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::SshKey => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::ServicePrincipalName => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
-                    SyntaxType::CID => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
-                    SyntaxType::NSUNIQUEID => Ok(Value::new_nsuniqueid_s(value)),
-                    SyntaxType::DATETIME => Value::new_datetime_s(value)
+                    SyntaxType::Cid => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
+                    SyntaxType::NsUniqueId => Ok(Value::new_nsuniqueid_s(value)),
+                    SyntaxType::DateTime => Value::new_datetime_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
                 }
             }
@@ -560,9 +560,9 @@ pub trait QueryServerTransaction<'a> {
             Some(schema_a) => {
                 match schema_a.syntax {
                     SyntaxType::UTF8STRING => Ok(PartialValue::new_utf8(value.to_string())),
-                    SyntaxType::UTF8STRING_INSENSITIVE => Ok(PartialValue::new_iutf8(value)),
-                    SyntaxType::UTF8STRING_INAME => Ok(PartialValue::new_iname(value)),
-                    SyntaxType::BOOLEAN => PartialValue::new_bools(value).ok_or_else(|| {
+                    SyntaxType::Utf8StringInsensitive => Ok(PartialValue::new_iutf8(value)),
+                    SyntaxType::Utf8StringIname => Ok(PartialValue::new_iname(value)),
+                    SyntaxType::Boolean => PartialValue::new_bools(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid boolean syntax".to_string())
                     }),
                     SyntaxType::SYNTAX_ID => PartialValue::new_syntaxs(value).ok_or_else(|| {
@@ -571,7 +571,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::INDEX_ID => PartialValue::new_indexs(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid Index syntax".to_string())
                     }),
-                    SyntaxType::UUID => {
+                    SyntaxType::Uuid => {
                         PartialValue::new_uuids(value)
                             .or_else(|| {
                                 // it's not a uuid, try to resolve it.
@@ -609,21 +609,22 @@ pub trait QueryServerTransaction<'a> {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
                         })
                     }
-                    SyntaxType::CREDENTIAL => Ok(PartialValue::new_credential_tag(value)),
-                    SyntaxType::RADIUS_UTF8STRING => Ok(PartialValue::new_radius_string()),
-                    SyntaxType::SSHKEY => Ok(PartialValue::new_sshkey_tag_s(value)),
-                    SyntaxType::SERVICE_PRINCIPLE_NAME => PartialValue::new_spn_s(value)
-                        .ok_or_else(|| {
+                    SyntaxType::Credential => Ok(PartialValue::new_credential_tag(value)),
+                    SyntaxType::RadiusUtf8String => Ok(PartialValue::new_radius_string()),
+                    SyntaxType::SshKey => Ok(PartialValue::new_sshkey_tag_s(value)),
+                    SyntaxType::ServicePrincipalName => {
+                        PartialValue::new_spn_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid spn syntax".to_string())
-                        }),
+                        })
+                    }
                     SyntaxType::UINT32 => PartialValue::new_uint32_str(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())
                     }),
-                    SyntaxType::CID => PartialValue::new_cid_s(value).ok_or_else(|| {
+                    SyntaxType::Cid => PartialValue::new_cid_s(value).ok_or_else(|| {
                         OperationError::InvalidAttribute("Invalid cid syntax".to_string())
                     }),
-                    SyntaxType::NSUNIQUEID => Ok(PartialValue::new_nsuniqueid_s(value)),
-                    SyntaxType::DATETIME => PartialValue::new_datetime_s(value).ok_or_else(|| {
+                    SyntaxType::NsUniqueId => Ok(PartialValue::new_nsuniqueid_s(value)),
+                    SyntaxType::DateTime => PartialValue::new_datetime_s(value).ok_or_else(|| {
                         OperationError::InvalidAttribute(
                             "Invalid DateTime (rfc3339) syntax".to_string(),
                         )

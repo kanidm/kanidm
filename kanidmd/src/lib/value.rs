@@ -40,9 +40,9 @@ lazy_static! {
 #[allow(non_camel_case_types)]
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Hash)]
 pub enum IndexType {
-    EQUALITY,
-    PRESENCE,
-    SUBSTRING,
+    Equality,
+    Presence,
+    SubString,
 }
 
 impl TryFrom<&str> for IndexType {
@@ -51,9 +51,9 @@ impl TryFrom<&str> for IndexType {
     fn try_from(value: &str) -> Result<Self, Self::Error> {
         let n_value = value.to_uppercase();
         match n_value.as_str() {
-            "EQUALITY" => Ok(IndexType::EQUALITY),
-            "PRESENCE" => Ok(IndexType::PRESENCE),
-            "SUBSTRING" => Ok(IndexType::SUBSTRING),
+            "EQUALITY" => Ok(IndexType::Equality),
+            "PRESENCE" => Ok(IndexType::Presence),
+            "SUBSTRING" => Ok(IndexType::SubString),
             // UUID map?
             // UUID rev map?
             _ => Err(()),
@@ -66,9 +66,9 @@ impl TryFrom<usize> for IndexType {
 
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         match value {
-            0 => Ok(IndexType::EQUALITY),
-            1 => Ok(IndexType::PRESENCE),
-            2 => Ok(IndexType::SUBSTRING),
+            0 => Ok(IndexType::Equality),
+            1 => Ok(IndexType::Presence),
+            2 => Ok(IndexType::SubString),
             _ => Err(()),
         }
     }
@@ -77,17 +77,17 @@ impl TryFrom<usize> for IndexType {
 impl IndexType {
     pub fn as_idx_str(&self) -> &str {
         match self {
-            IndexType::EQUALITY => "eq",
-            IndexType::PRESENCE => "pres",
-            IndexType::SUBSTRING => "sub",
+            IndexType::Equality => "eq",
+            IndexType::Presence => "pres",
+            IndexType::SubString => "sub",
         }
     }
 
     pub fn to_usize(&self) -> usize {
         match self {
-            IndexType::EQUALITY => 0,
-            IndexType::PRESENCE => 1,
-            IndexType::SUBSTRING => 2,
+            IndexType::Equality => 0,
+            IndexType::Presence => 1,
+            IndexType::SubString => 2,
         }
     }
 }
@@ -98,9 +98,9 @@ impl fmt::Display for IndexType {
             f,
             "{}",
             match self {
-                IndexType::EQUALITY => "EQUALITY",
-                IndexType::PRESENCE => "PRESENCE",
-                IndexType::SUBSTRING => "SUBSTRING",
+                IndexType::Equality => "EQUALITY",
+                IndexType::Presence => "PRESENCE",
+                IndexType::SubString => "SUBSTRING",
             }
         )
     }
@@ -112,22 +112,22 @@ pub enum SyntaxType {
     // We need an insensitive string type too ...
     // We also need to "self host" a syntax type, and index type
     UTF8STRING,
-    UTF8STRING_INSENSITIVE,
-    UTF8STRING_INAME,
-    UUID,
-    BOOLEAN,
+    Utf8StringInsensitive,
+    Utf8StringIname,
+    Uuid,
+    Boolean,
     SYNTAX_ID,
     INDEX_ID,
     REFERENCE_UUID,
     JSON_FILTER,
-    CREDENTIAL,
-    RADIUS_UTF8STRING,
-    SSHKEY,
-    SERVICE_PRINCIPLE_NAME,
+    Credential,
+    RadiusUtf8String,
+    SshKey,
+    ServicePrincipalName,
     UINT32,
-    CID,
-    NSUNIQUEID,
-    DATETIME,
+    Cid,
+    NsUniqueId,
+    DateTime,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -137,22 +137,22 @@ impl TryFrom<&str> for SyntaxType {
         let n_value = value.to_uppercase();
         match n_value.as_str() {
             "UTF8STRING" => Ok(SyntaxType::UTF8STRING),
-            "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::UTF8STRING_INSENSITIVE),
-            "UTF8STRING_INAME" => Ok(SyntaxType::UTF8STRING_INAME),
-            "UUID" => Ok(SyntaxType::UUID),
-            "BOOLEAN" => Ok(SyntaxType::BOOLEAN),
+            "UTF8STRING_INSENSITIVE" => Ok(SyntaxType::Utf8StringInsensitive),
+            "UTF8STRING_INAME" => Ok(SyntaxType::Utf8StringIname),
+            "UUID" => Ok(SyntaxType::Uuid),
+            "BOOLEAN" => Ok(SyntaxType::Boolean),
             "SYNTAX_ID" => Ok(SyntaxType::SYNTAX_ID),
             "INDEX_ID" => Ok(SyntaxType::INDEX_ID),
             "REFERENCE_UUID" => Ok(SyntaxType::REFERENCE_UUID),
             "JSON_FILTER" => Ok(SyntaxType::JSON_FILTER),
-            "CREDENTIAL" => Ok(SyntaxType::CREDENTIAL),
-            "RADIUS_UTF8STRING" => Ok(SyntaxType::RADIUS_UTF8STRING),
-            "SSHKEY" => Ok(SyntaxType::SSHKEY),
-            "SERVICE_PRINCIPLE_NAME" => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
+            "CREDENTIAL" => Ok(SyntaxType::Credential),
+            "RADIUS_UTF8STRING" => Ok(SyntaxType::RadiusUtf8String),
+            "SSHKEY" => Ok(SyntaxType::SshKey),
+            "SERVICE_PRINCIPLE_NAME" => Ok(SyntaxType::ServicePrincipalName),
             "UINT32" => Ok(SyntaxType::UINT32),
-            "CID" => Ok(SyntaxType::CID),
-            "NSUNIQUEID" => Ok(SyntaxType::NSUNIQUEID),
-            "DATETIME" => Ok(SyntaxType::DATETIME),
+            "CID" => Ok(SyntaxType::Cid),
+            "NSUNIQUEID" => Ok(SyntaxType::NsUniqueId),
+            "DATETIME" => Ok(SyntaxType::DateTime),
             _ => Err(()),
         }
     }
@@ -164,22 +164,22 @@ impl TryFrom<usize> for SyntaxType {
     fn try_from(value: usize) -> Result<Self, Self::Error> {
         match value {
             0 => Ok(SyntaxType::UTF8STRING),
-            1 => Ok(SyntaxType::UTF8STRING_INSENSITIVE),
-            2 => Ok(SyntaxType::UUID),
-            3 => Ok(SyntaxType::BOOLEAN),
+            1 => Ok(SyntaxType::Utf8StringInsensitive),
+            2 => Ok(SyntaxType::Uuid),
+            3 => Ok(SyntaxType::Boolean),
             4 => Ok(SyntaxType::SYNTAX_ID),
             5 => Ok(SyntaxType::INDEX_ID),
             6 => Ok(SyntaxType::REFERENCE_UUID),
             7 => Ok(SyntaxType::JSON_FILTER),
-            8 => Ok(SyntaxType::CREDENTIAL),
-            9 => Ok(SyntaxType::RADIUS_UTF8STRING),
-            10 => Ok(SyntaxType::SSHKEY),
-            11 => Ok(SyntaxType::SERVICE_PRINCIPLE_NAME),
+            8 => Ok(SyntaxType::Credential),
+            9 => Ok(SyntaxType::RadiusUtf8String),
+            10 => Ok(SyntaxType::SshKey),
+            11 => Ok(SyntaxType::ServicePrincipalName),
             12 => Ok(SyntaxType::UINT32),
-            13 => Ok(SyntaxType::CID),
-            14 => Ok(SyntaxType::UTF8STRING_INAME),
-            15 => Ok(SyntaxType::NSUNIQUEID),
-            16 => Ok(SyntaxType::DATETIME),
+            13 => Ok(SyntaxType::Cid),
+            14 => Ok(SyntaxType::Utf8StringIname),
+            15 => Ok(SyntaxType::NsUniqueId),
+            16 => Ok(SyntaxType::DateTime),
             _ => Err(()),
         }
     }
@@ -189,22 +189,22 @@ impl SyntaxType {
     pub fn to_usize(&self) -> usize {
         match self {
             SyntaxType::UTF8STRING => 0,
-            SyntaxType::UTF8STRING_INSENSITIVE => 1,
-            SyntaxType::UUID => 2,
-            SyntaxType::BOOLEAN => 3,
+            SyntaxType::Utf8StringInsensitive => 1,
+            SyntaxType::Uuid => 2,
+            SyntaxType::Boolean => 3,
             SyntaxType::SYNTAX_ID => 4,
             SyntaxType::INDEX_ID => 5,
             SyntaxType::REFERENCE_UUID => 6,
             SyntaxType::JSON_FILTER => 7,
-            SyntaxType::CREDENTIAL => 8,
-            SyntaxType::RADIUS_UTF8STRING => 9,
-            SyntaxType::SSHKEY => 10,
-            SyntaxType::SERVICE_PRINCIPLE_NAME => 11,
+            SyntaxType::Credential => 8,
+            SyntaxType::RadiusUtf8String => 9,
+            SyntaxType::SshKey => 10,
+            SyntaxType::ServicePrincipalName => 11,
             SyntaxType::UINT32 => 12,
-            SyntaxType::CID => 13,
-            SyntaxType::UTF8STRING_INAME => 14,
-            SyntaxType::NSUNIQUEID => 15,
-            SyntaxType::DATETIME => 16,
+            SyntaxType::Cid => 13,
+            SyntaxType::Utf8StringIname => 14,
+            SyntaxType::NsUniqueId => 15,
+            SyntaxType::DateTime => 16,
         }
     }
 }
@@ -216,22 +216,22 @@ impl fmt::Display for SyntaxType {
             "{}",
             match self {
                 SyntaxType::UTF8STRING => "UTF8STRING",
-                SyntaxType::UTF8STRING_INSENSITIVE => "UTF8STRING_INSENSITIVE",
-                SyntaxType::UTF8STRING_INAME => "UTF8STRING_INAME",
-                SyntaxType::UUID => "UUID",
-                SyntaxType::BOOLEAN => "BOOLEAN",
+                SyntaxType::Utf8StringInsensitive => "UTF8STRING_INSENSITIVE",
+                SyntaxType::Utf8StringIname => "UTF8STRING_INAME",
+                SyntaxType::Uuid => "UUID",
+                SyntaxType::Boolean => "BOOLEAN",
                 SyntaxType::SYNTAX_ID => "SYNTAX_ID",
                 SyntaxType::INDEX_ID => "INDEX_ID",
                 SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
                 SyntaxType::JSON_FILTER => "JSON_FILTER",
-                SyntaxType::CREDENTIAL => "CREDENTIAL",
-                SyntaxType::RADIUS_UTF8STRING => "RADIUS_UTF8STRING",
-                SyntaxType::SSHKEY => "SSHKEY",
-                SyntaxType::SERVICE_PRINCIPLE_NAME => "SERVICE_PRINCIPLE_NAME",
+                SyntaxType::Credential => "CREDENTIAL",
+                SyntaxType::RadiusUtf8String => "RADIUS_UTF8STRING",
+                SyntaxType::SshKey => "SSHKEY",
+                SyntaxType::ServicePrincipalName => "SERVICE_PRINCIPLE_NAME",
                 SyntaxType::UINT32 => "UINT32",
-                SyntaxType::CID => "CID",
-                SyntaxType::NSUNIQUEID => "NSUNIQUEID",
-                SyntaxType::DATETIME => "DATETIME",
+                SyntaxType::Cid => "CID",
+                SyntaxType::NsUniqueId => "NSUNIQUEID",
+                SyntaxType::DateTime => "DATETIME",
             }
         )
     }
@@ -1390,13 +1390,13 @@ mod tests {
     #[test]
     fn test_value_index_tryfrom() {
         let r1 = IndexType::try_from("EQUALITY");
-        assert_eq!(r1, Ok(IndexType::EQUALITY));
+        assert_eq!(r1, Ok(IndexType::Equality));
 
         let r2 = IndexType::try_from("PRESENCE");
-        assert_eq!(r2, Ok(IndexType::PRESENCE));
+        assert_eq!(r2, Ok(IndexType::Presence));
 
         let r3 = IndexType::try_from("SUBSTRING");
-        assert_eq!(r3, Ok(IndexType::SUBSTRING));
+        assert_eq!(r3, Ok(IndexType::SubString));
 
         let r4 = IndexType::try_from("thaoeusaneuh");
         assert_eq!(r4, Err(()));
@@ -1408,10 +1408,10 @@ mod tests {
         assert_eq!(r1, Ok(SyntaxType::UTF8STRING));
 
         let r2 = SyntaxType::try_from("UTF8STRING_INSENSITIVE");
-        assert_eq!(r2, Ok(SyntaxType::UTF8STRING_INSENSITIVE));
+        assert_eq!(r2, Ok(SyntaxType::Utf8StringInsensitive));
 
         let r3 = SyntaxType::try_from("BOOLEAN");
-        assert_eq!(r3, Ok(SyntaxType::BOOLEAN));
+        assert_eq!(r3, Ok(SyntaxType::Boolean));
 
         let r4 = SyntaxType::try_from("SYNTAX_ID");
         assert_eq!(r4, Ok(SyntaxType::SYNTAX_ID));
@@ -1596,7 +1596,7 @@ mod tests {
                 "Who the ACP applies to, constraining or allowing operations.",
             ),
             multivalue: false,
-            index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+            index: vec![IndexType::Equality, IndexType::SubString],
             syntax: SyntaxType::JSON_FILTER,
         };
 
@@ -1629,7 +1629,7 @@ mod tests {
             uuid: Uuid::parse_str(UUID_SCHEMA_ATTR_UUID).expect("unable to parse const uuid"),
             description: String::from("The universal unique id of the object"),
             multivalue: false,
-            index: vec![IndexType::EQUALITY],
+            index: vec![IndexType::Equality],
             syntax: SyntaxType::UUID,
         };
         let u1 = String::from("936DA01F9ABD4d9d80C702AF85C822A8");

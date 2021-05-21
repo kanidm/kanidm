@@ -3,7 +3,7 @@ use crate::be::idl_sqlite::{
     IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
 use crate::be::idxkey::{IdlCacheKey, IdlCacheKeyRef, IdlCacheKeyToRef};
-use crate::be::{BackendConfig, IdRawEntry, IDL};
+use crate::be::{BackendConfig, IdList, IdRawEntry};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
@@ -77,7 +77,7 @@ macro_rules! get_identry {
         lperf_trace_segment!($au, "be::idl_arc_sqlite::get_identry", || {
             let mut result: Vec<Entry<_, _>> = Vec::new();
             match $idl {
-                IDL::Partial(idli) | IDL::PartialThreshold(idli) | IDL::Indexed(idli) => {
+                IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
                     let mut nidl = IDLBitRange::new();
 
                     idli.into_iter().for_each(|i| {
@@ -91,7 +91,7 @@ macro_rules! get_identry {
 
                     if !nidl.is_empty() {
                         // Now, get anything from nidl that is needed.
-                        let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
+                        let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
                         // Clone everything from db_result into the cache.
                         if $is_read_op {
                             db_result.iter().for_each(|e| {
@@ -102,7 +102,7 @@ macro_rules! get_identry {
                         result.append(&mut db_result);
                     }
                 }
-                IDL::ALLIDS => {
+                IdList::AllIds => {
                     // VERY similar to above, but we skip adding the entries to the cache
                     // on miss to prevent scan/invalidation attacks.
                     let idli = (*$self.allids).clone();
@@ -117,7 +117,7 @@ macro_rules! get_identry {
 
                     if !nidl.is_empty() {
                         // Now, get anything from nidl that is needed.
-                        let mut db_result = $self.db.get_identry($au, &IDL::Partial(nidl))?;
+                        let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
                         // Merge the two vecs
                         result.append(&mut db_result);
                     }
@@ -309,13 +309,13 @@ pub trait IdlArcSqliteTransaction {
     fn get_identry(
         &mut self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError>;
 
     fn get_identry_raw(
         &self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<IdRawEntry>, OperationError>;
 
     fn exists_idx(
@@ -364,7 +364,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     fn get_identry(
         &mut self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         get_identry!(self, au, idl, true)
     }
@@ -372,7 +372,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     fn get_identry_raw(
         &self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<IdRawEntry>, OperationError> {
         get_identry_raw!(self, au, idl)
     }
@@ -441,7 +441,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     fn get_identry(
         &mut self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         get_identry!(self, au, idl, false)
     }
@@ -449,7 +449,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     fn get_identry_raw(
         &self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<IdRawEntry>, OperationError> {
         get_identry_raw!(self, au, idl)
     }
@@ -685,8 +685,8 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 i: itype.clone(),
                 k: idx_key.into(),
             };
-            // On idl == 0 the db will remove this, and synthesise an empty IDL on a miss
-            // but we can cache this as a new empty IDL instead, so that we can avoid the
+            // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
+            // but we can cache this as a new empty IdList instead, so that we can avoid the
             // db lookup on this idl.
             if idl.is_empty() {
                 self.idl_cache

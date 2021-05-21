@@ -182,23 +182,23 @@ impl SchemaAttribute {
     // on that may only use a single tagged attribute for example.
     pub fn validate_partialvalue(&self, a: &str, v: &PartialValue) -> Result<(), SchemaError> {
         let r = match self.syntax {
-            SyntaxType::BOOLEAN => v.is_bool(),
+            SyntaxType::Boolean => v.is_bool(),
             SyntaxType::SYNTAX_ID => v.is_syntax(),
             SyntaxType::INDEX_ID => v.is_index(),
-            SyntaxType::UUID => v.is_uuid(),
+            SyntaxType::Uuid => v.is_uuid(),
             SyntaxType::REFERENCE_UUID => v.is_refer(),
-            SyntaxType::UTF8STRING_INSENSITIVE => v.is_iutf8(),
-            SyntaxType::UTF8STRING_INAME => v.is_iname(),
+            SyntaxType::Utf8StringInsensitive => v.is_iutf8(),
+            SyntaxType::Utf8StringIname => v.is_iname(),
             SyntaxType::UTF8STRING => v.is_utf8(),
             SyntaxType::JSON_FILTER => v.is_json_filter(),
-            SyntaxType::CREDENTIAL => v.is_credential(),
-            SyntaxType::RADIUS_UTF8STRING => v.is_radius_string(),
-            SyntaxType::SSHKEY => v.is_sshkey(),
-            SyntaxType::SERVICE_PRINCIPLE_NAME => v.is_spn(),
+            SyntaxType::Credential => v.is_credential(),
+            SyntaxType::RadiusUtf8String => v.is_radius_string(),
+            SyntaxType::SshKey => v.is_sshkey(),
+            SyntaxType::ServicePrincipalName => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
-            SyntaxType::CID => v.is_cid(),
-            SyntaxType::NSUNIQUEID => v.is_nsuniqueid(),
-            SyntaxType::DATETIME => v.is_datetime(),
+            SyntaxType::Cid => v.is_cid(),
+            SyntaxType::NsUniqueId => v.is_nsuniqueid(),
+            SyntaxType::DateTime => v.is_datetime(),
         };
         if r {
             Ok(())
@@ -229,7 +229,7 @@ impl SchemaAttribute {
         };
         // If syntax, check the type is correct
         match self.syntax {
-            SyntaxType::BOOLEAN => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::Boolean => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_bool() {
                         Ok(())
@@ -247,7 +247,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::UUID => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::Uuid => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_uuid() {
                         Ok(())
@@ -275,7 +275,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::UTF8STRING_INSENSITIVE => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::Utf8StringInsensitive => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_insensitive_utf8() {
                         Ok(())
@@ -284,7 +284,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::UTF8STRING_INAME => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::Utf8StringIname => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_iname() {
                         Ok(())
@@ -311,7 +311,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::CREDENTIAL => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::Credential => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_credential() {
                         Ok(())
@@ -320,7 +320,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::RADIUS_UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::RadiusUtf8String => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_radius_string() {
                         Ok(())
@@ -329,7 +329,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::SSHKEY => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::SshKey => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_sshkey() {
                         Ok(())
@@ -338,7 +338,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::SERVICE_PRINCIPLE_NAME => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::ServicePrincipalName => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_spn() {
                         Ok(())
@@ -356,7 +356,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::CID => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::Cid => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_cid() {
                         Ok(())
@@ -365,7 +365,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::NSUNIQUEID => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::NsUniqueId => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_nsuniqueid() {
                         Ok(())
@@ -374,7 +374,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::DATETIME => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::DateTime => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_datetime() {
                         Ok(())
@@ -655,8 +655,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY, IndexType::PRESENCE],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality, IndexType::Presence],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -670,8 +670,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     // needing to check recycled objects too.
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY, IndexType::PRESENCE],
-                    syntax: SyntaxType::UUID,
+                    index: vec![IndexType::Equality, IndexType::Presence],
+                    syntax: SyntaxType::Uuid,
                 },
             );
             self.attributes.insert(
@@ -686,7 +686,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::CID,
+                    syntax: SyntaxType::Cid,
                 },
             );
             self.attributes.insert(
@@ -698,8 +698,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: true,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY, IndexType::PRESENCE],
-                    syntax: SyntaxType::UTF8STRING_INAME,
+                    index: vec![IndexType::Equality, IndexType::Presence],
+                    syntax: SyntaxType::Utf8StringIname,
                 },
             );
             self.attributes.insert(
@@ -713,8 +713,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: true,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::SERVICE_PRINCIPLE_NAME,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::ServicePrincipalName,
                 },
             );
             self.attributes.insert(
@@ -726,8 +726,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: true,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -739,8 +739,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: true,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -764,7 +764,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 unique: false,
                 phantom: false,
                 index: vec![],
-                syntax: SyntaxType::BOOLEAN,
+                syntax: SyntaxType::Boolean,
             });
             self.attributes.insert(AttrString::from("phantom"), SchemaAttribute {
                 name: AttrString::from("phantom"),
@@ -774,7 +774,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 unique: false,
                 phantom: false,
                 index: vec![],
-                syntax: SyntaxType::BOOLEAN,
+                syntax: SyntaxType::Boolean,
             });
             self.attributes.insert(AttrString::from("unique"), SchemaAttribute {
                 name: AttrString::from("unique"),
@@ -784,7 +784,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 unique: false,
                 phantom: false,
                 index: vec![],
-                syntax: SyntaxType::BOOLEAN,
+                syntax: SyntaxType::Boolean,
             });
             self.attributes.insert(
                 AttrString::from("index"),
@@ -812,7 +812,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
+                    index: vec![IndexType::Equality],
                     syntax: SyntaxType::SYNTAX_ID,
                 },
             );
@@ -828,7 +828,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -843,7 +843,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -858,7 +858,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -873,7 +873,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: false,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             // SYSINFO attrs
@@ -887,8 +887,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::BOOLEAN,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Boolean,
                 },
             );
 
@@ -903,7 +903,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+                    index: vec![IndexType::Equality, IndexType::SubString],
                     syntax: SyntaxType::JSON_FILTER,
                 },
             );
@@ -918,7 +918,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: false,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY, IndexType::SUBSTRING],
+                    index: vec![IndexType::Equality, IndexType::SubString],
                     syntax: SyntaxType::JSON_FILTER,
                 },
             );
@@ -931,8 +931,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -946,8 +946,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -961,8 +961,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
 
@@ -975,8 +975,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -988,8 +988,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -1001,8 +1001,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             // MO/Member
@@ -1015,7 +1015,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
+                    index: vec![IndexType::Equality],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
@@ -1028,7 +1028,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
+                    index: vec![IndexType::Equality],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
@@ -1041,7 +1041,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
+                    index: vec![IndexType::Equality],
                     syntax: SyntaxType::REFERENCE_UUID,
                 },
             );
@@ -1071,8 +1071,8 @@ impl<'a> SchemaWriteTransaction<'a> {
                     multivalue: true,
                     unique: false,
                     phantom: false,
-                    index: vec![IndexType::EQUALITY],
-                    syntax: SyntaxType::UTF8STRING_INAME,
+                    index: vec![IndexType::Equality],
+                    syntax: SyntaxType::Utf8StringIname,
                 },
             );
             self.attributes.insert(
@@ -1085,7 +1085,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::SERVICE_PRINCIPLE_NAME,
+                    syntax: SyntaxType::ServicePrincipalName,
                 },
             );
             self.attributes.insert(
@@ -1113,7 +1113,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(
@@ -1126,7 +1126,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UUID,
+                    syntax: SyntaxType::Uuid,
                 },
             );
             self.attributes.insert(
@@ -1139,7 +1139,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             // end LDAP masking phantoms
@@ -1754,8 +1754,8 @@ mod tests {
             multivalue: false,
             unique: false,
             phantom: false,
-            index: vec![IndexType::EQUALITY],
-            syntax: SyntaxType::UTF8STRING_INSENSITIVE,
+            index: vec![IndexType::Equality],
+            syntax: SyntaxType::Utf8StringInsensitive,
         };
 
         let r1 =
@@ -1783,7 +1783,7 @@ mod tests {
             multivalue: true,
             unique: false,
             phantom: false,
-            index: vec![IndexType::EQUALITY],
+            index: vec![IndexType::Equality],
             syntax: SyntaxType::UTF8STRING,
         };
 
@@ -1801,8 +1801,8 @@ mod tests {
             multivalue: true,
             unique: false,
             phantom: false,
-            index: vec![IndexType::EQUALITY],
-            syntax: SyntaxType::BOOLEAN,
+            index: vec![IndexType::Equality],
+            syntax: SyntaxType::Boolean,
         };
 
         let r3 = multi_value_boolean.validate_ava(
@@ -1833,7 +1833,7 @@ mod tests {
             multivalue: false,
             unique: false,
             phantom: false,
-            index: vec![IndexType::EQUALITY],
+            index: vec![IndexType::Equality],
             syntax: SyntaxType::SYNTAX_ID,
         };
 
@@ -1858,7 +1858,7 @@ mod tests {
             multivalue: false,
             unique: false,
             phantom: false,
-            index: vec![IndexType::EQUALITY],
+            index: vec![IndexType::Equality],
             syntax: SyntaxType::INDEX_ID,
         };
         //

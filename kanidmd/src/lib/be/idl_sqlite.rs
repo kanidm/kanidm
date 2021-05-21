@@ -1,5 +1,5 @@
 use crate::audit::AuditScope;
-use crate::be::{BackendConfig, IdRawEntry, IDL};
+use crate::be::{BackendConfig, IdList, IdRawEntry};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::{IndexType, Value};
 use idlset::v2::IDLBitRange;
@@ -22,7 +22,7 @@ const DBV_INDEXV: &str = "indexv";
 #[derive(Debug, Copy, Clone)]
 pub enum FsType {
     Generic = 4096,
-    ZFS = 65536,
+    Zfs = 65536,
 }
 
 #[derive(Debug)]
@@ -86,7 +86,7 @@ pub trait IdlSqliteTransaction {
     fn get_identry(
         &self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_trace_segment!(au, "be::idl_sqlite::get_identry", || {
             self.get_identry_raw(au, idl)?
@@ -99,11 +99,11 @@ pub trait IdlSqliteTransaction {
     fn get_identry_raw(
         &self,
         au: &mut AuditScope,
-        idl: &IDL,
+        idl: &IdList,
     ) -> Result<Vec<IdRawEntry>, OperationError> {
         // is the idl allids?
         match idl {
-            IDL::ALLIDS => {
+            IdList::AllIds => {
                 let mut stmt = self
                     .get_conn()
                     .prepare("SELECT id, data FROM id2entry")
@@ -135,7 +135,7 @@ pub trait IdlSqliteTransaction {
                     })
                     .collect()
             }
-            IDL::Partial(idli) | IDL::PartialThreshold(idli) | IDL::Indexed(idli) => {
+            IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
                 let mut stmt = self
                     .get_conn()
                     .prepare("SELECT id, data FROM id2entry WHERE id = :idl")
@@ -756,7 +756,7 @@ impl IdlSqliteWriteTransaction {
                     })
             } else {
                 ltrace!(audit, "writing idl -> {}", idl);
-                // Serialise the IDL to Vec<u8>
+                // Serialise the IdList to Vec<u8>
                 let idl_raw = serde_cbor::to_vec(idl).map_err(|e| {
                     ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
                     OperationError::SerdeCborError
