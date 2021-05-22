@@ -194,7 +194,7 @@ impl SchemaAttribute {
             SyntaxType::Credential => v.is_credential(),
             SyntaxType::RadiusUtf8String => v.is_radius_string(),
             SyntaxType::SshKey => v.is_sshkey(),
-            SyntaxType::ServicePrincipalName => v.is_spn(),
+            SyntaxType::SecurityPrincipalName => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
             SyntaxType::Cid => v.is_cid(),
             SyntaxType::NsUniqueId => v.is_nsuniqueid(),
@@ -338,7 +338,7 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::ServicePrincipalName => ava.iter().fold(Ok(()), |acc, v| {
+            SyntaxType::SecurityPrincipalName => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_spn() {
                         Ok(())
@@ -714,7 +714,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: true,
                     phantom: false,
                     index: vec![IndexType::Equality],
-                    syntax: SyntaxType::ServicePrincipalName,
+                    syntax: SyntaxType::SecurityPrincipalName,
                 },
             );
             self.attributes.insert(
@@ -1085,7 +1085,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::ServicePrincipalName,
+                    syntax: SyntaxType::SecurityPrincipalName,
                 },
             );
             self.attributes.insert(
