@@ -25,11 +25,11 @@ struct LdapSession {
 }
 
 impl LdapSession {
-    fn new(eventid: &uuid::Uuid) -> Self {
+    fn new(eventid: uuid::Uuid) -> Self {
         LdapSession {
             // We start un-authenticated
             uat: None,
-            eventid: *eventid,
+            eventid,
         }
     }
 }
@@ -43,9 +43,9 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
 ) {
     // This is a connected client session. we need to associate some state to the
     // session
-    let mut session = LdapSession::new(&eventid);
     // Now that we have the session we begin an event loop to process input OR
     // we return.
+    let mut session = LdapSession::new(eventid);
     while let Some(Ok(protomsg)) = r.next().await {
         debug!("Processing LDAP eventid={:?}", session.eventid);
         let uat = session.uat.clone();
