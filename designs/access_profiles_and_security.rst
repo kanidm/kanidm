@@ -13,19 +13,18 @@ will override even if applicable. They should only be created by system access p
 because we have certain requirements to deny certain changes.
 
 Access profiles are stored as entries and are dynamically loaded into a structure that is
-more efficent for use at runtime. Schema and it's transactions are a similar implementation.
+more efficent for use at runtime. Schema and its transactions are a similar implementation.
 
 Search Requirements
 -------------------
 
-A search access profile, must be able to limit the content of a search request and it's
-scoping.
+A search access profile must be able to limit:
 
-A search access profile, must be able to limit the returned set of data from the objects
-visible.
+1. the content of a search request and its scoping.
+2. the returned set of data from the objects visible.
 
 An example is that user Alice should only be able to search for objects where the class
-is person, and where they are a memberOf "visible" group. Alice should only be able to
+is person and the object is a memberOf "visible" group. Alice should only be able to
 see those users displayNames (not their legalName for example), and their public email.
 
 Worded a bit differently. You need permission over the scope of entries, you need to be able
@@ -142,7 +141,7 @@ An example is that user Alice should only be able to delete objects where the me
 Create Requirements
 -------------------
 
-A create profile defines a filtering limit on what content can be created and it's requirements.
+A create profile defines a filtering limit on what content can be created and its requirements.
 
 A create profile defines a limit on what attributes can be created in addition to the filtering
 requirements.
@@ -152,7 +151,7 @@ only name the group - they can not add members to the group.
 
 A content requirement could be something such as the value an attribute can contain must conform to a
 regex, IE, you can create a group of any name, except where the name contains "admin" somewhere
-in it's name. Arguable, this is partially possible with filtering.
+in its name. Arguable, this is partially possible with filtering.
 
 For example, we want to be able to limit the classes that someone *could* create on something
 because classes often are used as a security type.
@@ -329,7 +328,7 @@ user is collected. These then are added to the users requested search as:
 In this manner, the search security is easily applied, as if the targets to conform to one of the
 required search profile filters, the outer And condition is nullified and no results returned.
 
-Once complete, in the translation of the entry -> proto_entry, each access control and it's allowed
+Once complete, in the translation of the entry -> proto_entry, each access control and its allowed
 set of attrs has to be checked to determine what of that entry can be displayed. Consider there are
 three entries, A, B, C. An ACI that allows read of "name" on A, B exists, and a read of "mail" on
 B, C. The correct behaviour is then:
@@ -395,7 +394,7 @@ filter_no_index to the entry to entry. If all of this passes, the create is allo
 A key point, is that there is no union of create aci's - the WHOLE aci must pass, not parts of
 multiple. This means if a control say "allows creating group with member" and "allows creating
 user with name", creating a gorup with name is not allowed - despite your ability to create
-an entry with "name" it's classes don't match. This way, the admin of the service can define
+an entry with "name", its classes don't match. This way, the admin of the service can define
 create controls with really specific intent to how they'll be used, without risk of two
 controls causing un-intended effects (users that are also groups, or allowing values that
 were not intended).

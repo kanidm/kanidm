@@ -530,7 +530,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::RadiusUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SshKey => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::ServicePrincipalName => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
+                    SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::Cid => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
@@ -612,7 +612,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::Credential => Ok(PartialValue::new_credential_tag(value)),
                     SyntaxType::RadiusUtf8String => Ok(PartialValue::new_radius_string()),
                     SyntaxType::SshKey => Ok(PartialValue::new_sshkey_tag_s(value)),
-                    SyntaxType::ServicePrincipalName => {
+                    SyntaxType::SecurityPrincipalName => {
                         PartialValue::new_spn_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid spn syntax".to_string())
                         })

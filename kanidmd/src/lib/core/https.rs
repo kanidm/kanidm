@@ -1005,7 +1005,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     Ok(ProtoAuthState::Denied(reason))
                 }
             }
-            .map(|state| AuthResponse { state, sessionid })
+            .map(|state| AuthResponse { sessionid, state })
         }
         Err(e) => Err(e),
     };
