@@ -41,7 +41,7 @@ You can check the privileged tasks daemon is running with
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
 [client_tools](./client_tools.md#kandim-configuration). 
 
-You can also configure some details of the unixd daemons in /etc/kanidm/unixd.
+You can also configure some unixd specific options with the file /etc/kanidm/unixd.
 
     pam_allowed_login_groups = ["posix_group"]
     default_shell = "/bin/bash"
@@ -102,7 +102,7 @@ When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.c
     passwd: compat kanidm
     group: compat kanidm
 
-You can [create a user](./accounts_and_groups.md#creating-accounts) then [enable posix feature on the user](./accounts_and_groups.md#creating-accounts).
+You can [create a user](./accounts_and_groups.md#creating-accounts) then [enable posix feature on the user](./posix_accounts.md#enabling-posix-attributes-on-accounts).
 
 You can then test that the posix extended user is able to be resolved with:
 
@@ -116,8 +116,9 @@ You can also do the same for groups.
     $ getent group testgroup
     testgroup:x:2439676479:testunix
 
-Remember to also create unix password with something like `kanidm account posix set_password --name idm_admin demo_user`. 
-Otherwise there will be no credential for the account to authenticate. 
+> **HINT** Remember to also create unix password with something like 
+> `kanidm account posix set_password --name idm_admin demo_user`. 
+> Otherwise there will be no credential for the account to authenticate. 
  
 ## PAM
 
@@ -130,11 +131,6 @@ PAM (Pluggable Authentication Modules) is how a unix-like system allows users to
 and be authorised to start interactive sessions. This is configured through a stack of modules
 that are executed in order to evaluate the request. This is done through a series of steps
 where each module may request or reuse authentication token information.
-
-When a service like sudo, sshd, su etc. wants to authenticate someone, it opens the pam.d config of that service, 
-then performs authentication according to the modules defined in the pam.d config. For example,
-if you run `ls -al /etc/pam.d /usr/etc/pam.d` in SUSE, you can see the services and their respective pam.d config. 
-
 
 ### Before you start
 
