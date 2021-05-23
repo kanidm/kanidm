@@ -98,7 +98,9 @@ async fn tls_acceptor(
 ) {
     loop {
         match listener.accept().await {
-            Ok((tcpstream, paddr)) => {
+            Ok((tcpstream, client_socket_addr)) => {
+                // Start the event
+                info!("LDAPS Connection from {:?}", &client_socket_addr.ip());
                 // From the parms we need to create an SslContext.
                 let mut tlsstream = match Ssl::new(tls_parms.context())
                     .and_then(|tls_obj| SslStream::new(tls_obj, tcpstream))
@@ -116,7 +118,7 @@ async fn tls_acceptor(
                 let (r, w) = tokio::io::split(tlsstream);
                 let r = FramedRead::new(r, LdapCodec);
                 let w = FramedWrite::new(w, LdapCodec);
-                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
+                tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
             }
             Err(e) => {
                 error!("acceptor error, continuing -> {:?}", e);
@@ -128,12 +130,14 @@ async fn tls_acceptor(
 async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
     loop {
         match listener.accept().await {
-            Ok((tcpstream, paddr)) => {
+            Ok((tcpstream, client_socket_addr)) => {
+                // Start the event
+                info!("LDAP Connection from {:?}", &client_socket_addr.ip());
                 let (r, w) = tokio::io::split(tcpstream);
                 let r = FramedRead::new(r, LdapCodec);
                 let w = FramedWrite::new(w, LdapCodec);
                 // Let it rip.
-                tokio::spawn(client_process(r, w, paddr, qe_r_ref));
+                tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
             }
             Err(e) => {
                 error!("acceptor error, continuing -> {:?}", e);
