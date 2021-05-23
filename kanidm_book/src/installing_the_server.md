@@ -107,7 +107,7 @@ for example) then you can validate with this command.
 If these verifications pass you can now use these certificates with Kanidm. To put the certificates
 in place you can use a shell container that mounts the volume such as:
 
-    docker run --rm -i -t -v kanidmd:/data -v /my/host/path/work:/work opensuse/leap:latest cp /work/* /data/
+    docker run --rm -i -t -v kanidmd:/data -v /my/host/path/work:/work opensuse/leap:latest /bin/sh -c "cp /work/* /data/"
 
 OR for a shell into the volume:
 

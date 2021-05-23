@@ -101,4 +101,16 @@ Additionally, it's worth noting that most of these other database would violate 
 desires to keep the language as Rust and may require external configuration or daemons which
 may not be possible to test.
 
+## How PAM/nsswitch Work
 
+Linux and BSD clients can resolve identities from Kanidm into accounts via PAM and nsswitch. 
+
+Name Service Switch (NSS) is used for connecting the computers with different data sources to resolve name-service information.
+By adding the nsswitch libraries to /etc/nsswitch.conf, we are telling NSS to lookup password info and group identities in Kanidm:
+
+    passwd: compat kanidm
+    group: compat kanidm
+
+When a service like sudo, sshd, su etc. wants to authenticate someone, it opens the pam.d config of that service, 
+then performs authentication according to the modules defined in the pam.d config. 
+For example, if you run `ls -al /etc/pam.d /usr/etc/pam.d` in SUSE, you can see the services and their respective pam.d config. 

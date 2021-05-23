@@ -39,7 +39,9 @@ You can check the privileged tasks daemon is running with
 > it provides supporting kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-client_tools. You can also configure some details of the unixd daemons in /etc/kanidm/unixd.
+[client_tools](./client_tools.md#kandim-configuration). 
+
+You can also configure some unixd specific options with the file /etc/kanidm/unixd.
 
     pam_allowed_login_groups = ["posix_group"]
     default_shell = "/bin/bash"
@@ -100,7 +102,9 @@ When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.c
     passwd: compat kanidm
     group: compat kanidm
 
-You can then test that a posix extended user is able to be resolved with:
+You can [create a user](./accounts_and_groups.md#creating-accounts) then [enable posix feature on the user](./posix_accounts.md#enabling-posix-attributes-on-accounts).
+
+You can then test that the posix extended user is able to be resolved with:
 
     $ getent passwd <account name>
     $ getent passwd testunix
@@ -112,6 +116,10 @@ You can also do the same for groups.
     $ getent group testgroup
     testgroup:x:2439676479:testunix
 
+> **HINT** Remember to also create unix password with something like 
+> `kanidm account posix set_password --name idm_admin demo_user`. 
+> Otherwise there will be no credential for the account to authenticate. 
+ 
 ## PAM
 
 > **WARNING:** Modifications to pam configuration *may* leave your system in a state
