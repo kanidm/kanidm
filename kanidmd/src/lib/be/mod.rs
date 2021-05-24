@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
-use crate::event::EventLimits;
+use crate::identity::Limits;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::value::Value;
 use concread::cowcell::*;

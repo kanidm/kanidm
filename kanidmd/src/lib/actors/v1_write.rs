@@ -19,7 +19,7 @@ use kanidm_proto::v1::OperationError;
 
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::delayed::DelayedAction;
-use crate::idm::server::IdmServer;
+use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::utils::duration_from_epoch_now;
 
 use kanidm_proto::v1::Modify as ProtoModify;
@@ -62,7 +62,7 @@ impl QueryServerWriteV1 {
         &self,
         audit: &mut AuditScope,
         audit_tag: &str,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: &str,
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
@@ -105,7 +105,7 @@ impl QueryServerWriteV1 {
         &self,
         audit: &mut AuditScope,
         audit_tag: &str,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: &str,
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
@@ -146,7 +146,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_create(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         req: CreateRequest,
         eventid: Uuid,
     ) -> Result<OperationResponse, OperationError> {
@@ -191,7 +191,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_modify(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         req: ModifyRequest,
         eventid: Uuid,
     ) -> Result<OperationResponse, OperationError> {
@@ -235,7 +235,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_delete(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         req: DeleteRequest,
         eventid: Uuid,
     ) -> Result<OperationResponse, OperationError> {
@@ -279,7 +279,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_internaldelete(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
@@ -319,7 +319,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_reviverecycled(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
@@ -360,7 +360,7 @@ impl QueryServerWriteV1 {
     // === IDM native types for modifications
     pub async fn handle_credentialset(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         appid: Option<String>,
         sac: SetCredentialRequest,
@@ -569,7 +569,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_idmaccountsetpassword(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         cleartext: String,
         eventid: Uuid,
     ) -> Result<OperationResponse, OperationError> {
@@ -581,6 +581,17 @@ impl QueryServerWriteV1 {
             "actors::v1_write::handle<IdmAccountSetPasswordMessage>",
             || {
                 idms_prox_write.expire_mfareg_sessions(ct);
+
+                let event = idms_prox_write.validate_and_parse_uat(
+                    &mut audit, uat.as_ref(), ct)
+                    .and_then(|uat| idms_prox_write.
+                        process_uat_to_event(&mut audit, &uat)
+                    )
+                .map_err(|e| {
+                    ladmin_error!(audit, "Failed to begin idm_account_set_password: {:?}", e);
+                    e
+                })?;
+
 
                 let pce = PasswordChangeEvent::from_idm_account_set_password(
                     &mut audit,
@@ -608,7 +619,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_regenerateradius(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<String, OperationError> {
@@ -658,7 +669,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_purgeattribute(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         attr: String,
         filter: Filter<FilterInvalid>,
@@ -710,7 +721,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_removeattributevalues(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         attr: String,
         values: Vec<String>,
@@ -770,7 +781,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_appendattribute(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         attr: String,
         values: Vec<String>,
@@ -805,7 +816,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_setattribute(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         attr: String,
         values: Vec<String>,
@@ -843,7 +854,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_sshkeycreate(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         tag: String,
         key: String,
@@ -874,7 +885,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_idmaccountpersonextend(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
@@ -912,7 +923,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_idmaccountunixextend(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         ux: AccountUnixExtend,
         eventid: Uuid,
@@ -965,7 +976,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_idmgroupunixextend(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         gx: GroupUnixExtend,
         eventid: Uuid,
@@ -1006,7 +1017,7 @@ impl QueryServerWriteV1 {
 
     pub async fn handle_idmaccountunixsetcred(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         cred: String,
         eventid: Uuid,

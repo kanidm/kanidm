@@ -71,7 +71,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_search(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         req: SearchRequest,
         eventid: Uuid,
     ) -> Result<SearchResponse, OperationError> {
@@ -161,7 +161,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_whoami(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
         let mut audit = AuditScope::new("whoami", eventid, self.log_level);
@@ -224,7 +224,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsearch(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         filter: Filter<FilterInvalid>,
         attrs: Option<Vec<String>>,
         eventid: Uuid,
@@ -269,7 +269,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsearchrecycled(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         filter: Filter<FilterInvalid>,
         attrs: Option<Vec<String>>,
         eventid: Uuid,
@@ -315,7 +315,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalradiusread(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
@@ -375,7 +375,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalradiustokenread(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<RadiusAuthToken, OperationError> {
@@ -427,7 +427,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalunixusertokenread(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixUserToken, OperationError> {
@@ -481,7 +481,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalunixgrouptokenread(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixGroupToken, OperationError> {
@@ -532,7 +532,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsshkeyread(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
@@ -596,7 +596,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_internalsshkeytagread(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         tag: String,
         eventid: Uuid,
@@ -668,7 +668,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_idmaccountunixauth(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         cred: String,
         eventid: Uuid,
@@ -719,7 +719,7 @@ impl QueryServerReadV1 {
 
     pub async fn handle_idmcredentialstatus(
         &self,
-        uat: Option<UserAuthToken>,
+        uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {

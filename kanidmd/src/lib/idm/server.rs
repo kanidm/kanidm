@@ -30,6 +30,8 @@ use kanidm_proto::v1::SetCredentialResponse;
 use kanidm_proto::v1::UnixGroupToken;
 use kanidm_proto::v1::UnixUserToken;
 
+use bundy::hs512::HS512;
+
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
 };
@@ -75,6 +77,7 @@ pub struct IdmServer {
     // Our webauthn verifier/config
     webauthn: Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
+    uat_bundy_hmac: Arc<CowCell<HS512>>,
 }
 
 pub struct IdmServerAuthTransaction<'a> {
@@ -93,12 +96,14 @@ pub struct IdmServerAuthTransaction<'a> {
     async_tx: Sender<DelayedAction>,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    uat_bundy_hmac: CowCellReadTxn<HS512>,
 }
 
 pub struct IdmServerProxyReadTransaction<'a> {
     // This contains read-only methods, like getting users, groups
     // and other structured content.
     pub qs_read: QueryServerReadTransaction<'a>,
+    uat_bundy_hmac: CowCellReadTxn<HS512>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -111,6 +116,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
+    uat_bundy_hmac: CowCellWriteTxn<'a, HS512>,
 }
 
 pub struct IdmServerDelayed {
@@ -143,6 +149,16 @@ impl IdmServer {
                 qs_read.get_password_badlist(au)?,
             )
         };
+
+        let bundy_handle = HS512::generate_key()
+            .and_then(|bundy_key| {
+                HS512::from_str(bundy_key)
+            })
+        .map_err(|e| {
+            ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
+            OperationError::InvalidState
+        })?;
+        let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
         // Check that it gels with our origin.
         Url::parse(origin.as_str())
@@ -185,6 +201,7 @@ impl IdmServer {
                 async_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
+                uat_bundy_hmac,
             },
             IdmServerDelayed { async_rx },
         ))
@@ -215,6 +232,7 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
+            uat_bundy_hmac: self.uat_bundy_hmac.read(),
         }
     }
 
@@ -226,6 +244,7 @@ impl IdmServer {
     pub async fn proxy_read_async(&self, ts: Duration) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async(ts).await,
+            uat_bundy_hmac: self.uat_bundy_hmac.read(),
         }
     }
 
@@ -247,6 +266,7 @@ impl IdmServer {
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.write(),
+            uat_bundy_hmac: self.uat_bundy_hmac.write(),
         }
     }
 
@@ -294,6 +314,23 @@ impl IdmServerDelayed {
                 None => return,
             }
         }
+    }
+}
+
+pub trait IdmServerTransaction<'a> {
+    fn get_uat_bundy_txn(&self) -> &HS512;
+
+    fn validate_and_parse_uat(&self,
+        audit: &mut AuditScope,
+        token: Option<&str>, ct: Duration) -> Result<UserAuthToken, OperationError> {
+        unimplemented!();
+    }
+
+    fn process_uat_to_identity(&self,
+        audit: &mut AuditScope,
+        uat: &UserAuthToken)
+    -> Result<Identity, OperationError> {
+        unimplemented!();
     }
 }
 
@@ -775,6 +812,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
     }
 }
 
+impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
+    fn get_uat_bundy_txn(&self) -> &HS512 {
+        self.uat_bundy_hmac.deref()
+    }
+}
+
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn get_radiusauthtoken(
         &mut self,
@@ -849,6 +892,12 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             })?;
 
         account.to_credentialstatus()
+    }
+}
+
+impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
+    fn get_uat_bundy_txn(&self) -> &HS512 {
+        self.uat_bundy_hmac.deref()
     }
 }
 
@@ -3245,6 +3294,17 @@ mod tests {
 
             check_admin_password(idms, au, TEST_PASSWORD);
             // All done!
+        })
+    }
+
+    #[test]
+    fn test_idm_bundy_uat_key_rollover() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let ct = duration_from_epoch_now();
+            unimplemented!();
         })
     }
 }

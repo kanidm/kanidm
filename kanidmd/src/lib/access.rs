@@ -33,8 +33,9 @@ use crate::prelude::*;
 use crate::value::PartialValue;
 
 use crate::event::{
-    CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ModifyEvent, SearchEvent,
+    CreateEvent, DeleteEvent, ModifyEvent, SearchEvent,
 };
+use crate::identity::{IdentType, IdentityId};
 
 // const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
 // const ACP_RELATED_SEARCH_CACHE_LOCAL: usize = 16;
@@ -384,7 +385,7 @@ pub struct AccessControls {
     inner: CowCell<AccessControlsInner>,
     // acp_related_search_cache: ARCache<Uuid, Vec<Uuid>>,
     acp_resolve_filter_cache:
-        ARCache<(EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>,
+        ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
 }
 
 pub trait AccessControlsTransaction<'a> {
@@ -396,7 +397,7 @@ pub trait AccessControlsTransaction<'a> {
     #[allow(clippy::mut_from_ref)]
     fn get_acp_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
     fn search_related_acp<'b>(
         &'b self,
@@ -494,12 +495,12 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         // If this is an internal search, return our working set.
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
-            EventOrigin::Internal => {
+            IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(entries);
             }
-            EventOrigin::User(e) => &e,
+            IdentType::User(e) => &e,
         };
         lperf_segment!(audit, "access::search_filter_entries", || {
             ltrace!(
@@ -612,7 +613,7 @@ pub trait AccessControlsTransaction<'a> {
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         // If this is an internal search, do nothing. This can occur in some test cases ONLY
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
-            EventOrigin::Internal => {
+            IdentType::Internal => {
                 if cfg!(test) {
                     ltrace!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
                     // In tests we just push everything back.
@@ -628,7 +629,7 @@ pub trait AccessControlsTransaction<'a> {
                     return Ok(Vec::new());
                 }
             }
-            EventOrigin::User(e) => &e,
+            IdentType::User(e) => &e,
         };
         lperf_segment!(audit, "access::search_filter_entry_attributes", || {
             /*
@@ -775,12 +776,12 @@ pub trait AccessControlsTransaction<'a> {
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
-            EventOrigin::Internal => {
+            IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
-            EventOrigin::User(e) => &e,
+            IdentType::User(e) => &e,
         };
         lperf_segment!(audit, "access::modify_allow_operation", || {
             ltrace!(audit, "Access check for modify event: {}", me.event);
@@ -977,12 +978,12 @@ pub trait AccessControlsTransaction<'a> {
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
-            EventOrigin::Internal => {
+            IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
-            EventOrigin::User(e) => &e,
+            IdentType::User(e) => &e,
         };
         lperf_segment!(audit, "access::create_allow_operation", || {
             ltrace!(audit, "Access check for create event: {}", ce.event);
@@ -1144,12 +1145,12 @@ pub trait AccessControlsTransaction<'a> {
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
-            EventOrigin::Internal => {
+            IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
-            EventOrigin::User(e) => &e,
+            IdentType::User(e) => &e,
         };
         lperf_segment!(audit, "access::delete_allow_operation", || {
             ltrace!(audit, "Access check for delete event: {}", de.event);
@@ -1249,7 +1250,7 @@ pub struct AccessControlsWriteTransaction<'a> {
     // acp_related_search_cache_wr: ARCacheWriteTxn<'a, Uuid, Vec<Uuid>>,
     // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
     acp_resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 impl<'a> AccessControlsWriteTransaction<'a> {
@@ -1344,14 +1345,14 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsWriteTransaction<'a> {
 
     fn get_acp_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
     {
         unsafe {
             let mptr = self.acp_resolve_filter_cache.as_ptr();
             &mut (*mptr)
                 as &mut ARCacheReadTxn<
                     'a,
-                    (EventOriginId, Filter<FilterValid>),
+                    (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
                 >
         }
@@ -1366,7 +1367,7 @@ pub struct AccessControlsReadTransaction<'a> {
     inner: CowCellReadTxn<AccessControlsInner>,
     // acp_related_search_cache: Cell<ARCacheReadTxn<'a, Uuid, Vec<Uuid>>>,
     acp_resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
@@ -1397,14 +1398,14 @@ impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
 
     fn get_acp_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
     {
         unsafe {
             let mptr = self.acp_resolve_filter_cache.as_ptr();
             &mut (*mptr)
                 as &mut ARCacheReadTxn<
                     'a,
-                    (EventOriginId, Filter<FilterValid>),
+                    (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
                 >
         }

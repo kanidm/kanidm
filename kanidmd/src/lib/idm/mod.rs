@@ -8,7 +8,6 @@ pub(crate) mod mfareg;
 pub(crate) mod radius;
 pub mod server;
 pub(crate) mod unix;
-// mod identity;
 
 use kanidm_proto::v1::{AuthAllowed, AuthMech, UserAuthToken};
 
