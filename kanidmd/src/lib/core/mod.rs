@@ -95,12 +95,7 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(
-        audit,
-        query_server.clone(),
-        config.origin.clone(),
-        duration_from_epoch_now(),
-    )?;
+    let (idms, idms_delayed) = IdmServer::new(audit, query_server.clone(), config.origin.clone())?;
 
     Ok((query_server, idms, idms_delayed))
 }
@@ -378,7 +373,7 @@ pub fn verify_server_core(config: &Configuration) {
     let server = QueryServer::new(be, schema_mem);
 
     // Run verifications.
-    let r = server.verify(&mut audit, duration_from_epoch_now());
+    let r = server.verify(&mut audit);
 
     audit.write_log();
 

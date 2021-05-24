@@ -64,7 +64,6 @@ pub struct QueryServer {
 }
 
 pub struct QueryServerReadTransaction<'a> {
-    pub(crate) ts: Duration,
     be_txn: BackendReadTransaction<'a>,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
@@ -79,7 +78,6 @@ pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     d_uuid: Uuid,
     cid: Cid,
-    pub(crate) ts: Duration,
     be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
     accesscontrols: AccessControlsWriteTransaction<'a>,
@@ -866,11 +864,11 @@ impl QueryServer {
     }
 
     #[cfg(test)]
-    pub fn read(&self, ts: Duration) -> QueryServerReadTransaction {
-        task::block_on(self.read_async(ts))
+    pub fn read(&self) -> QueryServerReadTransaction {
+        task::block_on(self.read_async())
     }
 
-    pub async fn read_async(&self, ts: Duration) -> QueryServerReadTransaction<'_> {
+    pub async fn read_async(&self) -> QueryServerReadTransaction<'_> {
         // We need to ensure a db conn will be available
         #[allow(clippy::expect_used)]
         let db_ticket = self
@@ -880,7 +878,6 @@ impl QueryServer {
             .expect("unable to aquire db_ticket for qsr");
 
         QueryServerReadTransaction {
-            ts,
             be_txn: self.be.read(),
             schema: self.schema.read(),
             accesscontrols: self.accesscontrols.read(),
@@ -929,7 +926,6 @@ impl QueryServer {
             committed: false,
             d_uuid: self.d_uuid,
             cid,
-            ts,
             be_txn,
             schema: schema_write,
             accesscontrols: self.accesscontrols.write(),
@@ -1024,12 +1020,8 @@ impl QueryServer {
         Ok(())
     }
 
-    pub fn verify(
-        &self,
-        audit: &mut AuditScope,
-        ct: Duration,
-    ) -> Vec<Result<(), ConsistencyError>> {
-        let r_txn = task::block_on(self.read_async(ct));
+    pub fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+        let r_txn = task::block_on(self.read_async());
         r_txn.verify(audit)
     }
 }

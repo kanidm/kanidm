@@ -39,8 +39,8 @@ pub struct LdapServer {
 
 impl LdapServer {
     pub fn new(audit: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
-        let ct = duration_from_epoch_now();
-        let idms_prox_read = task::block_on(idms.proxy_read_async(ct));
+        // let ct = duration_from_epoch_now();
+        let idms_prox_read = task::block_on(idms.proxy_read_async());
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
@@ -200,8 +200,8 @@ impl LdapServer {
 
             ladmin_info!(audit, "LDAP Search Request Attrs -> {:?}", attrs);
 
-            let ct = duration_from_epoch_now();
-            let idm_read = idms.proxy_read_async(ct).await;
+            // let ct = duration_from_epoch_now();
+            let idm_read = idms.proxy_read_async().await;
             lperf_segment!(audit, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
 
@@ -307,7 +307,7 @@ impl LdapServer {
         );
         let ct = duration_from_epoch_now();
 
-        let mut idm_auth = idms.auth_async(ct).await;
+        let mut idm_auth = idms.auth_async().await;
 
         let target_uuid: Uuid = if dn.is_empty() {
             if pw.is_empty() {

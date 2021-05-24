@@ -1798,7 +1798,7 @@ mod tests {
     #[test]
     fn test_filter_depth_limits() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
-            let r_txn = server.read(duration_from_epoch_now());
+            let r_txn = server.read();
 
             let mut inv_proto = ProtoFilter::Pres("class".to_string());
             for _i in 0..(FILTER_DEPTH_MAX + 1) {
@@ -1834,7 +1834,7 @@ mod tests {
     fn test_filter_max_element_limits() {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             const LIMIT: usize = 4;
-            let r_txn = server.read(duration_from_epoch_now());
+            let r_txn = server.read();
 
             let inv_proto = ProtoFilter::And(
                 (0..(LIMIT * 2))
