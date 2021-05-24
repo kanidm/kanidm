@@ -1,21 +1,21 @@
-use crate::prelude::*;
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
+use crate::identity::Limits;
 use crate::idm::AuthState;
+use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
+use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthCredential, AuthMech, AuthRequest, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
     SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
-use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
-use kanidm_proto::v1::OperationError;
 
 use ldap3_server::simple::LdapFilter;
 use std::collections::BTreeSet;
-use std::hash::Hash;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -124,7 +124,7 @@ impl SearchEvent {
     }
 
     pub fn from_internal_recycle_message(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         filter: &Filter<FilterInvalid>,
         attrs: Option<&[String]>,
@@ -157,7 +157,7 @@ impl SearchEvent {
     }
 
     pub fn from_whoami_request(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -175,7 +175,7 @@ impl SearchEvent {
     }
 
     pub fn from_target_uuid_request(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         target_uuid: Uuid,
         qs: &QueryServerReadTransaction,
@@ -299,7 +299,7 @@ impl SearchEvent {
         }
     }
 
-    pub(crate) fn get_limits(&self) -> &EventLimits {
+    pub(crate) fn get_limits(&self) -> &Limits {
         &self.ident.limits
     }
 }
@@ -333,10 +333,7 @@ impl CreateEvent {
         // What is the correct consuming iterator here? Can we
         // even do that?
         match rentries {
-            Ok(entries) => Ok(CreateEvent {
-                ident,
-                entries,
-            }),
+            Ok(entries) => Ok(CreateEvent { ident, entries }),
             Err(e) => Err(e),
         }
     }
@@ -389,7 +386,7 @@ impl ExistsEvent {
         }
     }
 
-    pub(crate) fn get_limits(&self) -> &EventLimits {
+    pub(crate) fn get_limits(&self) -> &Limits {
         &self.ident.limits
     }
 }
@@ -423,7 +420,7 @@ impl DeleteEvent {
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         f: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
@@ -542,7 +539,7 @@ impl ModifyEvent {
     }
 
     pub fn from_internal_parts(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         target_uuid: Uuid,
         ml: &ModifyList<ModifyInvalid>,
@@ -570,7 +567,7 @@ impl ModifyEvent {
     }
 
     pub fn from_target_uuid_attr_purge(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         target_uuid: Uuid,
         attr: &str,
@@ -648,7 +645,7 @@ impl ModifyEvent {
     }
 
     pub fn new_impersonate(
-        ident: &Event,
+        ident: &Identity,
         filter: Filter<FilterValid>,
         filter_orig: Filter<FilterValid>,
         modlist: ModifyList<ModifyValid>,
@@ -760,7 +757,7 @@ impl AuthEventStep {
 
 #[derive(Debug)]
 pub struct AuthEvent {
-    pub ident: Option<Event>,
+    pub ident: Option<Identity>,
     pub step: AuthEventStep,
     // pub sessionid: Option<Uuid>,
 }
@@ -914,7 +911,7 @@ pub struct ReviveRecycledEvent {
 
 impl ReviveRecycledEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,

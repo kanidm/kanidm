@@ -510,9 +510,9 @@ checksum = "63396b8a4b9de3f4fdfb320ab6080762242f66a8ef174c49d8e19b674db4cdbe"
 
 [[package]]
 name = "bundy"
-version = "0.1.0"
+version = "0.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "aca1c1ae2b4de2fcaef88086ef42bd637fdb8ad85e5e91ecde0cec763f1bbe2e"
+checksum = "9e7d51b542bdd93155cae5c48156f17bb64c10cb7dcf8124bce13ca66fd4a107"
 dependencies = [
  "base64 0.13.0",
  "log",

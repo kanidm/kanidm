@@ -32,9 +32,7 @@ use crate::modify::Modify;
 use crate::prelude::*;
 use crate::value::PartialValue;
 
-use crate::event::{
-    CreateEvent, DeleteEvent, ModifyEvent, SearchEvent,
-};
+use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
 use crate::identity::{IdentType, IdentityId};
 
 // const ACP_RELATED_SEARCH_CACHE_MAX: usize = 2048;
@@ -339,9 +337,9 @@ impl AccessControlProfile {
                 OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
             })?;
 
-        let event = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        let receiver_i = Filter::from_rw(audit, &event, &receiver_f, qs).map_err(|e| {
+        let receiver_i = Filter::from_rw(audit, &ident, &receiver_f, qs).map_err(|e| {
             ladmin_error!(audit, "Receiver validation failed {:?}", e);
             e
         })?;
@@ -350,7 +348,7 @@ impl AccessControlProfile {
             OperationError::SchemaViolation(e)
         })?;
 
-        let targetscope_i = Filter::from_rw(audit, &event, &targetscope_f, qs).map_err(|e| {
+        let targetscope_i = Filter::from_rw(audit, &ident, &targetscope_f, qs).map_err(|e| {
             ladmin_error!(audit, "Targetscope validation failed {:?}", e);
             e
         })?;
@@ -457,7 +455,7 @@ pub trait AccessControlsTransaction<'a> {
                         // such that it takes an entry, rather than an event, but that
                         // would create issues in search.
                         match (&acs.acp.receiver).resolve(
-                            &se.event,
+                            &se.ident,
                             None,
                             Some(acp_resolve_filter_cache),
                         ) {
@@ -494,19 +492,19 @@ pub trait AccessControlsTransaction<'a> {
         entries: Vec<Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         // If this is an internal search, return our working set.
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
             IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(entries);
             }
-            IdentType::User(e) => &e,
+            IdentType::User(u) => &u.entry,
         };
         lperf_segment!(audit, "access::search_filter_entries", || {
             ltrace!(
                 audit,
                 "Access check for search (filter) event: {}",
-                se.event
+                se.ident
             );
 
             // First get the set of acps that apply to this receiver
@@ -517,7 +515,7 @@ pub trait AccessControlsTransaction<'a> {
                 .into_iter()
                 .filter_map(|acs| {
                     (&acs.acp.targetscope)
-                        .resolve(&se.event, None, Some(acp_resolve_filter_cache))
+                        .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
                         .map_err(|e| {
                             ladmin_error!(
                                 audit,
@@ -612,7 +610,7 @@ pub trait AccessControlsTransaction<'a> {
         entries: Vec<Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         // If this is an internal search, do nothing. This can occur in some test cases ONLY
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
             IdentType::Internal => {
                 if cfg!(test) {
                     ltrace!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
@@ -629,7 +627,7 @@ pub trait AccessControlsTransaction<'a> {
                     return Ok(Vec::new());
                 }
             }
-            IdentType::User(e) => &e,
+            IdentType::User(u) => &u.entry,
         };
         lperf_segment!(audit, "access::search_filter_entry_attributes", || {
             /*
@@ -642,7 +640,7 @@ pub trait AccessControlsTransaction<'a> {
             ltrace!(
                 audit,
                 "Access check for search (reduce) event: {}",
-                se.event
+                se.ident
             );
             let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
@@ -663,7 +661,7 @@ pub trait AccessControlsTransaction<'a> {
                 .into_iter()
                 .filter_map(|acs| {
                     (&acs.acp.targetscope)
-                        .resolve(&se.event, None, Some(acp_resolve_filter_cache))
+                        .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
                         .map_err(|e| {
                             ladmin_error!(
                                 audit,
@@ -775,16 +773,16 @@ pub trait AccessControlsTransaction<'a> {
         me: &ModifyEvent,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.ident.origin {
             IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
-            IdentType::User(e) => &e,
+            IdentType::User(u) => &u.entry,
         };
         lperf_segment!(audit, "access::modify_allow_operation", || {
-            ltrace!(audit, "Access check for modify event: {}", me.event);
+            ltrace!(audit, "Access check for modify event: {}", me.ident);
 
             // Some useful references we'll use for the remainder of the operation
             let modify_state = self.get_modify();
@@ -811,11 +809,11 @@ pub trait AccessControlsTransaction<'a> {
             let related_acp: Vec<(&AccessControlModify, _)> = modify_state
                 .iter()
                 .filter_map(|acs| {
-                    match (&acs.acp.receiver).resolve(&me.event, None, Some(acp_resolve_filter_cache)) {
+                    match (&acs.acp.receiver).resolve(&me.ident, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => {
                             if rec_entry.entry_match_no_index(&f_res) {
                                 (&acs.acp.targetscope)
-                                    .resolve(&me.event, None, Some(acp_resolve_filter_cache))
+                                    .resolve(&me.ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
                                         ladmin_error!(
                                             audit,
@@ -977,16 +975,16 @@ pub trait AccessControlsTransaction<'a> {
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.ident.origin {
             IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
-            IdentType::User(e) => &e,
+            IdentType::User(u) => &u.entry,
         };
         lperf_segment!(audit, "access::create_allow_operation", || {
-            ltrace!(audit, "Access check for create event: {}", ce.event);
+            ltrace!(audit, "Access check for create event: {}", ce.ident);
 
             // Some useful references we'll use for the remainder of the operation
             let create_state = self.get_create();
@@ -996,11 +994,11 @@ pub trait AccessControlsTransaction<'a> {
             let related_acp: Vec<(&AccessControlCreate, _)> = create_state
                 .iter()
                 .filter_map(|acs| {
-                    match (&acs.acp.receiver).resolve(&ce.event, None, Some(acp_resolve_filter_cache)) {
+                    match (&acs.acp.receiver).resolve(&ce.ident, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => {
                             if rec_entry.entry_match_no_index(&f_res) {
                                 (&acs.acp.targetscope)
-                                    .resolve(&ce.event, None, Some(acp_resolve_filter_cache))
+                                    .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
                                         ladmin_error!(
                                             audit,
@@ -1144,16 +1142,16 @@ pub trait AccessControlsTransaction<'a> {
         de: &DeleteEvent,
         entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.event.origin {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.ident.origin {
             IdentType::Internal => {
                 ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
-            IdentType::User(e) => &e,
+            IdentType::User(u) => &u.entry,
         };
         lperf_segment!(audit, "access::delete_allow_operation", || {
-            ltrace!(audit, "Access check for delete event: {}", de.event);
+            ltrace!(audit, "Access check for delete event: {}", de.ident);
 
             // Some useful references we'll use for the remainder of the operation
             let delete_state = self.get_delete();
@@ -1163,11 +1161,11 @@ pub trait AccessControlsTransaction<'a> {
             let related_acp: Vec<(&AccessControlDelete, _)> = delete_state
                 .iter()
                 .filter_map(|acs| {
-                    match (&acs.acp.receiver).resolve(&de.event, None, Some(acp_resolve_filter_cache)) {
+                    match (&acs.acp.receiver).resolve(&de.ident, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => {
                             if rec_entry.entry_match_no_index(&f_res) {
                                 (&acs.acp.targetscope)
-                                    .resolve(&de.event, None, Some(acp_resolve_filter_cache))
+                                    .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
                                         ladmin_error!(
                                             audit,

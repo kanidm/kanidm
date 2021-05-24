@@ -11,7 +11,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
     AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CreateRequest,
     DeleteRequest, GroupUnixExtend, ModifyRequest, OperationError, SearchRequest,
-    SetCredentialRequest, SingleStringRequest, UserAuthToken,
+    SetCredentialRequest, SingleStringRequest,
 };
 
 use serde::Serialize;
@@ -58,16 +58,17 @@ impl RequestExtensions for tide::Request<AppState> {
                 // Turn it to a &str, and then check the prefix
                 h.as_str().strip_prefix("Bearer ")
             })
-            /*
-            .and_then(|ts| {
-                // Take the token str and attempt to decrypt
-                // Attempt to re-inflate a UAT from bytes.
-                //
-                // NOTE: UAT expiry validation is performed in event.rs!
-                let uat: Option<UserAuthToken> = kref.verify(ts).ok();
-                uat
-            })
-            */
+            .map(|s| s.to_string())
+        /*
+        .and_then(|ts| {
+            // Take the token str and attempt to decrypt
+            // Attempt to re-inflate a UAT from bytes.
+            //
+            // NOTE: UAT expiry validation is performed in event.rs!
+            let uat: Option<UserAuthToken> = kref.verify(ts).ok();
+            uat
+        })
+        */
     }
 
     fn get_current_auth_session_id(&self) -> Option<Uuid> {

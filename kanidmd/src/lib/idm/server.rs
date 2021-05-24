@@ -24,11 +24,11 @@ use crate::idm::delayed::{
 };
 
 use hashbrown::HashSet;
-use kanidm_proto::v1::CredentialStatus;
-use kanidm_proto::v1::RadiusAuthToken;
-use kanidm_proto::v1::SetCredentialResponse;
-use kanidm_proto::v1::UnixGroupToken;
-use kanidm_proto::v1::UnixUserToken;
+use kanidm_proto::v1::{
+    CredentialStatus, RadiusAuthToken, SetCredentialResponse, UnixGroupToken, UnixUserToken,
+    UserAuthToken,
+};
+use std::str::FromStr;
 
 use bundy::hs512::HS512;
 
@@ -151,13 +151,11 @@ impl IdmServer {
         };
 
         let bundy_handle = HS512::generate_key()
-            .and_then(|bundy_key| {
-                HS512::from_str(bundy_key)
-            })
-        .map_err(|e| {
-            ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
-            OperationError::InvalidState
-        })?;
+            .and_then(|bundy_key| HS512::from_str(&bundy_key))
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
+                OperationError::InvalidState
+            })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
         // Check that it gels with our origin.
@@ -318,19 +316,41 @@ impl IdmServerDelayed {
 }
 
 pub trait IdmServerTransaction<'a> {
+    type QsTransactionType: QueryServerTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType;
+
     fn get_uat_bundy_txn(&self) -> &HS512;
 
-    fn validate_and_parse_uat(&self,
+    fn validate_and_parse_uat(
+        &self,
         audit: &mut AuditScope,
-        token: Option<&str>, ct: Duration) -> Result<UserAuthToken, OperationError> {
+        token: Option<&str>,
+        ct: Duration,
+    ) -> Result<UserAuthToken, OperationError> {
+        // Given the token string, validate and recreate the UAT
         unimplemented!();
     }
 
-    fn process_uat_to_identity(&self,
+    fn process_uat_to_identity(
+        &self,
         audit: &mut AuditScope,
-        uat: &UserAuthToken)
-    -> Result<Identity, OperationError> {
+        uat: &UserAuthToken,
+    ) -> Result<Identity, OperationError> {
+        // From a UAT, get the current identity and associated information.
         unimplemented!();
+    }
+}
+
+impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
+    type QsTransactionType = QueryServerReadTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType {
+        &self.qs_read
+    }
+
+    fn get_uat_bundy_txn(&self) -> &HS512 {
+        &*self.uat_bundy_hmac
     }
 }
 
@@ -813,8 +833,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
 }
 
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
+    type QsTransactionType = QueryServerReadTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType {
+        &self.qs_read
+    }
+
     fn get_uat_bundy_txn(&self) -> &HS512 {
-        self.uat_bundy_hmac.deref()
+        &*self.uat_bundy_hmac
     }
 }
 
@@ -827,7 +853,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<RadiusAuthToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &rate.target, &rate.event)
+            .impersonate_search_ext_uuid(au, &rate.target, &rate.ident)
             .and_then(|account_entry| {
                 RadiusAccount::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
@@ -847,7 +873,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<UnixUserToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_uuid(au, &uute.target, &uute.event)
+            .impersonate_search_uuid(au, &uute.target, &uute.ident)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)
             })
@@ -866,7 +892,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<UnixGroupToken, OperationError> {
         let group = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
+            .impersonate_search_ext_uuid(au, &uute.target, &uute.ident)
             .and_then(|e| UnixGroup::try_from_entry_reduced(&e))
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start unix group token {:?}", e);
@@ -882,7 +908,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<CredentialStatus, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &cse.target, &cse.event)
+            .impersonate_search_ext_uuid(au, &cse.target, &cse.ident)
             .and_then(|account_entry| {
                 Account::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
@@ -896,8 +922,14 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 }
 
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
+    type QsTransactionType = QueryServerWriteTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType {
+        &self.qs_write
+    }
+
     fn get_uat_bundy_txn(&self) -> &HS512 {
-        self.uat_bundy_hmac.deref()
+        &*self.uat_bundy_hmac
     }
 }
 
@@ -1023,7 +1055,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 &modlist,
-                &pce.event,
+                &pce.ident,
             )
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
@@ -1114,7 +1146,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 &modlist,
-                &pce.event,
+                &pce.ident,
             )
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
@@ -1232,7 +1264,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
-                &gpe.event,
+                &gpe.ident,
             )
             .map(|_| cleartext)
             .map_err(|e| {
@@ -1271,7 +1303,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
                 &modlist,
                 // Provide the event to impersonate
-                &rrse.event,
+                &rrse.ident,
             )
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
@@ -1289,7 +1321,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let account = self.target_to_account(au, &wre.target)?;
         let sessionid = uuid_from_duration(ct, self.sid);
 
-        let origin = (&wre.event.origin).into();
+        let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
         let (session, next) =
@@ -1309,7 +1341,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         wre: &WebauthnDoRegisterEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = wre.session;
-        let origin = (&wre.event.origin).into();
+        let origin = (&wre.ident.origin).into();
         let webauthn = self.webauthn;
 
         // Regardless of the outcome, we purge this session, so we get it
@@ -1345,7 +1377,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     // Filter as intended (acp)
                     &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
                     &modlist,
-                    &wre.event,
+                    &wre.ident,
                 )
                 .map_err(|e| {
                     ladmin_error!(au, "reg_account_webauthn_complete {:?}", e);
@@ -1385,7 +1417,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
                 &modlist,
-                &rwe.event,
+                &rwe.ident,
             )
             .map_err(|e| {
                 ladmin_error!(au, "remove_account_webauthn {:?}", e);
@@ -1403,7 +1435,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let account = self.target_to_account(au, &gte.target)?;
         let sessionid = uuid_from_duration(ct, self.sid);
 
-        let origin = (&gte.event.origin).into();
+        let origin = (&gte.ident.origin).into();
         let label = gte.label.clone();
         let (session, next) = MfaRegSession::totp_new(origin, account, label).map_err(|e| {
             ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
@@ -1425,7 +1457,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = vte.session;
-        let origin = (&vte.event.origin).into();
+        let origin = (&vte.ident.origin).into();
         let chal = vte.chal;
 
         ltrace!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
@@ -1464,7 +1496,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     // Filter as intended (acp)
                     &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
                     &modlist,
-                    &vte.event,
+                    &vte.ident,
                 )
                 .map_err(|e| {
                     ladmin_error!(au, "verify_account_totp {:?}", e);
@@ -1497,7 +1529,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
                 &modlist,
-                &rte.event,
+                &rte.ident,
             )
             .map_err(|e| {
                 ladmin_error!(au, "remove_account_totp {:?}", e);
@@ -3300,10 +3332,10 @@ mod tests {
     #[test]
     fn test_idm_bundy_uat_key_rollover() {
         run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       idms_delayed: &mut IdmServerDelayed,
-                       au: &mut AuditScope| {
-            let ct = duration_from_epoch_now();
+                       _idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       _au: &mut AuditScope| {
+            // let ct = duration_from_epoch_now();
             unimplemented!();
         })
     }

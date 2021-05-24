@@ -1,10 +1,14 @@
 // Contains a structure representing the current authenticated
 // identity (or anonymous, or admin, both of which are in mem).
 
+use crate::prelude::*;
+use kanidm_proto::v1::UserAuthToken;
+use std::hash::Hash;
+
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event
 /// as they are derived from the userAuthToken based on that individual session
-pub(crate) struct Limits {
+pub struct Limits {
     pub unindexed_allow: bool,
     pub search_max_results: usize,
     pub search_max_filter_test: usize,
@@ -32,12 +36,14 @@ impl Limits {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct IdentUser {
-    entry: Entry<EntrySealed, EntryCommitted>,
+    pub entry: Entry<EntrySealed, EntryCommitted>,
     // IpAddr?
     // Other metadata?
 }
 
+#[derive(Debug, Clone)]
 pub enum IdentType {
     User(IdentUser),
     Internal,
@@ -55,28 +61,28 @@ impl From<&IdentType> for IdentityId {
     fn from(idt: &IdentType) -> Self {
         match idt {
             IdentType::Internal => IdentityId::Internal,
-            IdentType::User(e) => IdentityId::User(*e.get_uuid()),
+            IdentType::User(u) => IdentityId::User(*u.entry.get_uuid()),
         }
     }
 }
 
-
+#[derive(Debug, Clone)]
 pub struct Identity {
-    pub ident: IdentType,
+    pub origin: IdentType,
     pub(crate) limits: Limits,
 }
 
 impl std::fmt::Display for Identity {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self.ident {
+        match &self.origin {
             IdentType::Internal => write!(f, "Internal"),
-            IdentType::User(e) => {
-                let nv = e.get_uuid2spn();
+            IdentType::User(u) => {
+                let nv = u.entry.get_uuid2spn();
                 write!(
                     f,
                     "User( {}, {} ) ",
                     nv.to_proto_string_clone(),
-                    e.get_uuid().to_hyphenated_ref()
+                    u.entry.get_uuid().to_hyphenated_ref()
                 )
             }
         }
@@ -103,7 +109,7 @@ impl Identity {
             return Err(OperationError::SessionExpired);
         }
 
-        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
+        let entry = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_ro_uat failed {:?}", e);
             e
         })?;
@@ -114,8 +120,8 @@ impl Identity {
         // to proceed
 
         let limits = Limits::from_uat(uat);
-        Ok(Event {
-            origin: IdentType::User(e),
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry }),
             limits,
         })
     }
@@ -139,7 +145,7 @@ impl Identity {
             return Err(OperationError::SessionExpired);
         }
 
-        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
+        let entry = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
             ladmin_error!(audit, "from_rw_uat failed {:?}", e);
             e
         })?;
@@ -150,8 +156,8 @@ impl Identity {
         // to proceed
 
         let limits = Limits::from_uat(uat);
-        Ok(Event {
-            origin: IdentType::User(e),
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry }),
             limits,
         })
     }
@@ -164,9 +170,9 @@ impl Identity {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_entry(e: Entry<EntrySealed, EntryCommitted>) -> Self {
-        Event {
-            origin: IdentType::User(e),
+    pub fn from_impersonate_entry(entry: Entry<EntrySealed, EntryCommitted>) -> Self {
+        Identity {
+            origin: IdentType::User(IdentUser { entry }),
             limits: Limits::unlimited(),
         }
     }
@@ -192,11 +198,11 @@ impl Identity {
     pub fn get_uuid(&self) -> Option<Uuid> {
         match &self.origin {
             IdentType::Internal => None,
-            IdentType::User(e) => Some(*e.get_uuid()),
+            IdentType::User(u) => Some(*u.entry.get_uuid()),
         }
     }
 
-    pub fn get_event_origin_id(&self) -> EventOriginId {
-        IdentType::from(&self.origin)
+    pub fn get_event_origin_id(&self) -> IdentityId {
+        IdentityId::from(&self.origin)
     }
 }

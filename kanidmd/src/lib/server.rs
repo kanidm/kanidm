@@ -21,10 +21,10 @@ use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWrit
 use crate::prelude::*;
 // We use so many, we just import them all ...
 use crate::event::{
-    CreateEvent, DeleteEvent, Event, EventOrigin, EventOriginId, ExistsEvent, ModifyEvent,
-    ReviveRecycledEvent, SearchEvent,
+    CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
 };
 use crate::filter::{Filter, FilterInvalid, FilterValid, FilterValidResolved};
+use crate::identity::IdentityId;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::plugins::Plugins;
 use crate::repl::cid::Cid;
@@ -60,7 +60,7 @@ pub struct QueryServer {
     db_tickets: Arc<Semaphore>,
     write_ticket: Arc<Semaphore>,
     resolve_filter_cache:
-        Arc<ARCache<(EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+        Arc<ARCache<(IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub struct QueryServerReadTransaction<'a> {
@@ -72,7 +72,7 @@ pub struct QueryServerReadTransaction<'a> {
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub struct QueryServerWriteTransaction<'a> {
@@ -93,7 +93,7 @@ pub struct QueryServerWriteTransaction<'a> {
     _db_ticket: SemaphorePermit<'a>,
     _write_ticket: SemaphorePermit<'a>,
     resolve_filter_cache:
-        Cell<ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
+        Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
 pub(crate) struct ModifyPartial<'a> {
@@ -127,7 +127,7 @@ pub trait QueryServerTransaction<'a> {
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>;
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
@@ -169,10 +169,10 @@ pub trait QueryServerTransaction<'a> {
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(audit, "server::search", || {
-            if se.event.is_internal() {
+            if se.ident.is_internal() {
                 ltrace!(audit, "search: internal filter -> {:?}", se.filter);
             } else {
-                lsecurity!(audit, "search initiator: -> {}", se.event);
+                lsecurity!(audit, "search initiator: -> {}", se.ident);
                 ladmin_info!(audit, "search: external filter -> {:?}", se.filter);
             }
 
@@ -192,7 +192,7 @@ pub trait QueryServerTransaction<'a> {
             // Now resolve all references and indexes.
             let vfr = lperf_trace_segment!(audit, "server::search<filter_resolve>", || {
                 se.filter
-                    .resolve(&se.event, Some(idxmeta), Some(resolve_filter_cache))
+                    .resolve(&se.ident, Some(idxmeta), Some(resolve_filter_cache))
             })
             .map_err(|e| {
                 ladmin_error!(audit, "search filter resolve failure {:?}", e);
@@ -232,7 +232,7 @@ pub trait QueryServerTransaction<'a> {
 
             let vfr = ee
                 .filter
-                .resolve(&ee.event, Some(idxmeta), Some(resolve_filter_cache))
+                .resolve(&ee.ident, Some(idxmeta), Some(resolve_filter_cache))
                 .map_err(|e| {
                     ladmin_error!(audit, "Failed to resolve filter {:?}", e);
                     e
@@ -333,7 +333,7 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         lperf_segment!(audit, "server::internal_search_valid", || {
             let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
@@ -347,7 +347,7 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
         self.search_ext(audit, &se)
@@ -359,7 +359,7 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
@@ -375,7 +375,7 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         lperf_segment!(audit, "server::internal_search_ext_valid", || {
             let f_valid = filter
@@ -426,7 +426,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
-        event: &Event,
+        event: &Identity,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
         lperf_segment!(audit, "server::internal_search_ext_uuid", || {
             let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
@@ -450,7 +450,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
-        event: &Event,
+        event: &Identity,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         lperf_segment!(audit, "server::internal_search_uuid", || {
             let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
@@ -746,14 +746,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
 
     fn get_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
     {
         unsafe {
             let mptr = self.resolve_filter_cache.as_ptr();
             &mut (*mptr)
                 as &mut ARCacheReadTxn<
                     'a,
-                    (EventOriginId, Filter<FilterValid>),
+                    (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
                 >
         }
@@ -819,14 +819,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 
     fn get_resolve_filter_cache(
         &self,
-    ) -> &mut ARCacheReadTxn<'a, (EventOriginId, Filter<FilterValid>), Filter<FilterValidResolved>>
+    ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>
     {
         unsafe {
             let mptr = self.resolve_filter_cache.as_ptr();
             &mut (*mptr)
                 as &mut ARCacheReadTxn<
                     'a,
-                    (EventOriginId, Filter<FilterValid>),
+                    (IdentityId, Filter<FilterValid>),
                     Filter<FilterValidResolved>,
                 >
         }
@@ -1040,8 +1040,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // The create event is a raw, read only representation of the request
             // that was made to us, including information about the identity
             // performing the request.
-            if !ce.event.is_internal() {
-                lsecurity!(audit, "create initiator: -> {}", ce.event);
+            if !ce.ident.is_internal() {
+                lsecurity!(audit, "create initiator: -> {}", ce.ident);
             }
 
             // Log the request
@@ -1156,7 +1156,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // We are complete, finalise logging and return
 
-            if ce.event.is_internal() {
+            if ce.ident.is_internal() {
                 ltrace!(audit, "Create operation success");
             } else {
                 ladmin_info!(audit, "Create operation success");
@@ -1174,8 +1174,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // In this case we need a search, but not INTERNAL to keep the same
             // associated credentials.
             // We only need to retrieve uuid though ...
-            if !de.event.is_internal() {
-                lsecurity!(audit, "delete initiator: -> {}", de.event);
+            if !de.ident.is_internal() {
+                lsecurity!(audit, "delete initiator: -> {}", de.ident);
             }
 
             // Now, delete only what you can see
@@ -1183,7 +1183,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 audit,
                 de.filter.clone(),
                 de.filter_orig.clone(),
-                &de.event,
+                &de.ident,
             ) {
                 Ok(results) => results,
                 Err(e) => {
@@ -1290,7 +1290,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // Send result
-            if de.event.is_internal() {
+            if de.ident.is_internal() {
                 ltrace!(audit, "Delete operation success");
             } else {
                 ladmin_info!(audit, "Delete operation success");
@@ -1420,7 +1420,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 audit,
                 re.filter.clone(),
                 re.filter.clone(),
-                &re.event,
+                &re.ident,
             )?;
 
             let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
@@ -1458,7 +1458,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 re.filter.clone(),
                 re.filter.clone(),
                 m_valid,
-                &re.event,
+                &re.ident,
             )?;
             // If and only if that succeeds, apply the direct membership modifications
             // if possible.
@@ -1484,8 +1484,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Get the candidates.
             // Modify applies a modlist to a filter, so we need to internal search
             // then apply.
-            if !me.event.is_internal() {
-                lsecurity!(audit, "modify initiator: -> {}", me.event);
+            if !me.ident.is_internal() {
+                lsecurity!(audit, "modify initiator: -> {}", me.ident);
             }
 
             // Validate input.
@@ -1507,7 +1507,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 audit,
                 me.filter.clone(),
                 me.filter_orig.clone(),
-                &me.event,
+                &me.ident,
             ) {
                 Ok(results) => results,
                 Err(e) => {
@@ -1517,23 +1517,20 @@ impl<'a> QueryServerWriteTransaction<'a> {
             };
 
             if pre_candidates.is_empty() {
-                match me.event.origin {
-                    EventOrigin::Internal => {
-                        ltrace!(
-                            audit,
-                            "modify: no candidates match filter ... continuing {:?}",
-                            me.filter
-                        );
-                        return Ok(None);
-                    }
-                    _ => {
-                        lrequest_error!(
-                            audit,
-                            "modify: no candidates match filter, failure {:?}",
-                            me.filter
-                        );
-                        return Err(OperationError::NoMatchingEntries);
-                    }
+                if me.ident.is_internal() {
+                    ltrace!(
+                        audit,
+                        "modify: no candidates match filter ... continuing {:?}",
+                        me.filter
+                    );
+                    return Ok(None);
+                } else {
+                    lrequest_error!(
+                        audit,
+                        "modify: no candidates match filter, failure {:?}",
+                        me.filter
+                    );
+                    return Err(OperationError::NoMatchingEntries);
                 }
             };
 
@@ -1667,7 +1664,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             );
 
             // return
-            if me.event.is_internal() {
+            if me.ident.is_internal() {
                 ltrace!(audit, "Modify operation success");
             } else {
                 ladmin_info!(audit, "Modify operation success");
@@ -1935,7 +1932,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         m_valid: ModifyList<ModifyValid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<(), OperationError> {
         let me = ModifyEvent::new_impersonate(event, f_valid, f_intent_valid, m_valid);
         self.modify(audit, &me)
@@ -1947,7 +1944,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         filter: &Filter<FilterInvalid>,
         filter_intent: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<(), OperationError> {
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             ladmin_error!(audit, "filter Schema Invalid {:?}", e);
@@ -1970,7 +1967,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         filter: &Filter<FilterInvalid>,
         filter_intent: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
-        event: &Event,
+        event: &Identity,
     ) -> Result<ModifyEvent, OperationError> {
         let f_valid = filter.validate(self.get_schema()).map_err(|e| {
             ladmin_error!(audit, "filter Schema Invalid {:?}", e);

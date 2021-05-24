@@ -2,7 +2,7 @@ use crate::prelude::*;
 
 use uuid::Uuid;
 
-use kanidm_proto::v1::{OperationError, UserAuthToken};
+use kanidm_proto::v1::OperationError;
 use webauthn_rs::proto::RegisterPublicKeyCredential;
 
 pub struct PasswordChangeEvent {
@@ -23,12 +23,12 @@ impl PasswordChangeEvent {
     }
 
     pub fn from_idm_account_set_password(
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         ident: Identity,
         cleartext: String,
-        qs: &QueryServerWriteTransaction,
+        // qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let u = e.get_uuid().ok_or(OperationError::InvalidState)?;
+        let u = ident.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
             ident,
@@ -39,8 +39,8 @@ impl PasswordChangeEvent {
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         cleartext: String,
@@ -72,8 +72,8 @@ impl UnixPasswordChangeEvent {
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         cleartext: String,
@@ -95,8 +95,8 @@ pub struct GeneratePasswordEvent {
 
 impl GeneratePasswordEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         appid: Option<String>,
@@ -117,8 +117,8 @@ pub struct RegenerateRadiusSecretEvent {
 
 impl RegenerateRadiusSecretEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -141,8 +141,8 @@ pub struct RadiusAuthTokenEvent {
 
 impl RadiusAuthTokenEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -151,7 +151,7 @@ impl RadiusAuthTokenEvent {
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Identity::from_internal();
+        let ident = Identity::from_internal();
 
         RadiusAuthTokenEvent { ident, target }
     }
@@ -165,8 +165,8 @@ pub struct UnixUserTokenEvent {
 
 impl UnixUserTokenEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -189,8 +189,8 @@ pub struct UnixGroupTokenEvent {
 
 impl UnixGroupTokenEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -231,8 +231,7 @@ impl UnixUserAuthEvent {
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        _audit: &mut AuditScope,
         ident: Identity,
         target: Uuid,
         cleartext: String,
@@ -254,8 +253,8 @@ pub struct GenerateTotpEvent {
 
 impl GenerateTotpEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         label: String,
@@ -289,8 +288,8 @@ pub struct VerifyTotpEvent {
 
 impl VerifyTotpEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         session: Uuid,
@@ -325,8 +324,8 @@ pub struct RemoveTotpEvent {
 
 impl RemoveTotpEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
@@ -350,8 +349,8 @@ pub struct WebauthnInitRegisterEvent {
 
 impl WebauthnInitRegisterEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         label: String,
@@ -384,17 +383,15 @@ pub struct WebauthnDoRegisterEvent {
 
 impl WebauthnDoRegisterEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         session: Uuid,
         chal: RegisterPublicKeyCredential,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(WebauthnDoRegisterEvent {
-            event: e,
+            ident,
             target,
             session,
             chal,
@@ -422,8 +419,8 @@ pub struct RemoveWebauthnEvent {
 
 impl RemoveWebauthnEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
         label: String,
@@ -455,8 +452,8 @@ pub struct CredentialStatusEvent {
 
 impl CredentialStatusEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {

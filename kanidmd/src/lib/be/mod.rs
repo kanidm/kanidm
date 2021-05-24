@@ -8,8 +8,8 @@ use std::sync::Arc;
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
-use crate::identity::Limits;
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
+use crate::identity::Limits;
 use crate::value::Value;
 use concread::cowcell::*;
 use idlset::v2::IDLBitRange;
@@ -509,7 +509,7 @@ pub trait BackendTransaction {
     fn search(
         &self,
         au: &mut AuditScope,
-        erl: &EventLimits,
+        erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         // Unlike DS, even if we don't get the index back, we can just pass
@@ -616,7 +616,7 @@ pub trait BackendTransaction {
     fn exists(
         &self,
         au: &mut AuditScope,
-        erl: &EventLimits,
+        erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
         lperf_trace_segment!(au, "be::exists", || {
@@ -1567,7 +1567,7 @@ mod tests {
     use super::{
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, IdList, OperationError,
     };
-    use crate::event::EventLimits;
+    use crate::identity::Limits;
     use crate::value::{IndexType, PartialValue, Value};
     use smartstring::alias::String as AttrString;
 
@@ -1635,7 +1635,7 @@ mod tests {
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
-            let lims = EventLimits::unlimited();
+            let lims = Limits::unlimited();
             let entries = $be.search($audit, &lims, &filt).expect("failed to search");
             entries.first().is_some()
         }};
@@ -1649,7 +1649,7 @@ mod tests {
                     .expect("failed to generate filter")
                     .into_valid_resolved()
             };
-            let lims = EventLimits::unlimited();
+            let lims = Limits::unlimited();
             let entries = $be.search($audit, &lims, &filt).expect("failed to search");
             match entries.first() {
                 Some(ent) => ent.attribute_pres($attr),
@@ -1708,7 +1708,7 @@ mod tests {
             let filt =
                 unsafe { filter_resolved!(f_eq("userid", PartialValue::new_utf8s("claire"))) };
 
-            let lims = EventLimits::unlimited();
+            let lims = Limits::unlimited();
 
             let r = be.search(audit, &lims, &filt);
             assert!(r.expect("Search failed!").len() == 1);
@@ -1725,7 +1725,7 @@ mod tests {
     fn test_be_simple_modify() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             ltrace!(audit, "Simple Modify");
-            let lims = EventLimits::unlimited();
+            let lims = Limits::unlimited();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", Value::from("william"));
@@ -1799,7 +1799,7 @@ mod tests {
     fn test_be_simple_delete() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             ltrace!(audit, "Simple Delete");
-            let lims = EventLimits::unlimited();
+            let lims = Limits::unlimited();
 
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2665,10 +2665,10 @@ mod tests {
     #[test]
     fn test_be_limits_allids() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            let mut lim_allow_allids = EventLimits::unlimited();
+            let mut lim_allow_allids = Limits::unlimited();
             lim_allow_allids.unindexed_allow = true;
 
-            let mut lim_deny_allids = EventLimits::unlimited();
+            let mut lim_deny_allids = Limits::unlimited();
             lim_deny_allids.unindexed_allow = false;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2701,10 +2701,10 @@ mod tests {
     #[test]
     fn test_be_limits_results_max() {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            let mut lim_allow = EventLimits::unlimited();
+            let mut lim_allow = Limits::unlimited();
             lim_allow.search_max_results = usize::MAX;
 
-            let mut lim_deny = EventLimits::unlimited();
+            let mut lim_deny = Limits::unlimited();
             lim_deny.search_max_results = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2758,10 +2758,10 @@ mod tests {
             //
             // To achieve this we need a monstrously evil query.
             //
-            let mut lim_allow = EventLimits::unlimited();
+            let mut lim_allow = Limits::unlimited();
             lim_allow.search_max_filter_test = usize::MAX;
 
-            let mut lim_deny = EventLimits::unlimited();
+            let mut lim_deny = Limits::unlimited();
             lim_deny.search_max_filter_test = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();

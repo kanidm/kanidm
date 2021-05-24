@@ -36,9 +36,9 @@ pub mod be;
 pub mod constants;
 pub mod credential;
 pub mod entry;
-pub mod identity;
 pub mod event;
 pub mod filter;
+pub mod identity;
 mod interval;
 pub(crate) mod ldap;
 mod modify;
@@ -64,11 +64,11 @@ pub mod prelude {
 
     pub use crate::audit::AuditScope;
     pub use crate::constants::*;
-    pub use crate::identity::Identity;
     pub use crate::entry::{
         Entry, EntryCommitted, EntryInit, EntryInvalid, EntryInvalidCommitted, EntryNew,
         EntryReduced, EntrySealed, EntrySealedCommitted, EntryTuple, EntryValid,
     };
+    pub use crate::identity::Identity;
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,
