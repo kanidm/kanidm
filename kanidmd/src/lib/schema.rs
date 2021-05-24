@@ -108,23 +108,24 @@ impl SchemaAttribute {
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
         ltrace!(audit, "Converting -> {:?}", value);
+
+        // uuid
+        let uuid = *value.get_uuid();
+
         // class
         if !value.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE) {
-            ladmin_error!(audit, "class attribute type not present");
+            ladmin_error!(audit, "class attribute type not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
             ));
         }
-
-        // uuid
-        let uuid = *value.get_uuid();
 
         // name
         let name = value
             .get_ava_single_str("attributename")
             .map(|s| s.into())
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing attributename");
+                ladmin_error!(audit, "missing attributename - {:?}", uuid);
                 OperationError::InvalidSchemaState("missing attributename".to_string())
             })?;
         // description
@@ -132,17 +133,17 @@ impl SchemaAttribute {
             .get_ava_single_str("description")
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing description");
+                ladmin_error!(audit, "missing description - {}", name);
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
         // multivalue
         let multivalue = value.get_ava_single_bool("multivalue").ok_or_else(|| {
-            ladmin_error!(audit, "missing multivalue");
+            ladmin_error!(audit, "missing multivalue - {}", name);
             OperationError::InvalidSchemaState("missing multivalue".to_string())
         })?;
         let unique = value.get_ava_single_bool("unique").ok_or_else(|| {
-            ladmin_error!(audit, "missing unique");
+            ladmin_error!(audit, "missing unique - {}", name);
             OperationError::InvalidSchemaState("missing unique".to_string())
         })?;
         let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
@@ -153,7 +154,7 @@ impl SchemaAttribute {
             .get_ava_opt_index("index")
             .map(|vv: Vec<&IndexType>| vv.into_iter().cloned().collect())
             .map_err(|_| {
-                ladmin_error!(audit, "invalid index");
+                ladmin_error!(audit, "invalid index - {}", name);
                 OperationError::InvalidSchemaState("Invalid index".to_string())
             })?;
         // syntax type
@@ -161,7 +162,7 @@ impl SchemaAttribute {
             .get_ava_single_syntax("syntax")
             .cloned()
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing syntax");
+                ladmin_error!(audit, "missing syntax - {}", name);
                 OperationError::InvalidSchemaState("missing syntax".to_string())
             })?;
 
@@ -424,23 +425,22 @@ impl SchemaClass {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         ltrace!(audit, "Converting {:?}", value);
+        // uuid
+        let uuid = *value.get_uuid();
         // Convert entry to a schema class.
         if !value.attribute_value_pres("class", &PVCLASS_CLASSTYPE) {
-            ladmin_error!(audit, "class classtype not present");
+            ladmin_error!(audit, "class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
             ));
         }
-
-        // uuid
-        let uuid = *value.get_uuid();
 
         // name
         let name = value
             .get_ava_single_str("classname")
             .map(AttrString::from)
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing classname");
+                ladmin_error!(audit, "missing classname - {:?}", uuid);
                 OperationError::InvalidSchemaState("missing classname".to_string())
             })?;
         // description
@@ -448,7 +448,7 @@ impl SchemaClass {
             .get_ava_single_str("description")
             .map(String::from)
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing description");
+                ladmin_error!(audit, "missing description - {}", name);
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
@@ -749,7 +749,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     name: AttrString::from("description"),
                     uuid: *UUID_SCHEMA_ATTR_DESCRIPTION,
                     description: String::from("A description of an attribute, object or class"),
-                    multivalue: true,
+                    multivalue: false,
                     unique: false,
                     phantom: false,
                     index: vec![],

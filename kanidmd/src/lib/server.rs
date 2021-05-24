@@ -2790,10 +2790,10 @@ mod tests {
             let me_sin = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_eq("name", PartialValue::new_iname("testperson2"))),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("description"),
-                        Value::from("anusaosu"),
-                    )]),
+                    ModifyList::new_list(vec![
+                        Modify::Purged(AttrString::from("description")),
+                        Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+                    ]),
                 )
             };
             assert!(server_txn.modify(audit, &me_sin).is_ok());
@@ -2805,10 +2805,10 @@ mod tests {
                         f_eq("name", PartialValue::new_iname("testperson1")),
                         f_eq("name", PartialValue::new_iname("testperson2")),
                     ])),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("description"),
-                        Value::from("anusaosu"),
-                    )]),
+                    ModifyList::new_list(vec![
+                        Modify::Purged(AttrString::from("description")),
+                        Modify::Present(AttrString::from("description"), Value::from("anusaosu")),
+                    ]),
                 )
             };
             assert!(server_txn.modify(audit, &me_mult).is_ok());
