@@ -344,7 +344,7 @@ pub trait IdmServerTransaction<'a> {
 
         if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
             lsecurity!(audit, "Session expired");
-            return Err(OperationError::SessionExpired);
+            Err(OperationError::SessionExpired)
         } else {
             Ok(uat)
         }

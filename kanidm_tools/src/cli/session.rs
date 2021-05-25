@@ -309,7 +309,7 @@ impl LoginOpt {
         };
         // Add our new one
         match client.get_token() {
-            Some(t) => tokens.insert(username.to_string(), t.to_string()),
+            Some(t) => tokens.insert(username.to_string(), t),
             None => {
                 error!("Error retrieving client session");
                 std::process::exit(1);

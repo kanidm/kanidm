@@ -42,7 +42,7 @@ impl KaniHttpServer {
     }
 
     pub fn build(uri: String, admin_pw: String) -> Result<TargetServer, ()> {
-        Self::construct(uri, admin_pw).map(|s| TargetServer::Kanidm(s))
+        Self::construct(uri, admin_pw).map(TargetServer::Kanidm)
     }
 
     pub fn new(khconfig: &KaniHttpConfig) -> Result<TargetServer, ()> {
@@ -343,7 +343,7 @@ impl KaniLdapServer {
         ldap_uri: String,
         basedn: String,
     ) -> Result<TargetServer, ()> {
-        Self::construct(uri, admin_pw, ldap_uri, basedn).map(|s| TargetServer::KanidmLdap(s))
+        Self::construct(uri, admin_pw, ldap_uri, basedn).map(TargetServer::KanidmLdap)
     }
 
     pub fn new(klconfig: &KaniLdapConfig) -> Result<TargetServer, ()> {
@@ -353,7 +353,7 @@ impl KaniLdapServer {
             klconfig.ldap_uri.clone(),
             klconfig.base_dn.clone(),
         )
-        .map(|s| TargetServer::KanidmLdap(s))
+        .map(TargetServer::KanidmLdap)
     }
 
     pub fn info(&self) -> String {

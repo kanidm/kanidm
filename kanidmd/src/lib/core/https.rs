@@ -110,7 +110,9 @@ pub fn to_tide_response<T: Serialize>(
         }
         Err(e) => {
             let sc = match &e {
-                OperationError::NotAuthenticated => tide::StatusCode::Unauthorized,
+                OperationError::NotAuthenticated | OperationError::SessionExpired => {
+                    tide::StatusCode::Unauthorized
+                }
                 OperationError::SystemProtectedObject | OperationError::AccessDenied => {
                     tide::StatusCode::Forbidden
                 }

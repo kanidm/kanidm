@@ -63,7 +63,7 @@ fn parse_rtime(s: &str) -> Result<Duration, ()> {
     // R times are "0:00:00" or "1:34:51.714690"
     // So we need to split on :, and then parse each part.
     // This is HH:MM:SS.ms
-    let v: Vec<&str> = s.split(":").collect();
+    let v: Vec<&str> = s.split(':').collect();
 
     if v.len() != 3 {
         return Err(());
@@ -141,7 +141,7 @@ impl Record {
         };
         Op {
             orig_etime: self.etime.clone(),
-            rtime: self.rtime.clone(),
+            rtime: self.rtime,
             op_type,
         }
     }
