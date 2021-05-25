@@ -168,7 +168,7 @@ impl Account {
         // Get the claims from the cred_h
 
         // TODO: Apply policy to this expiry time.
-        let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(3600);
+        let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
 
         Some(UserAuthToken {
             session_id,

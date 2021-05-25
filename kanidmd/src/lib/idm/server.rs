@@ -618,6 +618,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,
+                            &*self.uat_bundy_hmac,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -1740,7 +1741,7 @@ mod tests {
     use kanidm_proto::v1::SetCredentialResponse;
     use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
-    use crate::idm::server::IdmServer;
+    use crate::idm::server::{IdmServer, IdmServerTransaction};
     // , IdmServerDelayed;
     use crate::utils::duration_from_epoch_now;
     use async_std::task;
@@ -2014,7 +2015,7 @@ mod tests {
         sessionid
     }
 
-    fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) {
+    fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) -> String {
         let sid =
             init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
 
@@ -2026,7 +2027,7 @@ mod tests {
             task::block_on(idms_auth.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME)));
         debug!("r2 ==> {:?}", r2);
 
-        match r2 {
+        let token = match r2 {
             Ok(ar) => {
                 let AuthResult {
                     sessionid: _,
@@ -2037,8 +2038,9 @@ mod tests {
                 debug_assert!(delay.is_none());
 
                 match state {
-                    AuthState::Success(_uat) => {
+                    AuthState::Success(token) => {
                         // Check the uat.
+                        token
                     }
                     _ => {
                         error!("A critical error has occured! We have a non-succcess result!");
@@ -2054,6 +2056,7 @@ mod tests {
         };
 
         idms_auth.commit(au).expect("Must not fail");
+        token
     }
 
     #[test]
@@ -3366,13 +3369,29 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_bundy_uat_key_rollover() {
-        run_idm_test!(|_qs: &QueryServer,
-                       _idms: &IdmServer,
+    fn test_idm_bundy_uat_expiry() {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed,
-                       _au: &mut AuditScope| {
-            // let ct = duration_from_epoch_now();
-            unimplemented!();
+                       au: &mut AuditScope| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+            // Do an authenticate
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            let token = check_admin_password(idms, au, TEST_PASSWORD);
+
+            let idms_prox_read = idms.proxy_read();
+
+            // Check it's valid.
+            idms_prox_read
+                .validate_and_parse_uat(au, Some(token.as_str()), ct)
+                .expect("Failed to validate");
+
+            // In X time it should be INVALID
+            match idms_prox_read.validate_and_parse_uat(au, Some(token.as_str()), expiry) {
+                Err(OperationError::SessionExpired) => {}
+                _ => assert!(false),
+            }
         })
     }
 }

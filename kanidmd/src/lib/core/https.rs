@@ -982,16 +982,12 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                         })
                         .map(|_| ProtoAuthState::Continue(allowed))
                 }
-                AuthState::Success(uat) => {
+                AuthState::Success(token) => {
                     debug!("🧩 -> AuthState::Success");
                     // Remove the auth-session-id
                     let msession = req.session_mut();
                     msession.remove("auth-session-id");
-                    // Create the string "Bearer <token>"
-                    let kref = &req.state().bundy_handle;
-                    kref.sign(&uat)
-                        .map(ProtoAuthState::Success)
-                        .map_err(|_| OperationError::InvalidSessionState)
+                    Ok(ProtoAuthState::Success(token))
                 }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");

@@ -40,3 +40,6 @@ pub const AUTH_SESSION_TIMEOUT: u64 = 300;
 // 5 minute mfa reg window
 pub const MFAREG_SESSION_TIMEOUT: u64 = 300;
 pub const PW_MIN_LENGTH: usize = 10;
+
+// Default
+pub const AUTH_SESSION_EXPIRY: u64 = 3600;
