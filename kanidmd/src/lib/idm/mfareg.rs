@@ -1,7 +1,7 @@
 use crate::audit::AuditScope;
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::webauthn::WebauthnDomainConfig;
-use crate::event::EventOriginId;
+use crate::identity::IdentityId;
 use crate::idm::account::Account;
 use kanidm_proto::v1::TotpSecret;
 use kanidm_proto::v1::{OperationError, SetCredentialResponse};
@@ -50,7 +50,7 @@ enum MfaRegState {
 pub(crate) struct MfaRegSession {
     // The event origin, aka who is requesting the MFA reg (may not
     // be the same as account!!!)
-    origin: EventOriginId,
+    origin: IdentityId,
     // The account that the MFA will be registered to
     pub account: Account,
     // What state is the reg process in?
@@ -59,7 +59,7 @@ pub(crate) struct MfaRegSession {
 
 impl MfaRegSession {
     pub fn totp_new(
-        origin: EventOriginId,
+        origin: IdentityId,
         account: Account,
         label: String,
     ) -> Result<(Self, MfaRegNext), OperationError> {
@@ -82,7 +82,7 @@ impl MfaRegSession {
 
     pub fn totp_step(
         &mut self,
-        origin: &EventOriginId,
+        origin: &IdentityId,
         target: &Uuid,
         chal: u32,
         ct: &Duration,
@@ -119,7 +119,7 @@ impl MfaRegSession {
 
     pub fn webauthn_new(
         au: &mut AuditScope,
-        origin: EventOriginId,
+        origin: IdentityId,
         account: Account,
         label: String,
         webauthn: &Webauthn<WebauthnDomainConfig>,
@@ -145,7 +145,7 @@ impl MfaRegSession {
     pub fn webauthn_step(
         &mut self,
         au: &mut AuditScope,
-        origin: &EventOriginId,
+        origin: &IdentityId,
         target: &Uuid,
         chal: &RegisterPublicKeyCredential,
         webauthn: &Webauthn<WebauthnDomainConfig>,

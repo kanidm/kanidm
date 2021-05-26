@@ -1,13 +1,12 @@
-use crate::event::Event;
 use crate::prelude::*;
 
 use uuid::Uuid;
 
-use kanidm_proto::v1::{OperationError, UserAuthToken};
+use kanidm_proto::v1::OperationError;
 use webauthn_rs::proto::RegisterPublicKeyCredential;
 
 pub struct PasswordChangeEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
     pub appid: Option<String>,
@@ -16,7 +15,7 @@ pub struct PasswordChangeEvent {
 impl PasswordChangeEvent {
     pub fn new_internal(target: &Uuid, cleartext: &str, appid: Option<&str>) -> Self {
         PasswordChangeEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             target: *target,
             cleartext: cleartext.to_string(),
             appid: appid.map(|v| v.to_string()),
@@ -24,16 +23,15 @@ impl PasswordChangeEvent {
     }
 
     pub fn from_idm_account_set_password(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         cleartext: String,
-        qs: &QueryServerWriteTransaction,
+        // qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-        let u = e.get_uuid().ok_or(OperationError::InvalidState)?;
+        let u = ident.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
-            event: e,
+            ident,
             target: u,
             cleartext,
             appid: None,
@@ -41,17 +39,15 @@ impl PasswordChangeEvent {
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         cleartext: String,
         appid: Option<String>,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(PasswordChangeEvent {
-            event: e,
+            ident,
             target,
             cleartext,
             appid,
@@ -60,7 +56,7 @@ impl PasswordChangeEvent {
 }
 
 pub struct UnixPasswordChangeEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
 }
@@ -69,23 +65,21 @@ impl UnixPasswordChangeEvent {
     #[cfg(test)]
     pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
         UnixPasswordChangeEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             target: *target,
             cleartext: cleartext.to_string(),
         }
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         cleartext: String,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(UnixPasswordChangeEvent {
-            event: e,
+            ident,
             target,
             cleartext,
         })
@@ -94,23 +88,21 @@ impl UnixPasswordChangeEvent {
 
 #[derive(Debug)]
 pub struct GeneratePasswordEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub appid: Option<String>,
 }
 
 impl GeneratePasswordEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         appid: Option<String>,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(GeneratePasswordEvent {
-            event: e,
+            ident,
             target,
             appid,
         })
@@ -119,110 +111,102 @@ impl GeneratePasswordEvent {
 
 #[derive(Debug)]
 pub struct RegenerateRadiusSecretEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
 }
 
 impl RegenerateRadiusSecretEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
-        Ok(RegenerateRadiusSecretEvent { event: e, target })
+        Ok(RegenerateRadiusSecretEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        RegenerateRadiusSecretEvent { event: e, target }
+        RegenerateRadiusSecretEvent { ident, target }
     }
 }
 
 #[derive(Debug)]
 pub struct RadiusAuthTokenEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
 }
 
 impl RadiusAuthTokenEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
+        ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_ro_uat(audit, qs, uat)?;
-
-        Ok(RadiusAuthTokenEvent { event: e, target })
+        Ok(RadiusAuthTokenEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        RadiusAuthTokenEvent { event: e, target }
+        RadiusAuthTokenEvent { ident, target }
     }
 }
 
 #[derive(Debug)]
 pub struct UnixUserTokenEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
 }
 
 impl UnixUserTokenEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
+        ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_ro_uat(audit, qs, uat)?;
-
-        Ok(UnixUserTokenEvent { event: e, target })
+        Ok(UnixUserTokenEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        UnixUserTokenEvent { event: e, target }
+        UnixUserTokenEvent { ident, target }
     }
 }
 
 #[derive(Debug)]
 pub struct UnixGroupTokenEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
 }
 
 impl UnixGroupTokenEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
+        ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_ro_uat(audit, qs, uat)?;
-
-        Ok(UnixGroupTokenEvent { event: e, target })
+        Ok(UnixGroupTokenEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        UnixGroupTokenEvent { event: e, target }
+        UnixGroupTokenEvent { ident, target }
     }
 }
 
 pub struct UnixUserAuthEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
 }
@@ -230,7 +214,7 @@ pub struct UnixUserAuthEvent {
 impl std::fmt::Debug for UnixUserAuthEvent {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         f.debug_struct("UnixUserAuthEvent")
-            .field("event", &self.event)
+            .field("ident", &self.ident)
             .field("target", &self.target)
             .finish()
     }
@@ -240,23 +224,20 @@ impl UnixUserAuthEvent {
     #[cfg(test)]
     pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
         UnixUserAuthEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             target: *target,
             cleartext: cleartext.to_string(),
         }
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         target: Uuid,
         cleartext: String,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_ro_uat(audit, qs, uat)?;
-
         Ok(UnixUserAuthEvent {
-            event: e,
+            ident,
             target,
             cleartext,
         })
@@ -265,23 +246,21 @@ impl UnixUserAuthEvent {
 
 #[derive(Debug)]
 pub struct GenerateTotpEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub label: String,
 }
 
 impl GenerateTotpEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         label: String,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(GenerateTotpEvent {
-            event: e,
+            ident,
             target,
             label,
         })
@@ -289,10 +268,10 @@ impl GenerateTotpEvent {
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
         GenerateTotpEvent {
-            event: e,
+            ident,
             target,
             label: "internal_token".to_string(),
         }
@@ -301,7 +280,7 @@ impl GenerateTotpEvent {
 
 #[derive(Debug)]
 pub struct VerifyTotpEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub session: Uuid,
     pub chal: u32,
@@ -309,17 +288,15 @@ pub struct VerifyTotpEvent {
 
 impl VerifyTotpEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         session: Uuid,
         chal: u32,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(VerifyTotpEvent {
-            event: e,
+            ident,
             target,
             session,
             chal,
@@ -328,10 +305,10 @@ impl VerifyTotpEvent {
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid, session: Uuid, chal: u32) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
         VerifyTotpEvent {
-            event: e,
+            ident,
             target,
             session,
             chal,
@@ -341,49 +318,45 @@ impl VerifyTotpEvent {
 
 #[derive(Debug)]
 pub struct RemoveTotpEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
 }
 
 impl RemoveTotpEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
-        Ok(RemoveTotpEvent { event: e, target })
+        Ok(RemoveTotpEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        RemoveTotpEvent { event: e, target }
+        RemoveTotpEvent { ident, target }
     }
 }
 
 #[derive(Debug)]
 pub struct WebauthnInitRegisterEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub label: String,
 }
 
 impl WebauthnInitRegisterEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         label: String,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(WebauthnInitRegisterEvent {
-            event: e,
+            ident,
             target,
             label,
         })
@@ -391,9 +364,9 @@ impl WebauthnInitRegisterEvent {
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid, label: String) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
         WebauthnInitRegisterEvent {
-            event: e,
+            ident,
             target,
             label,
         }
@@ -402,7 +375,7 @@ impl WebauthnInitRegisterEvent {
 
 #[derive(Debug)]
 pub struct WebauthnDoRegisterEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub session: Uuid,
     pub chal: RegisterPublicKeyCredential,
@@ -410,17 +383,15 @@ pub struct WebauthnDoRegisterEvent {
 
 impl WebauthnDoRegisterEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         session: Uuid,
         chal: RegisterPublicKeyCredential,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(WebauthnDoRegisterEvent {
-            event: e,
+            ident,
             target,
             session,
             chal,
@@ -429,9 +400,9 @@ impl WebauthnDoRegisterEvent {
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid, session: Uuid, chal: RegisterPublicKeyCredential) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
         WebauthnDoRegisterEvent {
-            event: e,
+            ident,
             target,
             session,
             chal,
@@ -441,23 +412,21 @@ impl WebauthnDoRegisterEvent {
 
 #[derive(Debug)]
 pub struct RemoveWebauthnEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
     pub label: String,
 }
 
 impl RemoveWebauthnEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
         target: Uuid,
         label: String,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_rw_uat(audit, qs, uat)?;
-
         Ok(RemoveWebauthnEvent {
-            event: e,
+            ident,
             target,
             label,
         })
@@ -465,10 +434,10 @@ impl RemoveWebauthnEvent {
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid, label: String) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
         RemoveWebauthnEvent {
-            event: e,
+            ident,
             target,
             label,
         }
@@ -477,32 +446,30 @@ impl RemoveWebauthnEvent {
 
 #[derive(Debug)]
 pub struct CredentialStatusEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub target: Uuid,
 }
 
 impl CredentialStatusEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
+        ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        let e = Event::from_ro_uat(audit, qs, uat)?;
-
-        Ok(CredentialStatusEvent { event: e, target })
+        Ok(CredentialStatusEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
-        let e = Event::from_internal();
+        let ident = Identity::from_internal();
 
-        CredentialStatusEvent { event: e, target }
+        CredentialStatusEvent { ident, target }
     }
 }
 
 pub struct LdapAuthEvent {
-    // pub event: Event,
+    // pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
 }
@@ -512,7 +479,7 @@ impl LdapAuthEvent {
     #[cfg(test)]
     pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
         LdapAuthEvent {
-            // event: Event::from_internal(),
+            // ident: Identity::from_internal(),
             target: *target,
             cleartext: cleartext.to_string(),
         }

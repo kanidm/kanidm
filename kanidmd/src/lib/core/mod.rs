@@ -500,6 +500,16 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         }
     };
 
+    // Extract any configuration from the IDMS that we may need.
+    // For now we just do this per run, but we need to extract this from the db later.
+    let bundy_key = match bundy::hs512::HS512::generate_key() {
+        Ok(k) => k,
+        Err(e) => {
+            error!("Unable to setup bundy -> {:?}", e);
+            return Err(());
+        }
+    };
+
     // Any pre-start tasks here.
     match &config.integration_test_config {
         Some(itc) => {
@@ -594,6 +604,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         config.tls_config.as_ref(),
         config.role,
         &cookie_key,
+        &bundy_key,
         status_ref,
         server_write_ref,
         server_read_ref,

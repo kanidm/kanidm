@@ -52,7 +52,7 @@ impl Plugin for Protected {
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        if ce.event.is_internal() {
+        if ce.ident.is_internal() {
             ltrace!(
                 au,
                 "Internal operation, not enforcing system object protection"
@@ -85,7 +85,7 @@ impl Plugin for Protected {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        if me.event.is_internal() {
+        if me.ident.is_internal() {
             ltrace!(
                 au,
                 "Internal operation, not enforcing system object protection"
@@ -176,7 +176,7 @@ impl Plugin for Protected {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        if de.event.is_internal() {
+        if de.ident.is_internal() {
             ltrace!(
                 au,
                 "Internal operation, not enforcing system object protection"

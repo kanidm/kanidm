@@ -109,7 +109,7 @@ impl Plugin for Base {
 
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.
-        if !ce.event.is_internal() {
+        if !ce.ident.is_internal() {
             // TODO: We can't lazy const this as you can't borrow the type down to what
             // range and contains on btreeset need, but can we possibly make these constly
             // part of the struct somehow at init. rather than needing to parse a lot?

@@ -9,7 +9,7 @@
 //! [`Entry`]: ../entry/struct.Entry.html
 
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta};
-use crate::event::{Event, EventOriginId};
+use crate::identity::IdentityId;
 use crate::ldap::ldap_attr_filter_map;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
@@ -275,14 +275,10 @@ impl Filter<FilterValid> {
 
     pub fn resolve<'a>(
         &self,
-        ev: &Event,
+        ev: &Identity,
         idxmeta: Option<&IdxMeta>,
         mut rsv_cache: Option<
-            &mut ARCacheReadTxn<
-                'a,
-                (EventOriginId, Filter<FilterValid>),
-                Filter<FilterValidResolved>,
-            >,
+            &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>,
         >,
     ) -> Result<Filter<FilterValidResolved>, OperationError> {
         // Given a filter, resolve Not and SelfUuid to real terms.
@@ -485,7 +481,7 @@ impl Filter<FilterInvalid> {
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
     pub fn from_ro(
         audit: &mut AuditScope,
-        ev: &Event,
+        ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -502,7 +498,7 @@ impl Filter<FilterInvalid> {
 
     pub fn from_rw(
         audit: &mut AuditScope,
-        ev: &Event,
+        ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -519,7 +515,7 @@ impl Filter<FilterInvalid> {
 
     pub fn from_ldap_ro(
         audit: &mut AuditScope,
-        ev: &Event,
+        ev: &Identity,
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -1040,7 +1036,7 @@ impl FilterResolved {
         }
     }
 
-    fn resolve_idx(fc: FilterComp, ev: &Event, idxmeta: &HashSet<IdxKey>) -> Option<Self> {
+    fn resolve_idx(fc: FilterComp, ev: &Identity, idxmeta: &HashSet<IdxKey>) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Equality);
@@ -1101,7 +1097,7 @@ impl FilterResolved {
         }
     }
 
-    fn resolve_no_idx(fc: FilterComp, ev: &Event) -> Option<Self> {
+    fn resolve_no_idx(fc: FilterComp, ev: &Identity) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => Some(FilterResolved::Eq(a, v, false)),
             FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, false)),
@@ -1266,7 +1262,7 @@ impl FilterResolved {
 
 #[cfg(test)]
 mod tests {
-    use crate::event::{CreateEvent, Event};
+    use crate::event::CreateEvent;
     use crate::filter::{Filter, FilterInvalid, FILTER_DEPTH_MAX};
     use crate::prelude::*;
     use std::cmp::{Ordering, PartialOrd};
@@ -1814,7 +1810,7 @@ mod tests {
                 inv_ldap = LdapFilter::And(vec![inv_ldap]);
             }
 
-            let ev = Event::from_internal();
+            let ev = Identity::from_internal();
 
             // Test proto + read
             let res = Filter::from_ro(audit, &ev, &inv_proto, &r_txn);
@@ -1852,7 +1848,7 @@ mod tests {
                     .collect(),
             );
 
-            let mut ev = Event::from_internal();
+            let mut ev = Identity::from_internal();
             ev.limits.filter_max_elements = LIMIT;
 
             // Test proto + read

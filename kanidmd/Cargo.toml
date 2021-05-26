@@ -28,6 +28,7 @@ tide-rustls = "0.3"
 async-trait = "0.1"
 async-h1 = "2.0"
 fernet = "^0.1.4"
+bundy = "^0.1.1"
 
 async-std = "1.6"
 

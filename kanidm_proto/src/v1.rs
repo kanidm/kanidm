@@ -58,6 +58,7 @@ pub enum ConsistencyError {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
 pub enum OperationError {
+    SessionExpired,
     EmptyRequest,
     Backend,
     NoMatchingEntries,
@@ -165,7 +166,7 @@ pub struct UserAuthToken {
     pub session_id: Uuid,
     // When this data should be considered invalid. Interpretation
     // may depend on the client application.
-    pub expiry: Option<String>,
+    pub expiry: time::OffsetDateTime,
     pub name: String,
     pub spn: String,
     pub displayname: String,
@@ -187,8 +188,13 @@ impl fmt::Display for UserAuthToken {
         writeln!(f, "spn: {}", self.spn)?;
         writeln!(f, "display: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
-        writeln!(f, "groups: {:?}", self.groups)?;
-        writeln!(f, "claims: {:?}", self.claims)
+        for group in &self.groups {
+            writeln!(f, "group: {:?}", group.name)?;
+        }
+        for claim in &self.claims {
+            writeln!(f, "claim: {:?}", claim)?;
+        }
+        writeln!(f, "expiry: {}", self.expiry)
     }
 }
 

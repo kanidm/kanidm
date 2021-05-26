@@ -1,6 +1,6 @@
 use crate::event::SearchEvent;
 use crate::idm::event::LdapAuthEvent;
-use crate::idm::server::IdmServer;
+use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::prelude::*;
 use async_std::task;
 use kanidm_proto::v1::{OperationError, UserAuthToken};
@@ -8,7 +8,6 @@ use ldap3_server::simple::*;
 use regex::Regex;
 use std::collections::BTreeSet;
 use std::iter;
-use std::time::SystemTime;
 use uuid::Uuid;
 
 // Clippy doesn't like Bind here. But proto needs unboxed ldapmsg,
@@ -39,13 +38,14 @@ pub struct LdapServer {
 }
 
 impl LdapServer {
-    pub fn new(au: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
+    pub fn new(audit: &mut AuditScope, idms: &IdmServer) -> Result<Self, OperationError> {
+        // let ct = duration_from_epoch_now();
         let idms_prox_read = task::block_on(idms.proxy_read_async());
         // This is the rootdse path.
         // get the domain_info item
         let domain_entry = idms_prox_read
             .qs_read
-            .internal_search_uuid(au, &UUID_DOMAIN_INFO)?;
+            .internal_search_uuid(audit, &UUID_DOMAIN_INFO)?;
 
         let domain_name = domain_entry
             .get_ava_single_str("domain_name")
@@ -100,16 +100,16 @@ impl LdapServer {
 
     async fn do_search(
         &self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
         idms: &IdmServer,
         sr: &SearchRequest,
         uat: &LdapBoundToken,
         // eventid: &Uuid,
     ) -> Result<Vec<LdapMsg>, OperationError> {
-        ladmin_info!(au, "Attempt LDAP Search for {}", uat.spn);
+        ladmin_info!(audit, "Attempt LDAP Search for {}", uat.spn);
         // If the request is "", Base, Present("objectclass"), [], then we want the rootdse.
         if sr.base.is_empty() && sr.scope == LdapSearchScope::Base {
-            ladmin_info!(au, "LDAP Search success - RootDSE");
+            ladmin_info!(audit, "LDAP Search success - RootDSE");
             Ok(vec![
                 sr.gen_result_entry(self.rootdse.clone()),
                 sr.gen_success(),
@@ -126,7 +126,7 @@ impl LdapServer {
                     caps.name("val").map(|v| v.as_str().to_string()),
                 ),
                 None => {
-                    lrequest_error!(au, "LDAP Search failure - invalid basedn");
+                    lrequest_error!(audit, "LDAP Search failure - invalid basedn");
                     return Err(OperationError::InvalidRequestState);
                 }
             };
@@ -135,12 +135,12 @@ impl LdapServer {
                 (Some(a), Some(v)) => Some((a, v)),
                 (None, None) => None,
                 _ => {
-                    lrequest_error!(au, "LDAP Search failure - invalid rdn");
+                    lrequest_error!(audit, "LDAP Search failure - invalid rdn");
                     return Err(OperationError::InvalidRequestState);
                 }
             };
 
-            ltrace!(au, "RDN -> {:?}", req_dn);
+            ltrace!(audit, "RDN -> {:?}", req_dn);
 
             // Map the Some(a,v) to ...?
 
@@ -198,10 +198,11 @@ impl LdapServer {
                 }
             };
 
-            ladmin_info!(au, "LDAP Search Request Attrs -> {:?}", attrs);
+            ladmin_info!(audit, "LDAP Search Request Attrs -> {:?}", attrs);
 
+            // let ct = duration_from_epoch_now();
             let idm_read = idms.proxy_read_async().await;
-            lperf_segment!(au, "ldap::do_search<core>", || {
+            lperf_segment!(audit, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
 
                 // join the filter, with ext_filter
@@ -231,37 +232,43 @@ impl LdapServer {
                     ]),
                 };
 
-                ladmin_info!(au, "LDAP Search Filter -> {:?}", lfilter);
+                ladmin_info!(audit, "LDAP Search Filter -> {:?}", lfilter);
 
                 // Build the event, with the permissions from effective_uuid
                 // (should always be anonymous at the moment)
                 // ! Remember, searchEvent wraps to ignore hidden for us.
-                let se = lperf_trace_segment!(au, "ldap::do_search<core><prepare_se>", || {
+                let se = lperf_trace_segment!(audit, "ldap::do_search<core><prepare_se>", || {
+                    let ident = idm_read
+                        .process_uat_to_identity(audit, &uat.effective_uat)
+                        .map_err(|e| {
+                            ladmin_error!(audit, "Invalid identity: {:?}", e);
+                            e
+                        })?;
                     SearchEvent::new_ext_impersonate_uuid(
-                        au,
+                        audit,
                         &idm_read.qs_read,
-                        &uat.effective_uat,
+                        ident,
                         &lfilter,
                         attrs,
                     )
                 })
                 .map_err(|e| {
-                    ladmin_error!(au, "failed to create search event -> {:?}", e);
+                    ladmin_error!(audit, "failed to create search event -> {:?}", e);
                     e
                 })?;
 
-                let res = idm_read.qs_read.search_ext(au, &se).map_err(|e| {
-                    ladmin_error!(au, "search failure {:?}", e);
+                let res = idm_read.qs_read.search_ext(audit, &se).map_err(|e| {
+                    ladmin_error!(audit, "search failure {:?}", e);
                     e
                 })?;
 
                 // These have already been fully reduced, so we can just slap it into the result.
                 let lres =
-                    lperf_trace_segment!(au, "ldap::do_search<core><prepare results>", || {
+                    lperf_trace_segment!(audit, "ldap::do_search<core><prepare results>", || {
                         let lres: Result<Vec<_>, _> = res
                             .into_iter()
                             .map(|e| {
-                                e.to_ldap(au, &idm_read.qs_read, self.basedn.as_str())
+                                e.to_ldap(audit, &idm_read.qs_read, self.basedn.as_str())
                                     // if okay, wrap in a ldap msg.
                                     .map(|r| sr.gen_result_entry(r))
                             })
@@ -271,12 +278,12 @@ impl LdapServer {
                     });
 
                 let lres = lres.map_err(|e| {
-                    ladmin_error!(au, "entry resolve failure {:?}", e);
+                    ladmin_error!(audit, "entry resolve failure {:?}", e);
                     e
                 })?;
 
                 ladmin_info!(
-                    au,
+                    audit,
                     "LDAP Search Success -> number of entries {}",
                     lres.len()
                 );
@@ -288,24 +295,26 @@ impl LdapServer {
 
     async fn do_bind(
         &self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
         idms: &IdmServer,
         dn: &str,
         pw: &str,
     ) -> Result<Option<LdapBoundToken>, OperationError> {
         lsecurity!(
-            au,
+            audit,
             "Attempt LDAP Bind for {}",
             if dn.is_empty() { "anonymous" } else { dn }
         );
+        let ct = duration_from_epoch_now();
+
         let mut idm_auth = idms.auth_async().await;
 
         let target_uuid: Uuid = if dn.is_empty() {
             if pw.is_empty() {
-                lsecurity!(au, "✅ LDAP Bind success anonymous");
+                lsecurity!(audit, "✅ LDAP Bind success anonymous");
                 *UUID_ANONYMOUS
             } else {
-                lsecurity!(au, "❌ LDAP Bind failure anonymous");
+                lsecurity!(audit, "❌ LDAP Bind failure anonymous");
                 // Yeah-nahhhhh
                 return Ok(None);
             }
@@ -319,7 +328,7 @@ impl LdapServer {
                 None => return Err(OperationError::NoMatchingEntries),
             };
 
-            ltrace!(au, "rdn val is -> {:?}", rdn);
+            ltrace!(audit, "rdn val is -> {:?}", rdn);
 
             if rdn.is_empty() {
                 // That's weird ...
@@ -328,27 +337,20 @@ impl LdapServer {
 
             idm_auth
                 .qs_read
-                .name_to_uuid(au, rdn.as_str())
+                .name_to_uuid(audit, rdn.as_str())
                 .map_err(|e| {
-                    lrequest_error!(au, "Error resolving rdn to target {:?} {:?}", rdn, e);
+                    lrequest_error!(audit, "Error resolving rdn to target {:?} {:?}", rdn, e);
                     e
                 })?
         };
 
-        let ct = SystemTime::now()
-            .duration_since(SystemTime::UNIX_EPOCH)
-            .map_err(|e| {
-                ladmin_error!(au, "Clock Error -> {:?}", e);
-                OperationError::InvalidState
-            })?;
-
-        let lae = LdapAuthEvent::from_parts(au, target_uuid, pw.to_string())?;
-        idm_auth.auth_ldap(au, &lae, ct).await.and_then(|r| {
-            idm_auth.commit(au).map(|_| {
+        let lae = LdapAuthEvent::from_parts(audit, target_uuid, pw.to_string())?;
+        idm_auth.auth_ldap(audit, &lae, ct).await.and_then(|r| {
+            idm_auth.commit(audit).map(|_| {
                 if r.is_some() {
-                    lsecurity!(au, "✅ LDAP Bind success {}", dn);
+                    lsecurity!(audit, "✅ LDAP Bind success {}", dn);
                 } else {
-                    lsecurity!(au, "❌ LDAP Bind failure {}", dn);
+                    lsecurity!(audit, "❌ LDAP Bind failure {}", dn);
                 };
                 r
             })
@@ -357,7 +359,7 @@ impl LdapServer {
 
     pub async fn do_op(
         &self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
         idms: &IdmServer,
         server_op: ServerOps,
         uat: Option<LdapBoundToken>,
@@ -365,7 +367,7 @@ impl LdapServer {
     ) -> Result<LdapResponseState, OperationError> {
         match server_op {
             ServerOps::SimpleBind(sbr) => self
-                .do_bind(au, idms, sbr.dn.as_str(), sbr.pw.as_str())
+                .do_bind(audit, idms, sbr.dn.as_str(), sbr.pw.as_str())
                 .await
                 .map(|r| match r {
                     Some(lbt) => LdapResponseState::Bind(lbt, sbr.gen_success()),
@@ -377,7 +379,7 @@ impl LdapServer {
                 }),
             ServerOps::Search(sr) => match uat {
                 Some(u) => self
-                    .do_search(au, idms, &sr, &u)
+                    .do_search(audit, idms, &sr, &u)
                     .await
                     .map(LdapResponseState::MultiPartResponse)
                     .or_else(|e| {
@@ -386,7 +388,7 @@ impl LdapServer {
                     }),
                 None => {
                     // Search can occur without a bind, so bind first.
-                    let lbt = match self.do_bind(au, idms, "", "").await {
+                    let lbt = match self.do_bind(audit, idms, "", "").await {
                         Ok(Some(lbt)) => lbt,
                         Ok(None) => {
                             return Ok(LdapResponseState::Respond(
@@ -399,7 +401,7 @@ impl LdapServer {
                         }
                     };
                     // If okay, do the search.
-                    self.do_search(au, idms, &sr, &lbt)
+                    self.do_search(audit, idms, &sr, &lbt)
                         .await
                         .map(|r| LdapResponseState::BindMultiPartResponse(lbt, r))
                         .or_else(|e| {

@@ -38,6 +38,7 @@ pub mod credential;
 pub mod entry;
 pub mod event;
 pub mod filter;
+pub mod identity;
 mod interval;
 pub(crate) mod ldap;
 mod modify;
@@ -56,6 +57,7 @@ pub mod config;
 pub mod core;
 
 pub mod prelude {
+    pub use crate::utils::duration_from_epoch_now;
     pub use kanidm_proto::v1::OperationError;
     pub use smartstring::alias::String as AttrString;
     pub use uuid::Uuid;
@@ -66,6 +68,7 @@ pub mod prelude {
         Entry, EntryCommitted, EntryInit, EntryInvalid, EntryInvalidCommitted, EntryNew,
         EntryReduced, EntrySealed, EntrySealedCommitted, EntryTuple, EntryValid,
     };
+    pub use crate::identity::Identity;
     pub use crate::server::{
         QueryServer, QueryServerReadTransaction, QueryServerTransaction,
         QueryServerWriteTransaction,

@@ -160,16 +160,19 @@ impl Account {
         &self,
         session_id: Uuid,
         claims: &[Claim],
+        ct: Duration,
     ) -> Option<UserAuthToken> {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
         // process what the proper claims should be.
         // Get the claims from the cred_h
 
+        // TODO: Apply policy to this expiry time.
+        let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
+
         Some(UserAuthToken {
             session_id,
-            // TODO: Fill this in!
-            expiry: None,
+            expiry,
             name: self.name.clone(),
             spn: self.spn.clone(),
             displayname: self.displayname.clone(),

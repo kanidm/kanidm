@@ -1,26 +1,21 @@
-use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
+use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
+use crate::identity::Limits;
 use crate::idm::AuthState;
+use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::PartialValue;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
+use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{
     AuthCredential, AuthMech, AuthRequest, AuthStep, CreateRequest, DeleteRequest, ModifyRequest,
     SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
-// use error::OperationError;
-use crate::modify::{ModifyInvalid, ModifyList, ModifyValid};
-use kanidm_proto::v1::OperationError;
-
-// Bring in schematransaction trait for validate
-// use crate::schema::SchemaTransaction;
 
 use ldap3_server::simple::LdapFilter;
-use smartstring::alias::String as AttrString;
 use std::collections::BTreeSet;
-use std::hash::Hash;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -60,207 +55,9 @@ impl SearchResult {
     }
 }
 
-// At the top we get "event types" and they contain the needed
-// actions, and a generic event component.
-
-#[derive(Debug, Clone, PartialEq, Hash, Ord, PartialOrd, Eq)]
-pub enum EventOriginId {
-    // Time stamp of the originating event.
-    // The uuid of the originiating user
-    User(Uuid),
-    Internal,
-}
-
-impl From<&EventOrigin> for EventOriginId {
-    fn from(event: &EventOrigin) -> Self {
-        match event {
-            EventOrigin::Internal => EventOriginId::Internal,
-            EventOrigin::User(e) => EventOriginId::User(*e.get_uuid()),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum EventOrigin {
-    // External event, needs a UUID associated! Perhaps even an Entry/User to improve ACP checks?
-    User(Entry<EntrySealed, EntryCommitted>),
-    // Probably will bypass access profiles in many cases ...
-    Internal,
-    // Not used yet, but indicates that this change or event was triggered by a replication
-    // event - may not even be needed ...
-    // Replication,
-}
-
-#[derive(Debug, Clone)]
-/// Limits on the resources a single event can consume. These are defined per-event
-/// as they are derived from the userAuthToken based on that individual session
-pub struct EventLimits {
-    pub unindexed_allow: bool,
-    pub search_max_results: usize,
-    pub search_max_filter_test: usize,
-    pub filter_max_elements: usize,
-    // pub write_max_entries: usize,
-    // pub write_max_rate: usize,
-    // pub network_max_request: usize,
-}
-
-impl EventLimits {
-    pub fn unlimited() -> Self {
-        EventLimits {
-            unindexed_allow: true,
-            search_max_results: usize::MAX,
-            search_max_filter_test: usize::MAX,
-            filter_max_elements: usize::MAX,
-        }
-    }
-
-    // From a userauthtoken
-    pub fn from_uat(uat: &UserAuthToken) -> Self {
-        EventLimits {
-            unindexed_allow: uat.lim_uidx,
-            search_max_results: uat.lim_rmax,
-            search_max_filter_test: uat.lim_pmax,
-            filter_max_elements: uat.lim_fmax,
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct Event {
-    // The event's initiator aka origin source.
-    // This importantly, is used for access control!
-    pub origin: EventOrigin,
-    pub(crate) limits: EventLimits,
-}
-
-impl std::fmt::Display for Event {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match &self.origin {
-            EventOrigin::Internal => write!(f, "Internal"),
-            EventOrigin::User(e) => {
-                let nv = e.get_uuid2spn();
-                write!(
-                    f,
-                    "User( {}, {} ) ",
-                    nv.to_proto_string_clone(),
-                    e.get_uuid().to_hyphenated_ref()
-                )
-            }
-        }
-    }
-}
-
-impl Event {
-    pub fn from_ro_uat(
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-        uat: Option<&UserAuthToken>,
-    ) -> Result<Self, OperationError> {
-        ltrace!(audit, "from_ro_uat -> {:?}", uat);
-        let uat = uat.ok_or(OperationError::NotAuthenticated)?;
-        /*
-        let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
-            ladmin_error!(audit, "from_ro_uat invalid uat uuid");
-            OperationError::InvalidUuid
-        })?;
-        */
-
-        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
-            ladmin_error!(audit, "from_ro_uat failed {:?}", e);
-            e
-        })?;
-        // TODO #64: Now apply claims from the uat into the Entry
-        // to allow filtering.
-
-        // TODO #59: If the account is expiredy, do not allow the event
-        // to proceed
-
-        let limits = EventLimits::from_uat(uat);
-        Ok(Event {
-            origin: EventOrigin::User(e),
-            limits,
-        })
-    }
-
-    pub fn from_rw_uat(
-        audit: &mut AuditScope,
-        qs: &QueryServerWriteTransaction,
-        uat: Option<&UserAuthToken>,
-    ) -> Result<Self, OperationError> {
-        ltrace!(audit, "from_rw_uat -> {:?}", uat);
-        let uat = uat.ok_or(OperationError::NotAuthenticated)?;
-        /*
-        let u = Uuid::parse_str(uat.uuid.as_str()).map_err(|_| {
-            ladmin_error!(audit, "from_rw_uat invalid uat uuid");
-            OperationError::InvalidUuid
-        })?;
-        */
-
-        let e = qs.internal_search_uuid(audit, &uat.uuid).map_err(|e| {
-            ladmin_error!(audit, "from_rw_uat failed {:?}", e);
-            e
-        })?;
-        // TODO #64: Now apply claims from the uat into the Entry
-        // to allow filtering.
-
-        // TODO #59: If the account is expiredy, do not allow the event
-        // to proceed
-
-        let limits = EventLimits::from_uat(uat);
-        Ok(Event {
-            origin: EventOrigin::User(e),
-            limits,
-        })
-    }
-
-    pub fn from_internal() -> Self {
-        Event {
-            origin: EventOrigin::Internal,
-            limits: EventLimits::unlimited(),
-        }
-    }
-
-    #[cfg(test)]
-    pub fn from_impersonate_entry(e: Entry<EntrySealed, EntryCommitted>) -> Self {
-        Event {
-            origin: EventOrigin::User(e),
-            limits: EventLimits::unlimited(),
-        }
-    }
-
-    #[cfg(test)]
-    pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
-        let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        Self::from_impersonate_entry(ei.into_sealed_committed())
-    }
-
-    pub fn from_impersonate(event: &Self) -> Self {
-        // TODO #64 ?: In the future, we could change some of this data
-        // to reflect the fact we are infact impersonating the action
-        // rather than the user explicitly requesting it. Could matter
-        // to audits and logs to determine what happened.
-        event.clone()
-    }
-
-    pub fn is_internal(&self) -> bool {
-        matches!(self.origin, EventOrigin::Internal)
-    }
-
-    pub fn get_uuid(&self) -> Option<Uuid> {
-        match &self.origin {
-            EventOrigin::Internal => None,
-            EventOrigin::User(e) => Some(*e.get_uuid()),
-        }
-    }
-
-    pub fn get_event_origin_id(&self) -> EventOriginId {
-        EventOriginId::from(&self.origin)
-    }
-}
-
 #[derive(Debug)]
 pub struct SearchEvent {
-    pub event: Event,
+    pub ident: Identity,
     // This is the filter as we apply and process it.
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
@@ -271,12 +68,11 @@ pub struct SearchEvent {
 impl SearchEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        ident: Identity,
         req: &SearchRequest,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_ro_uat(audit, qs, uat)?;
-        let f = Filter::from_ro(audit, &event, &req.filter, qs)?;
+        let f = Filter::from_ro(audit, &ident, &req.filter, qs)?;
         // We do need to do this twice to account for the ignore_hidden
         // changes.
         let filter_orig = f
@@ -284,7 +80,7 @@ impl SearchEvent {
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
         Ok(SearchEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             // We can't get this from the SearchMessage because it's annoying with the
@@ -295,7 +91,7 @@ impl SearchEvent {
 
     pub fn from_internal_message(
         audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        ident: Identity,
         filter: &Filter<FilterInvalid>,
         attrs: Option<&[String]>,
         qs: &QueryServerReadTransaction,
@@ -313,8 +109,6 @@ impl SearchEvent {
             }
         }
 
-        let event = Event::from_ro_uat(audit, qs, uat)?;
-
         let filter_orig = filter.validate(qs.get_schema()).map_err(|e| {
             lrequest_error!(audit, "filter schema violation -> {:?}", e);
             OperationError::SchemaViolation(e)
@@ -322,7 +116,7 @@ impl SearchEvent {
         let filter = filter_orig.clone().into_ignore_hidden();
 
         Ok(SearchEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             attrs: r_attrs,
@@ -330,8 +124,8 @@ impl SearchEvent {
     }
 
     pub fn from_internal_recycle_message(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         filter: &Filter<FilterInvalid>,
         attrs: Option<&[String]>,
         qs: &QueryServerReadTransaction,
@@ -348,7 +142,6 @@ impl SearchEvent {
             }
         }
 
-        let event = Event::from_ro_uat(audit, qs, uat)?;
         let filter_orig = filter
             .validate(qs.get_schema())
             .map(|f| f.into_recycled())
@@ -356,7 +149,7 @@ impl SearchEvent {
         let filter = filter_orig.clone();
 
         Ok(SearchEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             attrs: r_attrs,
@@ -364,18 +157,17 @@ impl SearchEvent {
     }
 
     pub fn from_whoami_request(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_ro_uat(audit, qs, uat)?;
         let filter_orig = filter_all!(f_self())
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
 
         Ok(SearchEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             attrs: None,
@@ -383,18 +175,17 @@ impl SearchEvent {
     }
 
     pub fn from_target_uuid_request(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         target_uuid: Uuid,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_ro_uat(audit, qs, uat)?;
         let filter_orig = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)))
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
         Ok(SearchEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             attrs: None,
@@ -405,7 +196,7 @@ impl SearchEvent {
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            event: Event::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_ser(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -418,7 +209,7 @@ impl SearchEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
-            event: Event::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -426,12 +217,12 @@ impl SearchEvent {
     }
 
     pub fn new_impersonate(
-        event: &Event,
+        ident: &Identity,
         filter: Filter<FilterValid>,
         filter_orig: Filter<FilterValid>,
     ) -> Self {
         SearchEvent {
-            event: Event::from_impersonate(event),
+            ident: Identity::from_impersonate(ident),
             filter,
             filter_orig,
             attrs: None,
@@ -447,7 +238,7 @@ impl SearchEvent {
         let filter_orig = filter.into_valid();
         let filter = filter_orig.clone().into_recycled();
         SearchEvent {
-            event: Event::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry(e),
             filter,
             filter_orig,
             attrs: None,
@@ -461,7 +252,7 @@ impl SearchEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
-            event: Event::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry(e),
             filter: filter.clone().into_valid().into_ignore_hidden(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -471,19 +262,18 @@ impl SearchEvent {
     pub(crate) fn new_ext_impersonate_uuid(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
-        euat: &UserAuthToken,
+        ident: Identity,
         lf: &LdapFilter,
         attrs: Option<BTreeSet<AttrString>>,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_ro_uat(audit, qs, Some(euat))?;
         // Kanidm Filter from LdapFilter
-        let f = Filter::from_ldap_ro(audit, &event, &lf, qs)?;
+        let f = Filter::from_ldap_ro(audit, &ident, &lf, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
         Ok(SearchEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             attrs,
@@ -493,7 +283,7 @@ impl SearchEvent {
     #[cfg(test)]
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         SearchEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             attrs: None,
@@ -502,15 +292,15 @@ impl SearchEvent {
 
     pub fn new_internal(filter: Filter<FilterValid>) -> Self {
         SearchEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
             attrs: None,
         }
     }
 
-    pub(crate) fn get_limits(&self) -> &EventLimits {
-        &self.event.limits
+    pub(crate) fn get_limits(&self) -> &Limits {
+        &self.ident.limits
     }
 }
 
@@ -519,7 +309,7 @@ impl SearchEvent {
 // request is internal or not.
 #[derive(Debug)]
 pub struct CreateEvent {
-    pub event: Event,
+    pub ident: Identity,
     // This may still actually change to handle the *raw* nature of the
     // input that we plan to parse.
     pub entries: Vec<Entry<EntryInit, EntryNew>>,
@@ -530,7 +320,7 @@ pub struct CreateEvent {
 impl CreateEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        ident: Identity,
         req: &CreateRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -539,14 +329,11 @@ impl CreateEvent {
             .iter()
             .map(|e| Entry::from_proto_entry(audit, e, qs))
             .collect();
+        // From ProtoEntry -> Entry
+        // What is the correct consuming iterator here? Can we
+        // even do that?
         match rentries {
-            Ok(entries) => Ok(CreateEvent {
-                // From ProtoEntry -> Entry
-                // What is the correct consuming iterator here? Can we
-                // even do that?
-                event: Event::from_rw_uat(audit, qs, uat)?,
-                entries,
-            }),
+            Ok(entries) => Ok(CreateEvent { ident, entries }),
             Err(e) => Err(e),
         }
     }
@@ -558,14 +345,14 @@ impl CreateEvent {
         entries: Vec<Entry<EntryInit, EntryNew>>,
     ) -> Self {
         CreateEvent {
-            event: Event::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_ser(e),
             entries,
         }
     }
 
     pub fn new_internal(entries: Vec<Entry<EntryInit, EntryNew>>) -> Self {
         CreateEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             entries,
         }
     }
@@ -573,7 +360,7 @@ impl CreateEvent {
 
 #[derive(Debug)]
 pub struct ExistsEvent {
-    pub event: Event,
+    pub ident: Identity,
     // This is the filter, as it will be processed.
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
@@ -583,7 +370,7 @@ pub struct ExistsEvent {
 impl ExistsEvent {
     pub fn new_internal(filter: Filter<FilterValid>) -> Self {
         ExistsEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
         }
@@ -593,20 +380,20 @@ impl ExistsEvent {
     #[allow(dead_code)]
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         ExistsEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
     }
 
-    pub(crate) fn get_limits(&self) -> &EventLimits {
-        &self.event.limits
+    pub(crate) fn get_limits(&self) -> &Limits {
+        &self.ident.limits
     }
 }
 
 #[derive(Debug)]
 pub struct DeleteEvent {
-    pub event: Event,
+    pub ident: Identity,
     // This is the filter, as it will be processed.
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
@@ -616,36 +403,34 @@ pub struct DeleteEvent {
 impl DeleteEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        ident: Identity,
         req: &DeleteRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_rw_uat(audit, qs, uat)?;
-        let f = Filter::from_rw(audit, &event, &req.filter, qs)?;
+        let f = Filter::from_rw(audit, &ident, &req.filter, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
         Ok(DeleteEvent {
-            event,
+            ident,
             filter,
             filter_orig,
         })
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         f: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_rw_uat(audit, qs, uat)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();
         Ok(DeleteEvent {
-            event,
+            ident,
             filter,
             filter_orig,
         })
@@ -657,7 +442,7 @@ impl DeleteEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         DeleteEvent {
-            event: Event::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
@@ -666,7 +451,7 @@ impl DeleteEvent {
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry_ser(e: &str, filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
-            event: Event::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_ser(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
@@ -675,7 +460,7 @@ impl DeleteEvent {
     #[cfg(test)]
     pub unsafe fn new_internal_invalid(filter: Filter<FilterInvalid>) -> Self {
         DeleteEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
         }
@@ -683,7 +468,7 @@ impl DeleteEvent {
 
     pub fn new_internal(filter: Filter<FilterValid>) -> Self {
         DeleteEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
         }
@@ -692,7 +477,7 @@ impl DeleteEvent {
 
 #[derive(Debug)]
 pub struct ModifyEvent {
-    pub event: Event,
+    pub ident: Identity,
     // This is the filter, as it will be processed.
     pub filter: Filter<FilterValid>,
     // This is the original filter, for the purpose of ACI checking.
@@ -703,12 +488,11 @@ pub struct ModifyEvent {
 impl ModifyEvent {
     pub fn from_message(
         audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        ident: Identity,
         req: &ModifyRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_rw_uat(audit, qs, uat)?;
-        let f = Filter::from_rw(audit, &event, &req.filter, qs)?;
+        let f = Filter::from_rw(audit, &ident, &req.filter, qs)?;
         let m = ModifyList::from(audit, &req.modlist, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
@@ -718,7 +502,7 @@ impl ModifyEvent {
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         Ok(ModifyEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             modlist,
@@ -727,7 +511,7 @@ impl ModifyEvent {
 
     pub fn from_parts(
         audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        ident: Identity,
         target_uuid: Uuid,
         proto_ml: &ProtoModifyList,
         filter: Filter<FilterInvalid>,
@@ -738,7 +522,6 @@ impl ModifyEvent {
         let f = Filter::join_parts_and(f_uuid, filter);
 
         let m = ModifyList::from(audit, &proto_ml, qs)?;
-        let event = Event::from_rw_uat(audit, qs, uat)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -748,7 +531,7 @@ impl ModifyEvent {
             .map_err(OperationError::SchemaViolation)?;
 
         Ok(ModifyEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             modlist,
@@ -756,8 +539,8 @@ impl ModifyEvent {
     }
 
     pub fn from_internal_parts(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         target_uuid: Uuid,
         ml: &ModifyList<ModifyInvalid>,
         filter: Filter<FilterInvalid>,
@@ -767,7 +550,6 @@ impl ModifyEvent {
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
-        let event = Event::from_rw_uat(audit, qs, uat)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -777,7 +559,7 @@ impl ModifyEvent {
             .map_err(OperationError::SchemaViolation)?;
 
         Ok(ModifyEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             modlist,
@@ -785,8 +567,8 @@ impl ModifyEvent {
     }
 
     pub fn from_target_uuid_attr_purge(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         target_uuid: Uuid,
         attr: &str,
         filter: Filter<FilterInvalid>,
@@ -797,7 +579,6 @@ impl ModifyEvent {
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
-        let event = Event::from_rw_uat(audit, qs, uat)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -806,7 +587,7 @@ impl ModifyEvent {
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         Ok(ModifyEvent {
-            event,
+            ident,
             filter,
             filter_orig,
             modlist,
@@ -815,7 +596,7 @@ impl ModifyEvent {
 
     pub fn new_internal(filter: Filter<FilterValid>, modlist: ModifyList<ModifyValid>) -> Self {
         ModifyEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone(),
             filter_orig: filter,
             modlist,
@@ -828,7 +609,7 @@ impl ModifyEvent {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             modlist: modlist.into_valid(),
@@ -842,7 +623,7 @@ impl ModifyEvent {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
-            event: Event::from_impersonate_entry_ser(e),
+            ident: Identity::from_impersonate_entry_ser(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             modlist: modlist.into_valid(),
@@ -856,7 +637,7 @@ impl ModifyEvent {
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
         ModifyEvent {
-            event: Event::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry(e),
             filter: filter.clone().into_valid(),
             filter_orig: filter.into_valid(),
             modlist: modlist.into_valid(),
@@ -864,13 +645,13 @@ impl ModifyEvent {
     }
 
     pub fn new_impersonate(
-        event: &Event,
+        ident: &Identity,
         filter: Filter<FilterValid>,
         filter_orig: Filter<FilterValid>,
         modlist: ModifyList<ModifyValid>,
     ) -> Self {
         ModifyEvent {
-            event: Event::from_impersonate(event),
+            ident: Identity::from_impersonate(ident),
             filter,
             filter_orig,
             modlist,
@@ -976,7 +757,7 @@ impl AuthEventStep {
 
 #[derive(Debug)]
 pub struct AuthEvent {
-    pub event: Option<Event>,
+    pub ident: Option<Identity>,
     pub step: AuthEventStep,
     // pub sessionid: Option<Uuid>,
 }
@@ -984,7 +765,7 @@ pub struct AuthEvent {
 impl AuthEvent {
     pub fn from_message(sessionid: Option<Uuid>, req: AuthRequest) -> Result<Self, OperationError> {
         Ok(AuthEvent {
-            event: None,
+            ident: None,
             step: AuthEventStep::from_authstep(req.step, sessionid)?,
         })
     }
@@ -992,7 +773,7 @@ impl AuthEvent {
     #[cfg(test)]
     pub fn anonymous_init() -> Self {
         AuthEvent {
-            event: None,
+            ident: None,
             step: AuthEventStep::anonymous_init(),
         }
     }
@@ -1000,7 +781,7 @@ impl AuthEvent {
     #[cfg(test)]
     pub fn named_init(name: &str) -> Self {
         AuthEvent {
-            event: None,
+            ident: None,
             step: AuthEventStep::named_init(name),
         }
     }
@@ -1008,7 +789,7 @@ impl AuthEvent {
     #[cfg(test)]
     pub fn begin_mech(sessionid: Uuid, mech: AuthMech) -> Self {
         AuthEvent {
-            event: None,
+            ident: None,
             step: AuthEventStep::begin_mech(sessionid, mech),
         }
     }
@@ -1016,7 +797,7 @@ impl AuthEvent {
     #[cfg(test)]
     pub fn cred_step_anonymous(sid: Uuid) -> Self {
         AuthEvent {
-            event: None,
+            ident: None,
             step: AuthEventStep::cred_step_anonymous(sid),
         }
     }
@@ -1024,7 +805,7 @@ impl AuthEvent {
     #[cfg(test)]
     pub fn cred_step_password(sid: Uuid, pw: &str) -> Self {
         AuthEvent {
-            event: None,
+            ident: None,
             step: AuthEventStep::cred_step_password(sid, pw),
         }
     }
@@ -1077,7 +858,7 @@ impl WhoamiResult {
 
 #[derive(Debug)]
 pub struct PurgeTombstoneEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub eventid: Uuid,
 }
 
@@ -1090,7 +871,7 @@ impl Default for PurgeTombstoneEvent {
 impl PurgeTombstoneEvent {
     pub fn new() -> Self {
         PurgeTombstoneEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             eventid: Uuid::new_v4(),
         }
     }
@@ -1098,7 +879,7 @@ impl PurgeTombstoneEvent {
 
 #[derive(Debug)]
 pub struct PurgeRecycledEvent {
-    pub event: Event,
+    pub ident: Identity,
     pub eventid: Uuid,
 }
 
@@ -1111,7 +892,7 @@ impl Default for PurgeRecycledEvent {
 impl PurgeRecycledEvent {
     pub fn new() -> Self {
         PurgeRecycledEvent {
-            event: Event::from_internal(),
+            ident: Identity::from_internal(),
             eventid: Uuid::new_v4(),
         }
     }
@@ -1119,28 +900,27 @@ impl PurgeRecycledEvent {
 
 #[derive(Debug)]
 pub struct ReviveRecycledEvent {
-    pub event: Event,
+    pub ident: Identity,
     // This is the filter, as it will be processed.
     pub filter: Filter<FilterValid>,
     // Unlike the others, because of how this works, we don't need the orig filter
     // to be retained, because the filter is the orig filter for this check.
     //
-    // It will be duplicated into the modify event as it exists.
+    // It will be duplicated into the modify ident as it exists.
 }
 
 impl ReviveRecycledEvent {
     pub fn from_parts(
-        audit: &mut AuditScope,
-        uat: Option<&UserAuthToken>,
+        _audit: &mut AuditScope,
+        ident: Identity,
         filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let event = Event::from_rw_uat(audit, qs, uat)?;
         let filter = filter
             .validate(qs.get_schema())
             .map(|f| f.into_recycled())
             .map_err(OperationError::SchemaViolation)?;
-        Ok(ReviveRecycledEvent { event, filter })
+        Ok(ReviveRecycledEvent { ident, filter })
     }
 
     #[cfg(test)]
@@ -1149,7 +929,7 @@ impl ReviveRecycledEvent {
         filter: Filter<FilterInvalid>,
     ) -> Self {
         ReviveRecycledEvent {
-            event: Event::from_impersonate_entry(e),
+            ident: Identity::from_impersonate_entry(e),
             filter: filter.into_valid(),
         }
     }

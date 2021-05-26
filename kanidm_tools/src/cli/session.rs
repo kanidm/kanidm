@@ -1,6 +1,6 @@
-use crate::LoginOpt;
+use crate::{LoginOpt, LogoutOpt, SessionOpt};
 use kanidm_client::{ClientError, KanidmClient};
-use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState};
+use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
 use libc::umask;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
@@ -309,7 +309,7 @@ impl LoginOpt {
         };
         // Add our new one
         match client.get_token() {
-            Some(t) => tokens.insert(username.to_string(), t.to_string()),
+            Some(t) => tokens.insert(username.to_string(), t),
             None => {
                 error!("Error retrieving client session");
                 std::process::exit(1);
@@ -324,5 +324,104 @@ impl LoginOpt {
 
         // Success!
         println!("Login Success for {}", username);
+    }
+}
+
+impl LogoutOpt {
+    pub fn debug(&self) -> bool {
+        self.copt.debug
+    }
+
+    pub fn exec(&self) {
+        let username = self.copt.username.as_deref().unwrap_or("anonymous");
+
+        // For now we just remove this from the token store.
+        // Read the current tokens
+        let mut tokens = match read_tokens() {
+            Ok(t) => t,
+            Err(_e) => {
+                error!("Error retrieving authentication token store");
+                std::process::exit(1);
+            }
+        };
+
+        // Remove our old one
+        if tokens.remove(username).is_some() {
+            // write them out.
+            if let Err(_e) = write_tokens(&tokens) {
+                error!("Error persisting authentication token store");
+                std::process::exit(1);
+            };
+            info!("Removed session for {}", username);
+        } else {
+            info!("No sessions for {}", username);
+        }
+    }
+}
+
+impl SessionOpt {
+    pub fn debug(&self) -> bool {
+        match self {
+            SessionOpt::List(dopt) => dopt.debug,
+            SessionOpt::Cleanup(dopt) => dopt.debug,
+        }
+    }
+
+    fn read_valid_tokens() -> BTreeMap<String, (String, UserAuthToken)> {
+        let tokens = match read_tokens() {
+            Ok(t) => t,
+            Err(_e) => {
+                error!("Error retrieving authentication token store");
+                std::process::exit(1);
+            }
+        };
+
+        tokens
+            .into_iter()
+            .filter_map(|(u, t)| {
+                unsafe { bundy::Data::parse_without_verification::<UserAuthToken>(&t) }
+                    .ok()
+                    .map(|uat| (u, (t, uat)))
+            })
+            .collect()
+    }
+
+    pub fn exec(&self) {
+        match self {
+            SessionOpt::List(_) => {
+                let tokens = Self::read_valid_tokens();
+                tokens.values().for_each(|(_, uat)| {
+                    println!("---");
+                    println!("{}", uat);
+                })
+            }
+            SessionOpt::Cleanup(_) => {
+                let tokens = Self::read_valid_tokens();
+                let start_len = tokens.len();
+
+                let now = time::OffsetDateTime::now_utc();
+
+                let tokens: BTreeMap<_, _> = tokens
+                    .into_iter()
+                    .filter_map(|(u, (t, uat))| {
+                        if now >= uat.expiry {
+                            //Expired
+                            None
+                        } else {
+                            Some((u, t))
+                        }
+                    })
+                    .collect();
+
+                let end_len = tokens.len();
+
+                if let Err(_e) = write_tokens(&tokens) {
+                    error!("Error persisting authentication token store");
+                    std::process::exit(1);
+                };
+
+                println!("Removed {} sessions", start_len - end_len);
+            }
+        }
     }
 }

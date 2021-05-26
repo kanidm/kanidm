@@ -8,14 +8,13 @@ pub(crate) mod mfareg;
 pub(crate) mod radius;
 pub mod server;
 pub(crate) mod unix;
-// mod identity;
 
-use kanidm_proto::v1::{AuthAllowed, AuthMech, UserAuthToken};
+use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
 #[derive(Debug)]
 pub enum AuthState {
     Choose(Vec<AuthMech>),
     Continue(Vec<AuthAllowed>),
     Denied(String),
-    Success(UserAuthToken),
+    Success(String),
 }

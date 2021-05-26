@@ -61,16 +61,6 @@ with the -C parameter:
 
 Now you can take some time to look at what commands are available - please [ask for help at any time](https://github.com/kanidm/kanidm#getting-in-contact--questions).
 
-## Authenticating a user with the command line
-
-To authenticate as a user for use with the command line, you need to use the `login` command
-to establish a session token.
-
-    kanidm login --name USERNAME
-    kanidm login --name admin
-
-Once complete, you can use kanidm without reauthenticating for a period of time for administration.
-
 ## Kandim configuration
 
 You can configure kanidm to help make commands simpler by modifying ~/.config/kanidm OR /etc/kanidm/config
@@ -83,4 +73,28 @@ You can configure kanidm to help make commands simpler by modifying ~/.config/ka
 Once configured, you can test this with:
 
     kanidm self whoami --name anonymous
+
+## Session Management
+
+To authenticate as a user for use with the command line, you need to use the `login` command
+to establish a session token.
+
+    kanidm login --name USERNAME
+    kanidm login --name admin
+
+Once complete, you can use kanidm without reauthenticating for a period of time for administration.
+
+You can list active sessions with:
+
+    kanidm session list
+
+Sessions will expire after a period of time (by default 1 hour). To remove these expired sessions
+locally you can use:
+
+    kanidm session cleanup
+
+To logout of a session:
+
+    kanidm logout --name USERNAME
+    kanidm logout --name admin
 

@@ -509,6 +509,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "63396b8a4b9de3f4fdfb320ab6080762242f66a8ef174c49d8e19b674db4cdbe"
 
 [[package]]
+name = "bundy"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9e7d51b542bdd93155cae5c48156f17bb64c10cb7dcf8124bce13ca66fd4a107"
+dependencies = [
+ "base64 0.13.0",
+ "log",
+ "openssl",
+ "serde",
+ "serde_derive",
+ "serde_json",
+]
+
+[[package]]
 name = "byte-pool"
 version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1721,6 +1735,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "base64 0.13.0",
+ "bundy",
  "cargo-husky",
  "chrono",
  "concread",
@@ -1798,6 +1813,7 @@ dependencies = [
  "serde",
  "serde_derive",
  "serde_json",
+ "time 0.2.26",
  "uuid",
  "webauthn-rs",
 ]
@@ -1806,6 +1822,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.4"
 dependencies = [
+ "bundy",
  "env_logger",
  "kanidm_client",
  "kanidm_proto",

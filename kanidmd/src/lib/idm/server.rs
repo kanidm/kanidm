@@ -2,6 +2,7 @@ use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
+use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
@@ -24,11 +25,13 @@ use crate::idm::delayed::{
 };
 
 use hashbrown::HashSet;
-use kanidm_proto::v1::CredentialStatus;
-use kanidm_proto::v1::RadiusAuthToken;
-use kanidm_proto::v1::SetCredentialResponse;
-use kanidm_proto::v1::UnixGroupToken;
-use kanidm_proto::v1::UnixUserToken;
+use kanidm_proto::v1::{
+    CredentialStatus, RadiusAuthToken, SetCredentialResponse, UnixGroupToken, UnixUserToken,
+    UserAuthToken,
+};
+use std::str::FromStr;
+
+use bundy::hs512::HS512;
 
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
@@ -75,6 +78,7 @@ pub struct IdmServer {
     // Our webauthn verifier/config
     webauthn: Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
+    uat_bundy_hmac: Arc<CowCell<HS512>>,
 }
 
 pub struct IdmServerAuthTransaction<'a> {
@@ -93,12 +97,14 @@ pub struct IdmServerAuthTransaction<'a> {
     async_tx: Sender<DelayedAction>,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    uat_bundy_hmac: CowCellReadTxn<HS512>,
 }
 
 pub struct IdmServerProxyReadTransaction<'a> {
     // This contains read-only methods, like getting users, groups
     // and other structured content.
     pub qs_read: QueryServerReadTransaction<'a>,
+    uat_bundy_hmac: CowCellReadTxn<HS512>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -111,6 +117,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
+    uat_bundy_hmac: CowCellWriteTxn<'a, HS512>,
 }
 
 pub struct IdmServerDelayed {
@@ -123,6 +130,7 @@ impl IdmServer {
         au: &mut AuditScope,
         qs: QueryServer,
         origin: String,
+        // ct: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
@@ -142,6 +150,14 @@ impl IdmServer {
                 qs_read.get_password_badlist(au)?,
             )
         };
+
+        let bundy_handle = HS512::generate_key()
+            .and_then(|bundy_key| HS512::from_str(&bundy_key))
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
+                OperationError::InvalidState
+            })?;
+        let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
         // Check that it gels with our origin.
         Url::parse(origin.as_str())
@@ -184,6 +200,7 @@ impl IdmServer {
                 async_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
+                uat_bundy_hmac,
             },
             IdmServerDelayed { async_rx },
         ))
@@ -214,6 +231,7 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
+            uat_bundy_hmac: self.uat_bundy_hmac.read(),
         }
     }
 
@@ -225,6 +243,7 @@ impl IdmServer {
     pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
+            uat_bundy_hmac: self.uat_bundy_hmac.read(),
         }
     }
 
@@ -246,6 +265,7 @@ impl IdmServer {
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.write(),
+            uat_bundy_hmac: self.uat_bundy_hmac.write(),
         }
     }
 
@@ -293,6 +313,80 @@ impl IdmServerDelayed {
                 None => return,
             }
         }
+    }
+}
+
+pub trait IdmServerTransaction<'a> {
+    type QsTransactionType: QueryServerTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType;
+
+    fn get_uat_bundy_txn(&self) -> &HS512;
+
+    fn validate_and_parse_uat(
+        &self,
+        audit: &mut AuditScope,
+        token: Option<&str>,
+        ct: Duration,
+    ) -> Result<UserAuthToken, OperationError> {
+        // Given the token string, validate and recreate the UAT
+        let bref = self.get_uat_bundy_txn();
+
+        let uat: UserAuthToken =
+            token
+                .ok_or(OperationError::NotAuthenticated)
+                .and_then(|token| {
+                    bref.verify(&token).map_err(|e| {
+                        lsecurity!(audit, "Unable to verify token - {:?}", e);
+                        OperationError::NotAuthenticated
+                    })
+                })?;
+
+        if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
+            lsecurity!(audit, "Session expired");
+            Err(OperationError::SessionExpired)
+        } else {
+            Ok(uat)
+        }
+    }
+
+    fn process_uat_to_identity(
+        &self,
+        audit: &mut AuditScope,
+        uat: &UserAuthToken,
+    ) -> Result<Identity, OperationError> {
+        // From a UAT, get the current identity and associated information.
+        let entry = self
+            .get_qs_txn()
+            .internal_search_uuid(audit, &uat.uuid)
+            .map_err(|e| {
+                ladmin_error!(audit, "from_ro_uat failed {:?}", e);
+                e
+            })?;
+
+        // TODO #64: Now apply claims from the uat into the Entry
+        // to allow filtering.
+
+        // TODO #59: If the account is expiredy, do not allow the event
+        // to proceed
+
+        let limits = Limits::from_uat(uat);
+        Ok(Identity {
+            origin: IdentType::User(IdentUser { entry }),
+            limits,
+        })
+    }
+}
+
+impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
+    type QsTransactionType = QueryServerReadTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType {
+        &self.qs_read
+    }
+
+    fn get_uat_bundy_txn(&self) -> &HS512 {
+        &*self.uat_bundy_hmac
     }
 }
 
@@ -524,6 +618,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             &self.async_tx,
                             self.webauthn,
                             pw_badlist_cache,
+                            &*self.uat_bundy_hmac,
                         )
                         .map(|aus| {
                             // Inspect the result:
@@ -669,7 +764,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             Ok(Some(LdapBoundToken {
                 uuid: *UUID_ANONYMOUS,
                 effective_uat: account
-                    .to_userauthtoken(au.uuid, &[])
+                    .to_userauthtoken(au.uuid, &[], ct)
                     .ok_or(OperationError::InvalidState)
                     .map_err(|e| {
                         ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -731,7 +826,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         spn: account.spn,
                         uuid: account.uuid,
                         effective_uat: anon_account
-                            .to_userauthtoken(au.uuid, &[])
+                            .to_userauthtoken(au.uuid, &[], ct)
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
                                 ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -774,6 +869,18 @@ impl<'a> IdmServerAuthTransaction<'a> {
     }
 }
 
+impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
+    type QsTransactionType = QueryServerReadTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType {
+        &self.qs_read
+    }
+
+    fn get_uat_bundy_txn(&self) -> &HS512 {
+        &*self.uat_bundy_hmac
+    }
+}
+
 impl<'a> IdmServerProxyReadTransaction<'a> {
     pub fn get_radiusauthtoken(
         &mut self,
@@ -783,7 +890,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<RadiusAuthToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &rate.target, &rate.event)
+            .impersonate_search_ext_uuid(au, &rate.target, &rate.ident)
             .and_then(|account_entry| {
                 RadiusAccount::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
@@ -803,7 +910,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<UnixUserToken, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_uuid(au, &uute.target, &uute.event)
+            .impersonate_search_uuid(au, &uute.target, &uute.ident)
             .and_then(|account_entry| {
                 UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)
             })
@@ -822,7 +929,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<UnixGroupToken, OperationError> {
         let group = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &uute.target, &uute.event)
+            .impersonate_search_ext_uuid(au, &uute.target, &uute.ident)
             .and_then(|e| UnixGroup::try_from_entry_reduced(&e))
             .map_err(|e| {
                 ladmin_error!(au, "Failed to start unix group token {:?}", e);
@@ -838,7 +945,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<CredentialStatus, OperationError> {
         let account = self
             .qs_read
-            .impersonate_search_ext_uuid(au, &cse.target, &cse.event)
+            .impersonate_search_ext_uuid(au, &cse.target, &cse.ident)
             .and_then(|account_entry| {
                 Account::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
@@ -848,6 +955,18 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             })?;
 
         account.to_credentialstatus()
+    }
+}
+
+impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
+    type QsTransactionType = QueryServerWriteTransaction<'a>;
+
+    fn get_qs_txn(&self) -> &Self::QsTransactionType {
+        &self.qs_write
+    }
+
+    fn get_uat_bundy_txn(&self) -> &HS512 {
+        &*self.uat_bundy_hmac
     }
 }
 
@@ -973,7 +1092,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 &modlist,
-                &pce.event,
+                &pce.ident,
             )
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
@@ -1064,7 +1183,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&pce.target))),
                 &modlist,
-                &pce.event,
+                &pce.ident,
             )
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
@@ -1182,7 +1301,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gpe.target))),
                 &modlist,
                 // Provide the event to impersonate
-                &gpe.event,
+                &gpe.ident,
             )
             .map(|_| cleartext)
             .map_err(|e| {
@@ -1221,7 +1340,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&rrse.target))),
                 &modlist,
                 // Provide the event to impersonate
-                &rrse.event,
+                &rrse.ident,
             )
             .map_err(|e| {
                 lrequest_error!(au, "error -> {:?}", e);
@@ -1239,7 +1358,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let account = self.target_to_account(au, &wre.target)?;
         let sessionid = uuid_from_duration(ct, self.sid);
 
-        let origin = (&wre.event.origin).into();
+        let origin = (&wre.ident.origin).into();
         let label = wre.label.clone();
 
         let (session, next) =
@@ -1259,7 +1378,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         wre: &WebauthnDoRegisterEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = wre.session;
-        let origin = (&wre.event.origin).into();
+        let origin = (&wre.ident.origin).into();
         let webauthn = self.webauthn;
 
         // Regardless of the outcome, we purge this session, so we get it
@@ -1295,7 +1414,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     // Filter as intended (acp)
                     &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
                     &modlist,
-                    &wre.event,
+                    &wre.ident,
                 )
                 .map_err(|e| {
                     ladmin_error!(au, "reg_account_webauthn_complete {:?}", e);
@@ -1335,7 +1454,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
                 &modlist,
-                &rwe.event,
+                &rwe.ident,
             )
             .map_err(|e| {
                 ladmin_error!(au, "remove_account_webauthn {:?}", e);
@@ -1353,7 +1472,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let account = self.target_to_account(au, &gte.target)?;
         let sessionid = uuid_from_duration(ct, self.sid);
 
-        let origin = (&gte.event.origin).into();
+        let origin = (&gte.ident.origin).into();
         let label = gte.label.clone();
         let (session, next) = MfaRegSession::totp_new(origin, account, label).map_err(|e| {
             ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
@@ -1375,7 +1494,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<SetCredentialResponse, OperationError> {
         let sessionid = vte.session;
-        let origin = (&vte.event.origin).into();
+        let origin = (&vte.ident.origin).into();
         let chal = vte.chal;
 
         ltrace!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
@@ -1414,7 +1533,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     // Filter as intended (acp)
                     &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
                     &modlist,
-                    &vte.event,
+                    &vte.ident,
                 )
                 .map_err(|e| {
                     ladmin_error!(au, "verify_account_totp {:?}", e);
@@ -1447,7 +1566,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Filter as intended (acp)
                 &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
                 &modlist,
-                &rte.event,
+                &rte.ident,
             )
             .map_err(|e| {
                 ladmin_error!(au, "remove_account_totp {:?}", e);
@@ -1622,7 +1741,7 @@ mod tests {
     use kanidm_proto::v1::SetCredentialResponse;
     use kanidm_proto::v1::{AuthAllowed, AuthMech};
 
-    use crate::idm::server::IdmServer;
+    use crate::idm::server::{IdmServer, IdmServerTransaction};
     // , IdmServerDelayed;
     use crate::utils::duration_from_epoch_now;
     use async_std::task;
@@ -1896,7 +2015,7 @@ mod tests {
         sessionid
     }
 
-    fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) {
+    fn check_admin_password(idms: &IdmServer, au: &mut AuditScope, pw: &str) -> String {
         let sid =
             init_admin_authsession_sid(idms, au, Duration::from_secs(TEST_CURRENT_TIME), "admin");
 
@@ -1908,7 +2027,7 @@ mod tests {
             task::block_on(idms_auth.auth(au, &anon_step, Duration::from_secs(TEST_CURRENT_TIME)));
         debug!("r2 ==> {:?}", r2);
 
-        match r2 {
+        let token = match r2 {
             Ok(ar) => {
                 let AuthResult {
                     sessionid: _,
@@ -1919,8 +2038,9 @@ mod tests {
                 debug_assert!(delay.is_none());
 
                 match state {
-                    AuthState::Success(_uat) => {
+                    AuthState::Success(token) => {
                         // Check the uat.
+                        token
                     }
                     _ => {
                         error!("A critical error has occured! We have a non-succcess result!");
@@ -1936,6 +2056,7 @@ mod tests {
         };
 
         idms_auth.commit(au).expect("Must not fail");
+        token
     }
 
     #[test]
@@ -3244,6 +3365,33 @@ mod tests {
 
             check_admin_password(idms, au, TEST_PASSWORD);
             // All done!
+        })
+    }
+
+    #[test]
+    fn test_idm_bundy_uat_expiry() {
+        run_idm_test!(|qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let expiry = ct + Duration::from_secs(AUTH_SESSION_EXPIRY + 1);
+            // Do an authenticate
+            init_admin_w_password(au, qs, TEST_PASSWORD).expect("Failed to setup admin account");
+            let token = check_admin_password(idms, au, TEST_PASSWORD);
+
+            let idms_prox_read = idms.proxy_read();
+
+            // Check it's valid.
+            idms_prox_read
+                .validate_and_parse_uat(au, Some(token.as_str()), ct)
+                .expect("Failed to validate");
+
+            // In X time it should be INVALID
+            match idms_prox_read.validate_and_parse_uat(au, Some(token.as_str()), expiry) {
+                Err(OperationError::SessionExpired) => {}
+                _ => assert!(false),
+            }
         })
     }
 }

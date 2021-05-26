@@ -170,8 +170,6 @@ macro_rules! run_idm_test_inner {
         use crate::prelude::*;
         #[allow(unused_imports)]
         use crate::schema::Schema;
-        #[allow(unused_imports)]
-        use crate::utils::duration_from_epoch_now;
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -295,7 +293,6 @@ macro_rules! run_modify_test {
         use crate::event::ModifyEvent;
         use crate::prelude::*;
         use crate::schema::Schema;
-        use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
         lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
