@@ -7,7 +7,7 @@ use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use lru::LruCache;
 use reqwest::StatusCode;
 use std::collections::BTreeSet;
-use std::ops::Add;
+use std::ops::{Add, Sub};
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{Mutex, RwLock};
@@ -344,17 +344,19 @@ impl CacheLayer {
                             .await;
                         Ok(token)
                     }
-                    ClientError::Http(
-                        StatusCode::UNAUTHORIZED,
-                        Some(OperationError::NotAuthenticated),
-                        opid,
-                    ) => {
+                    ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid) => {
+                        match reason {
+                        Some(OperationError::NotAuthenticated) =>
+                            warn!("session not authenticated - attempting reauthentication - eventid {}", opid),
+                        Some(OperationError::SessionExpired) =>
+                            warn!("session expired - attempting reauthentication - eventid {}", opid),
+                        e =>
                         error!(
-                            "transport unauthenticated, moving to offline - eventid {}",
-                            opid
-                        );
-                        // Something went wrong, mark offline.
-                        let time = SystemTime::now().add(Duration::from_secs(15));
+                            "authentication error {:?}, moving to offline - eventid {}", e, opid
+                        ),
+                    };
+                        // Something went wrong, mark offline to force a re-auth ASAP.
+                        let time = SystemTime::now().sub(Duration::from_secs(1));
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
                             .await;
                         Ok(token)
@@ -741,63 +743,67 @@ impl CacheLayer {
                 // PW failed the check.
                 Ok(Some(false))
             }
-            Err(e) => match e {
-                ClientError::Transport(er) => {
-                    error!("transport error, moving to offline -> {:?}", er);
-                    // Something went wrong, mark offline.
-                    let time = SystemTime::now().add(Duration::from_secs(15));
-                    self.set_cachestate(CacheState::OfflineNextCheck(time))
-                        .await;
-                    match token.as_ref() {
-                        Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
-                        None => Ok(None),
+            Err(e) => {
+                match e {
+                    ClientError::Transport(er) => {
+                        error!("transport error, moving to offline -> {:?}", er);
+                        // Something went wrong, mark offline.
+                        let time = SystemTime::now().add(Duration::from_secs(15));
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
+                        match token.as_ref() {
+                            Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
+                            None => Ok(None),
+                        }
+                    }
+                    ClientError::Http(StatusCode::UNAUTHORIZED, reason, opid) => {
+                        match reason {
+                        Some(OperationError::NotAuthenticated) =>
+                            warn!("session not authenticated - attempting reauthentication - eventid {}", opid),
+                        Some(OperationError::SessionExpired) =>
+                            warn!("session expired - attempting reauthentication - eventid {}", opid),
+                        e =>
+                        error!(
+                            "authentication error {:?}, moving to offline - eventid {}", e, opid
+                        ),
+                    };
+                        // Something went wrong, mark offline to force a re-auth ASAP.
+                        let time = SystemTime::now().sub(Duration::from_secs(1));
+                        self.set_cachestate(CacheState::OfflineNextCheck(time))
+                            .await;
+                        match token.as_ref() {
+                            Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
+                            None => Ok(None),
+                        }
+                    }
+                    ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::NoMatchingEntries),
+                        opid,
+                    )
+                    | ClientError::Http(
+                        StatusCode::NOT_FOUND,
+                        Some(OperationError::NoMatchingEntries),
+                        opid,
+                    )
+                    | ClientError::Http(
+                        StatusCode::BAD_REQUEST,
+                        Some(OperationError::InvalidAccountState(_)),
+                        opid,
+                    ) => {
+                        error!(
+                            "unknown account or is not a valid posix account - eventid {}",
+                            opid
+                        );
+                        Ok(None)
+                    }
+                    er => {
+                        error!("client error -> {:?}", er);
+                        // Some other unknown processing error?
+                        Err(())
                     }
                 }
-                ClientError::Http(
-                    StatusCode::UNAUTHORIZED,
-                    Some(OperationError::NotAuthenticated),
-                    opid,
-                ) => {
-                    error!(
-                        "transport unauthenticated, moving to offline - eventid {}",
-                        opid
-                    );
-                    // Something went wrong, mark offline.
-                    let time = SystemTime::now().add(Duration::from_secs(15));
-                    self.set_cachestate(CacheState::OfflineNextCheck(time))
-                        .await;
-                    match token.as_ref() {
-                        Some(t) => self.check_cache_userpassword(&t.uuid, cred).await.map(Some),
-                        None => Ok(None),
-                    }
-                }
-                ClientError::Http(
-                    StatusCode::BAD_REQUEST,
-                    Some(OperationError::NoMatchingEntries),
-                    opid,
-                )
-                | ClientError::Http(
-                    StatusCode::NOT_FOUND,
-                    Some(OperationError::NoMatchingEntries),
-                    opid,
-                )
-                | ClientError::Http(
-                    StatusCode::BAD_REQUEST,
-                    Some(OperationError::InvalidAccountState(_)),
-                    opid,
-                ) => {
-                    error!(
-                        "unknown account or is not a valid posix account - eventid {}",
-                        opid
-                    );
-                    Ok(None)
-                }
-                er => {
-                    error!("client error -> {:?}", er);
-                    // Some other unknown processing error?
-                    Err(())
-                }
-            },
+            }
         }
     }
 
