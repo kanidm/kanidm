@@ -84,6 +84,10 @@ impl LdapServer {
                     vals: vec!["1.3.6.1.4.1.4203.1.11.3".to_string()],
                 },
                 LdapPartialAttribute {
+                    atype: "supportedFeatures".to_string(),
+                    vals: vec!["1.3.6.1.4.1.4203.1.5.1".to_string()],
+                },
+                LdapPartialAttribute {
                     atype: "defaultnamingcontext".to_string(),
                     vals: vec![basedn.clone()],
                 },
