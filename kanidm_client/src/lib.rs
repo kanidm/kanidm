@@ -132,7 +132,10 @@ impl KanidmClientBuilder {
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
             Some(uri) => Some(uri),
-            None => address,
+            None => {
+                debug!("No URI in supplied config");
+                address
+            }
         };
         let verify_ca = kcc.verify_ca.unwrap_or(verify_ca);
         let verify_hostnames = kcc.verify_hostnames.unwrap_or(verify_hostnames);
