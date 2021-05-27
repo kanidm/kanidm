@@ -1117,6 +1117,19 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
             self.attributes.insert(
+                AttrString::from("entrydn"),
+                SchemaAttribute {
+                    name: AttrString::from("entrydn"),
+                    uuid: *UUID_SCHEMA_ATTR_ENTRYDN,
+                    description: String::from("An LDAP Compatible EntryDN"),
+                    multivalue: false,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+            self.attributes.insert(
                 AttrString::from("entryuuid"),
                 SchemaAttribute {
                     name: AttrString::from("entryuuid"),
@@ -1140,6 +1153,84 @@ impl<'a> SchemaWriteTransaction<'a> {
                     phantom: true,
                     index: vec![],
                     syntax: SyntaxType::Utf8StringInsensitive,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("cn"),
+                SchemaAttribute {
+                    name: AttrString::from("cn"),
+                    uuid: *UUID_SCHEMA_ATTR_CN,
+                    description: String::from("An LDAP Compatible objectClass"),
+                    multivalue: false,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::Utf8StringIname,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("keys"),
+                SchemaAttribute {
+                    name: AttrString::from("keys"),
+                    uuid: *UUID_SCHEMA_ATTR_KEYS,
+                    description: String::from("An LDAP Compatible keys (ssh)"),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::SshKey,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("sshpublickey"),
+                SchemaAttribute {
+                    name: AttrString::from("sshpublickey"),
+                    uuid: *UUID_SCHEMA_ATTR_SSHPUBLICKEY,
+                    description: String::from("An LDAP Compatible sshPublicKey"),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::SshKey,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("email"),
+                SchemaAttribute {
+                    name: AttrString::from("email"),
+                    uuid: *UUID_SCHEMA_ATTR_EMAIL,
+                    description: String::from("An LDAP Compatible email"),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("emailaddress"),
+                SchemaAttribute {
+                    name: AttrString::from("emailaddress"),
+                    uuid: *UUID_SCHEMA_ATTR_EMAILADDRESS,
+                    description: String::from("An LDAP Compatible emailAddress"),
+                    multivalue: true,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UTF8STRING,
+                },
+            );
+            self.attributes.insert(
+                AttrString::from("uidnumber"),
+                SchemaAttribute {
+                    name: AttrString::from("uidnumber"),
+                    uuid: *UUID_SCHEMA_ATTR_UIDNUMBER,
+                    description: String::from("An LDAP Compatible uidNumber"),
+                    multivalue: false,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UINT32,
                 },
             );
             // end LDAP masking phantoms

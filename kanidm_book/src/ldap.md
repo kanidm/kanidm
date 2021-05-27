@@ -35,13 +35,12 @@ elements, and ignore others.
 
 For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.
 
-* Queries requesting objectClass/EntryUUID will be mapped to class/uuid
-* Entry attributes to LDAP may be renamed for presentation to LDAP clients (ie class to ObjectClass)
 * The domain_info object becomes the suffix root.
 * All other entries are direct subordinates of the domain_info for DN purposes
 * DN's are generated from the attributes naming attributes
 * Bind DN's can be remapped and rewritten, and may not even be a DN during bind.
 * The Kanidm domain name is used to generate the basedn.
+* The '\*' and '+' operators can not be used in conjuction with attribute lists in searches.
 
 These decisions were made to make the path as simple and effective as possible,
 relying more on the kanidm query and filter system than attempting to generate a tree-like
@@ -75,6 +74,29 @@ To configure Kanidm to provide LDAP you add the argument to the `server.toml` co
 
 You should configure TLS certificates and keys as usual - LDAP will re-use the webserver TLS
 material.
+
+## Showing LDAP entries and attribute maps
+
+By default Kanidm is limited in what attributes are generated or remaped into LDAP entries. However,
+the server internally contains a map of extended attribute mappings for application specific requests
+that must be satisfied.
+
+An example is that some applications expect and require a 'CN' value, even though kanidm does not
+provide it. If the application is unable to be configured to accept "name" it may be necessary
+to use Kanidm's mapping feature. Today these are compiled into the server so you may need to open
+an issue with your requirements.
+
+To show what attribute maps exists for an entry you can use the attribute search term '+'.
+
+    # To show Kanidm attributes
+    ldapsearch ... -x '(name=admin)' '*'
+    # To show all attribute maps
+    ldapsearch ... -x '(name=admin)' '+'
+
+Attributes that are in the map, can be requested explicitly, and this can be combined with requesting
+kanidm native attributes.
+
+    ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 
 ## Example
 

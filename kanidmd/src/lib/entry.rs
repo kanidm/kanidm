@@ -26,7 +26,7 @@
 
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
-use crate::ldap::{ldap_attr_rewrite, ldap_vattr_map};
+use crate::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
@@ -1521,7 +1521,7 @@ impl Entry<EntryReduced, EntryCommitted> {
                         vals: vec![dn.clone()],
                     }),
                     _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
-                        atype: ldap_attr_rewrite(ldap_a),
+                        atype: ldap_a.to_string(),
                         vals: pvs.clone(),
                     }),
                 }

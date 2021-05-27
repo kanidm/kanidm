@@ -169,6 +169,7 @@ impl LdapServer {
             };
 
             let mut all_attrs = false;
+            let mut all_op_attrs = false;
 
             // TODO #67: limit the number of attributes here!
             if sr.attrs.is_empty() {
@@ -176,16 +177,23 @@ impl LdapServer {
                 all_attrs = true;
             } else {
                 sr.attrs.iter().for_each(|a| {
-                    if a == "*" || a == "+" {
+                    if a == "*" {
                         all_attrs = true;
+                    } else if a == "+" {
+                        // This forces the BE to get all the attrs so we can
+                        // map all vattrs.
+                        all_attrs = true;
+                        all_op_attrs = true;
                     }
                 })
             }
 
             // We need to retain this to know what the client requested.
-            let (k_attrs, l_attrs) = if all_attrs {
+            let (k_attrs, l_attrs) = if all_op_attrs {
                 // We need all attrs, and we do a full v_attr map.
                 (None, ldap_all_vattrs())
+            } else if all_attrs {
+                (None, Vec::new())
             } else {
                 // What the client requested, in LDAP forms.
                 let req_attrs: Vec<String> = sr
@@ -485,21 +493,35 @@ fn operationerr_to_ldapresultcode(e: OperationError) -> (LdapResultCode, String)
 #[inline]
 pub(crate) fn ldap_all_vattrs() -> Vec<String> {
     vec![
+        "entryuuid".to_string(),
+        "objectclass".to_string(),
         "entrydn".to_string(),
         "email".to_string(),
         "emailaddress".to_string(),
         "keys".to_string(),
+        "sshpublickey".to_string(),
+        "cn".to_string(),
+        "uidnumber".to_string(),
     ]
 }
 
 #[inline]
 pub(crate) fn ldap_vattr_map(input: &str) -> &str {
+    // ⚠️  WARNING ⚠️
+    // If you modify this list you MUST add these values to
+    // corresponding phantom attributes in the schema to prevent
+    // incorrect future or duplicate usage.
+    //
+    //   LDAP NAME     KANI ATTR SOURCE NAME
     match input {
         "entryuuid" => "uuid",
         "objectclass" => "class",
         "email" => "mail",
         "emailaddress" => "mail",
         "keys" => "ssh_publickey",
+        "sshpublickey" => "ssh_publickey",
+        "cn" => "name",
+        "uidnumber" => "gidnumber",
         a => a,
     }
 }
@@ -507,17 +529,6 @@ pub(crate) fn ldap_vattr_map(input: &str) -> &str {
 #[inline]
 pub(crate) fn ldap_attr_filter_map(input: &str) -> AttrString {
     AttrString::from(ldap_vattr_map(&input.to_lowercase()))
-}
-
-/// Forces some kani attributes to have their names rewritten for ldap.
-#[inline]
-pub(crate) fn ldap_attr_rewrite(attr: &str) -> String {
-    match attr {
-        "uuid" => "entryuuid",
-        "class" => "objectclass",
-        ks => ks,
-    }
-    .to_string()
 }
 
 #[cfg(test)]
@@ -695,7 +706,6 @@ mod tests {
             $dn:expr,
             $($item:expr),*
         ) => {{
-            eprintln!("ABCDEF 🧩 {:?}", $e);
             assert!($e.dn == $dn);
             // Build a set from the attrs.
             let mut attrs = HashSet::new();
@@ -774,6 +784,38 @@ mod tests {
                     assert_entry_contains!(
                         lsre,
                         "spn=testperson1@example.com,dc=example,dc=com",
+                        ("class", "object"),
+                        ("class", "person"),
+                        ("class", "account"),
+                        ("class", "posixaccount"),
+                        ("displayname", "testperson1"),
+                        ("name", "testperson1"),
+                        ("gidnumber", "12345678"),
+                        ("loginshell", "/bin/zsh"),
+                        ("ssh_publickey", ssh_ed25519),
+                        ("uuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                    );
+                }
+                _ => assert!(false),
+            };
+
+            // Check that when we request +, we get all attrs and the vattrs
+            let sr = SearchRequest {
+                msgid: 1,
+                base: "dc=example,dc=com".to_string(),
+                scope: LdapSearchScope::Subtree,
+                filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
+                attrs: vec!["+".to_string()],
+            };
+            let r1 = task::block_on(ldaps.do_search(audit, idms, &sr, &anon_t)).unwrap();
+
+            // The result, and the ldap proto success msg.
+            assert!(r1.len() == 2);
+            match &r1[0].op {
+                LdapOp::SearchResultEntry(lsre) => {
+                    assert_entry_contains!(
+                        lsre,
+                        "spn=testperson1@example.com,dc=example,dc=com",
                         ("objectclass", "object"),
                         ("objectclass", "person"),
                         ("objectclass", "account"),
@@ -783,7 +825,11 @@ mod tests {
                         ("gidnumber", "12345678"),
                         ("loginshell", "/bin/zsh"),
                         ("ssh_publickey", ssh_ed25519),
-                        ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930")
+                        ("entryuuid", "cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                        ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
+                        ("uidnumber", "12345678"),
+                        ("cn", "testperson1"),
+                        ("keys", ssh_ed25519)
                     );
                 }
                 _ => assert!(false),
@@ -795,7 +841,12 @@ mod tests {
                 base: "dc=example,dc=com".to_string(),
                 scope: LdapSearchScope::Subtree,
                 filter: LdapFilter::Equality("name".to_string(), "testperson1".to_string()),
-                attrs: vec!["entrydn".to_string(), "keys".to_string()],
+                attrs: vec![
+                    "name".to_string(),
+                    "entrydn".to_string(),
+                    "keys".to_string(),
+                    "uidnumber".to_string(),
+                ],
             };
             let r1 = task::block_on(ldaps.do_search(audit, idms, &sr, &anon_t)).unwrap();
 
@@ -806,7 +857,9 @@ mod tests {
                     assert_entry_contains!(
                         lsre,
                         "spn=testperson1@example.com,dc=example,dc=com",
+                        ("name", "testperson1"),
                         ("entrydn", "spn=testperson1@example.com,dc=example,dc=com"),
+                        ("uidnumber", "12345678"),
                         ("keys", ssh_ed25519)
                     );
                 }
