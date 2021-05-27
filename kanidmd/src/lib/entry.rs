@@ -26,7 +26,7 @@
 
 use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
-use crate::ldap::ldap_attr_entry_map;
+use crate::ldap::{ldap_attr_rewrite, ldap_vattr_map};
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
 use crate::prelude::*;
 use crate::repl::cid::Cid;
@@ -1462,12 +1462,21 @@ impl Entry<EntryReduced, EntryCommitted> {
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
         basedn: &str,
+        // Did the client request all attributes?
+        all_attrs: bool,
+        // Did the ldap client request any sperific attribute names? If so,
+        // we need to remap everything to match.
+        l_attrs: &[String],
     ) -> Result<LdapSearchResultEntry, OperationError> {
         let rdn = qs.uuid_to_rdn(audit, self.get_uuid())?;
 
         let dn = format!("{},{}", rdn, basedn);
 
-        let attributes: Result<Vec<_>, _> = self
+        // Everything in our attrs set is "what was requested". So we can transform that now
+        // so they are all in "ldap forms" which makes our next stage a bit easier.
+
+        // Stage 1 - transform our results to a map of kani attr -> ldap value.
+        let attr_map: Result<Map<&str, Vec<String>>, _> = self
             .attrs
             .iter()
             .map(|(k, vs)| {
@@ -1475,15 +1484,50 @@ impl Entry<EntryReduced, EntryCommitted> {
                     .iter()
                     .map(|v| qs.resolve_value_ldap(audit, v, basedn))
                     .collect();
-                let pvs = pvs?;
-                let ks = ldap_attr_entry_map(k.as_str());
-                Ok(LdapPartialAttribute {
-                    atype: ks,
-                    vals: pvs,
-                })
+                pvs.map(|pvs| (k.as_str(), pvs))
             })
             .collect();
-        let attributes = attributes?;
+
+        let attr_map = attr_map?;
+        // Stage 2 - transform and get all our attr - names out that we need to return.
+        //                  ldap a, kani a
+        let attr_names: Vec<(&str, &str)> = if all_attrs {
+            // Join the set of attr keys, and our requested attrs.
+            self.attrs
+                .keys()
+                .map(|k| (k.as_str(), k.as_str()))
+                .chain(
+                    l_attrs
+                        .iter()
+                        .map(|k| (k.as_str(), ldap_vattr_map(k.as_str()))),
+                )
+                .collect()
+        } else {
+            // Just get the requested ones.
+            l_attrs
+                .iter()
+                .map(|k| (k.as_str(), ldap_vattr_map(k.as_str())))
+                .collect()
+        };
+
+        // Stage 3 - given our map, generate the final result.
+        let attributes: Vec<_> = attr_names
+            .into_iter()
+            .filter_map(|(ldap_a, kani_a)| {
+                // In some special cases, we may need to transform or rewrite the values.
+                match ldap_a {
+                    "entrydn" => Some(LdapPartialAttribute {
+                        atype: "entrydn".to_string(),
+                        vals: vec![dn.clone()],
+                    }),
+                    _ => attr_map.get(kani_a).map(|pvs| LdapPartialAttribute {
+                        atype: ldap_attr_rewrite(ldap_a),
+                        vals: pvs.clone(),
+                    }),
+                }
+            })
+            .collect();
+
         Ok(LdapSearchResultEntry { dn, attributes })
     }
 }
