@@ -867,6 +867,10 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
+    pub fn insert_claim(&mut self, value: &str) {
+        self.add_ava_int("claim", Value::new_iutf8(value));
+    }
+
     pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
         compare_attrs(&self.attrs, &rhs.attrs)
     }

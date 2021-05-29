@@ -3,13 +3,12 @@ use crate::prelude::*;
 
 use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::UserAuthToken;
+use kanidm_proto::v1::{UserAuthToken, AuthType};
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::totp::Totp;
 use crate::credential::{softlock::CredSoftLockPolicy, Credential};
-use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -159,8 +158,8 @@ impl Account {
     pub(crate) fn to_userauthtoken(
         &self,
         session_id: Uuid,
-        claims: &[Claim],
         ct: Duration,
+        auth_type: AuthType,
     ) -> Option<UserAuthToken> {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
@@ -179,7 +178,9 @@ impl Account {
             uuid: self.uuid,
             // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
-            claims: claims.iter().map(|c| c.to_proto()).collect(),
+            // claims: claims.iter().map(|c| c.to_proto()).collect(),
+            claims: Vec::new(),
+            auth_type,
             // What's the best way to get access to these limits with regard to claims/other?
             lim_uidx: false,
             lim_rmax: 128,
@@ -239,31 +240,25 @@ impl Account {
     pub(crate) fn gen_password_mod(
         &self,
         cleartext: &str,
-        appid: &Option<String>,
         crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         // What should this look like? Probablf an appid + stuff -> modify?
         // then the caller has to apply the modify under the requests event
         // for proper auth checks.
-        match appid {
-            Some(_) => Err(OperationError::InvalidState),
+        // TODO #59: Enforce PW policy. Can we allow this change?
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let ncred = primary.set_password(crypto_policy, cleartext)?;
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
+            // Make a new credential instead
             None => {
-                // TODO #59: Enforce PW policy. Can we allow this change?
-                match &self.primary {
-                    // Change the cred
-                    Some(primary) => {
-                        let ncred = primary.set_password(crypto_policy, cleartext)?;
-                        let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-                    }
-                    // Make a new credential instead
-                    None => {
-                        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
-                        let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-                    }
-                }
-            } // no appid
+                let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
         }
     }
 
@@ -358,16 +353,12 @@ impl Account {
     pub(crate) fn check_credential_pw(
         &self,
         cleartext: &str,
-        appid: &Option<String>,
     ) -> Result<bool, OperationError> {
-        match appid {
-            Some(_) => Err(OperationError::InvalidState),
-            None => self
+            self
                 .primary
                 .as_ref()
                 .ok_or(OperationError::InvalidState)
-                .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext))),
-        }
+                .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
     }
 
     pub(crate) fn regenerate_radius_secret_mod(

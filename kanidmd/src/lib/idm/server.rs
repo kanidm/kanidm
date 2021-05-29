@@ -27,7 +27,7 @@ use crate::idm::delayed::{
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
     CredentialStatus, RadiusAuthToken, SetCredentialResponse, UnixGroupToken, UnixUserToken,
-    UserAuthToken,
+    UserAuthToken, AuthType,
 };
 use std::str::FromStr;
 
@@ -354,9 +354,10 @@ pub trait IdmServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         uat: &UserAuthToken,
+        // ct: Duration,
     ) -> Result<Identity, OperationError> {
         // From a UAT, get the current identity and associated information.
-        let entry = self
+        let mut entry = self
             .get_qs_txn()
             .internal_search_uuid(audit, &uat.uuid)
             .map_err(|e| {
@@ -364,11 +365,22 @@ pub trait IdmServerTransaction<'a> {
                 e
             })?;
 
-        // TODO #64: Now apply claims from the uat into the Entry
+        // TODO: #59: If the account is expired, do not allow the event
+        // to proceed
+        /*
+        let expired = entry.get_ava_single_datetime("account_expire")
+            .map(|expire_at| {
+                (OffsetDateTime::unix_epoch() + ct) > expire_at
+            })
+            .unwrap_or(false);
+        */
+
+        // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
 
-        // TODO #59: If the account is expiredy, do not allow the event
-        // to proceed
+        // Should auth_type map to an int instead? That way we can use >= ?
+
+        entry.insert_claim(uat.auth_type.into_str());
 
         let limits = Limits::from_uat(uat);
         Ok(Identity {
@@ -479,7 +491,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 };
 
                 let (auth_session, state) = if is_valid {
-                    AuthSession::new(au, account, &init.appid, self.webauthn, ct)
+                    AuthSession::new(au, account, self.webauthn, ct)
                 } else {
                     // it's softlocked, don't even bother.
                     lsecurity!(au, "Account is softlocked.");
@@ -764,7 +776,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             Ok(Some(LdapBoundToken {
                 uuid: *UUID_ANONYMOUS,
                 effective_uat: account
-                    .to_userauthtoken(au.uuid, &[], ct)
+                    .to_userauthtoken(au.uuid, ct, AuthType::Anonymous)
                     .ok_or(OperationError::InvalidState)
                     .map_err(|e| {
                         ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -826,7 +838,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         spn: account.spn,
                         uuid: account.uuid,
                         effective_uat: anon_account
-                            .to_userauthtoken(au.uuid, &[], ct)
+                            .to_userauthtoken(au.uuid, ct, AuthType::Password)
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
                                 ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -1074,7 +1086,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Get the modifications we *want* to perform.
         let modlist = account
-            .gen_password_mod(pce.cleartext.as_str(), &pce.appid, self.crypto_policy)
+            .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Failed to generate password mod {:?}", e);
                 e
@@ -1283,7 +1295,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = account
-            .gen_password_mod(cleartext.as_str(), &gpe.appid, self.crypto_policy)
+            .gen_password_mod(cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate password mod {:?}", e);
                 e
@@ -1585,14 +1597,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let account = self.target_to_account(au, &pwu.target_uuid)?;
 
         // check, does the pw still match?
-        let same = account.check_credential_pw(pwu.existing_password.as_str(), &pwu.appid)?;
+        let same = account.check_credential_pw(pwu.existing_password.as_str())?;
 
         // if yes, gen the pw mod and apply.
         if same {
             let modlist = account
                 .gen_password_mod(
                     pwu.existing_password.as_str(),
-                    &pwu.appid,
                     self.crypto_policy,
                 )
                 .map_err(|e| {
@@ -2184,7 +2195,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
 
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
@@ -2199,7 +2210,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &IdmServerDelayed,
                        au: &mut AuditScope| {
-            let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD, None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ANONYMOUS, TEST_PASSWORD);
 
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
             assert!(idms_prox_write.set_account_password(au, &pce).is_err());
@@ -2271,7 +2282,7 @@ mod tests {
                 .expect("Failed to reset radius credential 1");
 
             // Try and set that as the main account password, should fail.
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, r1.as_str(), None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, r1.as_str());
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
@@ -2316,17 +2327,17 @@ mod tests {
             // len check
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password", None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password");
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
             // zxcvbn check
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password1234", None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "password1234");
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
             // Check the "name" checking works too (I think admin may hit a common pw rule first)
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "admin_nta", None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "admin_nta");
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
@@ -2334,7 +2345,6 @@ mod tests {
             let pce = PasswordChangeEvent::new_internal(
                 &UUID_ADMIN,
                 "demo_badlist_shohfie3aeci2oobur0aru9uushah6EiPi2woh4hohngoighaiRuepieN3ongoo1",
-                None,
             );
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
@@ -2352,7 +2362,7 @@ mod tests {
             let mut idms_prox_write = idms.proxy_write(duration_from_epoch_now());
 
             // Check that the badlist password inserted is rejected.
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "bad@no3IBTyqHu$list", None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, "bad@no3IBTyqHu$list");
             let e = idms_prox_write.set_account_password(au, &pce);
             assert!(e.is_err());
 
@@ -2585,7 +2595,7 @@ mod tests {
             idms_prox_write.expire_mfareg_sessions(expire.clone());
 
             // Set a password.
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
 
             // == reg, but change the event source part way in the process (failure)
@@ -3354,7 +3364,7 @@ mod tests {
                 _ => assert!(false),
             };
             // Reg a pw.
-            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD, None);
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
             assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
             // Now remove, it will work.
             idms_prox_write

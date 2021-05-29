@@ -1080,12 +1080,12 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: AttrString::from("claim"),
                     uuid: *UUID_SCHEMA_ATTR_CLAIM,
-                    description: String::from("The spn of a claim this entry holds"),
+                    description: String::from("The string identifier of an extracted claim that can be filtered"),
                     multivalue: true,
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::SecurityPrincipalName,
+                    syntax: SyntaxType::Utf8StringInsensitive,
                 },
             );
             self.attributes.insert(

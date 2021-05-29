@@ -390,7 +390,6 @@ async fn json_rest_event_delete_id_attr(
 
 async fn json_rest_event_credential_put(
     mut req: tide::Request<AppState>,
-    appid: Option<String>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
@@ -400,7 +399,7 @@ async fn json_rest_event_credential_put(
     let res = req
         .state()
         .qe_w_ref
-        .handle_credentialset(uat, uuid_or_name, appid, sac, eventid)
+        .handle_credentialset(uat, uuid_or_name, sac, eventid)
         .await;
     to_tide_response(res, hvalue)
 }
@@ -541,7 +540,7 @@ pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
 }
 
 pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> tide::Result {
-    json_rest_event_credential_put(req, None).await
+    json_rest_event_credential_put(req).await
 }
 
 pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> tide::Result {

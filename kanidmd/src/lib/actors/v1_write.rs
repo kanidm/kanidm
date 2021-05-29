@@ -425,7 +425,6 @@ impl QueryServerWriteV1 {
         &self,
         uat: Option<String>,
         uuid_or_name: String,
-        appid: Option<String>,
         sac: SetCredentialRequest,
         eventid: Uuid,
     ) -> Result<SetCredentialResponse, OperationError> {
@@ -471,7 +470,6 @@ impl QueryServerWriteV1 {
                             ident,
                             target_uuid,
                             cleartext,
-                            appid,
                         )
                         .map_err(|e| {
                             ladmin_error!(
@@ -492,7 +490,6 @@ impl QueryServerWriteV1 {
                             // &idms_prox_write.qs_write,
                             ident,
                             target_uuid,
-                            appid,
                         )
                         .map_err(|e| {
                             ladmin_error!(
