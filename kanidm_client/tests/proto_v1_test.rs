@@ -756,7 +756,7 @@ fn test_server_rest_totp_auth_lifecycle() {
             .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
             .is_ok());
         let (sessionid, tok) = rsclient
-            .idm_account_primary_credential_generate_totp("demo_account", "demo")
+            .idm_account_primary_credential_generate_totp("demo_account")
             .unwrap();
 
         let r_tok: Totp = tok.into();

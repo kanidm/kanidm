@@ -60,7 +60,6 @@ impl TotpAlgo {
 /// https://tools.ietf.org/html/rfc6238 which relies on https://tools.ietf.org/html/rfc4226
 #[derive(Debug, Clone)]
 pub struct Totp {
-    label: String,
     secret: Vec<u8>,
     pub(crate) step: u64,
     algo: TotpAlgo,
@@ -76,7 +75,6 @@ impl TryFrom<DbTotpV1> for Totp {
             DbTotpAlgoV1::S512 => TotpAlgo::Sha512,
         };
         Ok(Totp {
-            label: value.l,
             secret: value.k,
             step: value.s,
             algo,
@@ -87,7 +85,6 @@ impl TryFrom<DbTotpV1> for Totp {
 impl From<ProtoTotp> for Totp {
     fn from(value: ProtoTotp) -> Self {
         Totp {
-            label: "test_token".to_string(),
             secret: value.secret,
             algo: match value.algo {
                 ProtoTotpAlgo::Sha1 => TotpAlgo::Sha1,
@@ -100,31 +97,21 @@ impl From<ProtoTotp> for Totp {
 }
 
 impl Totp {
-    pub fn new(label: String, secret: Vec<u8>, step: u64, algo: TotpAlgo) -> Self {
-        Totp {
-            label,
-            secret,
-            step,
-            algo,
-        }
+    pub fn new(secret: Vec<u8>, step: u64, algo: TotpAlgo) -> Self {
+        Totp { secret, step, algo }
     }
 
     // Create a new token with secure key and algo.
-    pub fn generate_secure(label: String, step: u64) -> Self {
+    pub fn generate_secure(step: u64) -> Self {
         let mut rng = rand::thread_rng();
         let secret: Vec<u8> = (0..SECRET_SIZE_BYTES).map(|_| rng.gen()).collect();
         let algo = TotpAlgo::Sha512;
-        Totp {
-            label,
-            secret,
-            step,
-            algo,
-        }
+        Totp { secret, step, algo }
     }
 
     pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
         DbTotpV1 {
-            l: self.label.clone(),
+            l: "totp".to_string(),
             k: self.secret.clone(),
             s: self.step,
             a: match self.algo {
@@ -204,16 +191,16 @@ mod tests {
 
     #[test]
     fn hotp_basic() {
-        let otp_sha1 = Totp::new("".to_string(), vec![0], 30, TotpAlgo::Sha1);
+        let otp_sha1 = Totp::new(vec![0], 30, TotpAlgo::Sha1);
         assert!(otp_sha1.digest(0) == Ok(328482));
-        let otp_sha256 = Totp::new("".to_string(), vec![0], 30, TotpAlgo::Sha256);
+        let otp_sha256 = Totp::new(vec![0], 30, TotpAlgo::Sha256);
         assert!(otp_sha256.digest(0) == Ok(356306));
-        let otp_sha512 = Totp::new("".to_string(), vec![0], 30, TotpAlgo::Sha512);
+        let otp_sha512 = Totp::new(vec![0], 30, TotpAlgo::Sha512);
         assert!(otp_sha512.digest(0) == Ok(674061));
     }
 
     fn do_test(key: Vec<u8>, algo: TotpAlgo, secs: u64, step: u64, expect: Result<u32, TotpError>) {
-        let otp = Totp::new("".to_string(), key.clone(), step, algo.clone());
+        let otp = Totp::new(key.clone(), step, algo.clone());
         let d = Duration::from_secs(secs);
         let r = otp.do_totp_duration_from_epoch(&d);
         debug!(
@@ -281,12 +268,7 @@ mod tests {
     fn totp_allow_one_previous() {
         let key = vec![0x00, 0xaa, 0xbb, 0xcc];
         let secs = 1585369780;
-        let otp = Totp::new(
-            "".to_string(),
-            key.clone(),
-            TOTP_DEFAULT_STEP,
-            TotpAlgo::Sha512,
-        );
+        let otp = Totp::new(key.clone(), TOTP_DEFAULT_STEP, TotpAlgo::Sha512);
         let d = Duration::from_secs(secs);
         // Step
         assert!(otp.verify(952181, &d));

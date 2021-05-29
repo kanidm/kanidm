@@ -390,7 +390,7 @@ pub fn verify_server_core(config: &Configuration) {
     // Now add IDM server verifications?
 }
 
-pub fn recover_account_core(config: &Configuration, name: &str, password: &str) {
+pub fn recover_account_core(config: &Configuration, name: &str) {
     let mut audit = AuditScope::new("recover_account", uuid::Uuid::new_v4(), config.log_level);
 
     let schema = match Schema::new(&mut audit) {
@@ -421,11 +421,11 @@ pub fn recover_account_core(config: &Configuration, name: &str, password: &str) 
 
     // Run the password change.
     let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
-    match idms_prox_write.recover_account(&mut audit, &name, &password) {
-        Ok(_) => match idms_prox_write.commit(&mut audit) {
+    match idms_prox_write.recover_account(&mut audit, &name, None) {
+        Ok(new_pw) => match idms_prox_write.commit(&mut audit) {
             Ok(()) => {
                 audit.write_log();
-                info!("Password reset!");
+                info!("Password reset to -> {}", new_pw);
             }
             Err(e) => {
                 error!("A critical error during commit occured {:?}", e);
@@ -515,7 +515,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         Some(itc) => {
             let mut idms_prox_write =
                 task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
-            match idms_prox_write.recover_account(&mut audit, "admin", &itc.admin_password) {
+            match idms_prox_write.recover_account(&mut audit, "admin", Some(&itc.admin_password)) {
                 Ok(_) => {}
                 Err(e) => {
                     audit.write_log();

@@ -273,14 +273,7 @@ async fn main() {
         }
         KanidmdOpt::RecoverAccount(raopt) => {
             eprintln!("Running account recovery ...");
-            let password = match rpassword::prompt_password_stderr("new password: ") {
-                Ok(pw) => pw,
-                Err(e) => {
-                    eprintln!("Failed to get password from prompt {:?}", e);
-                    std::process::exit(1);
-                }
-            };
-            recover_account_core(&config, &raopt.name, &password);
+            recover_account_core(&config, &raopt.name);
         }
         KanidmdOpt::Reindex(_copt) => {
             eprintln!("Running in reindex mode ...");

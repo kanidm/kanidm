@@ -388,9 +388,7 @@ async fn json_rest_event_delete_id_attr(
     }
 }
 
-async fn json_rest_event_credential_put(
-    mut req: tide::Request<AppState>,
-) -> tide::Result {
+async fn json_rest_event_credential_put(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
     let sac: SetCredentialRequest = req.body_json().await?;

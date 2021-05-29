@@ -504,13 +504,12 @@ impl QueryServerWriteV1 {
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                             .map(SetCredentialResponse::Token)
                     }
-                    SetCredentialRequest::TotpGenerate(label) => {
+                    SetCredentialRequest::TotpGenerate => {
                         let gte = GenerateTotpEvent::from_parts(
                             &mut audit,
                             // &idms_prox_write.qs_write,
                             ident,
                             target_uuid,
-                            label,
                         )
                         .map_err(|e| {
                             ladmin_error!(

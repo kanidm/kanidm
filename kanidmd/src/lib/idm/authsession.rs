@@ -80,10 +80,8 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
     ) -> Result<Self, ()> {
         match &c.type_ {
-            CredentialType::Password(pw) => 
-                Ok(CredHandler::Password(pw.clone(), false)),
-            CredentialType::GeneratedPassword(pw) =>
-                Ok(CredHandler::Password(pw.clone(), true)),
+            CredentialType::Password(pw) => Ok(CredHandler::Password(pw.clone(), false)),
+            CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password(pw.clone(), true)),
             CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan) => {
                 let wan = if !maybe_wan.is_empty() {
                     webauthn
@@ -1038,7 +1036,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1205,7 +1203,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1676,7 +1674,7 @@ mod tests {
         let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
         let hs512 = create_hs512();
 
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
             .expect("failed to perform totp.");

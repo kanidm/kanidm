@@ -1080,7 +1080,9 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: AttrString::from("claim"),
                     uuid: *UUID_SCHEMA_ATTR_CLAIM,
-                    description: String::from("The string identifier of an extracted claim that can be filtered"),
+                    description: String::from(
+                        "The string identifier of an extracted claim that can be filtered",
+                    ),
                     multivalue: true,
                     unique: false,
                     phantom: true,

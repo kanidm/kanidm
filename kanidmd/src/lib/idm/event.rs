@@ -94,10 +94,7 @@ impl GeneratePasswordEvent {
         ident: Identity,
         target: Uuid,
     ) -> Result<Self, OperationError> {
-        Ok(GeneratePasswordEvent {
-            ident,
-            target,
-        })
+        Ok(GeneratePasswordEvent { ident, target })
     }
 }
 
@@ -240,7 +237,6 @@ impl UnixUserAuthEvent {
 pub struct GenerateTotpEvent {
     pub ident: Identity,
     pub target: Uuid,
-    pub label: String,
 }
 
 impl GenerateTotpEvent {
@@ -249,24 +245,15 @@ impl GenerateTotpEvent {
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
-        label: String,
     ) -> Result<Self, OperationError> {
-        Ok(GenerateTotpEvent {
-            ident,
-            target,
-            label,
-        })
+        Ok(GenerateTotpEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
         let ident = Identity::from_internal();
 
-        GenerateTotpEvent {
-            ident,
-            target,
-            label: "internal_token".to_string(),
-        }
+        GenerateTotpEvent { ident, target }
     }
 }
 

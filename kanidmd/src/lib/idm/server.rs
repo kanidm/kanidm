@@ -26,8 +26,8 @@ use crate::idm::delayed::{
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    CredentialStatus, RadiusAuthToken, SetCredentialResponse, UnixGroupToken, UnixUserToken,
-    UserAuthToken, AuthType,
+    AuthType, CredentialStatus, RadiusAuthToken, SetCredentialResponse, UnixGroupToken,
+    UnixUserToken, UserAuthToken,
 };
 use std::str::FromStr;
 
@@ -377,10 +377,32 @@ pub trait IdmServerTransaction<'a> {
 
         // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
+        entry.insert_claim(match &uat.auth_type {
+            AuthType::Anonymous => "authtype_anonymous",
+            AuthType::UnixPassword => "authtype_unixpassword",
+            AuthType::Password => "authtype_password",
+            AuthType::GeneratedPassword => "authtype_generatedpassword",
+            AuthType::Webauthn => "authtype_webauthn",
+            AuthType::PasswordMfa => "authtype_passwordmfa",
+        });
 
-        // Should auth_type map to an int instead? That way we can use >= ?
+        match &uat.auth_type {
+            AuthType::Anonymous | AuthType::UnixPassword | AuthType::Password => {}
+            AuthType::GeneratedPassword | AuthType::Webauthn | AuthType::PasswordMfa => {
+                entry.insert_claim("authlevel_strong")
+            }
+        };
 
-        entry.insert_claim(uat.auth_type.into_str());
+        match &uat.auth_type {
+            AuthType::Anonymous => {}
+            AuthType::UnixPassword
+            | AuthType::Password
+            | AuthType::GeneratedPassword
+            | AuthType::Webauthn => entry.insert_claim("authclass_single"),
+            AuthType::PasswordMfa => entry.insert_claim("authclass_mfa"),
+        };
+
+        ltrace!(audit, "Applied claims -> {:?}", entry.get_ava_set("claim"));
 
         let limits = Limits::from_uat(uat);
         Ok(Identity {
@@ -838,7 +860,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         spn: account.spn,
                         uuid: account.uuid,
                         effective_uat: anon_account
-                            .to_userauthtoken(au.uuid, ct, AuthType::Password)
+                            .to_userauthtoken(au.uuid, ct, AuthType::UnixPassword)
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
                                 ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
@@ -1245,8 +1267,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         name: &str,
-        cleartext: &str,
-    ) -> Result<(), OperationError> {
+        cleartext: Option<&str>,
+    ) -> Result<String, OperationError> {
         // name to uuid
         let target = self.qs_write.name_to_uuid(au, name).map_err(|e| {
             ladmin_error!(au, "name to uuid failed {:?}", e);
@@ -1255,8 +1277,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let account = self.target_to_account(au, &target)?;
 
+        let cleartext = cleartext
+            .map(|s| s.to_string())
+            .unwrap_or_else(|| password_from_random());
+
         let modlist = account
-            .gen_password_recover_mod(cleartext, self.crypto_policy)
+            .gen_generatedpassword_recover_mod(&cleartext, self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Failed to generate password mod {:?}", e);
                 e
@@ -1275,7 +1301,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 e
             })?;
 
-        Ok(())
+        Ok(cleartext)
     }
 
     pub fn generate_account_password(
@@ -1295,7 +1321,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // it returns a modify
         let modlist = account
-            .gen_password_mod(cleartext.as_str(), self.crypto_policy)
+            .gen_generatedpassword_recover_mod(cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate password mod {:?}", e);
                 e
@@ -1485,8 +1511,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = uuid_from_duration(ct, self.sid);
 
         let origin = (&gte.ident.origin).into();
-        let label = gte.label.clone();
-        let (session, next) = MfaRegSession::totp_new(origin, account, label).map_err(|e| {
+        let (session, next) = MfaRegSession::totp_new(origin, account).map_err(|e| {
             ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
             e
         })?;
@@ -1602,10 +1627,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // if yes, gen the pw mod and apply.
         if same {
             let modlist = account
-                .gen_password_mod(
-                    pwu.existing_password.as_str(),
-                    self.crypto_policy,
-                )
+                .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
                 .map_err(|e| {
                     ladmin_error!(au, "Unable to generate password mod {:?}", e);
                     e
@@ -1750,7 +1772,7 @@ mod tests {
     use crate::prelude::*;
     use kanidm_proto::v1::OperationError;
     use kanidm_proto::v1::SetCredentialResponse;
-    use kanidm_proto::v1::{AuthAllowed, AuthMech};
+    use kanidm_proto::v1::{AuthAllowed, AuthMech, AuthType};
 
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     // , IdmServerDelayed;
@@ -3402,6 +3424,112 @@ mod tests {
                 Err(OperationError::SessionExpired) => {}
                 _ => assert!(false),
             }
+        })
+    }
+
+    #[test]
+    fn test_idm_uat_claim_insertion() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       audit: &mut AuditScope| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            // get an account.
+            let account = idms_prox_write
+                .target_to_account(audit, &UUID_ADMIN)
+                .expect("account must exist");
+
+            // create some fake uats
+            // process them and see what claims fall out :D
+            let session_id = uuid::Uuid::new_v4();
+
+            // For the different auth types, check that we get the correct claims:
+
+            // == anonymous
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::Anonymous)
+                .expect("Unable to create uat");
+            let ident = idms_prox_write
+                .process_uat_to_identity(audit, &uat)
+                .expect("Unable to process uat");
+
+            assert!(ident.has_claim("authtype_anonymous"));
+            // Does NOT have this
+            assert!(!ident.has_claim("authlevel_strong"));
+            assert!(!ident.has_claim("authclass_single"));
+            assert!(!ident.has_claim("authclass_mfa"));
+
+            // == unixpassword
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::UnixPassword)
+                .expect("Unable to create uat");
+            let ident = idms_prox_write
+                .process_uat_to_identity(audit, &uat)
+                .expect("Unable to process uat");
+
+            assert!(ident.has_claim("authtype_unixpassword"));
+            assert!(ident.has_claim("authclass_single"));
+            // Does NOT have this
+            assert!(!ident.has_claim("authlevel_strong"));
+            assert!(!ident.has_claim("authclass_mfa"));
+
+            // == password
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::Password)
+                .expect("Unable to create uat");
+            let ident = idms_prox_write
+                .process_uat_to_identity(audit, &uat)
+                .expect("Unable to process uat");
+
+            assert!(ident.has_claim("authtype_password"));
+            assert!(ident.has_claim("authclass_single"));
+            // Does NOT have this
+            assert!(!ident.has_claim("authlevel_strong"));
+            assert!(!ident.has_claim("authclass_mfa"));
+
+            // == generatedpassword
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword)
+                .expect("Unable to create uat");
+            let ident = idms_prox_write
+                .process_uat_to_identity(audit, &uat)
+                .expect("Unable to process uat");
+
+            assert!(ident.has_claim("authtype_generatedpassword"));
+            assert!(ident.has_claim("authclass_single"));
+            assert!(ident.has_claim("authlevel_strong"));
+            // Does NOT have this
+            assert!(!ident.has_claim("authclass_mfa"));
+
+            // == webauthn
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::Webauthn)
+                .expect("Unable to create uat");
+            let ident = idms_prox_write
+                .process_uat_to_identity(audit, &uat)
+                .expect("Unable to process uat");
+
+            assert!(ident.has_claim("authtype_webauthn"));
+            assert!(ident.has_claim("authclass_single"));
+            assert!(ident.has_claim("authlevel_strong"));
+            // Does NOT have this
+            assert!(!ident.has_claim("authclass_mfa"));
+
+            // == passwordmfa
+            let uat = account
+                .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
+                .expect("Unable to create uat");
+            let ident = idms_prox_write
+                .process_uat_to_identity(audit, &uat)
+                .expect("Unable to process uat");
+
+            assert!(ident.has_claim("authtype_passwordmfa"));
+            assert!(ident.has_claim("authlevel_strong"));
+            assert!(ident.has_claim("authclass_mfa"));
+            // Does NOT have this
+            assert!(!ident.has_claim("authclass_single"));
         })
     }
 }

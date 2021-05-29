@@ -154,6 +154,7 @@ pub struct Application {
 #[serde(rename_all = "lowercase")]
 pub enum AuthType {
     Anonymous,
+    UnixPassword,
     Password,
     GeneratedPassword,
     Webauthn,
@@ -161,18 +162,6 @@ pub enum AuthType {
     // PasswordWebauthn,
     // WebauthnVerified,
     // PasswordWebauthnVerified,
-}
-
-impl AuthType {
-    pub fn into_str(&self) -> &'static str {
-        match self {
-            AuthType::Anonymous => "auth_anonymous",
-            AuthType::Password => "auth_password",
-            AuthType::GeneratedPassword => "auth_generatedpassword",
-            AuthType::Webauthn => "auth_webauthn",
-            AuthType::PasswordMfa => "auth_passwordmfa",
-        }
-    }
 }
 
 /// The currently authenticated user, and any required metadata for them
@@ -676,7 +665,7 @@ pub struct AuthResponse {
 pub enum SetCredentialRequest {
     Password(String),
     GeneratePassword,
-    TotpGenerate(String),
+    TotpGenerate,
     TotpVerify(Uuid, u32),
     TotpRemove,
     // Start the rego.

@@ -3,7 +3,7 @@ use crate::prelude::*;
 
 use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{UserAuthToken, AuthType};
+use kanidm_proto::v1::{AuthType, UserAuthToken};
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
@@ -154,7 +154,10 @@ impl Account {
         try_from_entry!(value, vec![])
     }
 
-    // Could this actually take a claims list and application instead?
+    /// Given the session_id and other metadata, create a user authentication token
+    /// that represents a users session. Since this metadata can vary from session
+    /// to session, this userauthtoken may contain some data (claims) that may yield
+    /// different privileges to the bearer.
     pub(crate) fn to_userauthtoken(
         &self,
         session_id: Uuid,
@@ -227,12 +230,12 @@ impl Account {
         self.uuid == *UUID_ANONYMOUS
     }
 
-    pub(crate) fn gen_password_recover_mod(
+    pub(crate) fn gen_generatedpassword_recover_mod(
         &self,
         cleartext: &str,
         crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
+        let ncred = Credential::new_generatedpassword_only(crypto_policy, cleartext)?;
         let vcred = Value::new_credential("primary", ncred);
         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
@@ -242,10 +245,6 @@ impl Account {
         cleartext: &str,
         crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        // What should this look like? Probablf an appid + stuff -> modify?
-        // then the caller has to apply the modify under the requests event
-        // for proper auth checks.
-        // TODO #59: Enforce PW policy. Can we allow this change?
         match &self.primary {
             // Change the cred
             Some(primary) => {
@@ -350,15 +349,11 @@ impl Account {
         }
     }
 
-    pub(crate) fn check_credential_pw(
-        &self,
-        cleartext: &str,
-    ) -> Result<bool, OperationError> {
-            self
-                .primary
-                .as_ref()
-                .ok_or(OperationError::InvalidState)
-                .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
+    pub(crate) fn check_credential_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
+        self.primary
+            .as_ref()
+            .ok_or(OperationError::InvalidState)
+            .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
     }
 
     pub(crate) fn regenerate_radius_secret_mod(
