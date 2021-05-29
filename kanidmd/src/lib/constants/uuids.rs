@@ -123,6 +123,13 @@ pub const STR_UUID_SCHEMA_ATTR_OBJECTCLASS: &str = "00000000-0000-0000-0000-ffff
 pub const _STR_UUID_SCHEMA_ATTR_ACCOUNT_EXPIRE: &str = "00000000-0000-0000-0000-ffff00000072";
 pub const _STR_UUID_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = "00000000-0000-0000-0000-ffff00000073";
 
+pub const STR_UUID_SCHEMA_ATTR_ENTRYDN: &str = "00000000-0000-0000-0000-ffff00000074";
+pub const STR_UUID_SCHEMA_ATTR_EMAIL: &str = "00000000-0000-0000-0000-ffff00000075";
+pub const STR_UUID_SCHEMA_ATTR_EMAILADDRESS: &str = "00000000-0000-0000-0000-ffff00000076";
+pub const STR_UUID_SCHEMA_ATTR_KEYS: &str = "00000000-0000-0000-0000-ffff00000077";
+pub const STR_UUID_SCHEMA_ATTR_SSHPUBLICKEY: &str = "00000000-0000-0000-0000-ffff00000078";
+pub const STR_UUID_SCHEMA_ATTR_CN: &str = "00000000-0000-0000-0000-ffff00000078";
+pub const STR_UUID_SCHEMA_ATTR_UIDNUMBER: &str = "00000000-0000-0000-0000-ffff00000079";
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
 pub const STR_UUID_SYSTEM_INFO: &str = "00000000-0000-0000-0000-ffffff000001";
@@ -280,4 +287,17 @@ lazy_static! {
         Uuid::parse_str(STR_UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE).unwrap();
     pub static ref UUID_SCHEMA_CLASS_SYSTEM: Uuid =
         Uuid::parse_str(STR_UUID_SCHEMA_CLASS_SYSTEM).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_ENTRYDN: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_ENTRYDN).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_EMAIL: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_EMAIL).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_EMAILADDRESS: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_EMAILADDRESS).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_KEYS: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_KEYS).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_SSHPUBLICKEY: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_SSHPUBLICKEY).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_CN: Uuid = Uuid::parse_str(STR_UUID_SCHEMA_ATTR_CN).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_UIDNUMBER: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_UIDNUMBER).unwrap();
 }
