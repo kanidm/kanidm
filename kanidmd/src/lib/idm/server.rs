@@ -357,7 +357,7 @@ pub trait IdmServerTransaction<'a> {
         // ct: Duration,
     ) -> Result<Identity, OperationError> {
         // From a UAT, get the current identity and associated information.
-        let mut entry = self
+        let entry = self
             .get_qs_txn()
             .internal_search_uuid(audit, &uat.uuid)
             .map_err(|e| {
@@ -3457,7 +3457,7 @@ mod tests {
                 .process_uat_to_identity(audit, &uat)
                 .expect("Unable to process uat");
 
-            assert!(ident.has_claim("authtype_anonymous"));
+            assert!(!ident.has_claim("authtype_anonymous"));
             // Does NOT have this
             assert!(!ident.has_claim("authlevel_strong"));
             assert!(!ident.has_claim("authclass_single"));
@@ -3471,8 +3471,8 @@ mod tests {
                 .process_uat_to_identity(audit, &uat)
                 .expect("Unable to process uat");
 
-            assert!(ident.has_claim("authtype_unixpassword"));
-            assert!(ident.has_claim("authclass_single"));
+            assert!(!ident.has_claim("authtype_unixpassword"));
+            assert!(!ident.has_claim("authclass_single"));
             // Does NOT have this
             assert!(!ident.has_claim("authlevel_strong"));
             assert!(!ident.has_claim("authclass_mfa"));
@@ -3485,8 +3485,8 @@ mod tests {
                 .process_uat_to_identity(audit, &uat)
                 .expect("Unable to process uat");
 
-            assert!(ident.has_claim("authtype_password"));
-            assert!(ident.has_claim("authclass_single"));
+            assert!(!ident.has_claim("authtype_password"));
+            assert!(!ident.has_claim("authclass_single"));
             // Does NOT have this
             assert!(!ident.has_claim("authlevel_strong"));
             assert!(!ident.has_claim("authclass_mfa"));
@@ -3499,9 +3499,9 @@ mod tests {
                 .process_uat_to_identity(audit, &uat)
                 .expect("Unable to process uat");
 
-            assert!(ident.has_claim("authtype_generatedpassword"));
-            assert!(ident.has_claim("authclass_single"));
-            assert!(ident.has_claim("authlevel_strong"));
+            assert!(!ident.has_claim("authtype_generatedpassword"));
+            assert!(!ident.has_claim("authclass_single"));
+            assert!(!ident.has_claim("authlevel_strong"));
             // Does NOT have this
             assert!(!ident.has_claim("authclass_mfa"));
 
@@ -3513,9 +3513,9 @@ mod tests {
                 .process_uat_to_identity(audit, &uat)
                 .expect("Unable to process uat");
 
-            assert!(ident.has_claim("authtype_webauthn"));
-            assert!(ident.has_claim("authclass_single"));
-            assert!(ident.has_claim("authlevel_strong"));
+            assert!(!ident.has_claim("authtype_webauthn"));
+            assert!(!ident.has_claim("authclass_single"));
+            assert!(!ident.has_claim("authlevel_strong"));
             // Does NOT have this
             assert!(!ident.has_claim("authclass_mfa"));
 
@@ -3527,9 +3527,9 @@ mod tests {
                 .process_uat_to_identity(audit, &uat)
                 .expect("Unable to process uat");
 
-            assert!(ident.has_claim("authtype_passwordmfa"));
-            assert!(ident.has_claim("authlevel_strong"));
-            assert!(ident.has_claim("authclass_mfa"));
+            assert!(!ident.has_claim("authtype_passwordmfa"));
+            assert!(!ident.has_claim("authlevel_strong"));
+            assert!(!ident.has_claim("authclass_mfa"));
             // Does NOT have this
             assert!(!ident.has_claim("authclass_single"));
         })
