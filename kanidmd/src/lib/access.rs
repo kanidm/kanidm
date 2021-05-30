@@ -1,19 +1,18 @@
-// Access Control Profiles
-//
-// This is a pretty important and security sensitive part of the code - it's
-// responsible for making sure that who is allowed to do what is enforced, as
-// well as who is *not* allowed to do what.
-//
-// A detailed design can be found in access-profiles-and-security.
-
-//
-// This part of the server really has a few parts
-// - the ability to parse access profile structures into real ACP structs
-// - the ability to apply sets of ACP's to entries for coarse actions (IE
-//   search.
-// - the ability to turn an entry into a partial-entry for results send
-//   requirements (also search).
-//
+//! Access Control Profiles
+//!
+//! This is a pretty important and security sensitive part of the code - it's
+//! responsible for making sure that who is allowed to do what is enforced, as
+//! well as who is *not* allowed to do what.
+//!
+//! A detailed design can be found in access-profiles-and-security.
+//!
+//! This component of the server really has a few parts
+//! - the ability to parse access profile structures into real ACP structs
+//! - the ability to apply sets of ACP's to entries for coarse actions (IE
+//!   search.
+//! - the ability to turn an entry into a partial-entry for results send
+//!   requirements (also search).
+//!
 
 // use concread::collections::bptree::*;
 use concread::arcache::{ARCache, ARCacheReadTxn};
@@ -65,7 +64,7 @@ impl AccessControlSearch {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &CLASS_ACS) {
+        if !value.attribute_equality("class", &CLASS_ACS) {
             ladmin_error!(audit, "class access_control_search not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_search".to_string(),
@@ -120,7 +119,7 @@ impl AccessControlDelete {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &CLASS_ACD) {
+        if !value.attribute_equality("class", &CLASS_ACD) {
             ladmin_error!(audit, "class access_control_delete not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
@@ -163,7 +162,7 @@ impl AccessControlCreate {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &CLASS_ACC) {
+        if !value.attribute_equality("class", &CLASS_ACC) {
             ladmin_error!(audit, "class access_control_create not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_create".to_string(),
@@ -223,7 +222,7 @@ impl AccessControlModify {
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &CLASS_ACM) {
+        if !value.attribute_equality("class", &CLASS_ACM) {
             ladmin_error!(audit, "class access_control_modify not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
@@ -301,7 +300,7 @@ impl AccessControlProfile {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
-        if !value.attribute_value_pres("class", &CLASS_ACP) {
+        if !value.attribute_equality("class", &CLASS_ACP) {
             ladmin_error!(audit, "class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),

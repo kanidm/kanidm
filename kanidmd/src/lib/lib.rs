@@ -1,3 +1,6 @@
+//! The Kanidmd server library. This implements all of the internal components of the server
+//! which is used to process authentication, store identities and enforce access controls.
+
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::unwrap_used)]
@@ -56,6 +59,8 @@ mod status;
 pub mod config;
 pub mod core;
 
+/// A prelude of imports that should be imported by all other Kanid modules to
+/// help make imports cleaner.
 pub mod prelude {
     pub use crate::utils::duration_from_epoch_now;
     pub use kanidm_proto::v1::OperationError;

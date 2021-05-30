@@ -1,3 +1,6 @@
+//! LDAP specific operations handling components. This is where LDAP operations
+//! are sent to for processing.
+
 use crate::event::SearchEvent;
 use crate::idm::event::LdapAuthEvent;
 use crate::idm::server::{IdmServer, IdmServerTransaction};

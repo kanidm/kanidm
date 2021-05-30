@@ -1123,15 +1123,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // schema or acp requires reload.
             if !self.changed_schema.get() {
                 self.changed_schema.set(commit_cand.iter().any(|e| {
-                    e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                        || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                    e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                        || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
                 }))
             }
             if !self.changed_acp.get() {
                 self.changed_acp.set(
                     commit_cand
                         .iter()
-                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                        .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
 
@@ -1257,15 +1257,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // schema or acp requires reload.
             if !self.changed_schema.get() {
                 self.changed_schema.set(del_cand.iter().any(|e| {
-                    e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                        || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                    e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                        || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
                 }))
             }
             if !self.changed_acp.get() {
                 self.changed_acp.set(
                     del_cand
                         .iter()
-                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                        .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
 
@@ -1626,8 +1626,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if !self.changed_schema.get() {
                 self.changed_schema
                     .set(norm_cand.iter().chain(pre_candidates.iter()).any(|e| {
-                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
                     }))
             }
             if !self.changed_acp.get() {
@@ -1635,7 +1635,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     norm_cand
                         .iter()
                         .chain(pre_candidates.iter())
-                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                        .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
             let cu = self.changed_uuid.as_ptr();
@@ -1764,8 +1764,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if !self.changed_schema.get() {
                 self.changed_schema
                     .set(norm_cand.iter().chain(pre_candidates.iter()).any(|e| {
-                        e.attribute_value_pres("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE)
+                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
                     }))
             }
             if !self.changed_acp.get() {
@@ -1773,7 +1773,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     norm_cand
                         .iter()
                         .chain(pre_candidates.iter())
-                        .any(|e| e.attribute_value_pres("class", &PVCLASS_ACP)),
+                        .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
             let cu = self.changed_uuid.as_ptr();
@@ -3580,7 +3580,7 @@ mod tests {
                     &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
                 )
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("class", &PartialValue::new_class("testclass")));
+            assert!(testobj1.attribute_equality("class", &PartialValue::new_class("testclass")));
 
             // Should still be good
             server_txn.commit(audit).expect("should not fail");
@@ -3667,7 +3667,7 @@ mod tests {
                     &Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap(),
                 )
                 .expect("failed");
-            assert!(testobj1.attribute_value_pres("testattr", &PartialValue::new_utf8s("test")));
+            assert!(testobj1.attribute_equality("testattr", &PartialValue::new_utf8s("test")));
 
             server_txn.commit(audit).expect("should not fail");
             // Commit.
@@ -3768,7 +3768,7 @@ mod tests {
             .pop()
             .unwrap();
 
-        e.attribute_value_pres("memberof", &PartialValue::new_refer_s(mo).unwrap())
+        e.attribute_equality("memberof", &PartialValue::new_refer_s(mo).unwrap())
     }
 
     #[test]

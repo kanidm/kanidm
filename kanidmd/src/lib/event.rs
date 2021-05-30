@@ -1,3 +1,20 @@
+//! An `event` is a self contained module of data, that contains all of the
+//! required information for any operation to proceed. While there are many
+//! types of potential events, they all eventually lower to one of:
+//!
+//! * AuthEvent
+//! * SearchEvent
+//! * ExistsEvent
+//! * ModifyEvent
+//! * CreateEvent
+//! * DeleteEvent
+//!
+//! An "event" is generally then passed to the `QueryServer` for processing.
+//! By making these fully self contained units, it means that we can assert
+//! at event creation time we have all the correct data requried to proceed
+//! with the operation, and a clear path to know how to transform events between
+//! various types.
+
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced};
 use crate::filter::{Filter, FilterInvalid, FilterValid};
 use crate::identity::Limits;

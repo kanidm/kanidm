@@ -1,3 +1,6 @@
+//! This contains scheduled tasks/interval tasks that are run inside of the server on a schedule
+//! as background operations.
+
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::constants::PURGE_FREQUENCY;
 use crate::event::{PurgeRecycledEvent, PurgeTombstoneEvent};

@@ -1,3 +1,9 @@
+//! The backend. This contains the "low level" storage and query code, which is
+//! implemented as a json-like kv document database. This has no rules about content
+//! of the server, which are all enforced at higher levels. The role of the backend
+//! is to persist content safely to disk, load that content, and execute queries
+//! utilising indexes in the most effective way possible.
+
 use std::fs;
 
 use crate::value::IndexType;

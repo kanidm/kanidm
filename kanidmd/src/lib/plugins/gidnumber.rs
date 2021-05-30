@@ -25,8 +25,8 @@ fn apply_gidnumber<T: Clone>(
     au: &mut AuditScope,
     e: &mut Entry<EntryInvalid, T>,
 ) -> Result<(), OperationError> {
-    if (e.attribute_value_pres("class", &CLASS_POSIXGROUP)
-        || e.attribute_value_pres("class", &CLASS_POSIXACCOUNT))
+    if (e.attribute_equality("class", &CLASS_POSIXGROUP)
+        || e.attribute_equality("class", &CLASS_POSIXACCOUNT))
         && !e.attribute_pres("gidnumber")
     {
         let u_ref = e

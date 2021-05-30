@@ -39,8 +39,8 @@ impl Plugin for Spn {
         let mut domain_name: Option<String> = None;
 
         for e in cand.iter_mut() {
-            if e.attribute_value_pres("class", &CLASS_GROUP)
-                || e.attribute_value_pres("class", &CLASS_ACCOUNT)
+            if e.attribute_equality("class", &CLASS_GROUP)
+                || e.attribute_equality("class", &CLASS_ACCOUNT)
             {
                 // We do this in the loop so that we don't get it unless required.
                 if domain_name.is_none() {
@@ -89,8 +89,8 @@ impl Plugin for Spn {
         let mut domain_name: Option<String> = None;
 
         for e in cand.iter_mut() {
-            if e.attribute_value_pres("class", &CLASS_GROUP)
-                || e.attribute_value_pres("class", &CLASS_ACCOUNT)
+            if e.attribute_equality("class", &CLASS_GROUP)
+                || e.attribute_equality("class", &CLASS_ACCOUNT)
             {
                 if domain_name.is_none() {
                     domain_name = Some(qs.get_domain_name(au)?);
@@ -145,7 +145,7 @@ impl Plugin for Spn {
                 .fold(None, |acc, (post, pre)| {
                     if acc.is_some() {
                         acc
-                    } else if post.attribute_value_pres("uuid", &PV_UUID_DOMAIN_INFO)
+                    } else if post.attribute_equality("uuid", &PV_UUID_DOMAIN_INFO)
                         && post.get_ava_single("domain_name") != pre.get_ava_single("domain_name")
                     {
                         post.get_ava_single("domain_name")

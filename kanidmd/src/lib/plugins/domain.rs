@@ -30,8 +30,8 @@ impl Plugin for Domain {
     ) -> Result<(), OperationError> {
         ltrace!(au, "Entering plugin_domain pre_create_transform");
         cand.iter_mut().for_each(|e| {
-            if e.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
-                && e.attribute_value_pres("uuid", &PVUUID_DOMAIN_INFO)
+            if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
+                && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
                 // We always set this, because the DB uuid is authorative.
                 let u = Value::new_uuid(qs.get_domain_uuid());
@@ -66,7 +66,7 @@ mod tests {
 
             let u_dom = server_txn.get_domain_uuid();
 
-            assert!(e_dom.attribute_value_pres("domain_uuid", &PartialValue::new_uuid(u_dom)));
+            assert!(e_dom.attribute_equality("domain_uuid", &PartialValue::new_uuid(u_dom)));
         })
     }
 }

@@ -227,6 +227,7 @@ impl<STATE> std::fmt::Display for Entry<EntryInit, STATE> {
 }
 
 impl<STATE> Entry<EntryInit, STATE> {
+    /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
         match self.attrs.get("uuid") {
             Some(vs) => match vs.iter().take(1).next() {
@@ -256,11 +257,8 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
-    // Could we consume protoentry?
-    //
-    // I think we could, but that would limit us to how protoentry works,
-    // where we are likely to actually change the Entry type here and how
-    // we store and represent types and data.
+    /// Consume a Protocol Entry from JSON, and validate and process the data into an internal
+    /// [`Entry`] type.
     pub fn from_proto_entry(
         audit: &mut AuditScope,
         e: &ProtoEntry,
@@ -297,6 +295,8 @@ impl Entry<EntryInit, EntryNew> {
         })
     }
 
+    /// Given a proto entry in JSON formed as a serialised string, processed that string
+    /// into an Entry.
     pub fn from_proto_entry_str(
         audit: &mut AuditScope,
         es: &str,
@@ -428,6 +428,8 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
+    /// Assign the Change Identifier to this Entry, allowing it to be modified and then
+    /// written to the `Backend`
     pub fn assign_cid(mut self, cid: Cid) -> Entry<EntryInvalid, EntryNew> {
         /* setup our last changed time */
         self.set_last_changed(cid.clone());
@@ -439,6 +441,7 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
+    /// Compare this entry to another.
     pub fn compare(&self, rhs: &Entry<EntrySealed, EntryCommitted>) -> bool {
         compare_attrs(&self.attrs, &rhs.attrs)
     }
@@ -491,10 +494,12 @@ impl Entry<EntryInit, EntryNew> {
         }
     }
 
+    /// Add an attribute-value-assertion to this Entry.
     pub fn add_ava(&mut self, attr: &str, value: Value) {
         self.add_ava_int(attr, value)
     }
 
+    /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
     pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
         self.set_ava_int(attr, values)
     }
@@ -513,6 +518,8 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         }
     }
 
+    /// Validate that this entry and it's attribute-value sets are conformant to the systems
+    /// schema and the releant syntaxes.
     pub fn validate(
         self,
         schema: &dyn SchemaTransaction,
@@ -551,7 +558,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             }
 
             // Do we have extensible?
-            let extensible = ne.attribute_value_pres("class", &CLASS_EXTENSIBLE);
+            let extensible = ne.attribute_equality("class", &CLASS_EXTENSIBLE);
 
             let entry_classes = ne.get_ava_set("class").ok_or(SchemaError::NoClassFound)?;
             let mut invalid_classes = Vec::with_capacity(0);
@@ -729,6 +736,7 @@ impl Entry<EntryInvalid, EntryCommitted> {
         }
     }
 
+    /// Convert this entry into a recycled entry, that is "in the recycle bin".
     pub fn into_recycled(mut self) -> Self {
         self.add_ava("class", Value::new_class("recycled"));
 
@@ -828,6 +836,8 @@ impl Entry<EntrySealed, EntryNew> {
         }
     }
 
+    /// Given this validated and sealed entry, process it with a `Backend` ID number so that it
+    /// can be then serialised to the database.
     pub fn into_sealed_committed_id(self, id: u64) -> Entry<EntrySealed, EntryCommitted> {
         Entry {
             valid: self.valid,
@@ -845,6 +855,7 @@ type IdxDiff<'a> =
     Vec<Result<(&'a AttrString, &'a IndexType, String), (&'a AttrString, &'a IndexType, String)>>;
 
 impl<VALID> Entry<VALID, EntryCommitted> {
+    /// If this entry has ever been commited to disk, retrieve it's database id number.
     pub fn get_id(&self) -> u64 {
         self.state.id
     }
@@ -867,6 +878,8 @@ impl Entry<EntrySealed, EntryCommitted> {
         self
     }
 
+    /// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only
+    /// used during a single Event session.
     pub fn insert_claim(&mut self, value: &str) {
         self.add_ava_int("claim", Value::new_iutf8(value));
     }
@@ -875,6 +888,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         compare_attrs(&self.attrs, &rhs.attrs)
     }
 
+    /// Serialise this entry to it's Database format ready for storage.
     pub fn to_dbentry(&self) -> DbEntry {
         // In the future this will do extra work to process uuid
         // into "attributes" suitable for dbentry storage.
@@ -899,6 +913,8 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
+    /// Given this entry, extract the set of strings that can uniquely identify this for authentication
+    /// purposes. These strings are then indexed.
     fn get_name2uuid_cands(&self) -> Set<String> {
         // The cands are:
         // * spn
@@ -918,6 +934,8 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
+    /// Given this entry, extract it's primary security prinicple name, or if not present
+    /// extract it's name, and if that's not present, extract it's uuid.
     pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
             .get("spn")
@@ -931,6 +949,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
+    /// Given this entry, determine it's relative distinguished named for LDAP compatability.
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")
@@ -952,6 +971,8 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     #[inline]
+    /// Determine if this entry is recycled or a tombstone, and map that to "None". This allows
+    /// filter_map to effectively remove entries that should not be considered as "alive".
     pub(crate) fn mask_recycled_ts(&self) -> Option<&Self> {
         // Only when cls has ts/rc then None, else lways Some(self).
         match self.attrs.get("class") {
@@ -1007,6 +1028,8 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    /// Generate a differential between a previous and current entry state, and what changes this
+    /// means for the current set of spn's for this uuid.
     pub(crate) fn idx_uuid2spn_diff(
         pre: Option<&Self>,
         post: Option<&Self>,
@@ -1038,6 +1061,8 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    /// Generate a differential between a previous and current entry state, and what changes this
+    /// means for the current set of LDAP relative distinguished names.
     pub(crate) fn idx_uuid2rdn_diff(
         pre: Option<&Self>,
         post: Option<&Self>,
@@ -1069,8 +1094,8 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
-    // This is an associated method, not on & self so we can take options on
-    // both sides.
+    /// Given the previous and current state of this entry, determine the indexing differential
+    /// that needs to be applied. i.e. what indexes must be created, modified and removed.
     pub(crate) fn idx_diff<'a>(
         idxmeta: &'a HashSet<IdxKey>,
         pre: Option<&Self>,
@@ -1317,6 +1342,8 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    /// Given a set of attributes that are allowed to be seen on this entry, process and remove
+    /// all other values that are NOT allowed in this query.
     pub fn reduce_attributes(
         self,
         allowed_attrs: &BTreeSet<&str>,
@@ -1347,6 +1374,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    /// Convert this recycled entry, into a tombstone ready for reaping.
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
         // Duplicate this to a tombstone entry
         let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
@@ -1368,6 +1396,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    /// Given a current transaction change identifier, mark this entry as valid and committed.
     pub fn into_valid(self, cid: Cid) -> Entry<EntryValid, EntryCommitted> {
         Entry {
             valid: EntryValid {
@@ -1442,6 +1471,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         &self.valid.uuid
     }
 
+    /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
     pub fn to_pe(
         &self,
         audit: &mut AuditScope,
@@ -1461,6 +1491,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         Ok(ProtoEntry { attrs: attrs? })
     }
 
+    /// Transform this reduced entry into an LDAP form that can be sent to clients.
     pub fn to_ldap(
         &self,
         audit: &mut AuditScope,
@@ -1538,6 +1569,7 @@ impl Entry<EntryReduced, EntryCommitted> {
 
 // impl<STATE> Entry<EntryValid, STATE> {
 impl<VALID, STATE> Entry<VALID, STATE> {
+    /// This internally adds an AVA to the entry.
     fn add_ava_int(&mut self, attr: &str, value: Value) {
         // How do we make this turn into an ok / err?
         let v = self
@@ -1549,38 +1581,45 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         // Doesn't matter if it already exists, equality will replace.
     }
 
+    /// Overwrite the current set of values for an attribute, with this new set.
     pub fn set_ava_int(&mut self, attr: &str, values: Set<Value>) {
         // Overwrite the existing value, build a tree from the list.
         let _ = self.attrs.insert(AttrString::from(attr), values);
     }
 
+    /// Update the last_changed flag of this entry to the given change identifier.
     fn set_last_changed(&mut self, cid: Cid) {
         let cv = btreeset![Value::new_cid(cid)];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
     }
 
     #[inline(always)]
+    /// Get an iterator over the current set of attribute names that this entry contains.
     pub fn get_ava_names(&self) -> impl Iterator<Item = &str> {
         // Get the set of all attribute names in the entry
         self.attrs.keys().map(|a| a.as_str())
     }
 
     #[inline(always)]
+    /// Get an iterator over the current set of values for an attribute name.
     pub fn get_ava(&self, attr: &str) -> Option<impl Iterator<Item = &Value>> {
         self.attrs.get(attr).map(|vs| vs.iter())
     }
 
     #[inline(always)]
+    /// Return a reference to the current set of values that are associated to this attribute.
     pub fn get_ava_set(&self, attr: &str) -> Option<&Set<Value>> {
         self.attrs.get(attr)
     }
 
     #[inline(always)]
+    /// If possible, return an iterator over the set of values transformed into a `&str`.
     pub fn get_ava_as_str(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.get_ava(attr).map(|i| i.filter_map(|s| s.to_str()))
     }
 
     #[inline(always)]
+    /// If possible, return an iterator over the set of values transformed into a `&Uuid`.
     pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<impl Iterator<Item = &Uuid>> {
         // If any value is NOT a reference, it's filtered out.
         self.get_ava(attr)
@@ -1588,6 +1627,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    /// If possible, return an iterator over the set of ssh key values transformed into a `&str`.
     pub fn get_ava_iter_sshpubkeys(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.get_ava(attr).map(|i| i.filter_map(|v| v.get_sshkey()))
     }
@@ -1613,7 +1653,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    /// Returns NONE if there is more than ONE!!!!
+    /// Return a single value of this attributes name, or `None` if it is NOT present, or
+    /// there are multiple values present (ambiguous).
     #[inline(always)]
     pub fn get_ava_single(&self, attr: &str) -> Option<&Value> {
         match self.attrs.get(attr) {
@@ -1628,71 +1669,72 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    /// Get a bool from an ava
     #[inline(always)]
+    /// Return a single bool, if valid to transform this value into a boolean.
     pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
         self.get_ava_single(attr).and_then(|a| a.to_bool())
     }
 
     #[inline(always)]
+    /// Return a single uint32, if valid to transform this value.
     pub fn get_ava_single_uint32(&self, attr: &str) -> Option<u32> {
         self.get_ava_single(attr).and_then(|a| a.to_uint32())
     }
 
     #[inline(always)]
+    /// Return a single syntax type, if valid to transform this value.
     pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
         self.get_ava_single(attr).and_then(|a| a.to_syntaxtype())
     }
 
     #[inline(always)]
+    /// Return a single credential, if valid to transform this value.
     pub fn get_ava_single_credential(&self, attr: &str) -> Option<&Credential> {
         self.get_ava_single(attr).and_then(|a| a.to_credential())
     }
 
     #[inline(always)]
+    /// Return a single radius credential, if valid to transform this value.
     pub fn get_ava_single_radiuscred(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr)
             .and_then(|a| a.get_radius_secret())
     }
 
     #[inline(always)]
+    /// Return a single datetime, if valid to transform this value.
     pub fn get_ava_single_datetime(&self, attr: &str) -> Option<OffsetDateTime> {
         self.get_ava_single(attr).and_then(|a| a.to_datetime())
     }
 
     #[inline(always)]
+    /// Return a single `&str`, if valid to transform this value.
     pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr).and_then(|v| v.to_str())
     }
 
     #[inline(always)]
+    /// Return a single protocol filter, if valid to transform this value.
     pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<&ProtoFilter> {
         self.get_ava_single(attr)
             .and_then(|v: &Value| v.as_json_filter())
     }
 
     #[inline(always)]
+    /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
         self.get_ava_single_str("name")
             .map(|name| Value::new_spn_str(name, domain_name))
     }
 
     #[inline(always)]
+    /// Assert if an attribute of this name is present on this entry.
     pub fn attribute_pres(&self, attr: &str) -> bool {
-        // Note, we don't normalise attr name, but I think that's not
-        // something we should over-optimise on.
         self.attrs.contains_key(attr)
     }
 
     #[inline(always)]
-    pub fn attribute_value_pres(&self, attr: &str, value: &PartialValue) -> bool {
-        // Yeah, this is techdebt, but both names of this fn are valid - we are
-        // checking if an attribute-value is equal to, or asserting it's present
-        // as a pair. So I leave both, and let the compiler work it out.
-        self.attribute_equality(attr, value)
-    }
-
-    #[inline(always)]
+    /// Assert if an attribute of this name is present, and one of it's values contains
+    /// the an exact match of this partial value.
     pub fn attribute_equality(&self, attr: &str, value: &PartialValue) -> bool {
         // we assume based on schema normalisation on the way in
         // that the equality here of the raw values MUST be correct.
@@ -1705,6 +1747,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    /// Assert if an attribute of this name is present, and one of it's values contains
+    /// the following substring, if possible to perform the substring comparison.
     pub fn attribute_substring(&self, attr: &str, subvalue: &PartialValue) -> bool {
         match self.attrs.get(attr) {
             Some(v_list) => v_list
@@ -1714,8 +1758,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
-    /// Confirm if at least one value in the ava is less than subvalue.
     #[inline(always)]
+    /// Assert if an attribute of this name is present, and one of it's values is less than
+    /// the following partial value
     pub fn attribute_lessthan(&self, attr: &str, subvalue: &PartialValue) -> bool {
         match self.attrs.get(attr) {
             Some(v_list) => v_list
@@ -1730,6 +1775,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     // valid, we still have strict typing checks between the filter -> entry to guarantee
     // they should be functional. We'll never match something that isn't syntactially valid.
     #[inline(always)]
+    /// Test if the following filter applies to and matches this entry.
     pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
         self.entry_match_no_index_inner(filter.to_inner())
     }
@@ -1766,6 +1812,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         }
     }
 
+    /// Given this entry, generate a filter containing the requested attributes strings as
+    /// equality components.
     pub fn filter_from_attrs(&self, attrs: &[AttrString]) -> Option<Filter<FilterInvalid>> {
         // Because we are a valid entry, a filter we create still may not
         // be valid because the internal server entry templates are still
@@ -1802,6 +1850,8 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         )))
     }
 
+    /// Given this entry, generate a modification list that would "assert"
+    /// another entry is in the same/identical attribute state.
     pub fn gen_modlist_assert(
         &self,
         schema: &dyn SchemaTransaction,
@@ -1866,6 +1916,7 @@ where
         self.add_ava_int(attr, value)
     }
 
+    /// Remove an attribute-value pair from this entry.
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         // It would be great to remove these extra allocations, but they
         // really don't cost much :(
@@ -1884,15 +1935,17 @@ where
         }
     }
 
+    /// Remove all values of this attribute from the entry.
     pub fn purge_ava(&mut self, attr: &str) {
         self.attrs.remove(attr);
     }
 
+    /// Remove all values of this attribute from the entry, and return their content.
     pub fn pop_ava(&mut self, attr: &str) -> Option<Set<Value>> {
         self.attrs.remove(attr)
     }
 
-    /// Provide a true ava set.
+    /// Replace the content of this attribute with a new value set.
     pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
         self.set_ava_int(attr, values)
     }
@@ -1905,8 +1958,7 @@ where
     }
     */
 
-    // Should this be schemaless, relying on checks of the modlist, and the entry validate after?
-    // YES. Makes it very cheap.
+    /// Apply the content of this modlist to this entry, enforcing the expressed state.
     pub fn apply_modlist(&mut self, modlist: &ModifyList<ModifyValid>) {
         // -> Result<Entry<EntryInvalid, STATE>, OperationError> {
         // Apply a modlist, generating a new entry that conforms to the changes.

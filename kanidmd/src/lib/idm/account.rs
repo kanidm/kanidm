@@ -26,7 +26,7 @@ lazy_static! {
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
         // Check the classes
-        if !$value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
