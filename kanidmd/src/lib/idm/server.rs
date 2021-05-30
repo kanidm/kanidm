@@ -377,6 +377,7 @@ pub trait IdmServerTransaction<'a> {
 
         // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
+        /*
         entry.insert_claim(match &uat.auth_type {
             AuthType::Anonymous => "authtype_anonymous",
             AuthType::UnixPassword => "authtype_unixpassword",
@@ -401,6 +402,7 @@ pub trait IdmServerTransaction<'a> {
             | AuthType::Webauthn => entry.insert_claim("authclass_single"),
             AuthType::PasswordMfa => entry.insert_claim("authclass_mfa"),
         };
+        */
 
         ltrace!(audit, "Applied claims -> {:?}", entry.get_ava_set("claim"));
 

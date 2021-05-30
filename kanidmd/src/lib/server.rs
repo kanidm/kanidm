@@ -3072,11 +3072,9 @@ mod tests {
             let time_p2 = time_p1 + Duration::from_secs(RECYCLEBIN_MAX_AGE * 2);
 
             let server_txn = server.write(time_p1);
-            let mut admin = server_txn
+            let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
-            // Insert the correct claim we need.
-            admin.insert_claim("authlevel_strong");
 
             let filt_i_rc = filter_all!(f_eq("class", PartialValue::new_class("recycled")));
 
@@ -3214,11 +3212,9 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
             let server_txn = server.write(duration_from_epoch_now());
-            let mut admin = server_txn
+            let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
-            // Insert the correct claim we need.
-            admin.insert_claim("authlevel_strong");
 
             let e1 = entry_init!(
                 ("class", Value::new_class("object")),
@@ -3437,12 +3433,9 @@ mod tests {
             assert!(server_txn.name_to_uuid(audit, "testperson1").is_err());
 
             // revive
-            let mut admin = server_txn
+            let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
-            // Insert the correct claim we need.
-            admin.insert_claim("authlevel_strong");
-
             let rre_rc = unsafe {
                 ReviveRecycledEvent::new_impersonate_entry(
                     admin,
@@ -3783,11 +3776,9 @@ mod tests {
         run_test!(|server: &QueryServer, audit: &mut AuditScope| {
             // Create items
             let server_txn = server.write(duration_from_epoch_now());
-            let mut admin = server_txn
+            let admin = server_txn
                 .internal_search_uuid(audit, &UUID_ADMIN)
                 .expect("failed");
-            // Insert the correct claim we need.
-            admin.insert_claim("authlevel_strong");
 
             // Right need a user in a direct group.
             let u1 = create_user("u1", "22b47373-d123-421f-859e-9ddd8ab14a2a");

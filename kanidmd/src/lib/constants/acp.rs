@@ -49,7 +49,7 @@ pub const JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000002"],
         "description": ["Builtin IDM admin recycle bin search permission."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
         "acp_targetscope": [
             "{\"eq\": [\"class\", \"recycled\"]}"
@@ -65,7 +65,7 @@ pub const JSON_IDM_ADMINS_ACP_REVIVE_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000003"],
         "description": ["Builtin IDM Administrators Access Controls."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
         "acp_targetscope": [
             "{\"eq\":[\"class\",\"recycled\"]}"
@@ -433,7 +433,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000015"],
         "description": ["Builtin IDM Control for reading high privilege accounts."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -455,7 +455,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000016"],
         "description": ["Builtin IDM Control for managing high privilege accounts."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000009\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -482,7 +482,7 @@ pub const JSON_IDM_ACP_HP_GROUP_WRITE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000017"],
         "description": ["Builtin IDM Control for managing high privilege groups"],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000012\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000012\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -513,7 +513,7 @@ pub const JSON_IDM_ACP_SCHEMA_WRITE_ATTRS_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000018"],
         "description": ["Builtin IDM Control for management of schema attributes."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"attributetype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -574,7 +574,7 @@ pub const JSON_IDM_ACP_ACP_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000019"],
         "description": ["Builtin IDM Control for access profiles management."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000011\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -665,7 +665,7 @@ pub const JSON_IDM_ACP_SCHEMA_WRITE_CLASSES_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000020"],
         "description": ["Builtin IDM Control for management of schema classes."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000010\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"classtype\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -752,7 +752,7 @@ pub const JSON_IDM_ACP_HP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000023"],
         "description": ["Builtin IDM Control for creating and deleting hp and regular (service) accounts"],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000016\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000016\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -786,7 +786,7 @@ pub const JSON_IDM_ACP_HP_GROUP_MANAGE_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000024"],
         "description": ["Builtin IDM Control for creating and deleting hp and regular groups in the directory"],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000017\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000017\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -816,7 +816,7 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000026"],
         "description": ["Builtin IDM Control for granting domain info administration locally"],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000020\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000025\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -850,7 +850,7 @@ pub const JSON_IDM_ACP_SYSTEM_CONFIG_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000028"],
         "description": ["Builtin IDM Control for granting system configuration rights"],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000019\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"uuid\",\"00000000-0000-0000-0000-ffffff000027\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -941,7 +941,7 @@ pub const JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000033"],
         "description": ["Builtin IDM Control for managing and extending unix high privilege accounts."],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000025\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000025\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
@@ -971,7 +971,7 @@ pub const JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000034"],
         "description": ["Builtin IDM Control for managing and extending unix high privilege groups"],
         "acp_receiver": [
-            "{\"and\": [{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000026\"]}, {\"eq\":[\"claim\",\"authlevel_strong\"]}]}"
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000026\"]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"group\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
