@@ -354,7 +354,7 @@ pub trait IdmServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         uat: &UserAuthToken,
-        // ct: Duration,
+        ct: Duration,
     ) -> Result<Identity, OperationError> {
         // From a UAT, get the current identity and associated information.
         let entry = self
@@ -365,15 +365,21 @@ pub trait IdmServerTransaction<'a> {
                 e
             })?;
 
-        // TODO: #59: If the account is expired, do not allow the event
+        // #59: If the account is expired, do not allow the event
         // to proceed
-        /*
-        let expired = entry.get_ava_single_datetime("account_expire")
-            .map(|expire_at| {
-                (OffsetDateTime::unix_epoch() + ct) > expire_at
-            })
-            .unwrap_or(false);
-        */
+        let valid = Account::check_within_valid_time(
+            ct,
+            entry.get_ava_single_datetime("account_valid_from").as_ref(),
+            entry.get_ava_single_datetime("account_expire").as_ref(),
+        );
+
+        if !valid {
+            lsecurity!(
+                audit,
+                "Account has expired or is not yet valid, not allowing to proceed"
+            );
+            return Err(OperationError::SessionExpired);
+        }
 
         // #64: Now apply claims from the uat into the Entry
         // to allow filtering.
@@ -1281,7 +1287,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let cleartext = cleartext
             .map(|s| s.to_string())
-            .unwrap_or_else(|| password_from_random());
+            .unwrap_or_else(password_from_random);
 
         let modlist = account
             .gen_generatedpassword_recover_mod(&cleartext, self.crypto_policy)
@@ -3454,7 +3460,7 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::Anonymous)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
-                .process_uat_to_identity(audit, &uat)
+                .process_uat_to_identity(audit, &uat, ct)
                 .expect("Unable to process uat");
 
             assert!(!ident.has_claim("authtype_anonymous"));
@@ -3468,7 +3474,7 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::UnixPassword)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
-                .process_uat_to_identity(audit, &uat)
+                .process_uat_to_identity(audit, &uat, ct)
                 .expect("Unable to process uat");
 
             assert!(!ident.has_claim("authtype_unixpassword"));
@@ -3482,7 +3488,7 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::Password)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
-                .process_uat_to_identity(audit, &uat)
+                .process_uat_to_identity(audit, &uat, ct)
                 .expect("Unable to process uat");
 
             assert!(!ident.has_claim("authtype_password"));
@@ -3496,7 +3502,7 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::GeneratedPassword)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
-                .process_uat_to_identity(audit, &uat)
+                .process_uat_to_identity(audit, &uat, ct)
                 .expect("Unable to process uat");
 
             assert!(!ident.has_claim("authtype_generatedpassword"));
@@ -3510,7 +3516,7 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::Webauthn)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
-                .process_uat_to_identity(audit, &uat)
+                .process_uat_to_identity(audit, &uat, ct)
                 .expect("Unable to process uat");
 
             assert!(!ident.has_claim("authtype_webauthn"));
@@ -3524,7 +3530,7 @@ mod tests {
                 .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
                 .expect("Unable to create uat");
             let ident = idms_prox_write
-                .process_uat_to_identity(audit, &uat)
+                .process_uat_to_identity(audit, &uat, ct)
                 .expect("Unable to process uat");
 
             assert!(!ident.has_claim("authtype_passwordmfa"));

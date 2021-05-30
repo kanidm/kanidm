@@ -192,25 +192,33 @@ impl Account {
         })
     }
 
-    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
+    pub fn check_within_valid_time(
+        ct: Duration,
+        valid_from: Option<&OffsetDateTime>,
+        expire: Option<&OffsetDateTime>,
+    ) -> bool {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
-        let vmin = if let Some(vft) = &self.valid_from {
+        let vmin = if let Some(vft) = valid_from {
             // If current time greater than strat time window
-            vft < &cot
+            vft <= &cot
         } else {
             // We have no time, not expired.
             true
         };
-        let vmax = if let Some(ext) = &self.expire {
+        let vmax = if let Some(ext) = expire {
             // If exp greater than ct then expired.
-            &cot < ext
+            &cot <= ext
         } else {
             // If not present, we are not expired
             true
         };
         // Mix the results
         vmin && vmax
+    }
+
+    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
+        Self::check_within_valid_time(ct, self.valid_from.as_ref(), self.expire.as_ref())
     }
 
     pub fn primary_cred_uuid(&self) -> Uuid {

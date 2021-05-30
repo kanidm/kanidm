@@ -232,7 +232,7 @@ impl LdapServer {
             ladmin_info!(audit, "LDAP Search Request LDAP Attrs -> {:?}", l_attrs);
             ladmin_info!(audit, "LDAP Search Request Mapped Attrs -> {:?}", k_attrs);
 
-            // let ct = duration_from_epoch_now();
+            let ct = duration_from_epoch_now();
             let idm_read = idms.proxy_read_async().await;
             lperf_segment!(audit, "ldap::do_search<core>", || {
                 // Now start the txn - we need it for resolving filter components.
@@ -271,7 +271,7 @@ impl LdapServer {
                 // ! Remember, searchEvent wraps to ignore hidden for us.
                 let se = lperf_trace_segment!(audit, "ldap::do_search<core><prepare_se>", || {
                     let ident = idm_read
-                        .process_uat_to_identity(audit, &uat.effective_uat)
+                        .process_uat_to_identity(audit, &uat.effective_uat, ct)
                         .map_err(|e| {
                             ladmin_error!(audit, "Invalid identity: {:?}", e);
                             e

@@ -73,7 +73,7 @@ impl QueryServerWriteV1 {
 
             let ident = idms_prox_write
                 .validate_and_parse_uat(audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat))
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat, ct))
                 .map_err(|e| {
                     ladmin_error!(audit, "Invalid identity: {:?}", e);
                     e
@@ -126,7 +126,7 @@ impl QueryServerWriteV1 {
 
             let ident = idms_prox_write
                 .validate_and_parse_uat(audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat))
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat, ct))
                 .map_err(|e| {
                     ladmin_error!(audit, "Invalid identity: {:?}", e);
                     e
@@ -180,7 +180,7 @@ impl QueryServerWriteV1 {
 
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -234,7 +234,7 @@ impl QueryServerWriteV1 {
                 let ct = duration_from_epoch_now();
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(&mut audit, "Invalid identity: {:?}", e);
                         e
@@ -287,7 +287,7 @@ impl QueryServerWriteV1 {
                 let ct = duration_from_epoch_now();
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -339,7 +339,7 @@ impl QueryServerWriteV1 {
                 let ct = duration_from_epoch_now();
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -387,7 +387,7 @@ impl QueryServerWriteV1 {
                 let ct = duration_from_epoch_now();
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -442,7 +442,7 @@ impl QueryServerWriteV1 {
 
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -651,7 +651,7 @@ impl QueryServerWriteV1 {
 
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -696,7 +696,7 @@ impl QueryServerWriteV1 {
 
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -754,7 +754,7 @@ impl QueryServerWriteV1 {
                 let ct = duration_from_epoch_now();
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -815,7 +815,7 @@ impl QueryServerWriteV1 {
                 let ct = duration_from_epoch_now();
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -1119,7 +1119,7 @@ impl QueryServerWriteV1 {
 
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
