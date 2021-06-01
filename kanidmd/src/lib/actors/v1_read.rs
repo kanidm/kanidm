@@ -82,7 +82,7 @@ impl QueryServerReadV1 {
         let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
             let ident = idms_prox_read
                 .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                 .map_err(|e| {
                     ladmin_error!(audit, "Invalid identity: {:?}", e);
                     e
@@ -185,7 +185,7 @@ impl QueryServerReadV1 {
                 .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
                 .and_then(|uat| {
                     idms_prox_read
-                        .process_uat_to_identity(&mut audit, &uat)
+                        .process_uat_to_identity(&mut audit, &uat, ct)
                         .map(|i| (uat, i))
                 })
                 .map_err(|e| {
@@ -252,7 +252,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -305,7 +305,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -356,7 +356,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -429,7 +429,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -486,7 +486,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -545,7 +545,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -600,7 +600,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -673,7 +673,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e
@@ -749,7 +749,7 @@ impl QueryServerReadV1 {
         // resolve the id
         let ident = idm_auth
             .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-            .and_then(|uat| idm_auth.process_uat_to_identity(&mut audit, &uat))
+            .and_then(|uat| idm_auth.process_uat_to_identity(&mut audit, &uat, ct))
             .map_err(|e| {
                 ladmin_error!(audit, "Invalid identity: {:?}", e);
                 e
@@ -804,7 +804,7 @@ impl QueryServerReadV1 {
             || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat))
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
                         ladmin_error!(audit, "Invalid identity: {:?}", e);
                         e

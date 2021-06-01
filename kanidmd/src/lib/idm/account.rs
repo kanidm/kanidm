@@ -3,13 +3,12 @@ use crate::prelude::*;
 
 use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::UserAuthToken;
+use kanidm_proto::v1::{AuthType, UserAuthToken};
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::totp::Totp;
 use crate::credential::{softlock::CredSoftLockPolicy, Credential};
-use crate::idm::claim::Claim;
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -155,12 +154,15 @@ impl Account {
         try_from_entry!(value, vec![])
     }
 
-    // Could this actually take a claims list and application instead?
+    /// Given the session_id and other metadata, create a user authentication token
+    /// that represents a users session. Since this metadata can vary from session
+    /// to session, this userauthtoken may contain some data (claims) that may yield
+    /// different privileges to the bearer.
     pub(crate) fn to_userauthtoken(
         &self,
         session_id: Uuid,
-        claims: &[Claim],
         ct: Duration,
+        auth_type: AuthType,
     ) -> Option<UserAuthToken> {
         // This could consume self?
         // The cred handler provided is what authenticated this user, so we can use it to
@@ -179,7 +181,9 @@ impl Account {
             uuid: self.uuid,
             // application: None,
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
-            claims: claims.iter().map(|c| c.to_proto()).collect(),
+            // claims: claims.iter().map(|c| c.to_proto()).collect(),
+            claims: Vec::new(),
+            auth_type,
             // What's the best way to get access to these limits with regard to claims/other?
             lim_uidx: false,
             lim_rmax: 128,
@@ -188,25 +192,33 @@ impl Account {
         })
     }
 
-    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
+    pub fn check_within_valid_time(
+        ct: Duration,
+        valid_from: Option<&OffsetDateTime>,
+        expire: Option<&OffsetDateTime>,
+    ) -> bool {
         let cot = OffsetDateTime::unix_epoch() + ct;
 
-        let vmin = if let Some(vft) = &self.valid_from {
+        let vmin = if let Some(vft) = valid_from {
             // If current time greater than strat time window
-            vft < &cot
+            vft <= &cot
         } else {
             // We have no time, not expired.
             true
         };
-        let vmax = if let Some(ext) = &self.expire {
+        let vmax = if let Some(ext) = expire {
             // If exp greater than ct then expired.
-            &cot < ext
+            &cot <= ext
         } else {
             // If not present, we are not expired
             true
         };
         // Mix the results
         vmin && vmax
+    }
+
+    pub fn is_within_valid_time(&self, ct: Duration) -> bool {
+        Self::check_within_valid_time(ct, self.valid_from.as_ref(), self.expire.as_ref())
     }
 
     pub fn primary_cred_uuid(&self) -> Uuid {
@@ -226,12 +238,12 @@ impl Account {
         self.uuid == *UUID_ANONYMOUS
     }
 
-    pub(crate) fn gen_password_recover_mod(
+    pub(crate) fn gen_generatedpassword_recover_mod(
         &self,
         cleartext: &str,
         crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
+        let ncred = Credential::new_generatedpassword_only(crypto_policy, cleartext)?;
         let vcred = Value::new_credential("primary", ncred);
         Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
     }
@@ -239,31 +251,21 @@ impl Account {
     pub(crate) fn gen_password_mod(
         &self,
         cleartext: &str,
-        appid: &Option<String>,
         crypto_policy: &CryptoPolicy,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        // What should this look like? Probablf an appid + stuff -> modify?
-        // then the caller has to apply the modify under the requests event
-        // for proper auth checks.
-        match appid {
-            Some(_) => Err(OperationError::InvalidState),
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let ncred = primary.set_password(crypto_policy, cleartext)?;
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
+            // Make a new credential instead
             None => {
-                // TODO #59: Enforce PW policy. Can we allow this change?
-                match &self.primary {
-                    // Change the cred
-                    Some(primary) => {
-                        let ncred = primary.set_password(crypto_policy, cleartext)?;
-                        let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-                    }
-                    // Make a new credential instead
-                    None => {
-                        let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
-                        let vcred = Value::new_credential("primary", ncred);
-                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-                    }
-                }
-            } // no appid
+                let ncred = Credential::new_password_only(crypto_policy, cleartext)?;
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
         }
     }
 
@@ -355,19 +357,11 @@ impl Account {
         }
     }
 
-    pub(crate) fn check_credential_pw(
-        &self,
-        cleartext: &str,
-        appid: &Option<String>,
-    ) -> Result<bool, OperationError> {
-        match appid {
-            Some(_) => Err(OperationError::InvalidState),
-            None => self
-                .primary
-                .as_ref()
-                .ok_or(OperationError::InvalidState)
-                .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext))),
-        }
+    pub(crate) fn check_credential_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
+        self.primary
+            .as_ref()
+            .ok_or(OperationError::InvalidState)
+            .and_then(|cred| cred.password_ref().and_then(|pw| pw.verify(cleartext)))
     }
 
     pub(crate) fn regenerate_radius_secret_mod(

@@ -10,7 +10,6 @@ pub(crate) enum DelayedAction {
 pub(crate) struct PasswordUpgrade {
     pub target_uuid: Uuid,
     pub existing_password: String,
-    pub appid: Option<String>,
 }
 
 pub(crate) struct UnixPasswordUpgrade {

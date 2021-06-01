@@ -1,10 +1,9 @@
 use crate::idm::account::Account;
-use crate::idm::claim::Claim;
 use crate::idm::AuthState;
 use crate::prelude::*;
 use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
-use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
+use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType};
 
 use crate::credential::{totp::Totp, Credential, CredentialType, Password};
 
@@ -35,7 +34,7 @@ const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
 
 enum CredState {
-    Success(Vec<Claim>),
+    Success(AuthType),
     Continue(Vec<AuthAllowed>),
     Denied(&'static str),
 }
@@ -67,7 +66,7 @@ struct CredWebauthn {
 enum CredHandler {
     Anonymous,
     // AppPassword (?)
-    Password(Password),
+    Password(Password, bool),
     PasswordMfa(Box<CredMfa>),
     Webauthn(CredWebauthn),
     // Webauthn + Password
@@ -81,9 +80,8 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
     ) -> Result<Self, ()> {
         match &c.type_ {
-            CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
-                Ok(CredHandler::Password(pw.clone()))
-            }
+            CredentialType::Password(pw) => Ok(CredHandler::Password(pw.clone(), false)),
+            CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password(pw.clone(), true)),
             CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan) => {
                 let wan = if !maybe_wan.is_empty() {
                     webauthn
@@ -152,7 +150,6 @@ impl CredHandler {
             if let Err(_e) = async_tx.send(DelayedAction::PwUpgrade(PasswordUpgrade {
                 target_uuid: who,
                 existing_password: cleartext.to_string(),
-                appid: None,
             })) {
                 ladmin_warning!(au, "unable to queue delayed pwupgrade, continuing ... ");
             };
@@ -164,7 +161,7 @@ impl CredHandler {
             AuthCredential::Anonymous => {
                 // For anonymous, no claims will ever be issued.
                 lsecurity!(au, "Handler::Anonymous -> Result::Success");
-                CredState::Success(Vec::new())
+                CredState::Success(AuthType::Anonymous)
             }
             _ => {
                 lsecurity!(
@@ -180,6 +177,7 @@ impl CredHandler {
         au: &mut AuditScope,
         cred: &AuthCredential,
         pw: &mut Password,
+        generated: bool,
         who: Uuid,
         async_tx: &Sender<DelayedAction>,
         pw_badlist_set: Option<&HashSet<String>>,
@@ -198,7 +196,11 @@ impl CredHandler {
                         _ => {
                             lsecurity!(au, "Handler::Password -> Result::Success");
                             Self::maybe_pw_upgrade(au, pw, who, cleartext.as_str(), async_tx);
-                            CredState::Success(Vec::new())
+                            if generated {
+                                CredState::Success(AuthType::GeneratedPassword)
+                            } else {
+                                CredState::Success(AuthType::Password)
+                            }
                         }
                     }
                 } else {
@@ -312,7 +314,7 @@ impl CredHandler {
                                         cleartext.as_str(),
                                         async_tx,
                                     );
-                                    CredState::Success(Vec::new())
+                                    CredState::Success(AuthType::PasswordMfa)
                                 }
                             }
                         } else {
@@ -377,7 +379,7 @@ impl CredHandler {
                                 ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                             };
                         };
-                        CredState::Success(Vec::new())
+                        CredState::Success(AuthType::Webauthn)
                     })
                     .unwrap_or_else(|e| {
                         wan_cred.state = CredVerifyState::Fail;
@@ -409,8 +411,8 @@ impl CredHandler {
     ) -> CredState {
         match self {
             CredHandler::Anonymous => Self::validate_anonymous(au, cred),
-            CredHandler::Password(ref mut pw) => {
-                Self::validate_password(au, cred, pw, who, async_tx, pw_badlist_set)
+            CredHandler::Password(ref mut pw, generated) => {
+                Self::validate_password(au, cred, pw, *generated, who, async_tx, pw_badlist_set)
             }
             CredHandler::PasswordMfa(ref mut pw_mfa) => Self::validate_password_mfa(
                 au,
@@ -431,7 +433,7 @@ impl CredHandler {
     pub fn next_auth_allowed(&self) -> Vec<AuthAllowed> {
         match &self {
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
-            CredHandler::Password(_) => vec![AuthAllowed::Password],
+            CredHandler::Password(_, _) => vec![AuthAllowed::Password],
             CredHandler::PasswordMfa(ref pw_mfa) => pw_mfa
                 .totp
                 .iter()
@@ -450,7 +452,7 @@ impl CredHandler {
     fn can_proceed(&self, mech: &AuthMech) -> bool {
         match (self, mech) {
             (CredHandler::Anonymous, AuthMech::Anonymous)
-            | (CredHandler::Password(_), AuthMech::Password)
+            | (CredHandler::Password(_, _), AuthMech::Password)
             | (CredHandler::PasswordMfa(_), AuthMech::PasswordMfa)
             | (CredHandler::Webauthn(_), AuthMech::Webauthn) => true,
             (_, _) => false,
@@ -460,7 +462,7 @@ impl CredHandler {
     fn allows_mech(&self) -> AuthMech {
         match self {
             CredHandler::Anonymous => AuthMech::Anonymous,
-            CredHandler::Password(_) => AuthMech::Password,
+            CredHandler::Password(_, _) => AuthMech::Password,
             CredHandler::PasswordMfa(_) => AuthMech::PasswordMfa,
             CredHandler::Webauthn(_) => AuthMech::Webauthn,
         }
@@ -508,7 +510,6 @@ impl AuthSession {
     pub fn new(
         au: &mut AuditScope,
         account: Account,
-        _appid: &Option<String>,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
     ) -> (Option<Self>, AuthState) {
@@ -657,11 +658,11 @@ impl AuthSession {
                     webauthn,
                     pw_badlist_set,
                 ) {
-                    CredState::Success(claims) => {
+                    CredState::Success(auth_type) => {
                         lsecurity!(au, "Successful cred handling");
                         let uat = self
                             .account
-                            .to_userauthtoken(au.uuid, &claims, *time)
+                            .to_userauthtoken(au.uuid, *time, auth_type)
                             .ok_or(OperationError::InvalidState)?;
 
                         // Now encrypt and prepare the token for return to the client.
@@ -790,7 +791,6 @@ mod tests {
         let (session, state) = AuthSession::new(
             &mut audit,
             anon_account,
-            &None,
             &webauthn,
             duration_from_epoch_now(),
         );
@@ -823,35 +823,6 @@ mod tests {
         }
     }
 
-    // Deprecated, will remove later.
-    #[test]
-    fn test_idm_authsession_missing_appid() {
-        let webauthn = create_webauthn();
-        let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_missing_appid",
-            uuid::Uuid::new_v4(),
-            None,
-        );
-
-        let (session, state) = AuthSession::new(
-            &mut audit,
-            anon_account,
-            &Some("NonExistantAppID".to_string()),
-            &webauthn,
-            duration_from_epoch_now(),
-        );
-
-        // We now ignore appids.
-        assert!(session.is_some());
-
-        if let AuthState::Choose(_) = state {
-            // Pass
-        } else {
-            panic!();
-        }
-    }
-
     macro_rules! start_password_session {
         (
             $audit:expr,
@@ -861,7 +832,6 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -1008,7 +978,6 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -1067,7 +1036,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1234,7 +1203,7 @@ mod tests {
         let ts = Duration::from_secs(12345);
 
         // manually load in a cred
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
 
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
@@ -1301,7 +1270,6 @@ mod tests {
             let (session, state) = AuthSession::new(
                 $audit,
                 $account.clone(),
-                &None,
                 $webauthn,
                 duration_from_epoch_now(),
             );
@@ -1706,7 +1674,7 @@ mod tests {
         let (webauthn, mut wa, wan_cred) = setup_webauthn(account.name.as_str());
         let hs512 = create_hs512();
 
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
         let totp_good = totp
             .do_totp_duration_from_epoch(&ts)
             .expect("failed to perform totp.");

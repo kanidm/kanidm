@@ -605,11 +605,10 @@ impl KanidmClient {
     pub fn idm_account_primary_credential_generate_totp(
         &self,
         id: &str,
-        label: &str,
     ) -> Result<(Uuid, TotpSecret), ClientError> {
         tokio_block_on(
             self.asclient
-                .idm_account_primary_credential_generate_totp(id, label),
+                .idm_account_primary_credential_generate_totp(id),
         )
     }
 

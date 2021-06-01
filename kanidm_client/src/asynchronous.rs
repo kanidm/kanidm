@@ -901,9 +901,8 @@ impl KanidmAsyncClient {
     pub async fn idm_account_primary_credential_generate_totp(
         &self,
         id: &str,
-        label: &str,
     ) -> Result<(Uuid, TotpSecret), ClientError> {
-        let r = SetCredentialRequest::TotpGenerate(label.to_string());
+        let r = SetCredentialRequest::TotpGenerate;
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
                 format!("/v1/account/{}/_credential/primary", id).as_str(),

@@ -150,18 +150,33 @@ pub struct Application {
 }
 */
 
-// The currently authenticated user, and any required metadata for them
-// to properly authorise them. This is similar in nature to oauth and the krb
-// PAC/PAD structures. Currently we only use this internally, but we should
-// consider making it "parseable" by the client so they can have per-session
-// group/authorisation data.
-//
-// This structure and how it works will *very much* change over time from this
-// point onward!
-//
-// It's likely that this must have a relationship to the server's user structure
-// and to the Entry so that filters or access controls can be applied.
+#[derive(Debug, Serialize, Deserialize, Clone, Ord, PartialOrd, Eq, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum AuthType {
+    Anonymous,
+    UnixPassword,
+    Password,
+    GeneratedPassword,
+    Webauthn,
+    PasswordMfa,
+    // PasswordWebauthn,
+    // WebauthnVerified,
+    // PasswordWebauthnVerified,
+}
+
+/// The currently authenticated user, and any required metadata for them
+/// to properly authorise them. This is similar in nature to oauth and the krb
+/// PAC/PAD structures. Currently we only use this internally, but we should
+/// consider making it "parseable" by the client so they can have per-session
+/// group/authorisation data.
+///
+/// This structure and how it works will *very much* change over time from this
+/// point onward!
+///
+/// It's likely that this must have a relationship to the server's user structure
+/// and to the Entry so that filters or access controls can be applied.
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
     // When this data should be considered invalid. Interpretation
@@ -175,6 +190,7 @@ pub struct UserAuthToken {
     // pub application: Option<Application>,
     pub groups: Vec<Group>,
     pub claims: Vec<Claim>,
+    pub auth_type: AuthType,
     // Should we allow supplemental ava's to be added on request?
     pub lim_uidx: bool,
     pub lim_rmax: usize,
@@ -649,7 +665,7 @@ pub struct AuthResponse {
 pub enum SetCredentialRequest {
     Password(String),
     GeneratePassword,
-    TotpGenerate(String),
+    TotpGenerate,
     TotpVerify(Uuid, u32),
     TotpRemove,
     // Start the rego.

@@ -133,4 +133,14 @@ impl Identity {
     pub fn get_event_origin_id(&self) -> IdentityId {
         IdentityId::from(&self.origin)
     }
+
+    #[cfg(test)]
+    pub fn has_claim(&self, claim: &str) -> bool {
+        match &self.origin {
+            IdentType::Internal => false,
+            IdentType::User(u) => u
+                .entry
+                .attribute_equality("claim", &PartialValue::new_iutf8(claim)),
+        }
+    }
 }

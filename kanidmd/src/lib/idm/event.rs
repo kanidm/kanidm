@@ -9,16 +9,14 @@ pub struct PasswordChangeEvent {
     pub ident: Identity,
     pub target: Uuid,
     pub cleartext: String,
-    pub appid: Option<String>,
 }
 
 impl PasswordChangeEvent {
-    pub fn new_internal(target: &Uuid, cleartext: &str, appid: Option<&str>) -> Self {
+    pub fn new_internal(target: &Uuid, cleartext: &str) -> Self {
         PasswordChangeEvent {
             ident: Identity::from_internal(),
             target: *target,
             cleartext: cleartext.to_string(),
-            appid: appid.map(|v| v.to_string()),
         }
     }
 
@@ -34,7 +32,6 @@ impl PasswordChangeEvent {
             ident,
             target: u,
             cleartext,
-            appid: None,
         })
     }
 
@@ -44,13 +41,11 @@ impl PasswordChangeEvent {
         ident: Identity,
         target: Uuid,
         cleartext: String,
-        appid: Option<String>,
     ) -> Result<Self, OperationError> {
         Ok(PasswordChangeEvent {
             ident,
             target,
             cleartext,
-            appid,
         })
     }
 }
@@ -90,7 +85,6 @@ impl UnixPasswordChangeEvent {
 pub struct GeneratePasswordEvent {
     pub ident: Identity,
     pub target: Uuid,
-    pub appid: Option<String>,
 }
 
 impl GeneratePasswordEvent {
@@ -99,13 +93,8 @@ impl GeneratePasswordEvent {
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
-        appid: Option<String>,
     ) -> Result<Self, OperationError> {
-        Ok(GeneratePasswordEvent {
-            ident,
-            target,
-            appid,
-        })
+        Ok(GeneratePasswordEvent { ident, target })
     }
 }
 
@@ -248,7 +237,6 @@ impl UnixUserAuthEvent {
 pub struct GenerateTotpEvent {
     pub ident: Identity,
     pub target: Uuid,
-    pub label: String,
 }
 
 impl GenerateTotpEvent {
@@ -257,24 +245,15 @@ impl GenerateTotpEvent {
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
-        label: String,
     ) -> Result<Self, OperationError> {
-        Ok(GenerateTotpEvent {
-            ident,
-            target,
-            label,
-        })
+        Ok(GenerateTotpEvent { ident, target })
     }
 
     #[cfg(test)]
     pub fn new_internal(target: Uuid) -> Self {
         let ident = Identity::from_internal();
 
-        GenerateTotpEvent {
-            ident,
-            target,
-            label: "internal_token".to_string(),
-        }
+        GenerateTotpEvent { ident, target }
     }
 }
 

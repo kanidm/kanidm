@@ -146,7 +146,6 @@ impl AccountOpt {
                     let client = acsopt.copt.to_client();
                     let (session, tok) = match client.idm_account_primary_credential_generate_totp(
                         acsopt.aopts.account_id.as_str(),
-                        acsopt.tag.as_str(),
                     ) {
                         Ok(v) => v,
                         Err(e) => {

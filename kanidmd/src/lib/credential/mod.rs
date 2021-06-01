@@ -341,6 +341,13 @@ impl Credential {
         Password::new(policy, cleartext).map(Self::new_from_password)
     }
 
+    pub fn new_generatedpassword_only(
+        policy: &CryptoPolicy,
+        cleartext: &str,
+    ) -> Result<Self, OperationError> {
+        Password::new(policy, cleartext).map(Self::new_from_generatedpassword)
+    }
+
     pub fn new_webauthn_only(label: String, cred: WebauthnCredential) -> Self {
         let mut webauthn_map = Map::new();
         webauthn_map.insert(label, cred);
@@ -593,8 +600,9 @@ impl Credential {
 
     pub(crate) fn update_password(&self, pw: Password) -> Self {
         let type_ = match &self.type_ {
-            CredentialType::Password(_) => CredentialType::Password(pw),
-            CredentialType::GeneratedPassword(_) => CredentialType::GeneratedPassword(pw),
+            CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => {
+                CredentialType::Password(pw)
+            }
             CredentialType::PasswordMfa(_, totp, wan) => {
                 CredentialType::PasswordMfa(pw, totp.clone(), wan.clone())
             }
@@ -643,6 +651,14 @@ impl Credential {
             type_,
             claims: self.claims.clone(),
             uuid: self.uuid,
+        }
+    }
+
+    pub(crate) fn new_from_generatedpassword(pw: Password) -> Self {
+        Credential {
+            type_: CredentialType::GeneratedPassword(pw),
+            claims: Vec::new(),
+            uuid: Uuid::new_v4(),
         }
     }
 

@@ -57,7 +57,7 @@ static DEFAULT_NOT_HP_GROUP_NAMES: [&str; 2] =
     ["idm_account_unix_extend_priv", "idm_group_unix_extend_priv"];
 
 fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
-    rsclient.idm_account_create(id, "Deeeeemo").unwrap();
+    rsclient.idm_account_create(id, id).unwrap();
 
     // Create group and add to user to test read attr: member_of
     let _ = match rsclient.idm_group_get(&group_name).unwrap() {

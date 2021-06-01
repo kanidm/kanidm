@@ -158,24 +158,29 @@ pub struct AccountCreateOpt {
 
 #[derive(Debug, StructOpt)]
 pub enum AccountCredential {
+    /// Set this accounts password
     #[structopt(name = "set_password")]
     SetPassword(AccountCredentialSet),
-    #[structopt(name = "generate_password")]
-    GeneratePassword(AccountCredentialSet),
+    /// Register a new webauthn device to this account.
     #[structopt(name = "register_webauthn")]
     RegisterWebauthn(AccountNamedTagOpt),
+    /// Remove a webauthn device from this account
     #[structopt(name = "remove_webauthn")]
     RemoveWebauthn(AccountNamedTagOpt),
     /// Set the TOTP credential of the account. If a TOTP already exists, on a successful
     /// registration, this will replace it.
-    #[structopt(name = "set_totp")]
-    RegisterTotp(AccountNamedTagOpt),
+    #[structopt(name = "register_totp")]
+    RegisterTotp(AccountNamedOpt),
     /// Remove TOTP from the account. If no TOTP exists, no action is taken.
     #[structopt(name = "remove_totp")]
     RemoveTotp(AccountNamedOpt),
     /// Show the status of the accounts credentials.
     #[structopt(name = "status")]
     Status(AccountNamedOpt),
+    /// Reset the accounts credentials, removing all TOTP, Webauthn, Passwords,
+    /// and generate a new strong random password.
+    #[structopt(name = "reset_credential")]
+    GeneratePassword(AccountCredentialSet),
 }
 
 #[derive(Debug, StructOpt)]

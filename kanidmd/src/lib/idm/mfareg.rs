@@ -61,11 +61,10 @@ impl MfaRegSession {
     pub fn totp_new(
         origin: IdentityId,
         account: Account,
-        label: String,
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Based on the req, init our session, and the return the next step.
         // Store the ID of the event that start's the attempt
-        let token = Totp::generate_secure(label, TOTP_DEFAULT_STEP);
+        let token = Totp::generate_secure(TOTP_DEFAULT_STEP);
 
         let accountname = account.name.as_str();
         let issuer = account.spn.as_str();

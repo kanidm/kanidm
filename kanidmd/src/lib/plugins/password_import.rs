@@ -234,7 +234,7 @@ mod tests {
         }"#,
         );
 
-        let totp = Totp::generate_secure("test_totp".to_string(), TOTP_DEFAULT_STEP);
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
         let p = CryptoPolicy::minimum();
         let c = Credential::new_password_only(&p, "password")
             .unwrap()
