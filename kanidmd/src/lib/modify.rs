@@ -1,3 +1,7 @@
+//! Modification expressions and validation. This is how `ModifyEvents` store and
+//! express the series of Modifications that should be applied. These are expressed
+//! as "states" on what attribute-values should appear as within the `Entry`
+
 use crate::prelude::*;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;

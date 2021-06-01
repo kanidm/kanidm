@@ -41,13 +41,13 @@ lazy_static! {
 
 macro_rules! try_from_entry {
     ($value:expr, $groups:expr) => {{
-        if !$value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
-        if !$value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
+        if !$value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
             ));
@@ -284,10 +284,10 @@ macro_rules! try_from_group_e {
     ($value:expr) => {{
         // We could be looking at a user for their UPG, OR a true group.
 
-        if !(($value.attribute_value_pres("class", &PVCLASS_ACCOUNT)
-            && $value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT))
-            || ($value.attribute_value_pres("class", &PVCLASS_GROUP)
-                && $value.attribute_value_pres("class", &PVCLASS_POSIXGROUP)))
+        if !(($value.attribute_equality("class", &PVCLASS_ACCOUNT)
+            && $value.attribute_equality("class", &PVCLASS_POSIXACCOUNT))
+            || ($value.attribute_equality("class", &PVCLASS_GROUP)
+                && $value.attribute_equality("class", &PVCLASS_POSIXGROUP)))
         {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account && posixaccount OR group && posixgroup".to_string(),
@@ -328,13 +328,13 @@ macro_rules! try_from_account_group_e {
         // First synthesise the self-group from the account.
         // We have already checked these, but paranoia is better than
         // complacency.
-        if !$value.attribute_value_pres("class", &PVCLASS_ACCOUNT) {
+        if !$value.attribute_equality("class", &PVCLASS_ACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: account".to_string(),
             ));
         }
 
-        if !$value.attribute_value_pres("class", &PVCLASS_POSIXACCOUNT) {
+        if !$value.attribute_equality("class", &PVCLASS_POSIXACCOUNT) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: posixaccount".to_string(),
             ));

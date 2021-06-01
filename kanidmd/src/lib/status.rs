@@ -1,3 +1,5 @@
+//! An actor that shows the servers current status and statistics. (TODO).
+
 use crate::audit::AuditScope;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;

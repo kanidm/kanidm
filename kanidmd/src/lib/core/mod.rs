@@ -1,3 +1,13 @@
+//! These contain the server "cores". These are able to startup the server
+//! (bootstrap) to a running state and then execute tasks. This is where modules
+//! are logically ordered based on their depenedncies for execution. Some of these
+//! are task-only i.e. reindexing, and some of these launch the server into a
+//! fully operational state (https, ldap, etc).
+//!
+//! Generally, this is the "entry point" where the server begins to run, and
+//! the entry point for all client traffic which is then directed to the
+//! varius [`actors`].
+
 mod https;
 mod ldaps;
 use libc::umask;

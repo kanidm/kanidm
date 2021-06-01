@@ -1,5 +1,7 @@
-// Contains a structure representing the current authenticated
-// identity (or anonymous, or admin, both of which are in mem).
+//! Contains structures related to the Identity that initiated an `Event` in the
+//! server. Generally this Identity is what will have access controls applied to
+//! and this provides the set of `Limits` to confine how many resources that the
+//! identity may consume during operations to prevent denial-of-service.
 
 use crate::prelude::*;
 use kanidm_proto::v1::UserAuthToken;
@@ -37,6 +39,7 @@ impl Limits {
 }
 
 #[derive(Debug, Clone)]
+/// Metadata and the entry of the current Identity which is an external account/user.
 pub struct IdentUser {
     pub entry: Entry<EntrySealed, EntryCommitted>,
     // IpAddr?
@@ -44,12 +47,15 @@ pub struct IdentUser {
 }
 
 #[derive(Debug, Clone)]
+/// The type of Identity that is related to this session.
 pub enum IdentType {
     User(IdentUser),
     Internal,
 }
 
 #[derive(Debug, Clone, PartialEq, Hash, Ord, PartialOrd, Eq)]
+/// A unique identifier of this Identity, that can be associated to various
+/// caching components.
 pub enum IdentityId {
     // Time stamp of the originating event.
     // The uuid of the originiating user
@@ -67,6 +73,7 @@ impl From<&IdentType> for IdentityId {
 }
 
 #[derive(Debug, Clone)]
+/// An identity that initiated an `Event`.
 pub struct Identity {
     pub origin: IdentType,
     pub(crate) limits: Limits,

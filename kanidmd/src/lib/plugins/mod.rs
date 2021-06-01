@@ -1,3 +1,8 @@
+//! plugins allow an `Event` to be inspected and transformed during the write
+//! paths of the server. This allows richer expression of some concepts and
+//! helps to ensure that data is always in specific known states within the
+//! `QueryServer`
+
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::prelude::*;

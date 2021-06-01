@@ -1,3 +1,8 @@
+//! This module contains the logic to conduct an authentication of an account.
+//! Generally this has to process an authentication attempt, and validate each
+//! factor to assert that the user is legitimate. This also contains some
+//! support code for asynchronous task execution.
+
 use crate::idm::account::Account;
 use crate::idm::AuthState;
 use crate::prelude::*;
@@ -33,6 +38,7 @@ const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
 const PW_BADLIST_MSG: &str = "password is in badlist";
 
+/// A response type to indicate the progress and potential result of an authentication attempt.
 enum CredState {
     Success(AuthType),
     Continue(Vec<AuthAllowed>),
@@ -40,6 +46,7 @@ enum CredState {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+/// The state of verification of an individual credential during an authentication.
 enum CredVerifyState {
     Init,
     Success,
@@ -47,6 +54,7 @@ enum CredVerifyState {
 }
 
 #[derive(Clone, Debug)]
+/// The state of a multifactor authenticator during authentication.
 struct CredMfa {
     pw: Password,
     pw_state: CredVerifyState,
@@ -56,12 +64,16 @@ struct CredMfa {
 }
 
 #[derive(Clone, Debug)]
+/// The state of a webauthn credential during authentication
 struct CredWebauthn {
     chal: RequestChallengeResponse,
     wan_state: AuthenticationState,
     state: CredVerifyState,
 }
 
+/// The current active handler for this authentication session. This is determined from what credentials
+/// are possible from the account, and what the user selected as the preferred authentication
+/// mechanism. 
 #[derive(Clone, Debug)]
 enum CredHandler {
     Anonymous,
@@ -73,7 +85,10 @@ enum CredHandler {
 }
 
 impl CredHandler {
-    // Is there a nicer implementation of this?
+    /// Given a credential and some external configuration, Generate the credential handler
+    /// that will be used for this session. This credential handler is a "self contained"
+    /// unit that defines what is possible to use during this authentication session to prevent
+    /// inconsistency.
     fn try_from(
         au: &mut AuditScope,
         c: &Credential,
@@ -139,6 +154,9 @@ impl CredHandler {
 }
 
 impl CredHandler {
+    /// Determine if this password factor requires an upgrade of it's cryptographic type. If
+    /// so, send an asynchronous event into the queue that will allow the password to have it's
+    /// content upgraded later.
     fn maybe_pw_upgrade(
         au: &mut AuditScope,
         pw: &Password,
@@ -156,6 +174,7 @@ impl CredHandler {
         }
     }
 
+    /// validate that the client wants to authenticate as the anonymous user.
     fn validate_anonymous(au: &mut AuditScope, cred: &AuthCredential) -> CredState {
         match cred {
             AuthCredential::Anonymous => {
@@ -173,6 +192,7 @@ impl CredHandler {
         }
     }
 
+    /// Validate a singule password credential of the account.
     fn validate_password(
         au: &mut AuditScope,
         cred: &AuthCredential,
@@ -222,6 +242,9 @@ impl CredHandler {
         }
     }
 
+    /// Proceed with the next step in a multifactor authentication, based on the current
+    /// verification results and state. If this logic of this statemachine is violated, the
+    /// authentication will fail.
     fn validate_password_mfa(
         au: &mut AuditScope,
         cred: &AuthCredential,
@@ -345,6 +368,7 @@ impl CredHandler {
         }
     } // end CredHandler::PasswordMfa
 
+    /// Validate a webauthn authentication attempt
     pub fn validate_webauthn(
         au: &mut AuditScope,
         cred: &AuthCredential,
@@ -399,6 +423,7 @@ impl CredHandler {
     }
 
     #[allow(clippy::too_many_arguments)]
+    /// Given the current handler, proceed to authenticate the attempted credential step.
     pub fn validate(
         &mut self,
         au: &mut AuditScope,
@@ -430,6 +455,8 @@ impl CredHandler {
         }
     }
 
+    /// Determine based on the current status, what is the next allowed step that
+    /// can proceed.
     pub fn next_auth_allowed(&self) -> Vec<AuthAllowed> {
         match &self {
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
@@ -449,6 +476,7 @@ impl CredHandler {
         }
     }
 
+    /// Determine which mechanismes can proceed given the requested mechanism.
     fn can_proceed(&self, mech: &AuthMech) -> bool {
         match (self, mech) {
             (CredHandler::Anonymous, AuthMech::Anonymous)
@@ -494,6 +522,7 @@ impl AuthSessionState {
 }
 
 #[derive(Clone)]
+/// The current state of an authentication session that is in progress.
 pub(crate) struct AuthSession {
     // Do we store a copy of the entry?
     // How do we know what claims to add?
@@ -507,6 +536,9 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
+    /// Create a new auth session, based on the available credential handlers of the account.
+    /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
+    /// or interleved write operations do not cause inconsistency in this process.
     pub fn new(
         au: &mut AuditScope,
         account: Account,
@@ -570,6 +602,9 @@ impl AuthSession {
         &self.account
     }
 
+    /// Given the users indicated and preferred authentication mechanism that they want to proceed
+    /// with, select the credential handler and begin the process of stepping through the
+    /// authentication process.
     pub fn start_session(
         &mut self,
         _au: &mut AuditScope,
@@ -631,7 +666,9 @@ impl AuthSession {
         response
     }
 
-    // This should return a AuthResult or similar state of checking?
+    /// Conduct a step of the authentication process. This validates the next credential factor
+    /// presented and returns a result of Success, Continue, or Denied. Only in the success
+    /// case is a UAT granted -- all others do not, including raised operation errors.
     pub fn validate_creds(
         &mut self,
         au: &mut AuditScope,
@@ -710,6 +747,7 @@ impl AuthSession {
         response
     }
 
+    /// End the session, defaulting to a denied.
     pub fn end_session(&mut self, reason: &'static str) -> Result<AuthState, OperationError> {
         let mut next_state = AuthSessionState::Denied(reason);
         std::mem::swap(&mut self.state, &mut next_state);

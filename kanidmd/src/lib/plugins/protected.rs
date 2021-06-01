@@ -63,12 +63,12 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM)
-                    || cand.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
-                    || cand.attribute_value_pres("class", &PVCLASS_SYSTEM_INFO)
-                    || cand.attribute_value_pres("class", &PVCLASS_SYSTEM_CONFIG)
-                    || cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
-                    || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                if cand.attribute_equality("class", &PVCLASS_SYSTEM)
+                    || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
+                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
+                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
+                    || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                    || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {
@@ -123,8 +123,8 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
-                    || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                    || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {
@@ -140,7 +140,7 @@ impl Plugin for Protected {
             } else {
                 // We don't need to check for domain info here because domain_info has a class
                 // system also. We just need to block it from being created.
-                c.attribute_value_pres("class", &PVCLASS_SYSTEM)
+                c.attribute_equality("class", &PVCLASS_SYSTEM)
             }
         });
 
@@ -187,12 +187,12 @@ impl Plugin for Protected {
         cand.iter().fold(Ok(()), |acc, cand| match acc {
             Err(_) => acc,
             Ok(_) => {
-                if cand.attribute_value_pres("class", &PVCLASS_SYSTEM)
-                    || cand.attribute_value_pres("class", &PVCLASS_DOMAIN_INFO)
-                    || cand.attribute_value_pres("class", &PVCLASS_SYSTEM_INFO)
-                    || cand.attribute_value_pres("class", &PVCLASS_SYSTEM_CONFIG)
-                    || cand.attribute_value_pres("class", &PVCLASS_TOMBSTONE)
-                    || cand.attribute_value_pres("class", &PVCLASS_RECYCLED)
+                if cand.attribute_equality("class", &PVCLASS_SYSTEM)
+                    || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
+                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
+                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
+                    || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                    || cand.attribute_equality("class", &PVCLASS_RECYCLED)
                 {
                     Err(OperationError::SystemProtectedObject)
                 } else {

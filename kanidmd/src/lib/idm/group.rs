@@ -88,7 +88,7 @@ impl Group {
     pub fn try_from_entry(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        if !value.attribute_value_pres("class", &PVCLASS_GROUP) {
+        if !value.attribute_equality("class", &PVCLASS_GROUP) {
             return Err(OperationError::InvalidAccountState(
                 "Missing class: group".to_string(),
             ));

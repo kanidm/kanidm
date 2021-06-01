@@ -1,3 +1,9 @@
+//! The server configuration as processed from the startup wrapper. This controls a number of
+//! variables that determine how our backends, query server, and frontends are configured.
+//!
+//! These components should be "per server". Any "per domain" config should be in the system
+//! or domain entries that are able to be replicated.
+
 use rand::prelude::*;
 use std::fmt;
 use std::str::FromStr;

@@ -1,7 +1,12 @@
+//! This module contains cryptographic setup code, a long with what policy
+//! and ciphers we accept.
+
 use crate::config::Configuration;
 use openssl::error::ErrorStack;
 use openssl::ssl::{SslAcceptor, SslAcceptorBuilder, SslFiletype, SslMethod};
 
+/// From the server configuration, generate an OpenSSL acceptor that we can use
+/// to build our sockets for https/ldaps.
 pub fn setup_tls(config: &Configuration) -> Result<Option<SslAcceptorBuilder>, ErrorStack> {
     match &config.tls_config {
         Some(tls_config) => {

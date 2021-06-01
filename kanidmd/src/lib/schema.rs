@@ -113,7 +113,7 @@ impl SchemaAttribute {
         let uuid = *value.get_uuid();
 
         // class
-        if !value.attribute_value_pres("class", &PVCLASS_ATTRIBUTETYPE) {
+        if !value.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE) {
             ladmin_error!(audit, "class attribute type not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
@@ -428,7 +428,7 @@ impl SchemaClass {
         // uuid
         let uuid = *value.get_uuid();
         // Convert entry to a schema class.
-        if !value.attribute_value_pres("class", &PVCLASS_CLASSTYPE) {
+        if !value.attribute_equality("class", &PVCLASS_CLASSTYPE) {
             ladmin_error!(audit, "class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),

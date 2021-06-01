@@ -1,3 +1,8 @@
+//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of
+//! the [`Value`] module allow storage and transformation of various types of input into strongly
+//! typed values, allows their comparison, filtering and more. It also has the code for serialising
+//! these into a form for the backend that can be persistent into the [`Backend`].
+
 use crate::be::dbvalue::{DbCidV1, DbValueCredV1, DbValueTaggedStringV1, DbValueV1};
 use crate::credential::Credential;
 use crate::repl::cid::Cid;

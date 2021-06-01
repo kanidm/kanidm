@@ -1,3 +1,8 @@
+//! The Identity Management components that are layered ontop of the [`QueryServer`]. These allow
+//! rich and expressive events and transformations that are lowered into the correct/relevant
+//! actions in the [`QueryServer`]. Generally this is where "Identity Management" policy and code
+//! is implemented.
+
 pub(crate) mod account;
 pub(crate) mod authsession;
 pub(crate) mod delayed;

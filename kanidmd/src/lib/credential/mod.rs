@@ -235,6 +235,10 @@ pub struct Credential {
 }
 
 #[derive(Clone, Debug)]
+/// The typo of credential that is stored. Each of these represents a full set of 'what is required'
+/// to complete an authentication session. The reason to have these typed like this is so we can
+/// apply policy later to what classes or levels of credentials can be used. We use these types
+/// to also know what type of auth session handler to initiate.
 pub enum CredentialType {
     // Anonymous,
     Password(Password),
@@ -334,6 +338,7 @@ impl TryFrom<DbCredV1> for Credential {
 }
 
 impl Credential {
+    /// Create a new credential that contains a CredentialType::Password
     pub fn new_password_only(
         policy: &CryptoPolicy,
         cleartext: &str,
@@ -341,6 +346,7 @@ impl Credential {
         Password::new(policy, cleartext).map(Self::new_from_password)
     }
 
+    /// Create a new credential that contains a CredentialType::GeneratedPassword
     pub fn new_generatedpassword_only(
         policy: &CryptoPolicy,
         cleartext: &str,
@@ -348,6 +354,7 @@ impl Credential {
         Password::new(policy, cleartext).map(Self::new_from_generatedpassword)
     }
 
+    /// Create a new credential that contains a CredentialType::Webauthn
     pub fn new_webauthn_only(label: String, cred: WebauthnCredential) -> Self {
         let mut webauthn_map = Map::new();
         webauthn_map.insert(label, cred);
@@ -358,6 +365,8 @@ impl Credential {
         }
     }
 
+    /// Update the state of the Password on this credential, if a password is present. If possible
+    /// this will convert the credential to a PasswordMFA in some cases, or fail in others.
     pub fn set_password(
         &self,
         policy: &CryptoPolicy,
@@ -366,6 +375,9 @@ impl Credential {
         Password::new(policy, cleartext).map(|pw| self.update_password(pw))
     }
 
+    /// Extend this credential with another alternate webauthn credential. This is especially
+    /// useful for `PasswordMfa` where you can have many webauthn credentials and a password
+    /// generally so that one is a backup.
     pub fn append_webauthn(
         &self,
         label: String,
@@ -407,6 +419,7 @@ impl Credential {
         })
     }
 
+    /// Remove a webauthn token identified by `label` from this Credential.
     pub fn remove_webauthn(&self, label: &str) -> Result<Self, OperationError> {
         let type_ = match &self.type_ {
             CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => {
@@ -459,6 +472,8 @@ impl Credential {
     }
 
     #[allow(clippy::ptr_arg)]
+    /// After a successful authentication with Webauthn, we need to advance the credentials
+    /// counter value to prevent certain classes of replay attacks.
     pub fn update_webauthn_counter(
         &self,
         cid: &CredentialID,
@@ -514,6 +529,7 @@ impl Credential {
         }))
     }
 
+    /// Get a reference to the contained webuthn credentials, if any.
     pub fn webauthn_ref(&self) -> Result<&Map<String, WebauthnCredential>, OperationError> {
         match &self.type_ {
             CredentialType::Password(_) | CredentialType::GeneratedPassword(_) => Err(
@@ -523,6 +539,7 @@ impl Credential {
         }
     }
 
+    /// Get a reference to the contained password, if any.
     pub fn password_ref(&self) -> Result<&Password, OperationError> {
         match &self.type_ {
             CredentialType::Password(pw)
@@ -539,6 +556,7 @@ impl Credential {
         self.password_ref().and_then(|pw| pw.verify(cleartext))
     }
 
+    /// Extract this credential into it's Serialisable Database form, ready for persistence.
     pub fn to_db_valuev1(&self) -> DbCredV1 {
         let claims = self.claims.clone();
         let uuid = self.uuid;
