@@ -829,6 +829,17 @@ impl KanidmAsyncClient {
             .await
     }
 
+    pub async fn idm_account_add_attr(
+        &self,
+        id: &str,
+        attr: &str,
+        values: &[&str],
+    ) -> Result<bool, ClientError> {
+        let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
+        self.perform_post_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
+            .await
+    }
+
     pub async fn idm_account_set_attr(
         &self,
         id: &str,

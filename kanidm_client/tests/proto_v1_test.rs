@@ -425,6 +425,17 @@ fn test_server_rest_account_lifecycle() {
             .idm_account_set_displayname("demo_account", "Demo Account")
             .unwrap();
 
+        // Test adding some mail addrs
+        rsclient
+            .idm_account_add_attr("demo_account", "mail", &["demo@example.com"])
+            .unwrap();
+
+        let r = rsclient
+            .idm_account_get_attr("demo_account", "mail")
+            .unwrap();
+
+        assert!(r == Some(vec!["demo@example.com".to_string()]));
+
         // Delete the account
         rsclient.idm_account_delete("demo_account").unwrap();
     });
