@@ -200,6 +200,7 @@ impl SchemaAttribute {
             SyntaxType::Cid => v.is_cid(),
             SyntaxType::NsUniqueId => v.is_nsuniqueid(),
             SyntaxType::DateTime => v.is_datetime(),
+            SyntaxType::EmailAddress => v.is_email_address(),
         };
         if r {
             Ok(())
@@ -378,6 +379,15 @@ impl SchemaAttribute {
             SyntaxType::DateTime => ava.iter().fold(Ok(()), |acc, v| {
                 acc.and_then(|_| {
                     if v.is_datetime() {
+                        Ok(())
+                    } else {
+                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
+                    }
+                })
+            }),
+            SyntaxType::EmailAddress => ava.iter().fold(Ok(()), |acc, v| {
+                acc.and_then(|_| {
+                    if v.is_email_address() {
                         Ok(())
                     } else {
                         Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
@@ -1206,7 +1216,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING,
+                    syntax: SyntaxType::EmailAddress,
                 },
             );
             self.attributes.insert(
@@ -1219,7 +1229,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                     unique: false,
                     phantom: true,
                     index: vec![],
-                    syntax: SyntaxType::UTF8STRING,
+                    syntax: SyntaxType::EmailAddress,
                 },
             );
             self.attributes.insert(

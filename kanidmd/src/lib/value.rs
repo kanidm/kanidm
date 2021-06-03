@@ -3,7 +3,9 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`].
 
-use crate::be::dbvalue::{DbCidV1, DbValueCredV1, DbValueTaggedStringV1, DbValueV1};
+use crate::be::dbvalue::{
+    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueTaggedStringV1, DbValueV1,
+};
 use crate::credential::Credential;
 use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -133,6 +135,7 @@ pub enum SyntaxType {
     Cid,
     NsUniqueId,
     DateTime,
+    EmailAddress,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -158,6 +161,7 @@ impl TryFrom<&str> for SyntaxType {
             "CID" => Ok(SyntaxType::Cid),
             "NSUNIQUEID" => Ok(SyntaxType::NsUniqueId),
             "DATETIME" => Ok(SyntaxType::DateTime),
+            "EMAIL_ADDRESS" => Ok(SyntaxType::EmailAddress),
             _ => Err(()),
         }
     }
@@ -185,6 +189,7 @@ impl TryFrom<usize> for SyntaxType {
             14 => Ok(SyntaxType::Utf8StringIname),
             15 => Ok(SyntaxType::NsUniqueId),
             16 => Ok(SyntaxType::DateTime),
+            17 => Ok(SyntaxType::EmailAddress),
             _ => Err(()),
         }
     }
@@ -210,6 +215,7 @@ impl SyntaxType {
             SyntaxType::Utf8StringIname => 14,
             SyntaxType::NsUniqueId => 15,
             SyntaxType::DateTime => 16,
+            SyntaxType::EmailAddress => 17,
         }
     }
 }
@@ -237,6 +243,7 @@ impl fmt::Display for SyntaxType {
                 SyntaxType::Cid => "CID",
                 SyntaxType::NsUniqueId => "NSUNIQUEID",
                 SyntaxType::DateTime => "DATETIME",
+                SyntaxType::EmailAddress => "EMAIL_ADDRESS",
             }
         )
     }
@@ -281,6 +288,7 @@ pub enum PartialValue {
     Cid(Cid),
     Nsuniqueid(String),
     DateTime(OffsetDateTime),
+    EmailAddress(String),
 }
 
 impl PartialValue {
@@ -510,6 +518,14 @@ impl PartialValue {
         matches!(self, PartialValue::DateTime(_))
     }
 
+    pub fn new_email_address_s(s: &str) -> Self {
+        PartialValue::EmailAddress(s.to_string())
+    }
+
+    pub fn is_email_address(&self) -> bool {
+        matches!(self, PartialValue::EmailAddress(_))
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -541,7 +557,8 @@ impl PartialValue {
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
-            | PartialValue::Nsuniqueid(s) => s.clone(),
+            | PartialValue::Nsuniqueid(s)
+            | PartialValue::EmailAddress(s) => s.clone(),
             PartialValue::Refer(u) | PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -1006,6 +1023,17 @@ impl Value {
         self.pv.is_datetime()
     }
 
+    pub fn new_email_address_s(s: &str) -> Self {
+        Value {
+            pv: PartialValue::new_email_address_s(s),
+            data: None,
+        }
+    }
+
+    pub fn is_email_address(&self) -> bool {
+        self.pv.is_email_address()
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -1101,6 +1129,10 @@ impl Value {
             DbValueV1::DT(s) => PartialValue::new_datetime_s(&s)
                 .ok_or(())
                 .map(|pv| Value { pv, data: None }),
+            DbValueV1::EM(DbValueEmailAddressV1 { d }) => Ok(Value {
+                pv: PartialValue::EmailAddress(d),
+                data: None,
+            }),
         }
     }
 
@@ -1171,6 +1203,9 @@ impl Value {
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 DbValueV1::DT(odt.format(time::Format::Rfc3339))
+            }
+            PartialValue::EmailAddress(mail) => {
+                DbValueV1::EM(DbValueEmailAddressV1 { d: mail.clone() })
             }
         }
     }
@@ -1258,7 +1293,8 @@ impl Value {
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
-            | PartialValue::Nsuniqueid(s) => s.clone(),
+            | PartialValue::Nsuniqueid(s)
+            | PartialValue::EmailAddress(s) => s.clone(),
             PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -1339,6 +1375,7 @@ impl Value {
             },
             PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             PartialValue::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
+            PartialValue::EmailAddress(mail) => validator::validate_email(mail.as_str()),
             _ => true,
         }
     }
@@ -1349,7 +1386,8 @@ impl Value {
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
-            | PartialValue::Nsuniqueid(s) => vec![s.clone()],
+            | PartialValue::Nsuniqueid(s)
+            | PartialValue::EmailAddress(s) => vec![s.clone()],
             PartialValue::Refer(u) | PartialValue::Uuid(u) => {
                 vec![u.to_hyphenated_ref().to_string()]
             }
@@ -1587,6 +1625,22 @@ mod tests {
             pv: PartialValue::DateTime(OffsetDateTime::now_utc()),
             data: None,
         };
+        assert!(val3.validate());
+    }
+
+    #[test]
+    fn test_value_email_address() {
+        // https://html.spec.whatwg.org/multipage/forms.html#valid-e-mail-address
+        let val1 = Value::new_email_address_s("william@blackhats.net.au");
+        let val2 = Value::new_email_address_s("alice@idm.example.com");
+        let val3 = Value::new_email_address_s("test+mailbox@foo.com");
+        let inv1 = Value::new_email_address_s("william");
+        let inv2 = Value::new_email_address_s("test~uuid");
+
+        assert!(!inv1.validate());
+        assert!(!inv2.validate());
+        assert!(val1.validate());
+        assert!(val2.validate());
         assert!(val3.validate());
     }
 

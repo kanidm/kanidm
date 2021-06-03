@@ -86,6 +86,8 @@ users = "0.11"
 
 smartstring = { version = "0.2", features = ["serde"] }
 
+validator = { version = "0.13" }
+
 [features]
 simd_support = [ "concread/simd_support" ]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
