@@ -11,6 +11,7 @@ use std::ops::Add;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{Mutex, RwLock};
+use tracing::{event, Level};
 
 const NXCACHE_SIZE: usize = 2048;
 
@@ -731,13 +732,15 @@ impl CacheLayer {
             .await
         {
             Ok(Some(n_tok)) => {
-                debug!("online password check success.");
+                event!(Level::DEBUG, "online password check success.");
+                // debug!("online password check success.");
                 self.set_cache_usertoken(&n_tok).await?;
                 self.set_cache_userpassword(&n_tok.uuid, cred).await?;
                 Ok(Some(true))
             }
             Ok(None) => {
-                error!("incorrect password");
+                event!(Level::ERROR, "incorrect password");
+                // error!("incorrect password");
                 // PW failed the check.
                 Ok(Some(false))
             }
@@ -786,14 +789,19 @@ impl CacheLayer {
                     Some(OperationError::InvalidAccountState(_)),
                     opid,
                 ) => {
-                    error!(
+                    event!(
+                        Level::ERROR,
                         "unknown account or is not a valid posix account - eventid {}",
                         opid
                     );
+                    // error!(
+                    //     "unknown account or is not a valid posix account - eventid {}",
+                    //     opid
+                    // );
                     Ok(None)
                 }
-                er => {
-                    error!("client error -> {:?}", er);
+                err => {
+                    error!("client error -> {:?}", err);
                     // Some other unknown processing error?
                     Err(())
                 }

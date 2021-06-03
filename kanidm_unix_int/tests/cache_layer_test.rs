@@ -20,6 +20,9 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use async_std::task;
 use tokio::sync::mpsc;
 
+use tracing::{span, Level};
+use tracing_subscriber::{fmt::format, FmtSubscriber};
+
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -28,10 +31,7 @@ const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 const ACCOUNT_EXPIRE: &str = "1970-01-01T00:00:00+00:00";
 
 fn is_free_port(port: u16) -> bool {
-    match TcpStream::connect(("0.0.0.0", port)) {
-        Ok(_) => false,
-        Err(_) => true,
-    }
+    TcpStream::connect(("0.0.0.0", port)).is_err()
 }
 
 fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
@@ -514,6 +514,27 @@ fn test_cache_account_pam_allowed() {
         let fut = async move {
             cachelayer.attempt_online().await;
 
+            // ! TRACING BEGIN
+            let span = span!(Level::INFO, "test_cache_account_pam_allowed");
+            let _enter = span.enter();
+            // ? Seems like these subscribers will allow us to have json loggers
+            // ? and human-readable loggers at the same time, and select between
+            // ? them easily?
+
+            let subscriber = FmtSubscriber::builder()
+                .with_max_level(Level::INFO)
+                // .event_format(format::json()) // ! uncomment for JSON
+                .finish();
+            // ? This is specific to only applications-
+            // ? Ask if kanidm will ever be used as a library?
+            // ? I'm guessing not but double check
+
+            // ? I'm having issues with doing scoped subscribers because
+            // ? of `async` and `await`. So setting globally for now.
+            tracing::subscriber::set_global_default(subscriber)
+                .expect("setting default subscriber failed");
+            // ! TRACING END
+
             // Should fail
             let a1 = cachelayer
                 .pam_account_allowed("testaccount1")
@@ -555,13 +576,13 @@ fn test_cache_account_pam_nonexist() {
                 .pam_account_allowed("NO_SUCH_ACCOUNT")
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == None);
+            assert!(a1.is_none());
 
             let a2 = cachelayer
                 .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == None);
+            assert!(a2.is_none());
 
             cachelayer.mark_offline().await;
 
@@ -569,13 +590,13 @@ fn test_cache_account_pam_nonexist() {
                 .pam_account_allowed("NO_SUCH_ACCOUNT")
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == None);
+            assert!(a1.is_none());
 
             let a2 = cachelayer
                 .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == None);
+            assert!(a2.is_none());
         };
         rt.block_on(fut);
     })
