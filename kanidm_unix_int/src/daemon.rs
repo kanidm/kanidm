@@ -51,14 +51,15 @@ impl Decoder for ClientCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_cbor::from_slice::<ClientRequest>(&src) {
-            Ok(msg) => {
+        let maybe_client_request = serde_cbor::from_slice::<ClientRequest>(&src)
+            .map(|msg| {
                 // Clear the buffer for the next message.
                 src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
+                msg
+            })
+            .ok();
+
+        Ok(maybe_client_request)
     }
 }
 
@@ -89,14 +90,15 @@ impl Decoder for TaskCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_cbor::from_slice::<TaskResponse>(&src) {
-            Ok(msg) => {
+        let maybe_task_response = serde_cbor::from_slice::<TaskResponse>(&src)
+            .map(|msg| {
                 // Clear the buffer for the next message.
                 src.clear();
-                Ok(Some(msg))
-            }
-            _ => Ok(None),
-        }
+                msg
+            })
+            .ok();
+
+        Ok(maybe_task_response)
     }
 }
 
@@ -278,46 +280,37 @@ async fn handle_client(
             }
             ClientRequest::PamAccountBeginSession(account_id) => {
                 debug!("pam account begin session");
-                match cachelayer
+
+                if let Ok(Some(info)) = cachelayer
                     .pam_account_beginsession(account_id.as_str())
                     .await
                 {
-                    Ok(Some(info)) => {
-                        let (tx, rx) = oneshot::channel();
+                    let (tx, rx) = oneshot::channel();
 
-                        match task_channel_tx
-                            .send_timeout(
-                                (TaskRequest::HomeDirectory(info), tx),
-                                Duration::from_millis(100),
-                            )
-                            .await
-                        {
-                            Ok(()) => {
-                                // Now wait for the other end OR
-                                // timeout.
-                                match time::timeout_at(
-                                    time::Instant::now() + Duration::from_millis(1000),
-                                    rx,
-                                )
+                    if let Ok(()) = task_channel_tx
+                        .send_timeout(
+                            (TaskRequest::HomeDirectory(info), tx),
+                            Duration::from_millis(100),
+                        )
+                        .await
+                    {
+                        // Now wait for the other end OR
+                        // timeout.
+                        if let Ok(Ok(_)) =
+                            time::timeout_at(time::Instant::now() + Duration::from_millis(1000), rx)
                                 .await
-                                {
-                                    Ok(Ok(_)) => {
-                                        debug!("Task completed, returning to pam ...");
-                                        ClientResponse::Ok
-                                    }
-                                    _ => {
-                                        // Timeout or other error.
-                                        ClientResponse::Error
-                                    }
-                                }
-                            }
-                            Err(_) => {
-                                // We could not submit the req. Move on!
-                                ClientResponse::Error
-                            }
+                        {
+                            debug!("Task completed, returning to pam ...");
+                            ClientResponse::Ok
+                        } else {
+                            // Timeout or other error.
+                            ClientResponse::Error
                         }
+                    } else {
+                        ClientResponse::Error
                     }
-                    _ => ClientResponse::Error,
+                } else {
+                    ClientResponse::Error
                 }
             }
             ClientRequest::InvalidateCache => {
@@ -338,10 +331,9 @@ async fn handle_client(
             }
             ClientRequest::Status => {
                 debug!("status check");
-                if cachelayer.test_connection().await {
-                    ClientResponse::Ok
-                } else {
-                    ClientResponse::Error
+                match cachelayer.test_connection().await {
+                    true => ClientResponse::Ok,
+                    false => ClientResponse::Error,
                 }
             }
         };
@@ -374,25 +366,19 @@ async fn main() {
     debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));
 
     let cfg_path = Path::new("/etc/kanidm/config");
-    let cfg_path_str = match cfg_path.to_str() {
-        Some(cps) => cps,
-        None => {
-            error!("Unable to turn cfg_path to str");
-            std::process::exit(1);
-        }
-    };
+    let cfg_path_str = cfg_path.to_str().unwrap_or_else(|| {
+        error!("Unable to turn cfg_path to str");
+        std::process::exit(1);
+    });
     if cfg_path.exists() {
-        let cfg_meta = match metadata(&cfg_path) {
-            Ok(v) => v,
-            Err(e) => {
-                error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
-                std::process::exit(1);
-            }
-        };
+        let cfg_meta = metadata(&cfg_path).unwrap_or_else(|e| {
+            error!("Unable to read metadata for {} - {:?}", cfg_path_str, e);
+            std::process::exit(1);
+        });
         if !cfg_meta.permissions().readonly() {
             warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                 cfg_path_str
-                );
+            );
         }
 
         if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
@@ -403,13 +389,10 @@ async fn main() {
     }
 
     let unixd_path = Path::new("/etc/kanidm/unixd");
-    let unixd_path_str = match unixd_path.to_str() {
-        Some(cps) => cps,
-        None => {
-            error!("Unable to turn unixd_path to str");
-            std::process::exit(1);
-        }
-    };
+    let unixd_path_str = unixd_path.to_str().unwrap_or_else(|| {
+        error!("Unable to turn unixd_path to str");
+        std::process::exit(1);
+    });
     if unixd_path.exists() {
         let unixd_meta = match metadata(&unixd_path) {
             Ok(v) => v,
@@ -431,34 +414,29 @@ async fn main() {
     }
 
     // setup
-    let cb = match KanidmClientBuilder::new().read_options_from_optional_config(cfg_path) {
-        Ok(v) => v,
-        Err(_) => {
+    let cb = KanidmClientBuilder::new()
+        .read_options_from_optional_config(cfg_path)
+        .unwrap_or_else(|_| {
             error!("Failed to parse {}", cfg_path_str);
             std::process::exit(1);
-        }
-    };
+        });
 
-    let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config(unixd_path) {
-        Ok(v) => v,
-        Err(_) => {
+    let cfg = KanidmUnixdConfig::new()
+        .read_options_from_optional_config(unixd_path)
+        .unwrap_or_else(|_| {
             error!("Failed to parse {}", unixd_path_str);
             std::process::exit(1);
-        }
-    };
+        });
 
     rm_if_exist(cfg.sock_path.as_str());
     rm_if_exist(cfg.task_sock_path.as_str());
 
     let cb = cb.connect_timeout(cfg.conn_timeout);
 
-    let rsclient = match cb.build_async() {
-        Ok(rsc) => rsc,
-        Err(_e) => {
-            error!("Failed to build async client");
-            std::process::exit(1);
-        }
-    };
+    let rsclient = cb.build_async().unwrap_or_else(|_e| {
+        error!("Failed to build async client");
+        std::process::exit(1);
+    });
 
     // Check the pb path will be okay.
     if cfg.db_path != "" {
@@ -471,7 +449,7 @@ async fn main() {
                     "Refusing to run, DB folder {} does not exist",
                     db_parent_path
                         .to_str()
-                        .unwrap_or_else(|| "<db_parent_path invalid>")
+                        .unwrap_or("<db_parent_path invalid>")
                 );
                 std::process::exit(1);
             }
@@ -485,7 +463,7 @@ async fn main() {
                         "Unable to read metadata for {} - {:?}",
                         db_par_path_buf
                             .to_str()
-                            .unwrap_or_else(|| "<db_par_path_buf invalid>"),
+                            .unwrap_or("<db_par_path_buf invalid>"),
                         e
                     );
                     std::process::exit(1);
@@ -497,25 +475,26 @@ async fn main() {
                     "Refusing to run - DB folder {} may not be a directory",
                     db_par_path_buf
                         .to_str()
-                        .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                        .unwrap_or("<db_par_path_buf invalid>")
                 );
                 std::process::exit(1);
             }
             if i_meta.permissions().readonly() {
                 warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
-                .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                .unwrap_or("<db_par_path_buf invalid>")
+                // is there a reason we use `or_else` here when it's just a lit str?
                 );
             }
 
             if i_meta.mode() & 0o007 != 0 {
                 warn!("WARNING: DB folder {} has 'everyone' permission bits in the mode. This could be a security risk ...", db_par_path_buf.to_str()
-                .unwrap_or_else(|| "<db_par_path_buf invalid>")
+                .unwrap_or("<db_par_path_buf invalid>")
                 );
             }
         }
     }
 
-    let cl_inner = match CacheLayer::new(
+    let cl_inner = CacheLayer::new(
         cfg.db_path.as_str(), // The sqlite db path
         cfg.cache_timeout,
         rsclient,
@@ -528,35 +507,28 @@ async fn main() {
         cfg.gid_attr_map,
     )
     .await
-    {
-        Ok(c) => c,
-        Err(_e) => {
-            error!("Failed to build cache layer.");
-            std::process::exit(1);
-        }
-    };
+    .unwrap_or_else(|_e| {
+        error!("Failed to build cache layer.");
+        std::process::exit(1);
+    });
 
     let cachelayer = Arc::new(cl_inner);
 
     // Set the umask while we open the path for most clients.
     let before = unsafe { umask(0) };
-    let listener = match UnixListener::bind(cfg.sock_path.as_str()) {
-        Ok(l) => l,
-        Err(_e) => {
-            error!("Failed to bind unix socket.");
-            std::process::exit(1);
-        }
-    };
+    let listener = UnixListener::bind(cfg.sock_path.as_str()).unwrap_or_else(|_e| {
+        error!("Failed to bind unix socket.");
+        std::process::exit(1);
+    });
     // Setup the root-only socket. Take away all others.
     let _ = unsafe { umask(0o0077) };
-    let task_listener = match UnixListener::bind(cfg.task_sock_path.as_str()) {
-        Ok(l) => l,
-        Err(_e) => {
-            error!("Failed to bind unix socket.");
-            std::process::exit(1);
-        }
-    };
 
+    let task_listener = UnixListener::bind(cfg.task_sock_path.as_str()).unwrap_or_else(|_e| {
+        error!("Failed to bind unix socket.");
+        std::process::exit(1);
+    });
+
+    // what is going on here??
     // Undo it.
     let _ = unsafe { umask(before) };
 
@@ -570,19 +542,14 @@ async fn main() {
             match task_listener.accept().await {
                 Ok((socket, _addr)) => {
                     // Did it come from root?
-                    if let Ok(ucred) = socket.peer_cred() {
-                        if ucred.uid() == 0 {
-                            // all good!
-                        } else {
+                    match socket.peer_cred() {
+                        Ok(ucred) if ucred.uid() == 0 => (), // all good!
+                        _ => {
                             // move along.
                             debug!("Task handler not running as root, ignoring ...");
                             continue;
                         }
-                    } else {
-                        // move along.
-                        debug!("Task handler not running as root, ignoring ...");
-                        continue;
-                    };
+                    }
                     debug!("A task handler has connected.");
                     // It did? Great, now we can wait and spin on that one
                     // client.
@@ -610,9 +577,10 @@ async fn main() {
                 Ok((socket, _addr)) => {
                     let cachelayer_ref = cachelayer.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                        if let Err(err) =
+                            handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                         {
-                            error!("an error occured; error = {:?}", e);
+                            error!("an error occured; error = {:?}", err);
                         }
                     });
                 }
