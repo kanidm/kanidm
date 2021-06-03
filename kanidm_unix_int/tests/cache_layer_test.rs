@@ -529,37 +529,43 @@ fn test_cache_account_pam_allowed() {
             // ? Ask if kanidm will ever be used as a library?
             // ? I'm guessing not but double check
 
-            // ? I'm having issues with doing scoped subscribers because
-            // ? of `async` and `await`. So setting globally for now.
-            tracing::subscriber::set_global_default(subscriber)
-                .expect("setting default subscriber failed");
+            // Set a global subscriber (bad)
+            // tracing::subscriber::set_global_default(subscriber)
+            //     .expect("setting default subscriber failed");
             // ! TRACING END
 
-            // Should fail
-            let a1 = cachelayer
-                .pam_account_allowed("testaccount1")
-                .await
-                .expect("failed to authenticate");
-            assert!(a1 == Some(false));
+            // ! This is what I want to do, but I get the error message:
+            // ! `await` is only allowed inside `async` functions and blocks
+            // ! only allowed inside `async` functions and blocks
+            // And if I make the block of the closure async, then there's
+            // nothing that will block on it and actually run it.
+            tracing::subscriber::with_default(subscriber, || {
+                // Should fail
+                let a1 = cachelayer
+                    .pam_account_allowed("testaccount1")
+                    .await
+                    .expect("failed to authenticate");
+                assert!(a1 == Some(false));
 
-            adminclient
-                .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
-                .await
-                .expect("failed to auth as admin");
-            adminclient
-                .idm_group_add_members("allowed_group", &["testaccount1"])
-                .await
-                .unwrap();
+                adminclient
+                    .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+                    .await
+                    .expect("failed to auth as admin");
+                adminclient
+                    .idm_group_add_members("allowed_group", &["testaccount1"])
+                    .await
+                    .unwrap();
 
-            // Invalidate cache to force a refresh
-            assert!(cachelayer.invalidate().await.is_ok());
+                // Invalidate cache to force a refresh
+                assert!(cachelayer.invalidate().await.is_ok());
 
-            // Should pass
-            let a2 = cachelayer
-                .pam_account_allowed("testaccount1")
-                .await
-                .expect("failed to authenticate");
-            assert!(a2 == Some(true));
+                // Should pass
+                let a2 = cachelayer
+                    .pam_account_allowed("testaccount1")
+                    .await
+                    .expect("failed to authenticate");
+                assert!(a2 == Some(true));
+            });
         };
         rt.block_on(fut);
     })
