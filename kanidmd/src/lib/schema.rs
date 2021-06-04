@@ -385,15 +385,10 @@ impl SchemaAttribute {
                     }
                 })
             }),
-            SyntaxType::EmailAddress => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_email_address() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
+            SyntaxType::EmailAddress => ava.iter()
+                .all(Value::is_email_address)
+                .then(|| ())
+                .ok_or_else(|| SchemaError::InvalidAttributeSyntax(a.to_string())),
         }
     }
 }
