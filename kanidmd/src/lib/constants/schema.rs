@@ -561,7 +561,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "ssh_publickey",
         "radius_secret",
         "account_expire",
-        "account_valid_from"
+        "account_valid_from",
+        "mail"
       ],
       "systemmust": [
         "displayname",
