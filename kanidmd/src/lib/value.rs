@@ -262,6 +262,12 @@ impl std::fmt::Debug for DataValue {
     }
 }
 
+/// A partial value is a key or key subset that can be used to match for equality or substring
+/// against a complete Value within a set in an Entry.
+///
+/// A partialValue is typically used when you need to match against a value, but without
+/// requiring all of it's data or expression. This is common in Filters or other direct
+/// lookups and requests.
 #[derive(Hash, Debug, Clone, Eq, Ord, PartialOrd, PartialEq, Deserialize, Serialize)]
 pub enum PartialValue {
     Utf8(String),
@@ -584,6 +590,12 @@ impl PartialValue {
     }
 }
 
+/// A value is a complete unit of data for an attribute. It is made up of a PartialValue, which is
+/// used for selection, filtering, searching, matching etc. It also contains supplemental data
+/// which may be stored inside of the Value, such as credential secrets, blobs etc.
+///
+/// This type is used when you need the "full data" of an attribute. Typically this is in a create
+/// or modification operation where you are applying a set of complete values into an entry.
 #[derive(Clone, Debug)]
 pub struct Value {
     pv: PartialValue,
