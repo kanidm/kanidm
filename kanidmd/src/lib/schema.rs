@@ -230,165 +230,30 @@ impl SchemaAttribute {
             return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
-        match self.syntax {
-            SyntaxType::Boolean => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_bool() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::SYNTAX_ID => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_syntax() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::Uuid => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_uuid() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            // This is the same as a UUID, refint is a plugin
-            SyntaxType::REFERENCE_UUID => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_refer() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::INDEX_ID => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_index() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::Utf8StringInsensitive => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_insensitive_utf8() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::Utf8StringIname => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_iname() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::UTF8STRING => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_utf8() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::JSON_FILTER => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_json_filter() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::Credential => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_credential() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::RadiusUtf8String => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_radius_string() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::SshKey => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_sshkey() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::SecurityPrincipalName => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_spn() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::UINT32 => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_uint32() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::Cid => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_cid() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::NsUniqueId => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_nsuniqueid() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::DateTime => ava.iter().fold(Ok(()), |acc, v| {
-                acc.and_then(|_| {
-                    if v.is_datetime() {
-                        Ok(())
-                    } else {
-                        Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
-                    }
-                })
-            }),
-            SyntaxType::EmailAddress => ava.iter()
-                .all(Value::is_email_address)
-                .then(|| ())
-                .ok_or_else(|| SchemaError::InvalidAttributeSyntax(a.to_string())),
+        let valid = match self.syntax {
+            SyntaxType::Boolean => ava.iter().all(Value::is_bool),
+            SyntaxType::SYNTAX_ID => ava.iter().all(Value::is_syntax),
+            SyntaxType::Uuid => ava.iter().all(Value::is_uuid),
+            SyntaxType::REFERENCE_UUID => ava.iter().all(Value::is_refer),
+            SyntaxType::INDEX_ID => ava.iter().all(Value::is_index),
+            SyntaxType::Utf8StringInsensitive => ava.iter().all(Value::is_insensitive_utf8),
+            SyntaxType::Utf8StringIname => ava.iter().all(Value::is_iname),
+            SyntaxType::UTF8STRING => ava.iter().all(Value::is_utf8),
+            SyntaxType::JSON_FILTER => ava.iter().all(Value::is_json_filter),
+            SyntaxType::Credential => ava.iter().all(Value::is_credential),
+            SyntaxType::RadiusUtf8String => ava.iter().all(Value::is_radius_string),
+            SyntaxType::SshKey => ava.iter().all(Value::is_sshkey),
+            SyntaxType::SecurityPrincipalName => ava.iter().all(Value::is_spn),
+            SyntaxType::UINT32 => ava.iter().all(Value::is_uint32),
+            SyntaxType::Cid => ava.iter().all(Value::is_cid),
+            SyntaxType::NsUniqueId => ava.iter().all(Value::is_nsuniqueid),
+            SyntaxType::DateTime => ava.iter().all(Value::is_datetime),
+            SyntaxType::EmailAddress => ava.iter().all(Value::is_email_address),
+        };
+        if valid {
+            Ok(())
+        } else {
+            Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
 }

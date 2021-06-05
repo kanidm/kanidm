@@ -222,30 +222,26 @@ impl SyntaxType {
 
 impl fmt::Display for SyntaxType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}",
-            match self {
-                SyntaxType::UTF8STRING => "UTF8STRING",
-                SyntaxType::Utf8StringInsensitive => "UTF8STRING_INSENSITIVE",
-                SyntaxType::Utf8StringIname => "UTF8STRING_INAME",
-                SyntaxType::Uuid => "UUID",
-                SyntaxType::Boolean => "BOOLEAN",
-                SyntaxType::SYNTAX_ID => "SYNTAX_ID",
-                SyntaxType::INDEX_ID => "INDEX_ID",
-                SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
-                SyntaxType::JSON_FILTER => "JSON_FILTER",
-                SyntaxType::Credential => "CREDENTIAL",
-                SyntaxType::RadiusUtf8String => "RADIUS_UTF8STRING",
-                SyntaxType::SshKey => "SSHKEY",
-                SyntaxType::SecurityPrincipalName => "SECURITY_PRINCIPAL_NAME",
-                SyntaxType::UINT32 => "UINT32",
-                SyntaxType::Cid => "CID",
-                SyntaxType::NsUniqueId => "NSUNIQUEID",
-                SyntaxType::DateTime => "DATETIME",
-                SyntaxType::EmailAddress => "EMAIL_ADDRESS",
-            }
-        )
+        f.write_str(match self {
+            SyntaxType::UTF8STRING => "UTF8STRING",
+            SyntaxType::Utf8StringInsensitive => "UTF8STRING_INSENSITIVE",
+            SyntaxType::Utf8StringIname => "UTF8STRING_INAME",
+            SyntaxType::Uuid => "UUID",
+            SyntaxType::Boolean => "BOOLEAN",
+            SyntaxType::SYNTAX_ID => "SYNTAX_ID",
+            SyntaxType::INDEX_ID => "INDEX_ID",
+            SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
+            SyntaxType::JSON_FILTER => "JSON_FILTER",
+            SyntaxType::Credential => "CREDENTIAL",
+            SyntaxType::RadiusUtf8String => "RADIUS_UTF8STRING",
+            SyntaxType::SshKey => "SSHKEY",
+            SyntaxType::SecurityPrincipalName => "SECURITY_PRINCIPAL_NAME",
+            SyntaxType::UINT32 => "UINT32",
+            SyntaxType::Cid => "CID",
+            SyntaxType::NsUniqueId => "NSUNIQUEID",
+            SyntaxType::DateTime => "DATETIME",
+            SyntaxType::EmailAddress => "EMAIL_ADDRESS",
+        })
     }
 }
 
