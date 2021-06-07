@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 use uuid::Uuid;
 use webauthn_rs::proto::COSEKey;
 
@@ -40,6 +40,11 @@ pub struct DbWebauthnV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DbBackupCodeV1 {
+    pub code_set: HashSet<String>, // has to use std::HashSet for serde
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbCredTypeV1 {
     Pw,
     GPw,
@@ -64,6 +69,8 @@ pub struct DbCredV1 {
     pub webauthn: Option<Vec<DbWebauthnV1>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub totp: Option<DbTotpV1>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub backup_code: Option<DbBackupCodeV1>,
     pub claims: Vec<String>,
     pub uuid: Uuid,
 }

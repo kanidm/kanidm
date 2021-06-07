@@ -2,7 +2,7 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
-
+use crate::credential::BackupCode;
 use crate::idm::account::Account;
 use crate::idm::AuthState;
 use crate::prelude::*;
@@ -33,6 +33,7 @@ use webauthn_rs::{AuthenticationState, Webauthn};
 const BAD_PASSWORD_MSG: &str = "incorrect password";
 const BAD_TOTP_MSG: &str = "incorrect totp";
 const BAD_WEBAUTHN_MSG: &str = "invalid webauthn authentication";
+const BAD_BACKUPCODE_MSG: &str = "invalid backup code";
 const BAD_AUTH_TYPE_MSG: &str = "invalid authentication method in this context";
 const BAD_CREDENTIALS: &str = "invalid credential message";
 const ACCOUNT_EXPIRED: &str = "account expired";
@@ -60,6 +61,7 @@ struct CredMfa {
     pw_state: CredVerifyState,
     totp: Option<Totp>,
     wan: Option<(RequestChallengeResponse, AuthenticationState)>,
+    backup_code: Option<BackupCode>,
     mfa_state: CredVerifyState,
 }
 
@@ -97,7 +99,7 @@ impl CredHandler {
         match &c.type_ {
             CredentialType::Password(pw) => Ok(CredHandler::Password(pw.clone(), false)),
             CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password(pw.clone(), true)),
-            CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan) => {
+            CredentialType::PasswordMfa(pw, maybe_totp, maybe_wan, maybe_backup_code) => {
                 let wan = if !maybe_wan.is_empty() {
                     webauthn
                         .generate_challenge_authenticate(maybe_wan.values().cloned().collect())
@@ -118,6 +120,7 @@ impl CredHandler {
                     pw_state: CredVerifyState::Init,
                     totp: maybe_totp.clone(),
                     wan,
+                    backup_code: maybe_backup_code.clone(),
                     mfa_state: CredVerifyState::Init,
                 });
 
@@ -258,8 +261,8 @@ impl CredHandler {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
                 // MFA first
-                match (cred, pw_mfa.totp.as_ref(), pw_mfa.wan.as_ref()) {
-                    (AuthCredential::Webauthn(resp), _, Some((_, wan_state))) => {
+                match (cred, pw_mfa.totp.as_ref(), pw_mfa.wan.as_ref(), pw_mfa.backup_code.as_ref()) {
+                    (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
                         webauthn.authenticate_credential(&resp, wan_state.clone())
                                 .map(|(cid, auth_data)| {
                                     pw_mfa.mfa_state = CredVerifyState::Success;
@@ -284,7 +287,7 @@ impl CredHandler {
                                     CredState::Denied(BAD_WEBAUTHN_MSG)
                                 })
                     }
-                    (AuthCredential::Totp(totp_chal), Some(totp), _) => {
+                    (AuthCredential::Totp(totp_chal), Some(totp), _, _) => {
                         if totp.verify(*totp_chal, ts) {
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             lsecurity!(
@@ -299,6 +302,23 @@ impl CredHandler {
                                 "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
                             );
                             CredState::Denied(BAD_TOTP_MSG)
+                        }
+                    }
+                    (AuthCredential::BackupCode(code_chal), _, _, Some(backup_code)) => {
+                        if backup_code.verify(&code_chal) {
+                            pw_mfa.mfa_state = CredVerifyState::Success;
+                            lsecurity!(
+                                au,
+                                "Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -"
+                            );
+                            CredState::Continue(vec![AuthAllowed::Password])
+                        } else {
+                            pw_mfa.mfa_state = CredVerifyState::Fail;
+                            lsecurity!(
+                                au,
+                                "Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -"
+                            );
+                            CredState::Denied(BAD_BACKUPCODE_MSG)
                         }
                     }
                     _ => {
