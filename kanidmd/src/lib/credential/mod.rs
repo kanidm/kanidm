@@ -224,18 +224,20 @@ impl TryFrom<DbBackupCodeV1> for BackupCode {
     type Error = ();
 
     fn try_from(value: DbBackupCodeV1) -> Result<Self, Self::Error> {
-        return Ok(BackupCode { 
-            code_set: value.code_set
-        })
+        return Ok(BackupCode {
+            code_set: value.code_set,
+        });
     }
 }
 
 impl BackupCode {
     pub fn verify(&self, code_chal: &String) -> bool {
-        return self.code_set.contains(code_chal)
+        return self.code_set.contains(code_chal);
     }
     pub fn to_dbbackupcodev1(&self) -> DbBackupCodeV1 {
-        return DbBackupCodeV1{ code_set: self.code_set.clone() }
+        return DbBackupCodeV1 {
+            code_set: self.code_set.clone(),
+        };
     }
 }
 
@@ -272,7 +274,12 @@ pub enum CredentialType {
     Password(Password),
     GeneratedPassword(Password),
     Webauthn(Map<String, WebauthnCredential>),
-    PasswordMfa(Password, Option<Totp>, Map<String, WebauthnCredential>, Option<BackupCode>),
+    PasswordMfa(
+        Password,
+        Option<Totp>,
+        Map<String, WebauthnCredential>,
+        Option<BackupCode>,
+    ),
     // PasswordWebauthn(Password, Map<String, WebauthnCredential>),
     // WebauthnVerified(Map<String, WebauthnCredential>),
     // PasswordWebauthnVerified(Password, Map<String, WebauthnCredential>),
@@ -355,7 +362,9 @@ impl TryFrom<DbCredV1> for Credential {
             DbCredTypeV1::GPw => v_password.map(CredentialType::GeneratedPassword),
             // In the future this could use .zip
             DbCredTypeV1::PwMfa => match (v_password, v_webauthn) {
-                (Some(pw), Some(wn)) => Some(CredentialType::PasswordMfa(pw, v_totp, wn, v_backup_code)),
+                (Some(pw), Some(wn)) => {
+                    Some(CredentialType::PasswordMfa(pw, v_totp, wn, v_backup_code))
+                }
                 _ => None,
             },
             DbCredTypeV1::Wn => v_webauthn.map(CredentialType::Webauthn),
@@ -471,7 +480,12 @@ impl Credential {
                 }
                 if nmap.is_empty() {
                     if totp.is_some() {
-                        CredentialType::PasswordMfa(pw.clone(), totp.clone(), nmap, backup_code.clone())
+                        CredentialType::PasswordMfa(
+                            pw.clone(),
+                            totp.clone(),
+                            nmap,
+                            backup_code.clone(),
+                        )
                     } else {
                         // Note: No need to keep backup code if it is no longer MFA
                         CredentialType::Password(pw.clone())
@@ -629,7 +643,9 @@ impl Credential {
                         .collect(),
                 ),
                 totp: totp.as_ref().map(|t| t.to_dbtotpv1()),
-                backup_code: backup_code.as_ref().and_then(|b| Some(b.to_dbbackupcodev1())),
+                backup_code: backup_code
+                    .as_ref()
+                    .and_then(|b| Some(b.to_dbbackupcodev1())),
                 claims,
                 uuid,
             },
@@ -663,7 +679,9 @@ impl Credential {
             CredentialType::PasswordMfa(_, totp, wan, backup_code) => {
                 CredentialType::PasswordMfa(pw, totp.clone(), wan.clone(), backup_code.clone())
             }
-            CredentialType::Webauthn(wan) => CredentialType::PasswordMfa(pw, None, wan.clone(), None),
+            CredentialType::Webauthn(wan) => {
+                CredentialType::PasswordMfa(pw, None, wan.clone(), None)
+            }
         };
         Credential {
             type_,
@@ -678,9 +696,12 @@ impl Credential {
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 CredentialType::PasswordMfa(pw.clone(), Some(totp), Map::new(), None)
             }
-            CredentialType::PasswordMfa(pw, _, wan, backup_code) => {
-                CredentialType::PasswordMfa(pw.clone(), Some(totp), wan.clone(), backup_code.clone())
-            }
+            CredentialType::PasswordMfa(pw, _, wan, backup_code) => CredentialType::PasswordMfa(
+                pw.clone(),
+                Some(totp),
+                wan.clone(),
+                backup_code.clone(),
+            ),
             CredentialType::Webauthn(wan) => {
                 debug_assert!(false);
                 CredentialType::Webauthn(wan.clone())
@@ -752,11 +773,23 @@ impl Credential {
             // TODO: we should panic/reject CredentialType != PasswordMfa?
             CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
                 debug_assert!(false);
-                CredentialType::PasswordMfa(pw.clone(), None, Map::new(), Some(BackupCode {code_set: backup_code}))
+                CredentialType::PasswordMfa(
+                    pw.clone(),
+                    None,
+                    Map::new(),
+                    Some(BackupCode {
+                        code_set: backup_code,
+                    }),
+                )
             }
-            CredentialType::PasswordMfa(pw, totp, wan, _) => {
-                CredentialType::PasswordMfa(pw.clone(), totp.clone(), wan.clone(), Some(BackupCode {code_set: backup_code}))
-            }
+            CredentialType::PasswordMfa(pw, totp, wan, _) => CredentialType::PasswordMfa(
+                pw.clone(),
+                totp.clone(),
+                wan.clone(),
+                Some(BackupCode {
+                    code_set: backup_code,
+                }),
+            ),
             CredentialType::Webauthn(wan) => {
                 debug_assert!(false);
                 CredentialType::Webauthn(wan.clone())
@@ -787,7 +820,7 @@ impl Credential {
     //         uuid: self.uuid,
     //     }
     // }
-    
+
     /*
     pub fn add_claim(&mut self) {
     }

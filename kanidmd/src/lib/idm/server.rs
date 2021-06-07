@@ -17,6 +17,7 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::ldap::LdapBoundToken;
 use crate::prelude::*;
+use crate::utils::backup_code_from_random;
 use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
 
 use crate::actors::v1_write::QueryServerWriteV1;
@@ -56,6 +57,8 @@ use std::{sync::Arc, time::Duration};
 use url::Url;
 
 use webauthn_rs::Webauthn;
+
+use super::event::GenerateBackupCodeEvent;
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -1352,6 +1355,46 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
             .map_err(|e| {
                 ladmin_error!(au, "Failed to generate account password {:?}", e);
+                e
+            })
+    }
+
+    /// Generate a new set of backup code and remove the old ones.
+    pub fn generate_backup_code(
+        &mut self,
+        au: &mut AuditScope,
+        gbe: &GenerateBackupCodeEvent,
+    ) -> Result<String, OperationError> {
+        let account = self.target_to_account(au, &gbe.target)?;
+
+        // Generate a new set of backup code.
+        let s = backup_code_from_random();
+        // TODO: into_iter() consumes s, find a way to get the joined string without cloning?
+        let s_str = s.clone().into_iter().collect::<Vec<String>>().join(", ");
+
+        // it returns a modify
+        let modlist = account.gen_backup_code_mod(s).map_err(|e| {
+            ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
+            e
+        })?;
+
+        ltrace!(au, "processing change {:?}", modlist);
+        // given the new credential generate a modify
+        // We use impersonate here to get the event from ae
+        self.qs_write
+            .impersonate_modify(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&gbe.target))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&gbe.target))),
+                &modlist,
+                // Provide the event to impersonate
+                &gbe.ident,
+            )
+            .map(|_| s_str)
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate backup code {:?}", e);
                 e
             })
     }

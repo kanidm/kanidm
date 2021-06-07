@@ -13,6 +13,7 @@ use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
 
+use std::collections::HashSet;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -356,6 +357,39 @@ impl Account {
             None => Ok(None),
         }
     }
+
+    pub(crate) fn gen_backup_code_mod(
+        &self,
+        backup_code: HashSet<String>,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let ncred = primary.update_backup_code(backup_code);
+                let vcred = Value::new_credential("primary", ncred);
+                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+            }
+            None => {
+                // No credential exists, we can't supplementy it.
+                Err(OperationError::InvalidState)
+            }
+        }
+    }
+
+    // pub(crate) fn gen_backup_code_remove_mod(&self) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+    //     match &self.primary {
+    //         // Change the cred
+    //         Some(primary) => {
+    //             let ncred = primary.remove_totp();
+    //             let vcred = Value::new_credential("primary", ncred);
+    //             Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+    //         }
+    //         None => {
+    //             // No credential exists, we can't remove what is not real.
+    //             Err(OperationError::InvalidState)
+    //         }
+    //     }
+    // }
 
     pub(crate) fn check_credential_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
         self.primary

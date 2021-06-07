@@ -75,7 +75,7 @@ struct CredWebauthn {
 
 /// The current active handler for this authentication session. This is determined from what credentials
 /// are possible from the account, and what the user selected as the preferred authentication
-/// mechanism. 
+/// mechanism.
 #[derive(Clone, Debug)]
 enum CredHandler {
     Anonymous,
@@ -261,7 +261,12 @@ impl CredHandler {
         match (&pw_mfa.mfa_state, &pw_mfa.pw_state) {
             (CredVerifyState::Init, CredVerifyState::Init) => {
                 // MFA first
-                match (cred, pw_mfa.totp.as_ref(), pw_mfa.wan.as_ref(), pw_mfa.backup_code.as_ref()) {
+                match (
+                    cred,
+                    pw_mfa.totp.as_ref(),
+                    pw_mfa.wan.as_ref(),
+                    pw_mfa.backup_code.as_ref(),
+                ) {
                     (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
                         webauthn.authenticate_credential(&resp, wan_state.clone())
                                 .map(|(cid, auth_data)| {

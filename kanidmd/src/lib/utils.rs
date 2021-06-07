@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::time::{Duration, SystemTime};
 use uuid::{Builder, Uuid};
 
@@ -35,6 +36,14 @@ pub fn uuid_from_duration(d: Duration, sid: Sid) -> Uuid {
 pub fn password_from_random() -> String {
     let rand_string: String = thread_rng().sample_iter(&DistinctAlpha).take(48).collect();
     rand_string
+}
+
+pub fn backup_code_from_random() -> HashSet<String> {
+    let mut set = std::collections::HashSet::with_capacity(8);
+    for _ in 1..8 {
+        set.insert(readable_password_from_random());
+    }
+    set
 }
 
 pub fn readable_password_from_random() -> String {

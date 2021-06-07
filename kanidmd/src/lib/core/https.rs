@@ -555,6 +555,35 @@ pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> t
     to_tide_response(res, hvalue)
 }
 
+// TODO: Return a list of backup code
+pub async fn account_get_backup_code(_req: tide::Request<AppState>) -> tide::Result {
+    // let uat = req.get_current_uat();
+    // let uuid_or_name = req.get_url_param("id")?;
+
+    // let (eventid, hvalue) = new_eventid!();
+
+    // let res = req
+    //     .state()
+    //     .qe_r_ref
+    //     .handle_idmcredentialstatus(uat, uuid_or_name, eventid)
+    //     .await;
+    // to_tide_response(res, hvalue)
+    unimplemented!();
+}
+
+// TODO: Generate new ones and remove old backup code
+pub async fn account_post_backup_code_regenerate(req: tide::Request<AppState>) -> tide::Result {
+    json_rest_event_credential_put(req).await
+}
+
+// TODO: Remove backup code, and remove it from account credential
+pub async fn account_delete_backup_code(_req: tide::Request<AppState>) -> tide::Result {
+    // let attr = "radius_secret".to_string();
+    // let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+    // json_rest_event_delete_id_attr(req, filter, attr).await
+    unimplemented!();
+}
+
 // Return a vec of str
 pub async fn account_get_id_ssh_pubkeys(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
@@ -1278,6 +1307,11 @@ pub fn create_https_server(
     account_route
         .at("/:id/_credential/:cid/_lock")
         .get(do_nothing);
+    account_route
+        .at("/:id/_credential/backup_code")
+        .get(account_get_backup_code)
+        .post(account_post_backup_code_regenerate)
+        .delete(account_delete_backup_code);
 
     account_route
         .at("/:id/_ssh_pubkeys")

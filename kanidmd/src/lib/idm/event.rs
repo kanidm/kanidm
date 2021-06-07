@@ -99,6 +99,23 @@ impl GeneratePasswordEvent {
 }
 
 #[derive(Debug)]
+pub struct GenerateBackupCodeEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+}
+
+impl GenerateBackupCodeEvent {
+    pub fn from_parts(
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        Ok(GenerateBackupCodeEvent { ident, target })
+    }
+}
+
+#[derive(Debug)]
 pub struct RegenerateRadiusSecretEvent {
     pub ident: Identity,
     pub target: Uuid,
