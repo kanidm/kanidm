@@ -186,7 +186,7 @@ fn test_cache_sshkey() {
 
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             // Force offline. Show we have no keys.
             cachelayer.mark_offline().await;
 
@@ -213,8 +213,7 @@ fn test_cache_sshkey() {
                 .await
                 .expect("Failed to get from cache.");
             assert!(sk.len() == 1);
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -230,7 +229,7 @@ fn test_cache_account() {
 
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             // Force offline. Show we have no account
             cachelayer.mark_offline().await;
 
@@ -267,8 +266,7 @@ fn test_cache_account() {
                 .await
                 .expect("failed to list all accounts");
             assert!(us.len() == 1);
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -284,7 +282,7 @@ fn test_cache_group() {
 
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             // Force offline. Show we have no groups.
             cachelayer.mark_offline().await;
             let gt = cachelayer
@@ -344,8 +342,7 @@ fn test_cache_group() {
                 .await
                 .expect("failed to list all groups");
             assert!(gs.len() == 2);
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -361,7 +358,7 @@ fn test_cache_group_delete() {
 
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             // get the group
             cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
@@ -391,8 +388,7 @@ fn test_cache_group_delete() {
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_none());
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -408,7 +404,7 @@ fn test_cache_account_delete() {
 
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             // get the account
             cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
@@ -445,8 +441,7 @@ fn test_cache_account_delete() {
                 .await
                 .expect("Failed to get from cache");
             assert!(gt.is_none());
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -462,7 +457,7 @@ fn test_cache_account_password() {
 
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             cachelayer.attempt_online().await;
             // Test authentication failure.
             let a1 = cachelayer
@@ -551,8 +546,7 @@ fn test_cache_account_password() {
                 .await
                 .expect("failed to authenticate");
             assert!(a8 == Some(true));
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -666,7 +660,7 @@ fn test_cache_account_expiry() {
 
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
 
@@ -732,8 +726,7 @@ fn test_cache_account_expiry() {
                 .await
                 .expect("failed to authenticate");
             assert!(a5 == Some(false));
-        };
-        rt.block_on(fut);
+        });
     })
 }
 
@@ -749,7 +742,7 @@ fn test_cache_nxcache() {
 
     run_test(test_fixture, |cachelayer, mut _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             cachelayer.attempt_online().await;
             assert!(cachelayer.test_connection().await);
             // Is it in the nxcache?
@@ -820,7 +813,6 @@ fn test_cache_nxcache() {
                     .await
             );
             assert!(!cachelayer.check_nxcache(&Id::Gid(1)).await);
-        };
-        rt.block_on(fut);
+        });
     })
 }
