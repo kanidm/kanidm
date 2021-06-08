@@ -20,6 +20,9 @@ use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use async_std::task;
 use tokio::sync::mpsc;
 
+use tracing::{self, info_span, Level};
+use tracing_subscriber::FmtSubscriber;
+
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(28080);
 const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
@@ -28,10 +31,7 @@ const TESTACCOUNT1_PASSWORD_INC: &str = "never going to work";
 const ACCOUNT_EXPIRE: &str = "1970-01-01T00:00:00+00:00";
 
 fn is_free_port(port: u16) -> bool {
-    match TcpStream::connect(("0.0.0.0", port)) {
-        Ok(_) => false,
-        Err(_) => true,
-    }
+    TcpStream::connect(("0.0.0.0", port)).is_err()
 }
 
 fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
@@ -176,6 +176,14 @@ fn test_fixture(rsclient: &mut KanidmClient) -> () {
 
 #[test]
 fn test_cache_sshkey() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_sshkey").entered();
+
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
@@ -212,6 +220,14 @@ fn test_cache_sshkey() {
 
 #[test]
 fn test_cache_account() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_account").entered();
+
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
@@ -258,6 +274,14 @@ fn test_cache_account() {
 
 #[test]
 fn test_cache_group() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_group").entered();
+
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
@@ -327,6 +351,14 @@ fn test_cache_group() {
 
 #[test]
 fn test_cache_group_delete() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_chache_group_delete").entered();
+
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
@@ -366,6 +398,14 @@ fn test_cache_group_delete() {
 
 #[test]
 fn test_cache_account_delete() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_account_delete").entered();
+
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
@@ -412,16 +452,25 @@ fn test_cache_account_delete() {
 
 #[test]
 fn test_cache_account_password() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_account_password").entered();
+
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
             cachelayer.attempt_online().await;
             // Test authentication failure.
             let a1 = cachelayer
+                // What are pam accounts?
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_INC)
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == Some(false));
+            assert_eq!(a1, Some(false));
 
             // We have to wait due to softlocking.
             task::sleep(Duration::from_secs(1)).await;
@@ -431,7 +480,7 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == Some(true));
+            assert_eq!(a2, Some(true));
 
             // change pw
             adminclient
@@ -448,7 +497,7 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_A)
                 .await
                 .expect("failed to authenticate");
-            assert!(a3 == Some(false));
+            assert_eq!(a3, Some(false));
 
             // We have to wait due to softlocking.
             task::sleep(Duration::from_secs(1)).await;
@@ -458,7 +507,7 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a4 == Some(true));
+            assert_eq!(a4, Some(true));
 
             // Go offline.
             cachelayer.mark_offline().await;
@@ -490,7 +539,7 @@ fn test_cache_account_password() {
                 .pam_account_authenticate("testaccount1", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a7 == None);
+            assert!(a7.is_none());
 
             // go online
             cachelayer.attempt_online().await;
@@ -509,17 +558,30 @@ fn test_cache_account_password() {
 
 #[test]
 fn test_cache_account_pam_allowed() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_account_pam_allowed").entered();
+
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
+            // Are `async` function that don't return `Result`'s okay?
+            // Not even `Result<(), ()>`?
             cachelayer.attempt_online().await;
 
             // Should fail
-            let a1 = cachelayer
-                .pam_account_allowed("testaccount1")
+            // I am very uncomfortable by how fragmented these `info_span`s are
+            // because they're not supposed to capture async code.
+            // Is this an awful idea?
+            let a1 = info_span!("allowed")
+                .in_scope(|| cachelayer.pam_account_allowed("testaccount1"))
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == Some(false));
+            assert_eq!(a1, Some(false));
 
             adminclient
                 .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
@@ -538,30 +600,42 @@ fn test_cache_account_pam_allowed() {
                 .pam_account_allowed("testaccount1")
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == Some(true));
-        };
-        rt.block_on(fut);
+            assert_eq!(a2, Some(true));
+        });
     })
 }
 
 #[test]
 fn test_cache_account_pam_nonexist() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        // if I wanted JSON formatting, I would say so here
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    // We can do a span here since all the `async` code will execute
+    // in the duration of the span since we are blocking on it
+    // Also, out spans will probably have to be very broad to not get
+    // fragmented by `await` calls.
+    let _entered = info_span!("test_cache_account_pam_nonexist").entered();
+
     run_test(test_fixture, |cachelayer, _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
-        let fut = async move {
+        rt.block_on(async move {
             cachelayer.attempt_online().await;
 
             let a1 = cachelayer
                 .pam_account_allowed("NO_SUCH_ACCOUNT")
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == None);
+            assert!(a1.is_none());
 
             let a2 = cachelayer
                 .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == None);
+            assert!(a2.is_none());
 
             cachelayer.mark_offline().await;
 
@@ -569,20 +643,27 @@ fn test_cache_account_pam_nonexist() {
                 .pam_account_allowed("NO_SUCH_ACCOUNT")
                 .await
                 .expect("failed to authenticate");
-            assert!(a1 == None);
+            assert!(a1.is_none());
 
             let a2 = cachelayer
                 .pam_account_authenticate("NO_SUCH_ACCOUNT", TESTACCOUNT1_PASSWORD_B)
                 .await
                 .expect("failed to authenticate");
-            assert!(a2 == None);
-        };
-        rt.block_on(fut);
+            assert!(a2.is_none());
+        });
     })
 }
 
 #[test]
 fn test_cache_account_expiry() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_account_expiry").entered();
+
     run_test(test_fixture, |cachelayer, mut adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
@@ -658,6 +739,14 @@ fn test_cache_account_expiry() {
 
 #[test]
 fn test_cache_nxcache() {
+    let subscriber = FmtSubscriber::builder()
+        .with_max_level(Level::INFO)
+        .finish();
+
+    let _guard = tracing::subscriber::set_default(subscriber);
+
+    let _entered = info_span!("test_cache_nxcache").entered();
+
     run_test(test_fixture, |cachelayer, mut _adminclient| {
         let rt = Runtime::new().expect("Failed to start tokio");
         let fut = async move {
