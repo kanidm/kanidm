@@ -11,6 +11,7 @@ use std::ops::Add;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{Mutex, RwLock};
+use tracing::{debug, error};
 
 const NXCACHE_SIZE: usize = 2048;
 
@@ -73,6 +74,7 @@ impl CacheLayer {
         let db = Db::new(path)?;
 
         // setup and do a migrate.
+        // why is this in a block?
         {
             let dbtxn = db.write().await;
             dbtxn.migrate()?;
@@ -336,8 +338,8 @@ impl CacheLayer {
             }
             Err(e) => {
                 match e {
-                    ClientError::Transport(er) => {
-                        error!("transport error, moving to offline -> {:?}", er);
+                    ClientError::Transport(err) => {
+                        error!("transport error, moving to offline -> {:?}", err);
                         // Something went wrong, mark offline.
                         let time = SystemTime::now().add(Duration::from_secs(15));
                         self.set_cachestate(CacheState::OfflineNextCheck(time))
@@ -385,8 +387,8 @@ impl CacheLayer {
 
                         Ok(None)
                     }
-                    er => {
-                        error!("client error -> {:?}", er);
+                    err => {
+                        error!("client error -> {:?}", err);
                         // Some other transient error, continue with the token.
                         Ok(token)
                     }
@@ -461,8 +463,8 @@ impl CacheLayer {
 
                         Ok(None)
                     }
-                    er => {
-                        error!("client error -> {:?}", er);
+                    err => {
+                        error!("client error -> {:?}", err);
                         // Some other transient error, continue with the token.
                         Ok(token)
                     }
@@ -475,6 +477,7 @@ impl CacheLayer {
         debug!("get_usertoken");
         // get the item from the cache
         let (expired, item) = self.get_cached_usertoken(&account_id).await.map_err(|e| {
+            // `e` is () here, why are we formatting it??
             debug!("get_usertoken error -> {:?}", e);
         })?;
 
@@ -742,8 +745,8 @@ impl CacheLayer {
                 Ok(Some(false))
             }
             Err(e) => match e {
-                ClientError::Transport(er) => {
-                    error!("transport error, moving to offline -> {:?}", er);
+                ClientError::Transport(err) => {
+                    error!("transport error, moving to offline -> {:?}", err);
                     // Something went wrong, mark offline.
                     let time = SystemTime::now().add(Duration::from_secs(15));
                     self.set_cachestate(CacheState::OfflineNextCheck(time))
@@ -792,8 +795,8 @@ impl CacheLayer {
                     );
                     Ok(None)
                 }
-                er => {
-                    error!("client error -> {:?}", er);
+                err => {
+                    error!("client error -> {:?}", err);
                     // Some other unknown processing error?
                     Err(())
                 }
@@ -826,6 +829,7 @@ impl CacheLayer {
     }
 
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
+        // What on earth is going on with this return type? Why???
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
         Ok(token.map(|tok| {
@@ -850,6 +854,7 @@ impl CacheLayer {
         account_id: &str,
         cred: &str,
     ) -> Result<Option<bool>, ()> {
+        // same as above: what is going on with this return type???
         let state = self.get_cachestate().await;
         let (_expired, token) = self
             .get_cached_usertoken(&Id::Name(account_id.to_string()))
