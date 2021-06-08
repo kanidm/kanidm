@@ -1,4 +1,4 @@
-use crate::unix_config::{HomeAttr, UidAttr};
+use crate::unix_config::{HomeAttr, SubscriberFmt, UidAttr};
 
 pub const DEFAULT_SOCK_PATH: &str = "/var/run/kanidm-unixd/sock";
 pub const DEFAULT_TASK_SOCK_PATH: &str = "/var/run/kanidm-unixd/task_sock";
@@ -11,3 +11,4 @@ pub const DEFAULT_HOME_ATTR: HomeAttr = HomeAttr::Uuid;
 pub const DEFAULT_HOME_ALIAS: Option<HomeAttr> = Some(HomeAttr::Spn);
 pub const DEFAULT_UID_ATTR_MAP: UidAttr = UidAttr::Spn;
 pub const DEFAULT_GID_ATTR_MAP: UidAttr = UidAttr::Spn;
+pub const DEFAULT_SUBSCRIBER_FMT: SubscriberFmt = SubscriberFmt::Json;

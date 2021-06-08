@@ -1,7 +1,7 @@
 use crate::constants::{
     DEFAULT_CACHE_TIMEOUT, DEFAULT_CONN_TIMEOUT, DEFAULT_DB_PATH, DEFAULT_GID_ATTR_MAP,
     DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
-    DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
+    DEFAULT_SUBSCRIBER_FMT, DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
 };
 use serde_derive::Deserialize;
 use std::fs::File;
@@ -22,6 +22,7 @@ struct ConfigInt {
     home_alias: Option<String>,
     uid_attr_map: Option<String>,
     gid_attr_map: Option<String>,
+    subscriber_fmt: Option<String>,
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -38,6 +39,12 @@ pub enum UidAttr {
 }
 
 #[derive(Debug)]
+pub enum SubscriberFmt {
+    Json,
+    Pretty,
+}
+
+#[derive(Debug)]
 pub struct KanidmUnixdConfig {
     pub db_path: String,
     pub sock_path: String,
@@ -51,6 +58,7 @@ pub struct KanidmUnixdConfig {
     pub home_alias: Option<HomeAttr>,
     pub uid_attr_map: UidAttr,
     pub gid_attr_map: UidAttr,
+    pub subscriber_fmt: SubscriberFmt,
 }
 
 impl Default for KanidmUnixdConfig {
@@ -74,6 +82,7 @@ impl KanidmUnixdConfig {
             home_alias: DEFAULT_HOME_ALIAS,
             uid_attr_map: DEFAULT_UID_ATTR_MAP,
             gid_attr_map: DEFAULT_GID_ATTR_MAP,
+            subscriber_fmt: DEFAULT_SUBSCRIBER_FMT,
         }
     }
 
@@ -85,13 +94,14 @@ impl KanidmUnixdConfig {
             Ok(f) => f,
             Err(e) => {
                 debug!("Unabled to open config file [{:?}], skipping ...", e);
+                // I wish there was a way to use `unwrap_or_else` here
                 return Ok(self);
             }
         };
 
         let mut contents = String::new();
         f.read_to_string(&mut contents)
-            .map_err(|e| eprintln!("{:?}", e))?;
+            .map_err(|e| eprintln!("{:?}", e))?; // shouldn't this be a log?
 
         let config: ConfigInt =
             toml::from_str(contents.as_str()).map_err(|e| eprintln!("{:?}", e))?;
@@ -155,6 +165,17 @@ impl KanidmUnixdConfig {
                     }
                 })
                 .unwrap_or(self.gid_attr_map),
+            subscriber_fmt: config
+                .subscriber_fmt
+                .and_then(|v| match v.as_str() {
+                    "json" => Some(SubscriberFmt::Json),
+                    "pretty" => Some(SubscriberFmt::Pretty),
+                    _ => {
+                        warn!("Invalid subscriber_fmt configured, using default ...");
+                        None
+                    }
+                })
+                .unwrap_or(self.subscriber_fmt),
         })
     }
 }
