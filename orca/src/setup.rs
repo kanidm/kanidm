@@ -1,5 +1,6 @@
 use crate::data::TestData;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
+use crate::ds::DirectoryServer;
 use crate::profile::Profile;
 use crate::TargetOpt;
 use crate::TargetServer;
@@ -48,7 +49,12 @@ pub(crate) fn config(
     // Does our target section exist?
     let server: TargetServer = match target {
         TargetOpt::Ds => {
-            unimplemented!();
+            if let Some(dsconfig) = profile.ds_config.as_ref() {
+                DirectoryServer::new(dsconfig)?
+            } else {
+                error!("To use ds, you must have the ds_config section in your profile");
+                return Err(());
+            }
         }
         TargetOpt::KanidmLdap => {
             if let Some(klconfig) = profile.kani_ldap_config.as_ref() {

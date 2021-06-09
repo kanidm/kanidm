@@ -5,7 +5,7 @@ use core::pin::Pin;
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
 use openssl::ssl::{Ssl, SslConnector, SslMethod, SslVerifyMode};
-use std::sync::atomic::{AtomicUsize, Ordering};
+// use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::net::TcpStream;
 use tokio::sync::Mutex;
 use tokio_openssl::SslStream;
@@ -78,27 +78,20 @@ impl LdapClient {
         })
     }
 
-    pub async fn open_user_connection(
+    async fn bind(
         &self,
-        test_start: Instant,
-        name: &str,
-        pw: &str,
-    ) -> Result<(Duration, Duration), ()> {
-        let dn = match self.schema {
-            LdapSchema::Kanidm => name.to_string(),
-            LdapSchema::Rfc2307bis => format!("cn={},ou=People,{}", name, self.basedn),
-        };
+        dn: String,
+        pw: String,
+    ) -> Result<(), ()> {
 
         let msg = LdapMsg {
             msgid: 1,
             op: LdapOp::BindRequest(LdapBindRequest {
                 dn,
-                cred: LdapBindCred::Simple(pw.to_string()),
+                cred: LdapBindCred::Simple(pw),
             }),
             ctrl: vec![],
         };
-
-        let start = Instant::now();
 
         let tcpstream = TcpStream::connect(self.addr)
             .await
@@ -135,11 +128,7 @@ impl LdapClient {
                     let mut mguard = self.conn.lock().await;
                     *mguard = Some(LdapInner { framed, msgid: 1 });
 
-                    let end = Instant::now();
-                    let diff = end.duration_since(start);
-                    let rel_diff = start.duration_since(test_start);
-
-                    return Ok((rel_diff, diff));
+                    return Ok(());
                 }
             }
         }
@@ -147,12 +136,41 @@ impl LdapClient {
         Err(())
     }
 
+    pub async fn open_dm_connection(
+        &self,
+        pw: &str,
+    ) -> Result<(), ()> {
+        self.bind("cn=Directory Manager".to_string(), pw.to_string()).await
+    }
+
+    pub async fn open_user_connection(
+        &self,
+        test_start: Instant,
+        name: &str,
+        pw: &str,
+    ) -> Result<(Duration, Duration), ()> {
+        let dn = match self.schema {
+            LdapSchema::Kanidm => name.to_string(),
+            LdapSchema::Rfc2307bis => format!("cn={},ou=People,{}", name, self.basedn),
+        };
+
+        let start = Instant::now();
+
+        self.bind(dn, pw.to_string()).await?;
+
+        let end = Instant::now();
+        let diff = end.duration_since(start);
+        let rel_diff = start.duration_since(test_start);
+
+        return Ok((rel_diff, diff));
+    }
+
     pub async fn close_connection(&self) {
         let mut mguard = self.conn.lock().await;
         *mguard = None;
     }
 
-    pub async fn search(
+    pub async fn search_name(
         &self,
         test_start: Instant,
         ids: &[String],
@@ -162,6 +180,27 @@ impl LdapClient {
             LdapSchema::Rfc2307bis => "cn",
         };
 
+        let filter = LdapFilter::Or(
+                ids.iter()
+                    .map(|n| LdapFilter::Equality(name_attr.to_string(), n.to_string()))
+                    .collect());
+
+        let start = Instant::now();
+
+        let res = self.search(filter).await?;
+
+        let end = Instant::now();
+        let diff = end.duration_since(start);
+        let rel_diff = start.duration_since(test_start);
+
+        Ok((rel_diff, diff, res.len()))
+    }
+
+    pub async fn search(
+        &self,
+        filter: LdapFilter,
+    ) -> Result<Vec<LdapSearchResultEntry>, ()> {
+
         // Create the search filter
         let req = LdapSearchRequest {
             base: self.basedn.clone(),
@@ -170,11 +209,7 @@ impl LdapClient {
             sizelimit: 0,
             timelimit: 0,
             typesonly: false,
-            filter: LdapFilter::Or(
-                ids.iter()
-                    .map(|n| LdapFilter::Equality(name_attr.to_string(), n.to_string()))
-                    .collect(),
-            ),
+            filter,
             attrs: vec![],
         };
 
@@ -197,20 +232,17 @@ impl LdapClient {
             op: LdapOp::SearchRequest(req),
         };
 
-        let start = Instant::now();
-
-        let count = AtomicUsize::new(0);
-
         // Send it
         let _ = inner.framed.send(msg).await.map_err(|e| {
             error!("Unable to search -> {:?}", e);
         })?;
 
+        let mut results = Vec::new();
         // It takes a lot more work to process a response from ldap :(
         while let Some(Ok(msg)) = inner.framed.next().await {
             match msg.op {
-                LdapOp::SearchResultEntry(_) => {
-                    count.fetch_add(1, Ordering::Relaxed);
+                LdapOp::SearchResultEntry(ent) => {
+                    results.push(ent)
                 }
                 LdapOp::SearchResultDone(res) => {
                     if res.code == LdapResultCode::Success {
@@ -226,12 +258,51 @@ impl LdapClient {
                 }
             }
         }
-        // Wait on the response
+        Ok(results)
+    }
 
-        let end = Instant::now();
-        let diff = end.duration_since(start);
-        let rel_diff = start.duration_since(test_start);
+    pub async fn delete(
+        &self,
+        dn: String,
+    ) -> Result<(), ()> {
+        let mut mguard = self.conn.lock().await;
+        let inner = match (*mguard).as_mut() {
+            Some(i) => i,
+            None => {
+                error!("No connection available");
+                return Err(());
+            }
+        };
 
-        Ok((rel_diff, diff, count.into_inner()))
+        inner.msgid += 1;
+        let msgid = inner.msgid;
+
+        let msg = LdapMsg {
+            msgid,
+            ctrl: vec![],
+            op: LdapOp::DelRequest(dn),
+        };
+
+        // Send it
+        let _ = inner.framed.send(msg).await.map_err(|e| {
+            error!("Unable to search -> {:?}", e);
+        })?;
+        while let Some(Ok(msg)) = inner.framed.next().await {
+            match msg.op {
+                LdapOp::DelResponse(res) => {
+                    if res.code == LdapResultCode::Success {
+                        break;
+                    } else {
+                        error!("Delete Failed");
+                        return Err(());
+                    }
+                }
+                _ => {
+                    error!("Invalid ldap response state");
+                    return Err(());
+                }
+            }
+        }
+        Ok(())
     }
 }

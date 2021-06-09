@@ -39,6 +39,7 @@ futures-util = "0.3"
 openssl = "0.10"
 
 ldap3_server = "0.1"
+# ldap3_server = { version = "0.1", path = "../../ldap3_server" }
 
 crossbeam = "0.8"
 async-std = "1.6"

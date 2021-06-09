@@ -416,6 +416,6 @@ impl KaniLdapServer {
         test_start: Instant,
         ids: &[String],
     ) -> Result<(Duration, Duration, usize), ()> {
-        self.ldap.search(test_start, ids).await
+        self.ldap.search_name(test_start, ids).await
     }
 }

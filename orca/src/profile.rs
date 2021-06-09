@@ -2,6 +2,7 @@
 pub struct DsConfig {
     pub uri: String,
     pub dm_pw: String,
+    pub base_dn: String,
 }
 
 #[derive(Debug, Deserialize)]
