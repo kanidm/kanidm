@@ -1204,7 +1204,9 @@ pub fn create_https_server(
     tserver.at("/status").get(self::status);
 
     let mut well_known = tserver.at("/well-known");
-    well_known.at("/openid-configuration").get(get_openid_configuration);
+    well_known
+        .at("/openid-configuration")
+        .get(get_openid_configuration);
 
     let mut raw_route = tserver.at("/v1/raw");
     raw_route.at("/create").post(create);

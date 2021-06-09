@@ -30,7 +30,7 @@ struct CsvRow {
 
 fn basic_arbiter(
     mut broadcast_rx: tokio::sync::broadcast::Receiver<TestPhase>,
-    raw_results_rx: crossbeam::channel::Receiver<(Duration, Duration, usize)>,
+    raw_results_rx: &crossbeam::channel::Receiver<(Duration, Duration, usize)>,
     warmup_seconds: u32,
 ) -> Vec<(Duration, Duration, usize)> {
     info!("Starting test arbiter ...");
@@ -113,7 +113,11 @@ async fn basic_worker(
         }
     };
 
-    if let Err(_) = server.open_user_connection(test_start, &name, &pw).await {
+    if server
+        .open_user_connection(test_start, &name, &pw)
+        .await
+        .is_err()
+    {
         error!("Failed to authenticate connection");
         return;
     }
@@ -202,7 +206,7 @@ pub(crate) async fn basic(
     // This should use spawn blocking.
     let warmup_seconds = profile.search_basic_config.warmup_seconds;
     let arbiter_join_handle =
-        task::spawn_blocking(move || basic_arbiter(broadcast_rx, raw_results_rx, warmup_seconds));
+        task::spawn_blocking(move || basic_arbiter(broadcast_rx, &raw_results_rx, warmup_seconds));
 
     // Get out our conn details
     let mut rng = rand::thread_rng();
@@ -224,7 +228,7 @@ pub(crate) async fn basic(
         })
         .collect();
 
-    if accs.len() == 0 {
+    if accs.is_empty() {
         error!("No accounts found in data set, unable to proceed");
         return Err(());
     }
@@ -313,7 +317,7 @@ pub(crate) async fn basic(
     Ok(())
 }
 
-fn process_raw_results(raw_results: &Vec<(Duration, Duration, usize)>) {
+fn process_raw_results(raw_results: &[(Duration, Duration, usize)]) {
     // Do nerd shit.
 
     // Get the times

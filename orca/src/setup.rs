@@ -1,6 +1,6 @@
 use crate::data::TestData;
-use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::ds::DirectoryServer;
+use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::profile::Profile;
 use crate::TargetOpt;
 use crate::TargetServer;
@@ -32,16 +32,14 @@ pub(crate) fn config(
 
     let data_path = if Path::new(&profile.data).is_absolute() {
         PathBuf::from(&profile.data)
+    } else if let Some(p) = profile_path.parent() {
+        p.join(&profile.data)
     } else {
-        if let Some(p) = profile_path.parent() {
-            p.join(&profile.data)
-        } else {
-            error!(
-                "Unable to find parent directory of {}",
-                profile_path.to_str().unwrap()
-            );
-            return Err(());
-        }
+        error!(
+            "Unable to find parent directory of {}",
+            profile_path.to_str().unwrap()
+        );
+        return Err(());
     };
 
     debug!("Data Path -> {}", data_path.to_str().unwrap());

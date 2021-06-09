@@ -1,4 +1,4 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
@@ -18,8 +18,8 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
-use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::ds::DirectoryServer;
+use crate::kani::{KaniHttpServer, KaniLdapServer};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
@@ -65,7 +65,7 @@ impl TargetServerBuilder {
 
 pub enum TargetServer {
     Kanidm(KaniHttpServer),
-    KanidmLdap(KaniLdapServer),
+    KanidmLdap(Box<KaniLdapServer>),
     DirSrv(DirectoryServer),
 }
 

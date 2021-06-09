@@ -78,12 +78,7 @@ impl LdapClient {
         })
     }
 
-    async fn bind(
-        &self,
-        dn: String,
-        pw: String,
-    ) -> Result<(), ()> {
-
+    async fn bind(&self, dn: String, pw: String) -> Result<(), ()> {
         let msg = LdapMsg {
             msgid: 1,
             op: LdapOp::BindRequest(LdapBindRequest {
@@ -136,11 +131,9 @@ impl LdapClient {
         Err(())
     }
 
-    pub async fn open_dm_connection(
-        &self,
-        pw: &str,
-    ) -> Result<(), ()> {
-        self.bind("cn=Directory Manager".to_string(), pw.to_string()).await
+    pub async fn open_dm_connection(&self, pw: &str) -> Result<(), ()> {
+        self.bind("cn=Directory Manager".to_string(), pw.to_string())
+            .await
     }
 
     pub async fn open_user_connection(
@@ -151,7 +144,7 @@ impl LdapClient {
     ) -> Result<(Duration, Duration), ()> {
         let dn = match self.schema {
             LdapSchema::Kanidm => name.to_string(),
-            LdapSchema::Rfc2307bis => format!("cn={},ou=People,{}", name, self.basedn),
+            LdapSchema::Rfc2307bis => format!("uid={},ou=people,{}", name, self.basedn),
         };
 
         let start = Instant::now();
@@ -162,7 +155,7 @@ impl LdapClient {
         let diff = end.duration_since(start);
         let rel_diff = start.duration_since(test_start);
 
-        return Ok((rel_diff, diff));
+        Ok((rel_diff, diff))
     }
 
     pub async fn close_connection(&self) {
@@ -181,9 +174,10 @@ impl LdapClient {
         };
 
         let filter = LdapFilter::Or(
-                ids.iter()
-                    .map(|n| LdapFilter::Equality(name_attr.to_string(), n.to_string()))
-                    .collect());
+            ids.iter()
+                .map(|n| LdapFilter::Equality(name_attr.to_string(), n.to_string()))
+                .collect(),
+        );
 
         let start = Instant::now();
 
@@ -196,11 +190,7 @@ impl LdapClient {
         Ok((rel_diff, diff, res.len()))
     }
 
-    pub async fn search(
-        &self,
-        filter: LdapFilter,
-    ) -> Result<Vec<LdapSearchResultEntry>, ()> {
-
+    pub async fn search(&self, filter: LdapFilter) -> Result<Vec<LdapSearchResultEntry>, ()> {
         // Create the search filter
         let req = LdapSearchRequest {
             base: self.basedn.clone(),
@@ -241,14 +231,12 @@ impl LdapClient {
         // It takes a lot more work to process a response from ldap :(
         while let Some(Ok(msg)) = inner.framed.next().await {
             match msg.op {
-                LdapOp::SearchResultEntry(ent) => {
-                    results.push(ent)
-                }
+                LdapOp::SearchResultEntry(ent) => results.push(ent),
                 LdapOp::SearchResultDone(res) => {
                     if res.code == LdapResultCode::Success {
                         break;
                     } else {
-                        error!("Search Failed");
+                        error!("Search Failed -> {:?}", res);
                         return Err(());
                     }
                 }
@@ -261,10 +249,7 @@ impl LdapClient {
         Ok(results)
     }
 
-    pub async fn delete(
-        &self,
-        dn: String,
-    ) -> Result<(), ()> {
+    pub async fn delete(&self, dn: String) -> Result<(), ()> {
         let mut mguard = self.conn.lock().await;
         let inner = match (*mguard).as_mut() {
             Some(i) => i,
@@ -285,24 +270,93 @@ impl LdapClient {
 
         // Send it
         let _ = inner.framed.send(msg).await.map_err(|e| {
-            error!("Unable to search -> {:?}", e);
+            error!("Unable to delete -> {:?}", e);
         })?;
-        while let Some(Ok(msg)) = inner.framed.next().await {
-            match msg.op {
-                LdapOp::DelResponse(res) => {
-                    if res.code == LdapResultCode::Success {
-                        break;
-                    } else {
-                        error!("Delete Failed");
-                        return Err(());
-                    }
-                }
-                _ => {
-                    error!("Invalid ldap response state");
+        if let Some(Ok(msg)) = inner.framed.next().await {
+            if let LdapOp::DelResponse(res) = msg.op {
+                if res.code == LdapResultCode::Success {
+                    return Ok(());
+                } else {
+                    error!("Delete Failed -> {:?}", res);
                     return Err(());
                 }
             }
         }
-        Ok(())
+        error!("Invalid ldap response state");
+        Err(())
+    }
+
+    pub async fn add(&self, req: LdapAddRequest) -> Result<(), ()> {
+        let mut mguard = self.conn.lock().await;
+        let inner = match (*mguard).as_mut() {
+            Some(i) => i,
+            None => {
+                error!("No connection available");
+                return Err(());
+            }
+        };
+
+        inner.msgid += 1;
+        let msgid = inner.msgid;
+
+        let msg = LdapMsg {
+            msgid,
+            ctrl: vec![],
+            op: LdapOp::AddRequest(req),
+        };
+
+        // Send it
+        let _ = inner.framed.send(msg).await.map_err(|e| {
+            error!("Unable to add -> {:?}", e);
+        })?;
+        if let Some(Ok(msg)) = inner.framed.next().await {
+            if let LdapOp::AddResponse(res) = msg.op {
+                if res.code == LdapResultCode::Success {
+                    return Ok(());
+                } else {
+                    error!("Add Failed -> {:?}", res);
+                    return Err(());
+                }
+            }
+        }
+        error!("Invalid ldap response state");
+        Err(())
+    }
+
+    pub async fn modify(&self, req: LdapModifyRequest) -> Result<(), ()> {
+        let mut mguard = self.conn.lock().await;
+        let inner = match (*mguard).as_mut() {
+            Some(i) => i,
+            None => {
+                error!("No connection available");
+                return Err(());
+            }
+        };
+
+        inner.msgid += 1;
+        let msgid = inner.msgid;
+
+        let msg = LdapMsg {
+            msgid,
+            ctrl: vec![],
+            op: LdapOp::ModifyRequest(req),
+        };
+
+        // Send it
+        let _ = inner.framed.send(msg).await.map_err(|e| {
+            error!("Unable to modify -> {:?}", e);
+        })?;
+        if let Some(Ok(msg)) = inner.framed.next().await {
+            if let LdapOp::ModifyResponse(res) = msg.op {
+                if res.code == LdapResultCode::Success {
+                    return Ok(());
+                } else {
+                    error!("Modify Failed -> {:?}", res);
+                    return Err(());
+                }
+            }
+        }
+        error!("Invalid ldap response state");
+        Err(())
     }
 }

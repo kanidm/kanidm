@@ -45,9 +45,9 @@ impl KaniHttpServer {
         Self::construct(uri, admin_pw).map(TargetServer::Kanidm)
     }
 
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(khconfig: &KaniHttpConfig) -> Result<TargetServer, ()> {
-        Self::construct(khconfig.uri.clone(), khconfig.admin_pw.clone())
-            .map(|s| TargetServer::Kanidm(s))
+        Self::construct(khconfig.uri.clone(), khconfig.admin_pw.clone()).map(TargetServer::Kanidm)
     }
 
     pub fn info(&self) -> String {
@@ -330,11 +330,11 @@ impl KaniLdapServer {
         admin_pw: String,
         ldap_uri: String,
         basedn: String,
-    ) -> Result<Self, ()> {
+    ) -> Result<Box<Self>, ()> {
         let http = KaniHttpServer::construct(uri, admin_pw)?;
         let ldap = LdapClient::new(ldap_uri, basedn, LdapSchema::Kanidm)?;
 
-        Ok(KaniLdapServer { http, ldap })
+        Ok(Box::new(KaniLdapServer { http, ldap }))
     }
 
     pub fn build(
@@ -346,6 +346,7 @@ impl KaniLdapServer {
         Self::construct(uri, admin_pw, ldap_uri, basedn).map(TargetServer::KanidmLdap)
     }
 
+    #[allow(clippy::new_ret_no_self)]
     pub fn new(klconfig: &KaniLdapConfig) -> Result<TargetServer, ()> {
         Self::construct(
             klconfig.uri.clone(),

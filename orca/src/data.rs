@@ -41,6 +41,10 @@ pub struct Account {
 }
 
 impl Account {
+    pub fn get_ds_ldap_dn(&self, basedn: &str) -> String {
+        format!("uid={},ou=people,{}", self.name.as_str(), basedn)
+    }
+
     pub fn generate(uuid: Uuid) -> Self {
         let mut rng = rand::thread_rng();
         let id: u64 = rng.gen();
@@ -64,6 +68,10 @@ pub struct Group {
 }
 
 impl Group {
+    pub fn get_ds_ldap_dn(&self, basedn: &str) -> String {
+        format!("cn={},ou=groups,{}", self.name.as_str(), basedn)
+    }
+
     pub fn generate(uuid: Uuid, members: Vec<Uuid>) -> Self {
         let mut rng = rand::thread_rng();
 
@@ -96,6 +104,13 @@ impl Entity {
         match self {
             Entity::Account(a) => a.name.as_str(),
             Entity::Group(g) => g.name.as_str(),
+        }
+    }
+
+    pub fn get_ds_ldap_dn(&self, basedn: &str) -> String {
+        match self {
+            Entity::Account(a) => a.get_ds_ldap_dn(basedn),
+            Entity::Group(g) => g.get_ds_ldap_dn(basedn),
         }
     }
 

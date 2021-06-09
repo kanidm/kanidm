@@ -3,7 +3,7 @@ data = "data.json"
 results = "/tmp/small_results"
 
 [ds_config]
-uri = "ldaps://172.24.20.4:636"
+uri = "ldaps://localhost:636"
 base_dn = "dc=example,dc=com"
 dm_pw = "password"
 
