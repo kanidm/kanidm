@@ -835,7 +835,7 @@ impl KanidmAsyncClient {
         attr: &str,
         values: &[&str],
     ) -> Result<bool, ClientError> {
-        let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
+        let msg: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
             .await
     }
