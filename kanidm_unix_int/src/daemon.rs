@@ -13,32 +13,34 @@ extern crate log;
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use std::fs::metadata;
-use std::io::Error as IoError;
-use std::io::ErrorKind;
-use std::os::unix::fs::MetadataExt;
-use std::path::{Path, PathBuf};
+use std::{
+    error::Error,
+    fs::{self, metadata},
+    io::{self, Error as IoError, ErrorKind},
+    os::unix::fs::MetadataExt,
+    path::{Path, PathBuf},
+    sync::Arc,
+    time::Duration,
+};
 
 use bytes::{BufMut, BytesMut};
-use futures::SinkExt;
-use futures::StreamExt;
+use futures::{SinkExt, StreamExt};
 use libc::umask;
-use std::error::Error;
-use std::io;
-use std::sync::Arc;
-use std::time::Duration;
-use tokio::net::{UnixListener, UnixStream};
-use tokio::sync::mpsc::{channel, Receiver, Sender};
-use tokio::sync::oneshot;
-use tokio::time;
-use tokio_util::codec::Framed;
-use tokio_util::codec::{Decoder, Encoder};
+use tokio::{
+    net::{UnixListener, UnixStream},
+    sync::mpsc::{channel, Receiver, Sender},
+    sync::oneshot,
+    time,
+};
+use tokio_util::codec::{Decoder, Encoder, Framed};
 
 use kanidm_client::KanidmClientBuilder;
 
-use kanidm_unix_common::cache::CacheLayer;
-use kanidm_unix_common::unix_config::KanidmUnixdConfig;
-use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
+use kanidm_unix_common::{
+    cache::CacheLayer,
+    unix_config::KanidmUnixdConfig,
+    unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse},
+};
 
 //=== the codec
 
@@ -70,7 +72,7 @@ impl Encoder<ClientResponse> for ClientCodec {
         debug!("Attempting to send response -> {:?} ...", msg);
         let data = serde_cbor::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+            IoError::new(ErrorKind::Other, "CBOR encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -102,13 +104,13 @@ impl Decoder for TaskCodec {
 }
 
 impl Encoder<TaskRequest> for TaskCodec {
-    type Error = io::Error;
+    type Error = IoError;
 
     fn encode(&mut self, msg: TaskRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
         debug!("Attempting to send request -> {:?} ...", msg);
         let data = serde_cbor::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+            IoError::new(ErrorKind::Other, "CBOR encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -122,8 +124,10 @@ impl TaskCodec {
 }
 
 fn rm_if_exist(p: &str) {
-    let _ = std::fs::remove_file(p).map_err(|e| {
+    let _ = fs::remove_file(p).map_err(|e| {
         warn!("attempting to remove {:?} -> {:?}", p, e);
+        // shouldn't it be "attempted to remove ..."
+        // not "attemping"
     });
 }
 
@@ -168,6 +172,7 @@ async fn handle_task_client(
             other => {
                 error!("Error -> {:?}", other);
                 return Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")));
+                // This error msg lol
             }
         }
     }
@@ -440,7 +445,7 @@ async fn main() {
     });
 
     // Check the pb path will be okay.
-    if cfg.db_path.is_empty() {
+    if !cfg.db_path.is_empty() {
         let db_path = PathBuf::from(cfg.db_path.as_str());
         // We only need to check the parent folder path permissions as the db itself may not
         // exist yet.
@@ -543,10 +548,12 @@ async fn main() {
             match task_listener.accept().await {
                 Ok((socket, _addr)) => {
                     // Did it come from root?
-                    if !matches!(socket.peer_cred(), Ok(ucred) if ucred.uid() == 0) {
-                        // is this too obfuscated?
-                        debug!("Task handler not running as root, ignoring ...");
-                        continue;
+                    match socket.peer_cred() {
+                        Ok(ucred) if ucred.uid() == 0 => (), // all good!
+                        _ => {
+                            debug!("Task handler not running as root, ignoring ...");
+                            continue;
+                        }
                     }
                     debug!("A task handler has connected.");
                     // It did? Great, now we can wait and spin on that one
@@ -575,10 +582,9 @@ async fn main() {
                 Ok((socket, _addr)) => {
                     let cachelayer_ref = cachelayer.clone();
                     tokio::spawn(async move {
-                        if let Err(err) =
-                            handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
+                        if let Err(e) = handle_client(socket, cachelayer_ref.clone(), &tc_tx).await
                         {
-                            error!("an error occured; error = {:?}", err);
+                            error!("an error occured; error = {:?}", e);
                         }
                     });
                 }
