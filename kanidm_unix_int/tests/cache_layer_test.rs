@@ -49,8 +49,7 @@ fn run_test(fix_fn: fn(&mut KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmA
         }
         counter += 1;
         if counter >= 5 {
-            eprintln!("Unable to allocate port!");
-            assert!(false);
+            panic!("Unable to allocate port!");
         }
     };
 
