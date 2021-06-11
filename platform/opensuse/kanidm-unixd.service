@@ -1,0 +1,36 @@
+# Source: https://build.opensuse.org/package/view_file/home:firstyear:kanidm/kanidm/kanidm-unixd.service
+# You should not need to edit this file. Instead, use a drop-in file:
+#   systemctl edit kanidm-unixd.service
+
+[Unit]
+Description=Kanidm Local Client Resolver
+After=chronyd.service ntpd.service network-online.target
+
+[Service]
+DynamicUser=yes
+UMask=0027
+CacheDirectory=kanidm-unixd
+RuntimeDirectory=kanidm-unixd
+
+Type=simple
+ExecStart=/usr/sbin/kanidm_unixd
+
+# Implied by dynamic user.
+# ProtectHome=
+# ProtectSystem=strict
+# ReadWritePaths=/var/run/kanidm-unixd /var/cache/kanidm-unixd
+
+# SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target
