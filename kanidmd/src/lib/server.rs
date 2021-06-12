@@ -537,6 +537,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::NsUniqueId => Ok(Value::new_nsuniqueid_s(value)),
                     SyntaxType::DateTime => Value::new_datetime_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
+                    SyntaxType::EmailAddress => Ok(Value::new_email_address_s(value)),
                 }
             }
             None => {
@@ -629,6 +630,7 @@ pub trait QueryServerTransaction<'a> {
                             "Invalid DateTime (rfc3339) syntax".to_string(),
                         )
                     }),
+                    SyntaxType::EmailAddress => Ok(PartialValue::new_email_address_s(value)),
                 }
             }
             None => {

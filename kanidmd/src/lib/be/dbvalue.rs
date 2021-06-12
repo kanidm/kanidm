@@ -81,6 +81,11 @@ pub struct DbValueTaggedStringV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DbValueEmailAddressV1 {
+    pub d: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     U8(String),
     I8(String),
@@ -99,6 +104,7 @@ pub enum DbValueV1 {
     CI(DbCidV1),
     NU(String),
     DT(String),
+    EM(DbValueEmailAddressV1),
 }
 
 #[cfg(test)]

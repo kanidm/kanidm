@@ -56,7 +56,7 @@ pub const JSON_SCHEMA_ATTR_MAIL: &str = r#"
         "mail"
       ],
       "syntax": [
-        "UTF8STRING"
+        "EMAIL_ADDRESS"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000041"
@@ -561,7 +561,8 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
         "ssh_publickey",
         "radius_secret",
         "account_expire",
-        "account_valid_from"
+        "account_valid_from",
+        "mail"
       ],
       "systemmust": [
         "displayname",

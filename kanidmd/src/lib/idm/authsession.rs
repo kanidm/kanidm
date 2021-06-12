@@ -73,7 +73,7 @@ struct CredWebauthn {
 
 /// The current active handler for this authentication session. This is determined from what credentials
 /// are possible from the account, and what the user selected as the preferred authentication
-/// mechanism. 
+/// mechanism.
 #[derive(Clone, Debug)]
 enum CredHandler {
     Anonymous,

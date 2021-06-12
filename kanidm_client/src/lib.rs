@@ -571,6 +571,15 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_purge_attr(id, attr))
     }
 
+    pub fn idm_account_add_attr(
+        &self,
+        id: &str,
+        attr: &str,
+        values: &[&str],
+    ) -> Result<bool, ClientError> {
+        tokio_block_on(self.asclient.idm_account_add_attr(id, attr, values))
+    }
+
     pub fn idm_account_set_attr(
         &self,
         id: &str,
