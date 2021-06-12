@@ -22,12 +22,12 @@ kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 
 jemallocator = { version = "0.3.0", optional = true }
 
-url = "2.1"
+url = { version = "2", features = ["serde"] }
 tide = "0.16"
 tide-rustls = "0.3"
 async-trait = "0.1"
 async-h1 = "2.0"
-fernet = "^0.1.4"
+fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 bundy = "^0.1.1"
 
 async-std = "1.6"

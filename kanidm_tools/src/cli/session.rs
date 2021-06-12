@@ -301,7 +301,7 @@ impl LoginOpt {
         };
 
         // write them out.
-        if let Err(_) = write_tokens(&tokens) {
+        if write_tokens(&tokens).is_err() {
             error!("Error persisting authentication token store");
             std::process::exit(1);
         };

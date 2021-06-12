@@ -19,7 +19,7 @@ serde_json = "1.0"
 serde_derive = "1.0"
 toml = "0.5"
 uuid = { version = "0.8", features = ["serde", "v4"] }
-url = "2.1.1"
+url = { version = "2", features = ["serde"] }
 webauthn-rs = "0.3.0-alpha.7"
 tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 
@@ -30,3 +30,5 @@ futures = "0.3"
 async-std = "1.6"
 
 webauthn-authenticator-rs = "0.3.0-alpha.9"
+oauth2_ext = { package = "oauth2", version = "4.0", default-features = false }
+base64 = "0.13"

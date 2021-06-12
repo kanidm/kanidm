@@ -14,6 +14,7 @@ mod domain;
 mod failure;
 mod gidnumber;
 mod memberof;
+mod oauth2;
 mod password_import;
 mod protected;
 mod recycle;
@@ -274,6 +275,9 @@ impl Plugins {
                     )
                 })
                 .and_then(|_| {
+                    run_pre_create_transform_plugin!(au, qs, cand, ce, oauth2::Oauth2Secrets)
+                })
+                .and_then(|_| {
                     run_pre_create_transform_plugin!(au, qs, cand, ce, gidnumber::GidNumber)
                 })
                 .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, domain::Domain))
@@ -334,6 +338,7 @@ impl Plugins {
                 .and_then(|_| {
                     run_pre_modify_plugin!(au, qs, cand, me, password_import::PasswordImport)
                 })
+                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, oauth2::Oauth2Secrets))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, gidnumber::GidNumber))
                 .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, spn::Spn))
                 // attr unique should always be last

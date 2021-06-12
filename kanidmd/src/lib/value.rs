@@ -16,6 +16,7 @@ use std::fmt;
 use std::str::FromStr;
 use std::time::Duration;
 use time::OffsetDateTime;
+use url::Url;
 use uuid::Uuid;
 
 use sshkeys::PublicKey as SshPublicKey;
@@ -30,11 +31,11 @@ lazy_static! {
     };
     static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^((\\.|_).*|.*(\\s|@|,|/|\\\\|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
+        Regex::new("^((\\.|_).*|.*(\\s|:|;|@|,|/|\\\\|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
         //            ^      ^                          ^   ^
         //            |      |                          |   \- must not be a reserved name.
         //            |      |                          \- must not be only integers
-        //            |      \- must not contain whitespace, @, ',', /, \, =
+        //            |      \- must not contain whitespace, @, :, ;, ',', /, \, =
         //            \- must not start with _ or .
         // Them's be the rules.
     };
@@ -116,8 +117,6 @@ impl fmt::Display for IndexType {
 #[allow(non_camel_case_types)]
 #[derive(Hash, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum SyntaxType {
-    // We need an insensitive string type too ...
-    // We also need to "self host" a syntax type, and index type
     UTF8STRING,
     Utf8StringInsensitive,
     Utf8StringIname,
@@ -128,7 +127,7 @@ pub enum SyntaxType {
     REFERENCE_UUID,
     JSON_FILTER,
     Credential,
-    RadiusUtf8String,
+    SecretUtf8String,
     SshKey,
     SecurityPrincipalName,
     UINT32,
@@ -136,6 +135,7 @@ pub enum SyntaxType {
     NsUniqueId,
     DateTime,
     EmailAddress,
+    Url,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -154,7 +154,8 @@ impl TryFrom<&str> for SyntaxType {
             "REFERENCE_UUID" => Ok(SyntaxType::REFERENCE_UUID),
             "JSON_FILTER" => Ok(SyntaxType::JSON_FILTER),
             "CREDENTIAL" => Ok(SyntaxType::Credential),
-            "RADIUS_UTF8STRING" => Ok(SyntaxType::RadiusUtf8String),
+            // Compatability for older syntax name.
+            "RADIUS_UTF8STRING" | "SECRET_UTF8STRING" => Ok(SyntaxType::SecretUtf8String),
             "SSHKEY" => Ok(SyntaxType::SshKey),
             "SECURITY_PRINCIPAL_NAME" => Ok(SyntaxType::SecurityPrincipalName),
             "UINT32" => Ok(SyntaxType::UINT32),
@@ -162,6 +163,7 @@ impl TryFrom<&str> for SyntaxType {
             "NSUNIQUEID" => Ok(SyntaxType::NsUniqueId),
             "DATETIME" => Ok(SyntaxType::DateTime),
             "EMAIL_ADDRESS" => Ok(SyntaxType::EmailAddress),
+            "URL" => Ok(SyntaxType::Url),
             _ => Err(()),
         }
     }
@@ -181,7 +183,7 @@ impl TryFrom<usize> for SyntaxType {
             6 => Ok(SyntaxType::REFERENCE_UUID),
             7 => Ok(SyntaxType::JSON_FILTER),
             8 => Ok(SyntaxType::Credential),
-            9 => Ok(SyntaxType::RadiusUtf8String),
+            9 => Ok(SyntaxType::SecretUtf8String),
             10 => Ok(SyntaxType::SshKey),
             11 => Ok(SyntaxType::SecurityPrincipalName),
             12 => Ok(SyntaxType::UINT32),
@@ -190,6 +192,7 @@ impl TryFrom<usize> for SyntaxType {
             15 => Ok(SyntaxType::NsUniqueId),
             16 => Ok(SyntaxType::DateTime),
             17 => Ok(SyntaxType::EmailAddress),
+            18 => Ok(SyntaxType::Url),
             _ => Err(()),
         }
     }
@@ -207,7 +210,7 @@ impl SyntaxType {
             SyntaxType::REFERENCE_UUID => 6,
             SyntaxType::JSON_FILTER => 7,
             SyntaxType::Credential => 8,
-            SyntaxType::RadiusUtf8String => 9,
+            SyntaxType::SecretUtf8String => 9,
             SyntaxType::SshKey => 10,
             SyntaxType::SecurityPrincipalName => 11,
             SyntaxType::UINT32 => 12,
@@ -216,6 +219,7 @@ impl SyntaxType {
             SyntaxType::NsUniqueId => 15,
             SyntaxType::DateTime => 16,
             SyntaxType::EmailAddress => 17,
+            SyntaxType::Url => 18,
         }
     }
 }
@@ -233,7 +237,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::REFERENCE_UUID => "REFERENCE_UUID",
             SyntaxType::JSON_FILTER => "JSON_FILTER",
             SyntaxType::Credential => "CREDENTIAL",
-            SyntaxType::RadiusUtf8String => "RADIUS_UTF8STRING",
+            SyntaxType::SecretUtf8String => "SECRET_UTF8STRING",
             SyntaxType::SshKey => "SSHKEY",
             SyntaxType::SecurityPrincipalName => "SECURITY_PRINCIPAL_NAME",
             SyntaxType::UINT32 => "UINT32",
@@ -241,6 +245,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::NsUniqueId => "NSUNIQUEID",
             SyntaxType::DateTime => "DATETIME",
             SyntaxType::EmailAddress => "EMAIL_ADDRESS",
+            SyntaxType::Url => "URL",
         })
     }
 }
@@ -249,7 +254,7 @@ impl fmt::Display for SyntaxType {
 pub enum DataValue {
     Cred(Credential),
     SshKey(String),
-    RadiusCred(String),
+    SecretValue(String),
 }
 
 impl std::fmt::Debug for DataValue {
@@ -257,7 +262,7 @@ impl std::fmt::Debug for DataValue {
         match self {
             DataValue::Cred(_) => write!(f, "DataValue::Cred(_)"),
             DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
-            DataValue::RadiusCred(_) => write!(f, "DataValue::RadiusCred(_)"),
+            DataValue::SecretValue(_) => write!(f, "DataValue::SecretValue(_)"),
         }
     }
 }
@@ -284,13 +289,14 @@ pub enum PartialValue {
     // Tag, matches to a DataValue.
     Cred(String),
     SshKey(String),
-    RadiusCred,
+    SecretValue,
     Spn(String, String),
     Uint32(u32),
     Cid(Cid),
     Nsuniqueid(String),
     DateTime(OffsetDateTime),
     EmailAddress(String),
+    Url(Url),
 }
 
 impl PartialValue {
@@ -431,12 +437,12 @@ impl PartialValue {
         matches!(self, PartialValue::Cred(_))
     }
 
-    pub fn new_radius_string() -> Self {
-        PartialValue::RadiusCred
+    pub fn new_secret_str() -> Self {
+        PartialValue::SecretValue
     }
 
-    pub fn is_radius_string(&self) -> bool {
-        matches!(self, PartialValue::RadiusCred)
+    pub fn is_secret_string(&self) -> bool {
+        matches!(self, PartialValue::SecretValue)
     }
 
     pub fn new_sshkey_tag(s: String) -> Self {
@@ -528,11 +534,26 @@ impl PartialValue {
         matches!(self, PartialValue::EmailAddress(_))
     }
 
+    pub fn new_url_s(s: &str) -> Option<Self> {
+        Url::parse(s).ok().map(PartialValue::Url)
+    }
+
+    pub fn is_url(&self) -> bool {
+        matches!(self, PartialValue::Url(_))
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
             PartialValue::Iutf8(s) => Some(s.as_str()),
             PartialValue::Iname(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn to_url(&self) -> Option<&Url> {
+        match self {
+            PartialValue::Url(u) => Some(&u),
             _ => None,
         }
     }
@@ -572,7 +593,7 @@ impl PartialValue {
             }
             PartialValue::Cred(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
-            PartialValue::RadiusCred => "_".to_string(),
+            PartialValue::SecretValue => "_".to_string(),
             PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
             PartialValue::Uint32(u) => u.to_string(),
@@ -582,6 +603,7 @@ impl PartialValue {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 odt.format(time::Format::Rfc3339)
             }
+            PartialValue::Url(u) => u.to_string(),
         }
     }
 
@@ -896,22 +918,22 @@ impl Value {
         }
     }
 
-    pub fn new_radius_str(cleartext: &str) -> Self {
+    pub fn new_secret_str(cleartext: &str) -> Self {
         Value {
-            pv: PartialValue::new_radius_string(),
-            data: Some(Box::new(DataValue::RadiusCred(cleartext.to_string()))),
+            pv: PartialValue::new_secret_str(),
+            data: Some(Box::new(DataValue::SecretValue(cleartext.to_string()))),
         }
     }
 
-    pub fn is_radius_string(&self) -> bool {
-        matches!(&self.pv, PartialValue::RadiusCred)
+    pub fn is_secret_string(&self) -> bool {
+        matches!(&self.pv, PartialValue::SecretValue)
     }
 
-    pub fn get_radius_secret(&self) -> Option<&str> {
+    pub fn get_secret_str(&self) -> Option<&str> {
         match &self.pv {
-            PartialValue::RadiusCred => match &self.data {
+            PartialValue::SecretValue => match &self.data {
                 Some(dv) => match dv.as_ref() {
-                    DataValue::RadiusCred(c) => Some(c.as_str()),
+                    DataValue::SecretValue(c) => Some(c.as_str()),
                     _ => None,
                 },
                 _ => None,
@@ -1042,6 +1064,14 @@ impl Value {
         self.pv.is_email_address()
     }
 
+    pub fn new_url_s(s: &str) -> Option<Self> {
+        PartialValue::new_url_s(s).map(|pv| Value { pv, data: None })
+    }
+
+    pub fn is_url(&self) -> bool {
+        self.pv.is_url()
+    }
+
     pub fn contains(&self, s: &PartialValue) -> bool {
         self.pv.contains(s)
     }
@@ -1107,8 +1137,8 @@ impl Value {
                 })
             }
             DbValueV1::SecretValue(d) => Ok(Value {
-                pv: PartialValue::RadiusCred,
-                data: Some(Box::new(DataValue::RadiusCred(d))),
+                pv: PartialValue::SecretValue,
+                data: Some(Box::new(DataValue::SecretValue(d))),
             }),
             DbValueV1::SshKey(ts) => Ok(Value {
                 pv: PartialValue::SshKey(ts.tag),
@@ -1139,6 +1169,10 @@ impl Value {
                 .map(|pv| Value { pv, data: None }),
             DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: email_addr }) => Ok(Value {
                 pv: PartialValue::EmailAddress(email_addr),
+                data: None,
+            }),
+            DbValueV1::Url(u) => Ok(Value {
+                pv: PartialValue::Url(u),
                 data: None,
             }),
         }
@@ -1177,10 +1211,10 @@ impl Value {
                     data: c.to_db_valuev1(),
                 })
             }
-            PartialValue::RadiusCred => {
+            PartialValue::SecretValue => {
                 let ru = match &self.data {
                     Some(v) => match v.as_ref() {
-                        DataValue::RadiusCred(rc) => rc.clone(),
+                        DataValue::SecretValue(rc) => rc.clone(),
                         _ => unreachable!(),
                     },
                     None => unreachable!(),
@@ -1215,6 +1249,7 @@ impl Value {
             PartialValue::EmailAddress(mail) => {
                 DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: mail.clone() })
             }
+            PartialValue::Url(u) => DbValueV1::Url(u.clone()),
         }
     }
 
@@ -1223,6 +1258,13 @@ impl Value {
             PartialValue::Utf8(s) => Some(s.as_str()),
             PartialValue::Iutf8(s) => Some(s.as_str()),
             PartialValue::Iname(s) => Some(s.as_str()),
+            _ => None,
+        }
+    }
+
+    pub fn to_url(&self) -> Option<&Url> {
+        match &self.pv {
+            PartialValue::Url(u) => Some(&u),
             _ => None,
         }
     }
@@ -1338,9 +1380,9 @@ impl Value {
                 },
                 None => format!("{}: corrupted value", tag),
             },
-            // We don't disclose the radius credential unless by special
+            // We don't disclose the secret value unless by special
             // interfaces.
-            PartialValue::RadiusCred => "radius".to_string(),
+            PartialValue::SecretValue => "secret".to_string(),
             PartialValue::Spn(n, r) => format!("{}@{}", n, r),
             PartialValue::Uint32(u) => u.to_string(),
             PartialValue::Cid(c) => format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid),
@@ -1348,6 +1390,7 @@ impl Value {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 odt.format(time::Format::Rfc3339)
             }
+            PartialValue::Url(u) => u.to_string(),
         }
     }
 
@@ -1377,13 +1420,14 @@ impl Value {
                 },
                 None => false,
             },
-            PartialValue::RadiusCred => match &self.data {
-                Some(v) => matches!(v.as_ref(), DataValue::RadiusCred(_)),
+            PartialValue::SecretValue => match &self.data {
+                Some(v) => matches!(v.as_ref(), DataValue::SecretValue(_)),
                 None => false,
             },
             PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
             PartialValue::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
             PartialValue::EmailAddress(mail) => validator::validate_email(mail.as_str()),
+            // PartialValue::Url validated through parsing.
             _ => true,
         }
     }
@@ -1409,7 +1453,7 @@ impl Value {
                 // Should this also extract the key data?
                 vec![tag.to_string()]
             }
-            PartialValue::RadiusCred => vec![],
+            PartialValue::SecretValue => vec![],
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
             PartialValue::Uint32(u) => vec![u.to_string()],
             PartialValue::Cid(_) => vec![],
@@ -1417,6 +1461,7 @@ impl Value {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 vec![odt.format(time::Format::Rfc3339)]
             }
+            PartialValue::Url(u) => vec![u.to_string()],
         }
     }
 }
@@ -1650,6 +1695,22 @@ mod tests {
         assert!(val1.validate());
         assert!(val2.validate());
         assert!(val3.validate());
+    }
+
+    #[test]
+    fn test_value_url() {
+        // https://html.spec.whatwg.org/multipage/forms.html#valid-e-mail-address
+        let val1 = Value::new_url_s("https://localhost:8000/search?q=text#hello");
+        let val2 = Value::new_url_s("https://github.com/kanidm/kanidm");
+        let val3 = Value::new_url_s("ldap://foo.com");
+        let inv1 = Value::new_url_s("127.0.");
+        let inv2 = Value::new_url_s("🤔");
+
+        assert!(inv1.is_none());
+        assert!(inv2.is_none());
+        assert!(val1.is_some());
+        assert!(val2.is_some());
+        assert!(val3.is_some());
     }
 
     /*

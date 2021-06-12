@@ -988,3 +988,58 @@ pub const JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
         "acp_modify_class": ["posixgroup"]
     }
 }"#;
+
+// 35 oauth2 manage
+pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search",
+            "access_control_modify",
+            "access_control_delete",
+            "access_control_create"
+        ],
+        "name": ["idm_acp_hp_oauth2_manage_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000035"],
+        "description": ["Builtin IDM Control for managing oauth2 resource server integrations."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000027\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"oauth2_resource_server\"]},{\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "class",
+            "description",
+            "oauth2_rs_name",
+            "oauth2_rs_origin",
+            "oauth2_rs_account_filter",
+            "oauth2_rs_basic_secret",
+            "oauth2_rs_basic_token_key"
+        ],
+        "acp_modify_removedattr": [
+            "description",
+            "oauth2_rs_name",
+            "oauth2_rs_origin",
+            "oauth2_rs_account_filter",
+            "oauth2_rs_basic_secret",
+            "oauth2_rs_basic_token_key"
+        ],
+        "acp_modify_presentattr": [
+            "description",
+            "oauth2_rs_name",
+            "oauth2_rs_origin",
+            "oauth2_rs_account_filter"
+        ],
+        "acp_modify_class": [],
+        "acp_create_attr": [
+            "class",
+            "description",
+            "oauth2_rs_name",
+            "oauth2_rs_origin",
+            "oauth2_rs_account_filter"
+        ],
+        "acp_create_class": ["oauth2_resource_server", "oauth2_resource_server_basic", "object"]
+    }
+}"#;

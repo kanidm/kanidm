@@ -24,6 +24,7 @@ use crate::idm::delayed::DelayedAction;
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::utils::duration_from_epoch_now;
 
+use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
@@ -142,12 +143,15 @@ impl QueryServerWriteV1 {
                     e
                 })?;
 
+            let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
+            // Add any supplemental conditions we have.
+            let joined_filter = Filter::join_parts_and(f_uuid, filter);
+
             let mdf = match ModifyEvent::from_internal_parts(
                 audit,
                 ident,
-                target_uuid,
                 ml,
-                filter,
+                &joined_filter,
                 &idms_prox_write.qs_write,
             ) {
                 Ok(m) => m,
@@ -312,6 +316,64 @@ impl QueryServerWriteV1 {
             OperationError::InvalidState
         })?;
         res
+    }
+
+    pub async fn handle_internalpatch(
+        &self,
+        uat: Option<String>,
+        filter: Filter<FilterInvalid>,
+        update: ProtoEntry,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        // Given a protoEntry, turn this into a modification set.
+        let mut audit = AuditScope::new("internal_patch", eventid, self.log_level);
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
+        let res = lperf_segment!(
+            &mut audit,
+            "actors::v1_write::handle<InternalPatch>",
+            || {
+                let ct = duration_from_epoch_now();
+                let ident = idms_prox_write
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                    .map_err(|e| {
+                        ladmin_error!(&mut audit, "Invalid identity: {:?}", e);
+                        e
+                    })?;
+
+                // Transform the ProtoEntry to a Modlist
+                let modlist =
+                    ModifyList::from_patch(&mut audit, &update, &idms_prox_write.qs_write)
+                        .map_err(|e| {
+                            ladmin_error!(&mut audit, "Invalid Patch Request: {:?}", e);
+                            e
+                        })?;
+
+                let mdf = ModifyEvent::from_internal_parts(
+                    &mut audit,
+                    ident,
+                    &modlist,
+                    &filter,
+                    &idms_prox_write.qs_write,
+                )
+                .map_err(|e| {
+                    ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                    e
+                })?;
+
+                ltrace!(audit, "Begin modify event {:?}", mdf);
+
+                idms_prox_write
+                    .qs_write
+                    .modify(&mut audit, &mdf)
+                    .and_then(|_| idms_prox_write.commit(&mut audit))
+            }
+        );
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
+        res.map(|_| ())
     }
 
     pub async fn handle_internaldelete(

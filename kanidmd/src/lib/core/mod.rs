@@ -91,7 +91,7 @@ fn setup_qs_idms(
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(be, schema);
+    let query_server = QueryServer::new(audit, be, schema);
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -380,7 +380,7 @@ pub fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(be, schema_mem);
+    let server = QueryServer::new(&mut audit, be, schema_mem);
 
     // Run verifications.
     let r = server.verify(&mut audit);

@@ -1694,10 +1694,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
-    /// Return a single radius credential, if valid to transform this value.
-    pub fn get_ava_single_radiuscred(&self, attr: &str) -> Option<&str> {
-        self.get_ava_single(attr)
-            .and_then(|a| a.get_radius_secret())
+    /// Return a single secret value, if valid to transform this value.
+    pub fn get_ava_single_secret(&self, attr: &str) -> Option<&str> {
+        self.get_ava_single(attr).and_then(|a| a.get_secret_str())
     }
 
     #[inline(always)]
@@ -1710,6 +1709,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Return a single `&str`, if valid to transform this value.
     pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
         self.get_ava_single(attr).and_then(|v| v.to_str())
+    }
+
+    #[inline(always)]
+    /// Return a single `&Url`, if valid to transform this value.
+    pub fn get_ava_single_url(&self, attr: &str) -> Option<&Url> {
+        self.get_ava_single(attr).and_then(|v| v.to_url())
     }
 
     #[inline(always)]

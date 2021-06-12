@@ -32,6 +32,7 @@ pub enum PluginError {
     Base(String),
     ReferentialIntegrity(String),
     PasswordImport(String),
+    Oauth2Secrets,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -179,19 +180,17 @@ pub enum AuthType {
 #[serde(rename_all = "lowercase")]
 pub struct UserAuthToken {
     pub session_id: Uuid,
-    // When this data should be considered invalid. Interpretation
+    pub auth_type: AuthType,
+    // When this token should be considered expired. Interpretation
     // may depend on the client application.
     pub expiry: time::OffsetDateTime,
-    pub name: String,
-    pub spn: String,
-    pub displayname: String,
     pub uuid: Uuid,
-    // #[serde(skip_serializing_if = "Option::is_none")]
-    // pub application: Option<Application>,
-    pub groups: Vec<Group>,
-    pub claims: Vec<Claim>,
-    pub auth_type: AuthType,
-    // Should we allow supplemental ava's to be added on request?
+    // pub name: String,
+    pub spn: String,
+    // pub groups: Vec<Group>,
+    // pub claims: Vec<Claim>,
+    // Should we just retrieve these inside the server instead of in the uat?
+    // or do we want per-session limit capabilities?
     pub lim_uidx: bool,
     pub lim_rmax: usize,
     pub lim_pmax: usize,
@@ -200,17 +199,19 @@ pub struct UserAuthToken {
 
 impl fmt::Display for UserAuthToken {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        writeln!(f, "name: {}", self.name)?;
+        // writeln!(f, "name: {}", self.name)?;
         writeln!(f, "spn: {}", self.spn)?;
-        writeln!(f, "display: {}", self.displayname)?;
         writeln!(f, "uuid: {}", self.uuid)?;
+        /*
+        writeln!(f, "display: {}", self.displayname)?;
         for group in &self.groups {
             writeln!(f, "group: {:?}", group.name)?;
         }
         for claim in &self.claims {
             writeln!(f, "claim: {:?}", claim)?;
         }
-        writeln!(f, "expiry: {}", self.expiry)
+        */
+        writeln!(f, "token expiry: {}", self.expiry)
     }
 }
 
@@ -395,7 +396,7 @@ pub struct BackupCodesView {
 // the in memory server core entry type, without affecting the protoEntry type
 //
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 pub struct Entry {
     pub attrs: BTreeMap<String, Vec<String>>,
 }

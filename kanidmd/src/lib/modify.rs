@@ -3,6 +3,7 @@
 //! as "states" on what attribute-values should appear as within the `Entry`
 
 use crate::prelude::*;
+use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 
@@ -131,6 +132,30 @@ impl ModifyList<ModifyInvalid> {
             }),
             Err(e) => Err(e),
         }
+    }
+
+    pub fn from_patch(
+        audit: &mut AuditScope,
+        pe: &ProtoEntry,
+        qs: &QueryServerWriteTransaction,
+    ) -> Result<Self, OperationError> {
+        let mut mods = Vec::new();
+
+        pe.attrs.iter().try_for_each(|(attr, vals)| {
+            // Issue a purge to the attr.
+            mods.push(m_purge(&attr));
+            // Now if there are vals, push those too.
+            // For each value we want to now be present.
+            vals.iter().try_for_each(|val| {
+                qs.clone_value(audit, &attr, &val).map(|resolved_v| {
+                    mods.push(Modify::Present(attr.as_str().into(), resolved_v));
+                })
+            })
+        })?;
+        Ok(ModifyList {
+            valid: ModifyInvalid,
+            mods,
+        })
     }
 
     pub fn validate(

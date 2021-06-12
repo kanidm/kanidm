@@ -13,6 +13,11 @@ use crate::idm::event::{
     UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
+use crate::idm::oauth2::{
+    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess,
+    ConsentRequest, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    Oauth2ResourceServersWriteTransaction,
+};
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
@@ -56,6 +61,7 @@ use concread::{
     hashmap::HashMap,
 };
 use rand::prelude::*;
+use std::convert::TryFrom;
 use std::{sync::Arc, time::Duration};
 use url::Url;
 
@@ -85,6 +91,7 @@ pub struct IdmServer {
     // Our webauthn verifier/config
     webauthn: Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
+    oauth2rs: Arc<Oauth2ResourceServers>,
     uat_bundy_hmac: Arc<CowCell<HS512>>,
 }
 
@@ -112,6 +119,7 @@ pub struct IdmServerProxyReadTransaction<'a> {
     // and other structured content.
     pub qs_read: QueryServerReadTransaction<'a>,
     uat_bundy_hmac: CowCellReadTxn<HS512>,
+    oauth2rs: Oauth2ResourceServersReadTransaction,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -125,6 +133,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
     uat_bundy_hmac: CowCellWriteTxn<'a, HS512>,
+    oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
 pub struct IdmServerDelayed {
@@ -150,21 +159,15 @@ impl IdmServer {
         let (async_tx, async_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, pw_badlist_set) = {
+        let (rp_id, pw_badlist_set, oauth2rs_set) = {
             let qs_read = task::block_on(qs.read_async());
             (
                 qs_read.get_domain_name(au)?,
                 qs_read.get_password_badlist(au)?,
+                // Add a read/reload of all oauth2 configurations.
+                qs_read.get_oauth2rs_set(au)?,
             )
         };
-
-        let bundy_handle = HS512::generate_key()
-            .and_then(|bundy_key| HS512::from_str(&bundy_key))
-            .map_err(|e| {
-                ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
-                OperationError::InvalidState
-            })?;
-        let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
         // Check that it gels with our origin.
         Url::parse(origin.as_str())
@@ -195,6 +198,17 @@ impl IdmServer {
             rp_id,
         });
 
+        // Setup our auth token signing key.
+        let bundy_handle = HS512::generate_key()
+            .and_then(|bundy_key| HS512::from_str(&bundy_key))
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
+                OperationError::InvalidState
+            })?;
+        let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
+
+        let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set)?;
+
         Ok((
             IdmServer {
                 session_ticket: Semaphore::new(1),
@@ -208,6 +222,7 @@ impl IdmServer {
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
                 uat_bundy_hmac,
+                oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
         ))
@@ -251,6 +266,7 @@ impl IdmServer {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
             uat_bundy_hmac: self.uat_bundy_hmac.read(),
+            oauth2rs: self.oauth2rs.read(),
         }
     }
 
@@ -273,6 +289,7 @@ impl IdmServer {
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.write(),
             uat_bundy_hmac: self.uat_bundy_hmac.write(),
+            oauth2rs: self.oauth2rs.write(),
         }
     }
 
@@ -1024,6 +1041,41 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         account.to_backupcodesview()
     }
+
+    pub fn check_oauth2_authorisation(
+        &self,
+        audit: &mut AuditScope,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        auth_req: &AuthorisationRequest,
+        ct: Duration,
+    ) -> Result<ConsentRequest, Oauth2Error> {
+        self.oauth2rs
+            .check_oauth2_authorisation(audit, ident, uat, auth_req, ct)
+    }
+
+    pub fn check_oauth2_authorise_permit(
+        &self,
+        audit: &mut AuditScope,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        consent_req: &str,
+        ct: Duration,
+    ) -> Result<AuthorisePermitSuccess, OperationError> {
+        self.oauth2rs
+            .check_oauth2_authorise_permit(audit, ident, uat, consent_req, ct)
+    }
+
+    pub fn check_oauth2_token_exchange(
+        &self,
+        audit: &mut AuditScope,
+        client_authz: &str,
+        token_req: &AccessTokenRequest,
+        ct: Duration,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        self.oauth2rs
+            .check_oauth2_token_exchange(audit, client_authz, token_req, ct)
+    }
 }
 
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
@@ -1102,7 +1154,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    fn target_to_account(
+    pub(crate) fn target_to_account(
         &mut self,
         au: &mut AuditScope,
         target: &Uuid,
@@ -1859,8 +1911,15 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .contains(&UUID_SYSTEM_CONFIG)
                 {
                     self.reload_password_badlist(au)?;
-                    self.pw_badlist_cache.commit();
                 };
+                if self.qs_write.get_changed_ouath2() {
+                    self.qs_write
+                        .get_oauth2rs_set(au)
+                        .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
+                }
+                // Commit everything.
+                self.oauth2rs.commit();
+                self.pw_badlist_cache.commit();
                 self.mfareg_sessions.commit();
                 self.qs_write.commit(au)
             }

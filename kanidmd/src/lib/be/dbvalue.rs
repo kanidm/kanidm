@@ -1,4 +1,5 @@
 use std::{collections::HashSet, time::Duration};
+use url::Url;
 use uuid::Uuid;
 use webauthn_rs::proto::COSEKey;
 
@@ -146,6 +147,8 @@ pub enum DbValueV1 {
     DateTime(String),
     #[serde(rename = "EM")]
     EmailAddress(DbValueEmailAddressV1),
+    #[serde(rename = "UR")]
+    Url(Url),
 }
 
 #[cfg(test)]

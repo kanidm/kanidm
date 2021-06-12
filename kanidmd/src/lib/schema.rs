@@ -193,7 +193,7 @@ impl SchemaAttribute {
             SyntaxType::UTF8STRING => v.is_utf8(),
             SyntaxType::JSON_FILTER => v.is_json_filter(),
             SyntaxType::Credential => v.is_credential(),
-            SyntaxType::RadiusUtf8String => v.is_radius_string(),
+            SyntaxType::SecretUtf8String => v.is_secret_string(),
             SyntaxType::SshKey => v.is_sshkey(),
             SyntaxType::SecurityPrincipalName => v.is_spn(),
             SyntaxType::UINT32 => v.is_uint32(),
@@ -201,6 +201,7 @@ impl SchemaAttribute {
             SyntaxType::NsUniqueId => v.is_nsuniqueid(),
             SyntaxType::DateTime => v.is_datetime(),
             SyntaxType::EmailAddress => v.is_email_address(),
+            SyntaxType::Url => v.is_url(),
         };
         if r {
             Ok(())
@@ -241,7 +242,7 @@ impl SchemaAttribute {
             SyntaxType::UTF8STRING => ava.iter().all(Value::is_utf8),
             SyntaxType::JSON_FILTER => ava.iter().all(Value::is_json_filter),
             SyntaxType::Credential => ava.iter().all(Value::is_credential),
-            SyntaxType::RadiusUtf8String => ava.iter().all(Value::is_radius_string),
+            SyntaxType::SecretUtf8String => ava.iter().all(Value::is_secret_string),
             SyntaxType::SshKey => ava.iter().all(Value::is_sshkey),
             SyntaxType::SecurityPrincipalName => ava.iter().all(Value::is_spn),
             SyntaxType::UINT32 => ava.iter().all(Value::is_uint32),
@@ -249,6 +250,7 @@ impl SchemaAttribute {
             SyntaxType::NsUniqueId => ava.iter().all(Value::is_nsuniqueid),
             SyntaxType::DateTime => ava.iter().all(Value::is_datetime),
             SyntaxType::EmailAddress => ava.iter().all(Value::is_email_address),
+            SyntaxType::Url => ava.iter().all(Value::is_url),
         };
         if valid {
             Ok(())

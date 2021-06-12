@@ -83,7 +83,7 @@ fn test_server_whoami_anonymous() {
             None => panic!(),
         };
         debug!("{}", uat);
-        assert!(uat.name == "anonymous");
+        assert!(uat.spn == "anonymous@example.com");
     });
 }
 
@@ -104,7 +104,7 @@ fn test_server_whoami_admin_simple_password() {
             None => panic!(),
         };
         debug!("{}", uat);
-        assert!(uat.name == "admin");
+        assert!(uat.spn == "admin@example.com");
     });
 }
 
@@ -984,6 +984,80 @@ fn test_server_rest_webauthn_mfa_auth_lifecycle() {
         assert!(rsclient_good
             .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
             .is_ok());
+    });
+}
+
+#[test]
+fn test_server_rest_oauth2_basic_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // List, there are non.
+        let initial_configs = rsclient
+            .idm_oauth2_rs_list()
+            .expect("Failed to retrieve oauth2 configs");
+
+        assert!(initial_configs.is_empty());
+
+        // Create a new oauth2 config
+        rsclient
+            .idm_oauth2_rs_basic_create("test_integration", "https://demo.example.com")
+            .expect("Failed to create oauth2 config");
+
+        // List, there is what we created.
+        let initial_configs = rsclient
+            .idm_oauth2_rs_list()
+            .expect("Failed to retrieve oauth2 configs");
+
+        assert!(initial_configs.len() == 1);
+
+        // Get the value. Assert we have oauth2_rs_basic_secret,
+        // but can NOT see the token_secret.
+        let oauth2_config = rsclient
+            .idm_oauth2_rs_get("test_integration")
+            .ok()
+            .flatten()
+            .expect("Failed to retrieve test_integration config");
+
+        // What can we see?
+        assert!(oauth2_config.attrs.contains_key("oauth2_rs_basic_secret"));
+        // This is present, but redacted.
+        assert!(oauth2_config
+            .attrs
+            .contains_key("oauth2_rs_basic_token_key"));
+
+        // Mod delete the secret/key and check them again.
+        // Check we can patch the oauth2_rs_name / oauth2_rs_origin
+        rsclient
+            .idm_oauth2_rs_update(
+                "test_integration",
+                None,
+                Some("https://new_demo.example.com"),
+                true,
+                true,
+            )
+            .expect("Failed to update config");
+
+        let oauth2_config_updated = rsclient
+            .idm_oauth2_rs_get("test_integration")
+            .ok()
+            .flatten()
+            .expect("Failed to retrieve test_integration config");
+
+        assert!(oauth2_config_updated != oauth2_config);
+
+        // Delete the config
+        rsclient
+            .idm_oauth2_rs_delete("test_integration")
+            .expect("Failed to delete test_integration");
+
+        // List, there are none.
+        let final_configs = rsclient
+            .idm_oauth2_rs_list()
+            .expect("Failed to retrieve oauth2 configs");
+
+        assert!(final_configs.is_empty());
     });
 }
 

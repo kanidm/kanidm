@@ -29,6 +29,10 @@ impl KanidmAsyncClient {
         self.origin.as_str()
     }
 
+    pub fn get_url(&self) -> &str {
+        self.addr.as_str()
+    }
+
     pub async fn set_token(&self, new_token: String) {
         let mut tguard = self.bearer_token.write().await;
         *tguard = Some(new_token);
@@ -55,10 +59,7 @@ impl KanidmAsyncClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = [self.addr.as_str(), dest].concat();
-        debug!("{:?}", dest);
-        // format doesn't work in async ?!
-        // let dest = format!("{}{}", self.addr, dest);
+        let dest = format!("{}{}", self.get_url(), dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
@@ -102,8 +103,9 @@ impl KanidmAsyncClient {
 
         let opid = headers
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
         debug!("opid -> {:?}", opid);
 
         match response.status() {
@@ -128,10 +130,7 @@ impl KanidmAsyncClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = [self.addr.as_str(), dest].concat();
-        debug!("{:?}", dest);
-        // format doesn't work in async ?!
-        // let dest = format!("{}{}", self.addr, dest);
+        let dest = format!("{}{}", self.get_url(), dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
@@ -154,8 +153,9 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
         debug!("opid -> {:?}", opid);
 
         match response.status() {
@@ -180,10 +180,7 @@ impl KanidmAsyncClient {
         dest: &str,
         request: R,
     ) -> Result<T, ClientError> {
-        let dest = [self.addr.as_str(), dest].concat();
-        debug!("{:?}", dest);
-        // format doesn't work in async ?!
-        // let dest = format!("{}{}", self.addr, dest);
+        let dest = format!("{}{}", self.get_url(), dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
 
@@ -209,8 +206,9 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
 
         debug!("opid -> {:?}", opid);
 
@@ -231,10 +229,58 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
+    async fn perform_patch_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: R,
+    ) -> Result<T, ClientError> {
+        let dest = format!("{}{}", self.get_url(), dest);
+
+        let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
+        let response = self
+            .client
+            .patch(dest.as_str())
+            .body(req_string)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+
+        let response = {
+            let tguard = self.bearer_token.read().await;
+            if let Some(token) = &(*tguard) {
+                response.bearer_auth(token)
+            } else {
+                response
+            }
+        };
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
+
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
+        debug!("opid -> {:?}", opid);
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => {
+                return Err(ClientError::Http(
+                    unexpect,
+                    response.json().await.ok(),
+                    opid,
+                ))
+            }
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| ClientError::JsonDecode(e, opid))
+    }
+
     async fn perform_get_request<T: DeserializeOwned>(&self, dest: &str) -> Result<T, ClientError> {
-        let dest = [self.addr.as_str(), dest].concat();
-        debug!("{:?}", dest);
-        // let dest = format!("{}{}", self.addr, dest);
+        let dest = format!("{}{}", self.get_url(), dest);
         let response = self.client.get(dest.as_str());
 
         let response = {
@@ -251,8 +297,9 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
 
         debug!("opid -> {:?}", opid);
 
@@ -274,7 +321,7 @@ impl KanidmAsyncClient {
     }
 
     async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
+        let dest = format!("{}{}", self.get_url(), dest);
 
         let response = self
             .client
@@ -295,8 +342,9 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
         debug!("opid -> {:?}", opid);
 
         match response.status() {
@@ -321,7 +369,7 @@ impl KanidmAsyncClient {
         dest: &str,
         request: R,
     ) -> Result<(), ClientError> {
-        let dest = format!("{}{}", self.addr, dest);
+        let dest = format!("{}{}", self.get_url(), dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
         let response = self
@@ -344,8 +392,9 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
         debug!("opid -> {:?}", opid);
 
         match response.status() {
@@ -625,8 +674,9 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(str::to_string))
-            .unwrap_or_else(|| "missing_kopid".to_string());
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
         debug!("opid -> {:?}", opid);
 
         match response.status() {
@@ -1193,6 +1243,74 @@ impl KanidmAsyncClient {
 
     pub async fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         self.perform_get_request(format!("/v1/schema/classtype/{}", id).as_str())
+            .await
+    }
+
+    // ==== Oauth2 resource server configuration
+    pub async fn idm_oauth2_rs_list(&self) -> Result<Vec<Entry>, ClientError> {
+        self.perform_get_request("/v1/oauth2").await
+    }
+
+    pub async fn idm_oauth2_rs_basic_create(
+        &self,
+        name: &str,
+        origin: &str,
+    ) -> Result<(), ClientError> {
+        let mut new_oauth2_rs = Entry::default();
+        new_oauth2_rs
+            .attrs
+            .insert("oauth2_rs_name".to_string(), vec![name.to_string()]);
+        new_oauth2_rs
+            .attrs
+            .insert("oauth2_rs_origin".to_string(), vec![origin.to_string()]);
+        self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        self.perform_get_request(format!("/v1/oauth2/{}", id).as_str())
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_update(
+        &self,
+        id: &str,
+        name: Option<&str>,
+        origin: Option<&str>,
+        reset_secret: bool,
+        reset_token_key: bool,
+    ) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+
+        if let Some(newname) = name {
+            update_oauth2_rs
+                .attrs
+                .insert("oauth2_rs_name".to_string(), vec![newname.to_string()]);
+        }
+        if let Some(neworigin) = origin {
+            update_oauth2_rs
+                .attrs
+                .insert("oauth2_rs_origin".to_string(), vec![neworigin.to_string()]);
+        }
+        if reset_secret {
+            update_oauth2_rs
+                .attrs
+                .insert("oauth2_rs_basic_secret".to_string(), Vec::new());
+        }
+        if reset_token_key {
+            update_oauth2_rs
+                .attrs
+                .insert("oauth2_rs_basic_token_key".to_string(), Vec::new());
+        }
+
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_delete(&self, id: &str) -> Result<(), ClientError> {
+        self.perform_delete_request(["/v1/oauth2/", id].concat().as_str())
             .await
     }
 

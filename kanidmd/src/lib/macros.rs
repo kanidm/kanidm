@@ -21,7 +21,7 @@ macro_rules! setup_test {
         let be = Backend::new($au, BackendConfig::new_test(), idxmeta, false)
             .expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer);
+        let qs = QueryServer::new($au, be, schema_outer);
         qs.initialise_helper($au, duration_from_epoch_now())
             .expect("init failed!");
         qs
@@ -50,7 +50,7 @@ macro_rules! setup_test {
         let be = Backend::new($au, BackendConfig::new_test(), idxmeta, false)
             .expect("Failed to init BE");
 
-        let qs = QueryServer::new(be, schema_outer);
+        let qs = QueryServer::new($au, be, schema_outer);
         qs.initialise_helper($au, duration_from_epoch_now())
             .expect("init failed!");
 
@@ -96,7 +96,7 @@ macro_rules! run_test_no_init {
                 panic!()
             }
         };
-        let test_server = QueryServer::new(be, schema_outer);
+        let test_server = QueryServer::new(&mut audit, be, schema_outer);
 
         $test_fn(&test_server, &mut audit);
         // Any needed teardown?
