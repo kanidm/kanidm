@@ -643,7 +643,7 @@ impl QueryServerWriteV1 {
                         idms_prox_write
                             .generate_backup_code(&mut audit, &gbe)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                            .map(SetCredentialResponse::Token)
+                            .map(SetCredentialResponse::BackupCodes)
                     }
                 }
             }

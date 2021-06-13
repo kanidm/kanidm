@@ -1,3 +1,4 @@
+use crate::credential::BackupCodes;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 
@@ -13,7 +14,6 @@ use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
 
-use std::collections::HashSet;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -360,14 +360,19 @@ impl Account {
 
     pub(crate) fn gen_backup_code_mod(
         &self,
-        backup_code: HashSet<String>,
+        backup_codes: BackupCodes, // Should I be passing reference??
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         match &self.primary {
             // Change the cred
             Some(primary) => {
-                let ncred = primary.update_backup_code(backup_code);
-                let vcred = Value::new_credential("primary", ncred);
-                Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                let r_ncred = primary.update_backup_code(backup_codes);
+                match r_ncred {
+                    Ok(ncred) => {
+                        let vcred = Value::new_credential("primary", ncred);
+                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                    }
+                    Err(e) => Err(e),
+                }
             }
             None => {
                 // No credential exists, we can't supplementy it.
@@ -376,20 +381,28 @@ impl Account {
         }
     }
 
-    // pub(crate) fn gen_backup_code_remove_mod(&self) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-    //     match &self.primary {
-    //         // Change the cred
-    //         Some(primary) => {
-    //             let ncred = primary.remove_totp();
-    //             let vcred = Value::new_credential("primary", ncred);
-    //             Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
-    //         }
-    //         None => {
-    //             // No credential exists, we can't remove what is not real.
-    //             Err(OperationError::InvalidState)
-    //         }
-    //     }
-    // }
+    #[allow(dead_code)] // WIP_TODO: implement delete API
+    pub(crate) fn gen_backup_code_remove_mod(
+        &self,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        match &self.primary {
+            // Change the cred
+            Some(primary) => {
+                let r_ncred = primary.remove_backup_code();
+                match r_ncred {
+                    Ok(ncred) => {
+                        let vcred = Value::new_credential("primary", ncred);
+                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            None => {
+                // No credential exists, we can't remove what is not real.
+                Err(OperationError::InvalidState)
+            }
+        }
+    }
 
     pub(crate) fn check_credential_pw(&self, cleartext: &str) -> Result<bool, OperationError> {
         self.primary

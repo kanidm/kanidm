@@ -555,7 +555,7 @@ pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> t
     to_tide_response(res, hvalue)
 }
 
-// TODO: Return a list of backup code
+// WIP_TODO: Return a list of backup code
 pub async fn account_get_backup_code(_req: tide::Request<AppState>) -> tide::Result {
     // let uat = req.get_current_uat();
     // let uuid_or_name = req.get_url_param("id")?;
@@ -571,12 +571,7 @@ pub async fn account_get_backup_code(_req: tide::Request<AppState>) -> tide::Res
     unimplemented!();
 }
 
-// TODO: Generate new ones and remove old backup code
-pub async fn account_post_backup_code_regenerate(req: tide::Request<AppState>) -> tide::Result {
-    json_rest_event_credential_put(req).await
-}
-
-// TODO: Remove backup code, and remove it from account credential
+// WIP_TODO: Remove backup code, and remove it from account credential
 pub async fn account_delete_backup_code(_req: tide::Request<AppState>) -> tide::Result {
     // let attr = "radius_secret".to_string();
     // let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
@@ -1310,7 +1305,7 @@ pub fn create_https_server(
     account_route
         .at("/:id/_credential/backup_code")
         .get(account_get_backup_code)
-        .post(account_post_backup_code_regenerate)
+        // .post(account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
         .delete(account_delete_backup_code);
 
     account_route

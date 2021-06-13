@@ -310,7 +310,7 @@ pub enum CredentialDetailType {
     GeneratedPassword,
     Webauthn(Vec<String>),
     /// totp, webauthn
-    PasswordMfa(bool, Vec<String>, bool),
+    PasswordMfa(bool, Vec<String>, usize),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -348,7 +348,7 @@ impl fmt::Display for CredentialDetail {
                 } else {
                     writeln!(f, "totp: disabled")?;
                 }
-                if *backup_code {
+                if *backup_code > 0 {
                     writeln!(f, "backup_code: enabled")?;
                 } else {
                     writeln!(f, "backup_code: disabled")?;
@@ -748,6 +748,7 @@ pub enum SetCredentialResponse {
     Token(String),
     TotpCheck(Uuid, TotpSecret),
     WebauthnCreateChallenge(Uuid, CreationChallengeResponse),
+    BackupCodes(Vec<String>),
 }
 
 /* Recycle Requests area */

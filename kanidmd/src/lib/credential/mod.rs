@@ -214,30 +214,33 @@ impl Password {
 }
 
 #[derive(Clone, Debug)]
-pub struct BackupCode {
-    // TODO: any other attributes?
+pub struct BackupCodes {
+    // WIP_TODO: any other attributes?
     code_set: HashSet<String>,
 }
 
-//TODO: No need a separate DbBackupCodeV1 struct probably?
-impl TryFrom<DbBackupCodeV1> for BackupCode {
+//WIP_TODO: No need a separate DbBackupCodeV1 struct probably?
+impl TryFrom<DbBackupCodeV1> for BackupCodes {
     type Error = ();
 
     fn try_from(value: DbBackupCodeV1) -> Result<Self, Self::Error> {
-        return Ok(BackupCode {
+        Ok(BackupCodes {
             code_set: value.code_set,
-        });
+        })
     }
 }
 
-impl BackupCode {
-    pub fn verify(&self, code_chal: &String) -> bool {
-        return self.code_set.contains(code_chal);
+impl BackupCodes {
+    pub fn new(code_set: HashSet<String>) -> Self {
+        BackupCodes { code_set }
+    }
+    pub fn verify(&mut self, code_chal: &str) -> bool {
+        self.code_set.remove(code_chal)
     }
     pub fn to_dbbackupcodev1(&self) -> DbBackupCodeV1 {
-        return DbBackupCodeV1 {
+        DbBackupCodeV1 {
             code_set: self.code_set.clone(),
-        };
+        }
     }
 }
 
@@ -278,7 +281,7 @@ pub enum CredentialType {
         Password,
         Option<Totp>,
         Map<String, WebauthnCredential>,
-        Option<BackupCode>,
+        Option<BackupCodes>,
     ),
     // PasswordWebauthn(Password, Map<String, WebauthnCredential>),
     // WebauthnVerified(Map<String, WebauthnCredential>),
@@ -301,7 +304,11 @@ impl Into<CredentialDetail> for &Credential {
                 CredentialType::PasswordMfa(_, totp, wan, backup_code) => {
                     let mut labels: Vec<_> = wan.keys().cloned().collect();
                     labels.sort_unstable();
-                    CredentialDetailType::PasswordMfa(totp.is_some(), labels, backup_code.is_some())
+                    CredentialDetailType::PasswordMfa(
+                        totp.is_some(),
+                        labels,
+                        backup_code.iter().count(),
+                    )
                 }
             },
         }
@@ -353,7 +360,7 @@ impl TryFrom<DbCredV1> for Credential {
         };
 
         let v_backup_code = match backup_code {
-            Some(dbb) => Some(BackupCode::try_from(dbb)?),
+            Some(dbb) => Some(BackupCodes::try_from(dbb)?),
             None => None,
         };
 
@@ -643,9 +650,7 @@ impl Credential {
                         .collect(),
                 ),
                 totp: totp.as_ref().map(|t| t.to_dbtotpv1()),
-                backup_code: backup_code
-                    .as_ref()
-                    .and_then(|b| Some(b.to_dbbackupcodev1())),
+                backup_code: backup_code.as_ref().map(|b| b.to_dbbackupcodev1()),
                 claims,
                 uuid,
             },
@@ -768,58 +773,40 @@ impl Credential {
         }
     }
 
-    pub(crate) fn update_backup_code(&self, backup_code: HashSet<String>) -> Self {
-        let type_ = match &self.type_ {
-            // TODO: we should panic/reject CredentialType != PasswordMfa?
-            CredentialType::Password(pw) | CredentialType::GeneratedPassword(pw) => {
-                debug_assert!(false);
-                CredentialType::PasswordMfa(
+    pub(crate) fn update_backup_code(
+        &self,
+        backup_codes: BackupCodes, // Should I be passing reference??
+    ) -> Result<Self, OperationError> {
+        match &self.type_ {
+            CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
+                type_: CredentialType::PasswordMfa(
                     pw.clone(),
-                    None,
-                    Map::new(),
-                    Some(BackupCode {
-                        code_set: backup_code,
-                    }),
-                )
-            }
-            CredentialType::PasswordMfa(pw, totp, wan, _) => CredentialType::PasswordMfa(
-                pw.clone(),
-                totp.clone(),
-                wan.clone(),
-                Some(BackupCode {
-                    code_set: backup_code,
-                }),
-            ),
-            CredentialType::Webauthn(wan) => {
-                debug_assert!(false);
-                CredentialType::Webauthn(wan.clone())
-            }
-        };
-        Credential {
-            type_,
-            claims: self.claims.clone(),
-            uuid: self.uuid,
+                    totp.clone(),
+                    wan.clone(),
+                    Some(backup_codes),
+                ),
+                claims: self.claims.clone(),
+                uuid: self.uuid,
+            }),
+            _ => Err(OperationError::InvalidAccountState(
+                "non-mfa cred type".to_string(),
+            )),
         }
     }
 
-    // pub(crate) fn remove_backup_code(&self) -> Self {
-    //     let type_ = match &self.type_ {
-    //         CredentialType::PasswordMfa(pw, Some(_), wan, backup_code) => {
-    //             if wan.is_empty() {
-    //                 // Note: No need to keep backup code if it is no longer MFA
-    //                 CredentialType::Password(pw.clone())
-    //             } else {
-    //                 CredentialType::PasswordMfa(pw.clone(), None, wan.clone(), backup_code.clone())
-    //             }
-    //         }
-    //         _ => self.type_.clone(),
-    //     };
-    //     Credential {
-    //         type_,
-    //         claims: self.claims.clone(),
-    //         uuid: self.uuid,
-    //     }
-    // }
+    #[allow(dead_code)] // WIP_TODO: implement delete API
+    pub(crate) fn remove_backup_code(&self) -> Result<Self, OperationError> {
+        match &self.type_ {
+            CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
+                type_: CredentialType::PasswordMfa(pw.clone(), totp.clone(), wan.clone(), None),
+                claims: self.claims.clone(),
+                uuid: self.uuid,
+            }),
+            _ => Err(OperationError::InvalidAccountState(
+                "non-mfa cred type".to_string(),
+            )),
+        }
+    }
 
     /*
     pub fn add_claim(&mut self) {

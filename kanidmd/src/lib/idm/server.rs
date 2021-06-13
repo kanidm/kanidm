@@ -1,6 +1,7 @@
 use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::credential::webauthn::WebauthnDomainConfig;
+use crate::credential::BackupCodes;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
@@ -58,6 +59,7 @@ use url::Url;
 
 use webauthn_rs::Webauthn;
 
+use super::delayed::BackupCodeRemoval;
 use super::event::GenerateBackupCodeEvent;
 
 pub struct IdmServer {
@@ -1364,19 +1366,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         au: &mut AuditScope,
         gbe: &GenerateBackupCodeEvent,
-    ) -> Result<String, OperationError> {
+    ) -> Result<Vec<String>, OperationError> {
         let account = self.target_to_account(au, &gbe.target)?;
 
         // Generate a new set of backup code.
         let s = backup_code_from_random();
-        // TODO: into_iter() consumes s, find a way to get the joined string without cloning?
-        let s_str = s.clone().into_iter().collect::<Vec<String>>().join(", ");
 
         // it returns a modify
-        let modlist = account.gen_backup_code_mod(s).map_err(|e| {
-            ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
-            e
-        })?;
+        let modlist = account
+            .gen_backup_code_mod(BackupCodes::new(s.clone()))
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
+                e
+            })?;
 
         ltrace!(au, "processing change {:?}", modlist);
         // given the new credential generate a modify
@@ -1392,7 +1394,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 // Provide the event to impersonate
                 &gbe.ident,
             )
-            .map(|_| s_str)
+            .map(|_| s.into_iter().collect())
             .map_err(|e| {
                 ladmin_error!(au, "Failed to generate backup code {:?}", e);
                 e
@@ -1759,6 +1761,28 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    pub(crate) fn process_backupcoderemoval(
+        &mut self,
+        au: &mut AuditScope,
+        bcr: &BackupCodeRemoval,
+    ) -> Result<(), OperationError> {
+        let account = self.target_to_account(au, &bcr.target_uuid)?;
+
+        // Generate an optional mod and then attempt to apply it.
+        let modlist = account
+            .gen_backup_code_mod(bcr.updated_codes.clone())
+            .map_err(|e| {
+                ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
+                e
+            })?;
+
+        self.qs_write.internal_modify(
+            au,
+            &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&bcr.target_uuid))),
+            &modlist,
+        )
+    }
+
     pub(crate) fn process_delayedaction(
         &mut self,
         au: &mut AuditScope,
@@ -1770,6 +1794,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::WebauthnCounterIncrement(wci) => {
                 self.process_webauthncounterinc(au, &wci)
             }
+            DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(au, &bcr),
         }
     }
 

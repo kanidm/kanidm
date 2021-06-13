@@ -2,8 +2,9 @@
 //! Generally this has to process an authentication attempt, and validate each
 //! factor to assert that the user is legitimate. This also contains some
 //! support code for asynchronous task execution.
-use crate::credential::BackupCode;
+use crate::credential::BackupCodes;
 use crate::idm::account::Account;
+use crate::idm::delayed::BackupCodeRemoval;
 use crate::idm::AuthState;
 use crate::prelude::*;
 use hashbrown::HashSet;
@@ -61,7 +62,7 @@ struct CredMfa {
     pw_state: CredVerifyState,
     totp: Option<Totp>,
     wan: Option<(RequestChallengeResponse, AuthenticationState)>,
-    backup_code: Option<BackupCode>,
+    backup_code: Option<BackupCodes>,
     mfa_state: CredVerifyState,
 }
 
@@ -309,8 +310,22 @@ impl CredHandler {
                             CredState::Denied(BAD_TOTP_MSG)
                         }
                     }
-                    (AuthCredential::BackupCode(code_chal), _, _, Some(backup_code)) => {
-                        if backup_code.verify(&code_chal) {
+                    (AuthCredential::BackupCode(code_chal), _, _, Some(backup_codes)) => {
+                        // Clone backup_codes because it's not mutable. If I make it a mutable ref,
+                        // then I have to pass it as &BackupCodes and specify lifetime on BackupCodeRemoval
+                        let mut cloned_codes = backup_codes.clone();
+                        if cloned_codes.verify(&code_chal) {
+                            if let Err(_e) =
+                                async_tx.send(DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
+                                    target_uuid: who,
+                                    updated_codes: cloned_codes,
+                                }))
+                            {
+                                ladmin_warning!(
+                                    au,
+                                    "unable to queue delayed backup code removal, continuing ... "
+                                );
+                            };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             lsecurity!(
                                 au,
@@ -1975,4 +1990,8 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         audit.write_log();
     }
+    // WIP_TODO: extensive testing for login with AuthCredential::BackupCode(code_chal)
+    // Test successful login
+    // Test unsuccessful login: wrong pw, wrong backup code, used backup code
+    // What else??
 }
