@@ -96,13 +96,13 @@ impl KanidmAsyncClient {
             let mut sguard = self.auth_session_id.write().await;
             *sguard = headers
                 .get(KSESSIONID)
-                .map(|hv| hv.to_str().ok().map(|s| s.to_string()))
+                .map(|hv| hv.to_str().ok().map(str::to_string))
                 .flatten();
         }
 
         let opid = headers
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -154,7 +154,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -209,7 +209,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
 
         debug!("opid -> {:?}", opid);
@@ -251,7 +251,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
 
         debug!("opid -> {:?}", opid);
@@ -295,7 +295,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -344,7 +344,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -625,7 +625,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -1074,7 +1074,7 @@ impl KanidmAsyncClient {
         shell: Option<&str>,
     ) -> Result<(), ClientError> {
         let ux = AccountUnixExtend {
-            shell: shell.map(|s| s.to_string()),
+            shell: shell.map(str::to_string),
             gidnumber,
         };
         self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)

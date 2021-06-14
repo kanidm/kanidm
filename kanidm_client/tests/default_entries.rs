@@ -60,10 +60,9 @@ fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
     rsclient.idm_account_create(id, id).unwrap();
 
     // Create group and add to user to test read attr: member_of
-    let _ = match rsclient.idm_group_get(&group_name).unwrap() {
-        None => rsclient.idm_group_create(&group_name).unwrap(),
-        _ => (),
-    };
+    if rsclient.idm_group_get(&group_name).unwrap().is_none() {
+        rsclient.idm_group_create(&group_name).unwrap();
+    }
 
     rsclient.idm_group_add_members(&group_name, &[id]).unwrap();
 }
@@ -188,14 +187,11 @@ fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_readabl
         .map(|attr| {
             println!("Reading {}", attr);
             match *attr {
-                "radius_secret" => match rsclient.idm_account_radius_credential_get(id).unwrap() {
-                    Some(_) => true,
-                    None => false,
-                },
-                _ => match e.attrs.get(*attr) {
-                    Some(_) => true,
-                    None => false,
-                },
+                "radius_secret" => rsclient
+                    .idm_account_radius_credential_get(id)
+                    .unwrap()
+                    .is_some(),
+                _ => e.attrs.get(*attr).is_some(),
             }
         })
         .for_each(|is_ok| assert!(is_ok == is_readable));
