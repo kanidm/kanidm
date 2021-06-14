@@ -61,8 +61,8 @@ fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
 
     // Create group and add to user to test read attr: member_of
     let _ = match rsclient.idm_group_get(&group_name).unwrap() {
-        Some(_) => true,
         None => rsclient.idm_group_create(&group_name).unwrap(),
+        _ => (),
     };
 
     rsclient.idm_group_add_members(&group_name, &[id]).unwrap();
