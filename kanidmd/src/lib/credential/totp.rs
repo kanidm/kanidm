@@ -69,14 +69,14 @@ impl TryFrom<DbTotpV1> for Totp {
     type Error = ();
 
     fn try_from(value: DbTotpV1) -> Result<Self, Self::Error> {
-        let algo = match value.a {
+        let algo = match value.algo {
             DbTotpAlgoV1::S1 => TotpAlgo::Sha1,
             DbTotpAlgoV1::S256 => TotpAlgo::Sha256,
             DbTotpAlgoV1::S512 => TotpAlgo::Sha512,
         };
         Ok(Totp {
             secret: value.k,
-            step: value.s,
+            step: value.step,
             algo,
         })
     }
@@ -113,8 +113,8 @@ impl Totp {
         DbTotpV1 {
             l: "totp".to_string(),
             k: self.secret.clone(),
-            s: self.step,
-            a: match self.algo {
+            step: self.step,
+            algo: match self.algo {
                 TotpAlgo::Sha1 => DbTotpAlgoV1::S1,
                 TotpAlgo::Sha256 => DbTotpAlgoV1::S256,
                 TotpAlgo::Sha512 => DbTotpAlgoV1::S512,

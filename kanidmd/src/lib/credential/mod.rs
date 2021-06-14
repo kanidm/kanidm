@@ -304,10 +304,10 @@ impl TryFrom<DbCredV1> for Credential {
                         (
                             wc.l,
                             WebauthnCredential {
-                                cred_id: wc.i,
-                                cred: wc.c,
-                                counter: wc.t,
-                                verified: wc.v,
+                                cred_id: wc.cred_id,
+                                cred: wc.cred,
+                                counter: wc.counter,
+                                verified: wc.is_verified,
                             },
                         )
                     })
@@ -584,10 +584,10 @@ impl Credential {
                     map.iter()
                         .map(|(k, v)| DbWebauthnV1 {
                             l: k.clone(),
-                            i: v.cred_id.clone(),
-                            c: v.cred.clone(),
-                            t: v.counter,
-                            v: v.verified,
+                            cred_id: v.cred_id.clone(),
+                            cred: v.cred.clone(),
+                            counter: v.counter,
+                            is_verified: v.verified,
                         })
                         .collect(),
                 ),
@@ -602,10 +602,10 @@ impl Credential {
                     map.iter()
                         .map(|(k, v)| DbWebauthnV1 {
                             l: k.clone(),
-                            i: v.cred_id.clone(),
-                            c: v.cred.clone(),
-                            t: v.counter,
-                            v: v.verified,
+                            cred_id: v.cred_id.clone(),
+                            cred: v.cred.clone(),
+                            counter: v.counter,
+                            is_verified: v.verified,
                         })
                         .collect(),
                 ),

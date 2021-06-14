@@ -4,8 +4,12 @@ use webauthn_rs::proto::COSEKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
+    //? what do `d`, `s`, and `t` stand for? I wasn't able to infer it.
+    #[serde(rename = "d")]
     pub d: Uuid,
+    #[serde(rename = "s")]
     pub s: Uuid,
+    #[serde(rename = "t")]
     pub t: Duration,
 }
 
@@ -15,6 +19,10 @@ pub enum DbPasswordV1 {
     SSHA512(Vec<u8>, Vec<u8>),
 }
 
+//? This type is basically an alias for `TotpAlgo`.
+//? Why don't we do
+//? `type DbTotpAlgoV1 = TotpAlgo` and then
+//? derive `Serialize`/`Deserialize` on `TotpAlgo`?
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbTotpAlgoV1 {
     S1,
@@ -24,19 +32,28 @@ pub enum DbTotpAlgoV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTotpV1 {
-    pub l: String,
-    pub k: Vec<u8>,
-    pub s: u64,
-    pub a: DbTotpAlgoV1,
+    #[serde(rename = "l")]
+    pub l: String, //? is this short for "label"?
+    #[serde(rename = "k")]
+    pub k: Vec<u8>, //? is this short for "secret"?
+    #[serde(rename = "s")]
+    pub step: u64,
+    #[serde(rename = "a")]
+    pub algo: DbTotpAlgoV1,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbWebauthnV1 {
-    pub l: String,
-    pub i: Vec<u8>,
-    pub c: COSEKey,
-    pub t: u32,
-    pub v: bool,
+    #[serde(rename = "l")]
+    pub l: String, //? is this short for "label"?
+    #[serde(rename = "i")]
+    pub cred_id: Vec<u8>,
+    #[serde(rename = "c")]
+    pub cred: COSEKey,
+    #[serde(rename = "t")]
+    pub counter: u32,
+    #[serde(rename = "v")]
+    pub is_verified: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -70,41 +87,64 @@ pub struct DbCredV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueCredV1 {
-    pub t: String,
-    pub d: DbCredV1,
+    #[serde(rename = "t")]
+    pub tag: String,
+    #[serde(rename = "d")]
+    pub data: DbCredV1,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueTaggedStringV1 {
-    pub t: String,
-    pub d: String,
+    #[serde(rename = "t")]
+    pub tag: String,
+    #[serde(rename = "d")]
+    pub data: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueEmailAddressV1 {
-    pub d: String,
+    #[serde(rename = "d")]
+    pub email_addr: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
-    U8(String),
-    I8(String),
-    N8(String),
-    UU(Uuid),
-    BO(bool),
-    SY(usize),
-    IN(usize),
-    RF(Uuid),
-    JF(String),
-    CR(DbValueCredV1),
-    RU(String),
-    SK(DbValueTaggedStringV1),
-    SP(String, String),
-    UI(u32),
-    CI(DbCidV1),
-    NU(String),
-    DT(String),
-    EM(DbValueEmailAddressV1),
+    #[serde(rename = "U8")]
+    Utf8(String),
+    #[serde(rename = "I8")]
+    Iutf8(String),
+    #[serde(rename = "N8")]
+    Iname(String),
+    #[serde(rename = "UU")]
+    Uuid(Uuid),
+    #[serde(rename = "BO")]
+    Bool(bool),
+    #[serde(rename = "SY")]
+    SynType(usize),
+    #[serde(rename = "IN")]
+    IdxType(usize),
+    #[serde(rename = "RF")]
+    Refer(Uuid),
+    #[serde(rename = "JF")]
+    JsonFilter(String),
+    #[serde(rename = "CR")]
+    Cred(DbValueCredV1),
+    #[serde(rename = "RU")]
+    RadiusCred(String),
+    #[serde(rename = "SK")]
+    SshKey(DbValueTaggedStringV1),
+    #[serde(rename = "SP")]
+    Spn(String, String),
+    #[serde(rename = "UI")]
+    Uint32(u32),
+    #[serde(rename = "CI")]
+    Cid(DbCidV1),
+    #[serde(rename = "NU")]
+    NsUniqueId(String),
+    #[serde(rename = "DT")]
+    DateTime(String),
+    #[serde(rename = "EM")]
+    EmailAddress(DbValueEmailAddressV1),
 }
 
 #[cfg(test)]
