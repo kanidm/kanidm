@@ -125,7 +125,7 @@ In a new terminal, you can now build and run the client tools with:
     cargo run -- login -H https://localhost:8443 -D admin -C ../insecure/ca.pem
     cargo run -- self whoami -H https://localhost:8443 -D admin -C ../insecure/ca.pem
 
-## Building the Web UI
+### Building the Web UI
 
 __NOTE:__ there is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`
 
