@@ -122,8 +122,12 @@ impl TaskCodec {
 
 fn rm_if_exist(p: &str) {
     if Path::new(p).exists() {
+        debug!("Removing requested file {:?}", p);
         let _ = std::fs::remove_file(p).map_err(|e| {
-            warn!("attempting to remove {:?} -> {:?}", p, e);
+            error!(
+                "Failure while attempting to attempting to remove {:?} -> {:?}",
+                p, e
+            );
         });
     } else {
         debug!("Path {:?} doesn't exist, not attempting to remove.", p);
@@ -426,7 +430,7 @@ async fn main() {
     if !unixd_path.exists() {
         // there's no point trying to start up if we can't read a usable config!
         error!(
-            "Client config missing from {} - cannot start up. Quitting.",
+            "unixd config missing from {} - cannot start up. Quitting.",
             unixd_path_str
         );
         std::process::exit(1);
@@ -544,7 +548,7 @@ async fn main() {
                 std::process::exit(1);
             };
 
-            let db_metadata = match metadata(&db_path) {
+            match metadata(&db_path) {
                 Ok(v) => v,
                 Err(e) => {
                     error!(
@@ -555,13 +559,7 @@ async fn main() {
                     std::process::exit(1);
                 }
             };
-            if db_metadata.permissions().readonly() {
-                error!(
-                    "Refusing to run - DB path {} is readonly for current user.",
-                    db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
-                );
-                std::process::exit(1);
-            };
+            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
         };
     }
 
