@@ -127,7 +127,7 @@ In a new terminal, you can now build and run the client tools with:
 
 ### Building the Web UI
 
-__NOTE:__ There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, which can be used directly.
+__NOTE:__ There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, which can be used directly. This means you don't need to build the Web UI yourself
 
 The web UI uses rust wasm rather than javascript. To build this you need to set up the environment.
 
