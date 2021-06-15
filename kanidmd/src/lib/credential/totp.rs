@@ -75,7 +75,7 @@ impl TryFrom<DbTotpV1> for Totp {
             DbTotpAlgoV1::S512 => TotpAlgo::Sha512,
         };
         Ok(Totp {
-            secret: value.k,
+            secret: value.key,
             step: value.step,
             algo,
         })
@@ -111,8 +111,8 @@ impl Totp {
 
     pub(crate) fn to_dbtotpv1(&self) -> DbTotpV1 {
         DbTotpV1 {
-            l: "totp".to_string(),
-            k: self.secret.clone(),
+            label: "totp".to_string(),
+            key: self.secret.clone(),
             step: self.step,
             algo: match self.algo {
                 TotpAlgo::Sha1 => DbTotpAlgoV1::S1,

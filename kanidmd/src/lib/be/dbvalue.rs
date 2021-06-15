@@ -4,13 +4,12 @@ use webauthn_rs::proto::COSEKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
-    //? what do `d`, `s`, and `t` stand for? I wasn't able to infer it.
     #[serde(rename = "d")]
-    pub d: Uuid,
+    pub domain_id: Uuid,
     #[serde(rename = "s")]
-    pub s: Uuid,
+    pub server_id: Uuid,
     #[serde(rename = "t")]
-    pub t: Duration,
+    pub timestamp: Duration,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -19,10 +18,6 @@ pub enum DbPasswordV1 {
     SSHA512(Vec<u8>, Vec<u8>),
 }
 
-//? This type is basically an alias for `TotpAlgo`.
-//? Why don't we do
-//? `type DbTotpAlgoV1 = TotpAlgo` and then
-//? derive `Serialize`/`Deserialize` on `TotpAlgo`?
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbTotpAlgoV1 {
     S1,
@@ -33,9 +28,9 @@ pub enum DbTotpAlgoV1 {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTotpV1 {
     #[serde(rename = "l")]
-    pub l: String, //? is this short for "label"?
+    pub label: String,
     #[serde(rename = "k")]
-    pub k: Vec<u8>, //? is this short for "secret"?
+    pub key: Vec<u8>,
     #[serde(rename = "s")]
     pub step: u64,
     #[serde(rename = "a")]
@@ -45,15 +40,15 @@ pub struct DbTotpV1 {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbWebauthnV1 {
     #[serde(rename = "l")]
-    pub l: String, //? is this short for "label"?
+    pub label: String,
     #[serde(rename = "i")]
-    pub cred_id: Vec<u8>,
+    pub id: Vec<u8>,
     #[serde(rename = "c")]
     pub cred: COSEKey,
     #[serde(rename = "t")]
     pub counter: u32,
     #[serde(rename = "v")]
-    pub is_verified: bool,
+    pub verified: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -103,8 +98,7 @@ pub struct DbValueTaggedStringV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueEmailAddressV1 {
-    #[serde(rename = "d")]
-    pub email_addr: String,
+    pub d: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -120,17 +114,17 @@ pub enum DbValueV1 {
     #[serde(rename = "BO")]
     Bool(bool),
     #[serde(rename = "SY")]
-    SynType(usize),
+    SyntaxType(usize),
     #[serde(rename = "IN")]
-    IdxType(usize),
+    IndexType(usize),
     #[serde(rename = "RF")]
-    Refer(Uuid),
+    Reference(Uuid),
     #[serde(rename = "JF")]
     JsonFilter(String),
     #[serde(rename = "CR")]
-    Cred(DbValueCredV1),
+    Credential(DbValueCredV1),
     #[serde(rename = "RU")]
-    RadiusCred(String),
+    SecretValue(String),
     #[serde(rename = "SK")]
     SshKey(DbValueTaggedStringV1),
     #[serde(rename = "SP")]

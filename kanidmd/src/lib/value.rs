@@ -1080,15 +1080,15 @@ impl Value {
                 pv: PartialValue::Bool(b),
                 data: None,
             }),
-            DbValueV1::SynType(us) => Ok(Value {
+            DbValueV1::SyntaxType(us) => Ok(Value {
                 pv: PartialValue::Syntax(SyntaxType::try_from(us)?),
                 data: None,
             }),
-            DbValueV1::IdxType(us) => Ok(Value {
+            DbValueV1::IndexType(us) => Ok(Value {
                 pv: PartialValue::Index(IndexType::try_from(us)?),
                 data: None,
             }),
-            DbValueV1::Refer(u) => Ok(Value {
+            DbValueV1::Reference(u) => Ok(Value {
                 pv: PartialValue::Refer(u),
                 data: None,
             }),
@@ -1099,14 +1099,14 @@ impl Value {
                 },
                 data: None,
             }),
-            DbValueV1::Cred(dvc) => {
+            DbValueV1::Credential(dvc) => {
                 // Deserialise the db cred here.
                 Ok(Value {
                     pv: PartialValue::Cred(dvc.tag.to_lowercase()),
                     data: Some(Box::new(DataValue::Cred(Credential::try_from(dvc.data)?))),
                 })
             }
-            DbValueV1::RadiusCred(d) => Ok(Value {
+            DbValueV1::SecretValue(d) => Ok(Value {
                 pv: PartialValue::RadiusCred,
                 data: Some(Box::new(DataValue::RadiusCred(d))),
             }),
@@ -1124,9 +1124,9 @@ impl Value {
             }),
             DbValueV1::Cid(dc) => Ok(Value {
                 pv: PartialValue::Cid(Cid {
-                    ts: dc.t,
-                    d_uuid: dc.d,
-                    s_uuid: dc.s,
+                    ts: dc.timestamp,
+                    d_uuid: dc.domain_id,
+                    s_uuid: dc.server_id,
                 }),
                 data: None,
             }),
@@ -1137,7 +1137,7 @@ impl Value {
             DbValueV1::DateTime(s) => PartialValue::new_datetime_s(&s)
                 .ok_or(())
                 .map(|pv| Value { pv, data: None }),
-            DbValueV1::EmailAddress(DbValueEmailAddressV1 { email_addr }) => Ok(Value {
+            DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: email_addr }) => Ok(Value {
                 pv: PartialValue::EmailAddress(email_addr),
                 data: None,
             }),
@@ -1154,9 +1154,9 @@ impl Value {
             PartialValue::Iname(s) => DbValueV1::Iname(s.clone()),
             PartialValue::Uuid(u) => DbValueV1::Uuid(*u),
             PartialValue::Bool(b) => DbValueV1::Bool(*b),
-            PartialValue::Syntax(syn) => DbValueV1::SynType(syn.to_usize()),
-            PartialValue::Index(it) => DbValueV1::IdxType(it.to_usize()),
-            PartialValue::Refer(u) => DbValueV1::Refer(*u),
+            PartialValue::Syntax(syn) => DbValueV1::SyntaxType(syn.to_usize()),
+            PartialValue::Index(it) => DbValueV1::IndexType(it.to_usize()),
+            PartialValue::Refer(u) => DbValueV1::Reference(*u),
             PartialValue::JsonFilt(s) => DbValueV1::JsonFilter(
                 serde_json::to_string(s)
                     .expect("A json filter value was corrupted during run-time"),
@@ -1172,7 +1172,7 @@ impl Value {
                 };
 
                 // Save the tag AND the dataValue here!
-                DbValueV1::Cred(DbValueCredV1 {
+                DbValueV1::Credential(DbValueCredV1 {
                     tag: tag.clone(),
                     data: c.to_db_valuev1(),
                 })
@@ -1185,7 +1185,7 @@ impl Value {
                     },
                     None => unreachable!(),
                 };
-                DbValueV1::RadiusCred(ru)
+                DbValueV1::SecretValue(ru)
             }
             PartialValue::SshKey(t) => {
                 let sk = match &self.data {
@@ -1203,18 +1203,18 @@ impl Value {
             PartialValue::Spn(n, r) => DbValueV1::Spn(n.clone(), r.clone()),
             PartialValue::Uint32(u) => DbValueV1::Uint32(*u),
             PartialValue::Cid(c) => DbValueV1::Cid(DbCidV1 {
-                d: c.d_uuid,
-                s: c.s_uuid,
-                t: c.ts,
+                domain_id: c.d_uuid,
+                server_id: c.s_uuid,
+                timestamp: c.ts,
             }),
             PartialValue::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 DbValueV1::DateTime(odt.format(time::Format::Rfc3339))
             }
-            PartialValue::EmailAddress(mail) => DbValueV1::EmailAddress(DbValueEmailAddressV1 {
-                email_addr: mail.clone(),
-            }),
+            PartialValue::EmailAddress(mail) => {
+                DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: mail.clone() })
+            }
         }
     }
 
