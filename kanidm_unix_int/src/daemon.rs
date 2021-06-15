@@ -121,9 +121,17 @@ impl TaskCodec {
 }
 
 fn rm_if_exist(p: &str) {
-    let _ = std::fs::remove_file(p).map_err(|e| {
-        warn!("attempting to remove {:?} -> {:?}", p, e);
-    });
+    if Path::new(p).exists() {
+        debug!("Removing requested file {:?}", p);
+        let _ = std::fs::remove_file(p).map_err(|e| {
+            error!(
+                "Failure while attempting to attempting to remove {:?} -> {:?}",
+                p, e
+            );
+        });
+    } else {
+        debug!("Path {:?} doesn't exist, not attempting to remove.", p);
+    }
 }
 
 async fn handle_task_client(
@@ -381,6 +389,15 @@ async fn main() {
             std::process::exit(1);
         }
     };
+    if !cfg_path.exists() {
+        // there's no point trying to start up if we can't read a usable config!
+        error!(
+            "Client config missing from {} - cannot start up. Quitting.",
+            cfg_path_str
+        );
+        std::process::exit(1);
+    }
+
     if cfg_path.exists() {
         let cfg_meta = match metadata(&cfg_path) {
             Ok(v) => v,
@@ -410,7 +427,14 @@ async fn main() {
             std::process::exit(1);
         }
     };
-    if unixd_path.exists() {
+    if !unixd_path.exists() {
+        // there's no point trying to start up if we can't read a usable config!
+        error!(
+            "unixd config missing from {} - cannot start up. Quitting.",
+            unixd_path_str
+        );
+        std::process::exit(1);
+    } else {
         let unixd_meta = match metadata(&unixd_path) {
             Ok(v) => v,
             Err(e) => {
@@ -447,6 +471,7 @@ async fn main() {
         }
     };
 
+    debug!("🧹 Cleaning up sockets from previous invocations");
     rm_if_exist(cfg.sock_path.as_str());
     rm_if_exist(cfg.task_sock_path.as_str());
 
@@ -463,8 +488,7 @@ async fn main() {
     // Check the pb path will be okay.
     if cfg.db_path != "" {
         let db_path = PathBuf::from(cfg.db_path.as_str());
-        // We only need to check the parent folder path permissions as the db itself may not
-        // exist yet.
+        // We only need to check the parent folder path permissions as the db itself may not exist yet.
         if let Some(db_parent_path) = db_path.parent() {
             if !db_parent_path.exists() {
                 error!(
@@ -513,6 +537,30 @@ async fn main() {
                 );
             }
         }
+
+        // check to see if the db's already there
+        if db_path.exists() {
+            if !db_path.is_file() {
+                error!(
+                    "Refusing to run - DB path {} already exists and is not a file.",
+                    db_path.to_str().unwrap_or_else(|| "<db_path invalid>")
+                );
+                std::process::exit(1);
+            };
+
+            match metadata(&db_path) {
+                Ok(v) => v,
+                Err(e) => {
+                    error!(
+                        "Unable to read metadata for {} - {:?}",
+                        db_path.to_str().unwrap_or_else(|| "<db_path invalid>"),
+                        e
+                    );
+                    std::process::exit(1);
+                }
+            };
+            // TODO: permissions dance to enumerate the user's ability to write to the file? ref #456 - r2d2 will happily keep trying to do things without bailing.
+        };
     }
 
     let cl_inner = match CacheLayer::new(
