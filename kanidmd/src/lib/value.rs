@@ -1056,11 +1056,11 @@ impl Value {
     // Keep this updated with DbValueV1 in be::dbvalue.
     pub(crate) fn from_db_valuev1(v: DbValueV1) -> Result<Self, ()> {
         match v {
-            DbValueV1::U8(s) => Ok(Value {
+            DbValueV1::Utf8(s) => Ok(Value {
                 pv: PartialValue::Utf8(s),
                 data: None,
             }),
-            DbValueV1::I8(s) => {
+            DbValueV1::Iutf8(s) => {
                 Ok(Value {
                     // TODO: Should we be lowercasing here? The dbv should be normalised
                     // already, but is there a risk of corruption/tampering if we don't touch this?
@@ -1068,77 +1068,77 @@ impl Value {
                     data: None,
                 })
             }
-            DbValueV1::N8(s) => Ok(Value {
+            DbValueV1::Iname(s) => Ok(Value {
                 pv: PartialValue::Iname(s.to_lowercase()),
                 data: None,
             }),
-            DbValueV1::UU(u) => Ok(Value {
+            DbValueV1::Uuid(u) => Ok(Value {
                 pv: PartialValue::Uuid(u),
                 data: None,
             }),
-            DbValueV1::BO(b) => Ok(Value {
+            DbValueV1::Bool(b) => Ok(Value {
                 pv: PartialValue::Bool(b),
                 data: None,
             }),
-            DbValueV1::SY(us) => Ok(Value {
+            DbValueV1::SyntaxType(us) => Ok(Value {
                 pv: PartialValue::Syntax(SyntaxType::try_from(us)?),
                 data: None,
             }),
-            DbValueV1::IN(us) => Ok(Value {
+            DbValueV1::IndexType(us) => Ok(Value {
                 pv: PartialValue::Index(IndexType::try_from(us)?),
                 data: None,
             }),
-            DbValueV1::RF(u) => Ok(Value {
+            DbValueV1::Reference(u) => Ok(Value {
                 pv: PartialValue::Refer(u),
                 data: None,
             }),
-            DbValueV1::JF(s) => Ok(Value {
+            DbValueV1::JsonFilter(s) => Ok(Value {
                 pv: match PartialValue::new_json_filter(s.as_str()) {
                     Some(pv) => pv,
                     None => return Err(()),
                 },
                 data: None,
             }),
-            DbValueV1::CR(dvc) => {
+            DbValueV1::Credential(dvc) => {
                 // Deserialise the db cred here.
                 Ok(Value {
-                    pv: PartialValue::Cred(dvc.t.to_lowercase()),
-                    data: Some(Box::new(DataValue::Cred(Credential::try_from(dvc.d)?))),
+                    pv: PartialValue::Cred(dvc.tag.to_lowercase()),
+                    data: Some(Box::new(DataValue::Cred(Credential::try_from(dvc.data)?))),
                 })
             }
-            DbValueV1::RU(d) => Ok(Value {
+            DbValueV1::SecretValue(d) => Ok(Value {
                 pv: PartialValue::RadiusCred,
                 data: Some(Box::new(DataValue::RadiusCred(d))),
             }),
-            DbValueV1::SK(ts) => Ok(Value {
-                pv: PartialValue::SshKey(ts.t),
-                data: Some(Box::new(DataValue::SshKey(ts.d))),
+            DbValueV1::SshKey(ts) => Ok(Value {
+                pv: PartialValue::SshKey(ts.tag),
+                data: Some(Box::new(DataValue::SshKey(ts.data))),
             }),
-            DbValueV1::SP(n, r) => Ok(Value {
+            DbValueV1::Spn(n, r) => Ok(Value {
                 pv: PartialValue::Spn(n, r),
                 data: None,
             }),
-            DbValueV1::UI(u) => Ok(Value {
+            DbValueV1::Uint32(u) => Ok(Value {
                 pv: PartialValue::Uint32(u),
                 data: None,
             }),
-            DbValueV1::CI(dc) => Ok(Value {
+            DbValueV1::Cid(dc) => Ok(Value {
                 pv: PartialValue::Cid(Cid {
-                    ts: dc.t,
-                    d_uuid: dc.d,
-                    s_uuid: dc.s,
+                    ts: dc.timestamp,
+                    d_uuid: dc.domain_id,
+                    s_uuid: dc.server_id,
                 }),
                 data: None,
             }),
-            DbValueV1::NU(s) => Ok(Value {
+            DbValueV1::NsUniqueId(s) => Ok(Value {
                 pv: PartialValue::Nsuniqueid(s),
                 data: None,
             }),
-            DbValueV1::DT(s) => PartialValue::new_datetime_s(&s)
+            DbValueV1::DateTime(s) => PartialValue::new_datetime_s(&s)
                 .ok_or(())
                 .map(|pv| Value { pv, data: None }),
-            DbValueV1::EM(DbValueEmailAddressV1 { d }) => Ok(Value {
-                pv: PartialValue::EmailAddress(d),
+            DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: email_addr }) => Ok(Value {
+                pv: PartialValue::EmailAddress(email_addr),
                 data: None,
             }),
         }
@@ -1149,15 +1149,15 @@ impl Value {
     pub(crate) fn to_db_valuev1(&self) -> DbValueV1 {
         // This has to clone due to how the backend works.
         match &self.pv {
-            PartialValue::Utf8(s) => DbValueV1::U8(s.clone()),
-            PartialValue::Iutf8(s) => DbValueV1::I8(s.clone()),
-            PartialValue::Iname(s) => DbValueV1::N8(s.clone()),
-            PartialValue::Uuid(u) => DbValueV1::UU(*u),
-            PartialValue::Bool(b) => DbValueV1::BO(*b),
-            PartialValue::Syntax(syn) => DbValueV1::SY(syn.to_usize()),
-            PartialValue::Index(it) => DbValueV1::IN(it.to_usize()),
-            PartialValue::Refer(u) => DbValueV1::RF(*u),
-            PartialValue::JsonFilt(s) => DbValueV1::JF(
+            PartialValue::Utf8(s) => DbValueV1::Utf8(s.clone()),
+            PartialValue::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
+            PartialValue::Iname(s) => DbValueV1::Iname(s.clone()),
+            PartialValue::Uuid(u) => DbValueV1::Uuid(*u),
+            PartialValue::Bool(b) => DbValueV1::Bool(*b),
+            PartialValue::Syntax(syn) => DbValueV1::SyntaxType(syn.to_usize()),
+            PartialValue::Index(it) => DbValueV1::IndexType(it.to_usize()),
+            PartialValue::Refer(u) => DbValueV1::Reference(*u),
+            PartialValue::JsonFilt(s) => DbValueV1::JsonFilter(
                 serde_json::to_string(s)
                     .expect("A json filter value was corrupted during run-time"),
             ),
@@ -1172,9 +1172,9 @@ impl Value {
                 };
 
                 // Save the tag AND the dataValue here!
-                DbValueV1::CR(DbValueCredV1 {
-                    t: tag.clone(),
-                    d: c.to_db_valuev1(),
+                DbValueV1::Credential(DbValueCredV1 {
+                    tag: tag.clone(),
+                    data: c.to_db_valuev1(),
                 })
             }
             PartialValue::RadiusCred => {
@@ -1185,7 +1185,7 @@ impl Value {
                     },
                     None => unreachable!(),
                 };
-                DbValueV1::RU(ru)
+                DbValueV1::SecretValue(ru)
             }
             PartialValue::SshKey(t) => {
                 let sk = match &self.data {
@@ -1195,25 +1195,25 @@ impl Value {
                     },
                     None => unreachable!(),
                 };
-                DbValueV1::SK(DbValueTaggedStringV1 {
-                    t: t.clone(),
-                    d: sk,
+                DbValueV1::SshKey(DbValueTaggedStringV1 {
+                    tag: t.clone(),
+                    data: sk,
                 })
             }
-            PartialValue::Spn(n, r) => DbValueV1::SP(n.clone(), r.clone()),
-            PartialValue::Uint32(u) => DbValueV1::UI(*u),
-            PartialValue::Cid(c) => DbValueV1::CI(DbCidV1 {
-                d: c.d_uuid,
-                s: c.s_uuid,
-                t: c.ts,
+            PartialValue::Spn(n, r) => DbValueV1::Spn(n.clone(), r.clone()),
+            PartialValue::Uint32(u) => DbValueV1::Uint32(*u),
+            PartialValue::Cid(c) => DbValueV1::Cid(DbCidV1 {
+                domain_id: c.d_uuid,
+                server_id: c.s_uuid,
+                timestamp: c.ts,
             }),
-            PartialValue::Nsuniqueid(s) => DbValueV1::NU(s.clone()),
+            PartialValue::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
             PartialValue::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                DbValueV1::DT(odt.format(time::Format::Rfc3339))
+                DbValueV1::DateTime(odt.format(time::Format::Rfc3339))
             }
             PartialValue::EmailAddress(mail) => {
-                DbValueV1::EM(DbValueEmailAddressV1 { d: mail.clone() })
+                DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: mail.clone() })
             }
         }
     }
