@@ -55,12 +55,11 @@ cd kanidm
 git remote add myfork git@github.com:<YOUR USERNAME>/kanidm.git
 ```
 
-Select and issue (and always feel free to reach out to us for advice!), and create a branch to
-start working:
+Select an issue (always feel free to reach out to us for advice!), and create a branch to start working:
 
 ```
 git branch <feature-branch-name>
-git checkout <feature-branche-name>
+git checkout <feature-branch-name>
 cargo test
 ```
 
@@ -73,7 +72,7 @@ git push <myfork/origin> <feature-branch-name>
 ```
 
 If you get advice or make changes, just keep commiting to the branch, and pushing to your branch.
-When we are happy with the code, we'll merge in github, meaning you can now cleanup your branch.
+When we are happy with the code, we'll merge in github, meaning you can now clean up your branch.
 
 ```
 git checkout master
@@ -88,12 +87,11 @@ If you are asked to rebase your change, follow these steps:
 ```
 git checkout master
 git pull
-git checkout <feature-branche-name>
+git checkout <feature-branch-name>
 git rebase master
 ```
 
-Then be sure to fix any merge issues or other comments as they arise. If you have issues, you can
-always stop and reset with:
+Then be sure to fix any merge issues or other comments as they arise. If you have issues, you can always stop and reset with:
 
 ```
 git rebase --abort
@@ -129,12 +127,14 @@ In a new terminal, you can now build and run the client tools with:
 
 ### Building the Web UI
 
-The web ui uses rust wasm rather than javascript. To build this you need to setup the environment.
+__NOTE:__ There is a pre-packaged version of the Web UI at `/kanidmd_web_ui/pkg/`, which can be used directly. This means you don't need to build the Web UI yourself
+
+The web UI uses rust wasm rather than javascript. To build this you need to set up the environment.
 
     cargo install wasm-pack
     npm install --global rollup
 
-Then you are able to build the ui.
+Then you are able to build the UI.
 
     cd kanidmd_web_ui/
     ./build_wasm.sh

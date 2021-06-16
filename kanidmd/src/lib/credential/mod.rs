@@ -302,12 +302,12 @@ impl TryFrom<DbCredV1> for Credential {
                 dbw.into_iter()
                     .map(|wc| {
                         (
-                            wc.l,
+                            wc.label,
                             WebauthnCredential {
-                                cred_id: wc.i,
-                                cred: wc.c,
-                                counter: wc.t,
-                                verified: wc.v,
+                                cred_id: wc.id,
+                                cred: wc.cred,
+                                counter: wc.counter,
+                                verified: wc.verified,
                             },
                         )
                     })
@@ -583,11 +583,11 @@ impl Credential {
                 webauthn: Some(
                     map.iter()
                         .map(|(k, v)| DbWebauthnV1 {
-                            l: k.clone(),
-                            i: v.cred_id.clone(),
-                            c: v.cred.clone(),
-                            t: v.counter,
-                            v: v.verified,
+                            label: k.clone(),
+                            id: v.cred_id.clone(),
+                            cred: v.cred.clone(),
+                            counter: v.counter,
+                            verified: v.verified,
                         })
                         .collect(),
                 ),
@@ -601,11 +601,11 @@ impl Credential {
                 webauthn: Some(
                     map.iter()
                         .map(|(k, v)| DbWebauthnV1 {
-                            l: k.clone(),
-                            i: v.cred_id.clone(),
-                            c: v.cred.clone(),
-                            t: v.counter,
-                            v: v.verified,
+                            label: k.clone(),
+                            id: v.cred_id.clone(),
+                            cred: v.cred.clone(),
+                            counter: v.counter,
+                            verified: v.verified,
                         })
                         .collect(),
                 ),

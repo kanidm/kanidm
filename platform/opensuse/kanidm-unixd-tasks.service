@@ -1,0 +1,34 @@
+# Source: https://build.opensuse.org/package/view_file/home:firstyear:kanidm/kanidm/kanidm-unixd-tasks.service
+# You should not need to edit this file. Instead, use a drop-in file:
+#   systemctl edit kanidm-unixd-tasks.service
+
+
+[Unit]
+Description=Kanidm Local Tasks
+After=chronyd.service ntpd.service network-online.target kanidm-unixd.service
+
+[Service]
+User=root
+Type=simple
+ExecStart=/usr/sbin/kanidm_unixd_tasks
+
+CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
+# SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
+ProtectSystem=strict
+ReadWritePaths=/home /var/run/kanidm-unixd
+RestrictAddressFamilies=AF_UNIX
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+PrivateNetwork=true
+ProtectHostname=true
+ProtectClock=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+MemoryDenyWriteExecute=true
+
+[Install]
+WantedBy=multi-user.target
+

@@ -4,9 +4,12 @@ use webauthn_rs::proto::COSEKey;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
-    pub d: Uuid,
-    pub s: Uuid,
-    pub t: Duration,
+    #[serde(rename = "d")]
+    pub domain_id: Uuid,
+    #[serde(rename = "s")]
+    pub server_id: Uuid,
+    #[serde(rename = "t")]
+    pub timestamp: Duration,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -24,19 +27,28 @@ pub enum DbTotpAlgoV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbTotpV1 {
-    pub l: String,
-    pub k: Vec<u8>,
-    pub s: u64,
-    pub a: DbTotpAlgoV1,
+    #[serde(rename = "l")]
+    pub label: String,
+    #[serde(rename = "k")]
+    pub key: Vec<u8>,
+    #[serde(rename = "s")]
+    pub step: u64,
+    #[serde(rename = "a")]
+    pub algo: DbTotpAlgoV1,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbWebauthnV1 {
-    pub l: String,
-    pub i: Vec<u8>,
-    pub c: COSEKey,
-    pub t: u32,
-    pub v: bool,
+    #[serde(rename = "l")]
+    pub label: String,
+    #[serde(rename = "i")]
+    pub id: Vec<u8>,
+    #[serde(rename = "c")]
+    pub cred: COSEKey,
+    #[serde(rename = "t")]
+    pub counter: u32,
+    #[serde(rename = "v")]
+    pub verified: bool,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -70,14 +82,18 @@ pub struct DbCredV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueCredV1 {
-    pub t: String,
-    pub d: DbCredV1,
+    #[serde(rename = "t")]
+    pub tag: String,
+    #[serde(rename = "d")]
+    pub data: DbCredV1,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueTaggedStringV1 {
-    pub t: String,
-    pub d: String,
+    #[serde(rename = "t")]
+    pub tag: String,
+    #[serde(rename = "d")]
+    pub data: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -87,24 +103,42 @@ pub struct DbValueEmailAddressV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
-    U8(String),
-    I8(String),
-    N8(String),
-    UU(Uuid),
-    BO(bool),
-    SY(usize),
-    IN(usize),
-    RF(Uuid),
-    JF(String),
-    CR(DbValueCredV1),
-    RU(String),
-    SK(DbValueTaggedStringV1),
-    SP(String, String),
-    UI(u32),
-    CI(DbCidV1),
-    NU(String),
-    DT(String),
-    EM(DbValueEmailAddressV1),
+    #[serde(rename = "U8")]
+    Utf8(String),
+    #[serde(rename = "I8")]
+    Iutf8(String),
+    #[serde(rename = "N8")]
+    Iname(String),
+    #[serde(rename = "UU")]
+    Uuid(Uuid),
+    #[serde(rename = "BO")]
+    Bool(bool),
+    #[serde(rename = "SY")]
+    SyntaxType(usize),
+    #[serde(rename = "IN")]
+    IndexType(usize),
+    #[serde(rename = "RF")]
+    Reference(Uuid),
+    #[serde(rename = "JF")]
+    JsonFilter(String),
+    #[serde(rename = "CR")]
+    Credential(DbValueCredV1),
+    #[serde(rename = "RU")]
+    SecretValue(String),
+    #[serde(rename = "SK")]
+    SshKey(DbValueTaggedStringV1),
+    #[serde(rename = "SP")]
+    Spn(String, String),
+    #[serde(rename = "UI")]
+    Uint32(u32),
+    #[serde(rename = "CI")]
+    Cid(DbCidV1),
+    #[serde(rename = "NU")]
+    NsUniqueId(String),
+    #[serde(rename = "DT")]
+    DateTime(String),
+    #[serde(rename = "EM")]
+    EmailAddress(DbValueEmailAddressV1),
 }
 
 #[cfg(test)]
