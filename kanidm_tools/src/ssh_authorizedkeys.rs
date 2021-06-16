@@ -31,54 +31,45 @@ fn main() {
 
     let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
     debug!("Attempting to use config {}", "/etc/kanidm/config");
-    let client_builder = match KanidmClientBuilder::new()
+    let client_builder = KanidmClientBuilder::new()
         .read_options_from_optional_config("/etc/kanidm/config")
         .and_then(|cb| {
             debug!("Attempting to use config {}", config_path);
             cb.read_options_from_optional_config(config_path)
-        }) {
-        Ok(c) => c,
-        Err(e) => {
+        })
+        .unwrap_or_else(|e| {
             error!("Failed to parse config (if present) -- {:?}", e);
             std::process::exit(1);
-        }
-    };
+        });
 
     let client_builder = match &opt.addr {
         Some(a) => client_builder.address(a.to_string()),
         None => client_builder,
     };
 
-    let ca_path: Option<&str> = opt.ca_path.as_ref().map(|p| p.to_str()).flatten();
+    let ca_path = opt.ca_path.as_ref().map(|p| p.to_str()).flatten();
     let client_builder = match ca_path {
-        Some(p) => match client_builder.add_root_certificate_filepath(p) {
-            Ok(cb) => cb,
-            Err(e) => {
+        Some(p) => client_builder
+            .add_root_certificate_filepath(p)
+            .unwrap_or_else(|e| {
                 error!("Failed to add ca certificate -- {:?}", e);
                 std::process::exit(1);
-            }
-        },
+            }),
         None => client_builder,
     };
 
-    let client = match client_builder.build() {
-        Ok(c) => c,
-        Err(e) => {
-            error!("Failed to build client instance -- {:?}", e);
-            std::process::exit(1);
-        }
-    };
+    let client = client_builder.build().unwrap_or_else(|e| {
+        error!("Failed to build client instance -- {:?}", e);
+        std::process::exit(1);
+    });
 
     let r = if opt.username == "anonymous" {
         client.auth_anonymous()
     } else {
-        let password = match rpassword::prompt_password_stderr("Enter password: ") {
-            Ok(pw) => pw,
-            Err(e) => {
-                error!("Failed to retrieve password - {:?}", e);
-                std::process::exit(1);
-            }
-        };
+        let password = rpassword::prompt_password_stderr("Enter password: ").unwrap_or_else(|e| {
+            error!("Failed to retrieve password - {:?}", e);
+            std::process::exit(1);
+        });
         client.auth_simple_password(opt.username.as_str(), password.as_str())
     };
 

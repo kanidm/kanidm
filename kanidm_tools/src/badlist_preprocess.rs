@@ -70,14 +70,11 @@ fn main() {
             }
         };
         let mut contents = String::new();
-        match file.read_to_string(&mut contents) {
-            Ok(_) => {}
-            Err(e) => {
-                error!("{:?} -> {:?}", f, e);
-                continue;
-            }
+        if let Err(e) = file.read_to_string(&mut contents) {
+            error!("{:?} -> {:?}", f, e);
+            continue;
         }
-        let mut inner_pw: Vec<_> = contents.as_str().lines().map(|s| s.to_string()).collect();
+        let mut inner_pw: Vec<_> = contents.as_str().lines().map(str::to_string).collect();
         pwset.append(&mut inner_pw);
     }
 

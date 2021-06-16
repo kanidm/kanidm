@@ -25,9 +25,7 @@ impl GroupOpt {
                 let client = copt.to_client();
                 match client.idm_group_list() {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
-                    Err(e) => {
-                        eprintln!("Error -> {:?}", e);
-                    }
+                    Err(e) => eprintln!("Error -> {:?}", e),
                 }
             }
             GroupOpt::Get(gcopt) => {
@@ -62,14 +60,12 @@ impl GroupOpt {
                 match client.idm_group_get_members(gcopt.name.as_str()) {
                     Ok(Some(groups)) => groups.iter().for_each(|m| println!("{:?}", m)),
                     Ok(None) => {}
-                    Err(e) => {
-                        eprintln!("Error -> {:?}", e);
-                    }
+                    Err(e) => eprintln!("Error -> {:?}", e),
                 }
             }
             GroupOpt::AddMembers(gcopt) => {
                 let client = gcopt.copt.to_client();
-                let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+                let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
                 if let Err(e) = client.idm_group_add_members(gcopt.name.as_str(), &new_members) {
                     eprintln!("Error -> {:?}", e);
@@ -78,7 +74,7 @@ impl GroupOpt {
 
             GroupOpt::RemoveMembers(gcopt) => {
                 let client = gcopt.copt.to_client();
-                let remove_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+                let remove_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
                 if let Err(e) =
                     client.idm_group_remove_members(gcopt.name.as_str(), &remove_members)
@@ -89,7 +85,7 @@ impl GroupOpt {
 
             GroupOpt::SetMembers(gcopt) => {
                 let client = gcopt.copt.to_client();
-                let new_members: Vec<&str> = gcopt.members.iter().map(|s| s.as_str()).collect();
+                let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
                 if let Err(e) = client.idm_group_set_members(gcopt.name.as_str(), &new_members) {
                     eprintln!("Error -> {:?}", e);

@@ -101,16 +101,10 @@ impl KanidmClientOpt {
 
 pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     for _ in 0..3 {
-        let password = match rpassword::prompt_password_stderr(prompt) {
-            Ok(p) => p,
-            Err(_e) => return None,
-        };
+        let password = rpassword::prompt_password_stderr(prompt).ok()?;
 
         let password_confirm =
-            match rpassword::prompt_password_stderr("Retype the new password to confirm: ") {
-                Ok(p) => p,
-                Err(_e) => return None,
-            };
+            rpassword::prompt_password_stderr("Retype the new password to confirm: ").ok()?;
 
         if password == password_confirm {
             return Some(password);
