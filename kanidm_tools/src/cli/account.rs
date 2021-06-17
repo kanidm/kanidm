@@ -423,14 +423,13 @@ impl AccountOpt {
                 }
                 AccountValidity::ExpireAt(ano) => {
                     let client = ano.copt.to_client();
-                    if ano.datetime == "never" || ano.datetime == "clear" {
+                    if matches!(ano.datetime.as_str(), "never" | "clear") {
                         // Unset the value
-                        if let Err(e) = client
+                        match client
                             .idm_account_purge_attr(ano.aopts.account_id.as_str(), "account_expire")
                         {
-                            eprintln!("Error -> {:?}", e)
-                        } else {
-                            println!("Success")
+                            Err(e) => eprintln!("Error -> {:?}", e),
+                            _ => println!("Success"),
                         }
                     } else {
                         if let Err(e) =
@@ -440,31 +439,26 @@ impl AccountOpt {
                             return;
                         }
 
-                        if let Err(e) = client.idm_account_set_attr(
+                        match client.idm_account_set_attr(
                             ano.aopts.account_id.as_str(),
                             "account_expire",
                             &[ano.datetime.as_str()],
                         ) {
-                            eprintln!("Error -> {:?}", e);
-                        } else {
-                            println!("Success")
+                            Err(e) => eprintln!("Error -> {:?}", e),
+                            _ => println!("Success"),
                         }
                     }
                 }
                 AccountValidity::BeginFrom(ano) => {
                     let client = ano.copt.to_client();
-                    if ano.datetime == "any"
-                        || ano.datetime == "clear"
-                        || ano.datetime == "whenever"
-                    {
+                    if matches!(ano.datetime.as_str(), "any" | "clear" | "whenever") {
                         // Unset the value
-                        if let Err(e) = client.idm_account_purge_attr(
+                        match client.idm_account_purge_attr(
                             ano.aopts.account_id.as_str(),
                             "account_valid_from",
                         ) {
-                            eprintln!("Error -> {:?}", e)
-                        } else {
-                            println!("Success")
+                            Err(e) => eprintln!("Error -> {:?}", e),
+                            _ => println!("Success"),
                         }
                     } else {
                         // Attempt to parse and set
@@ -475,14 +469,13 @@ impl AccountOpt {
                             return;
                         }
 
-                        if let Err(e) = client.idm_account_set_attr(
+                        match client.idm_account_set_attr(
                             ano.aopts.account_id.as_str(),
                             "account_valid_from",
                             &[ano.datetime.as_str()],
                         ) {
-                            eprintln!("Error -> {:?}", e);
-                        } else {
-                            println!("Success")
+                            Err(e) => eprintln!("Error -> {:?}", e),
+                            _ => println!("Success"),
                         }
                     }
                 }

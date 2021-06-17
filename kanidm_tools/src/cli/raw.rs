@@ -13,8 +13,7 @@ fn read_file<T: DeserializeOwned, P: AsRef<Path>>(path: P) -> Result<T, Box<dyn 
     let f = File::open(path)?;
     let r = BufReader::new(f);
 
-    let t: T = serde_json::from_reader(r)?;
-    Ok(t)
+    Ok(serde_json::from_reader(r)?)
 }
 
 impl RawOpt {
@@ -42,9 +41,7 @@ impl RawOpt {
 
                 match client.search(filter) {
                     Ok(rset) => rset.iter().for_each(|e| println!("{}", e)),
-                    Err(e) => {
-                        eprintln!("Error -> {:?}", e);
-                    }
+                    Err(e) => eprintln!("Error -> {:?}", e),
                 }
             }
             RawOpt::Create(copt) => {

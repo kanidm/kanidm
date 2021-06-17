@@ -115,7 +115,7 @@ fn get_index_choice(len: usize) -> Result<u8, ClientError> {
         match u8::from_str_radix(response, 10) {
             Ok(i) => {
                 if (i as usize) < len {
-                    break Ok(i);
+                    return Ok(i);
                 } else {
                     eprintln!("Choice must be less than {}", len);
                 }
@@ -131,13 +131,10 @@ impl LoginOpt {
     }
 
     fn do_password(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
-        let password = match rpassword::prompt_password_stderr("Enter password: ") {
-            Ok(p) => p,
-            Err(e) => {
-                error!("Failed to create password prompt -- {:?}", e);
-                std::process::exit(1);
-            }
-        };
+        let password = rpassword::prompt_password_stderr("Enter password: ").unwrap_or_else(|e| {
+            error!("Failed to create password prompt -- {:?}", e);
+            std::process::exit(1);
+        });
         client.auth_step_password(password.as_str())
     }
 
@@ -166,13 +163,12 @@ impl LoginOpt {
     ) -> Result<AuthResponse, ClientError> {
         let mut wa = WebauthnAuthenticator::new(U2FHid::new());
         println!("Your authenticator will now flash for you to interact with it.");
-        let auth = match wa.do_authentication(client.get_origin(), pkr) {
-            Ok(a) => a,
-            Err(e) => {
+        let auth = wa
+            .do_authentication(client.get_origin(), pkr)
+            .unwrap_or_else(|e| {
                 error!("Failed to interact with webauthn device. -- {:?}", e);
                 std::process::exit(1);
-            }
-        };
+            });
 
         client.auth_step_webauthn_complete(auth)
     }
@@ -183,13 +179,14 @@ impl LoginOpt {
         let username = self.copt.username.as_deref().unwrap_or("anonymous");
 
         // What auth mechanisms exist?
-        let mechs: Vec<_> = match client.auth_step_init(username) {
-            Ok(s) => s.into_iter().collect(),
-            Err(e) => {
+        let mechs: Vec<_> = client
+            .auth_step_init(username)
+            .unwrap_or_else(|e| {
                 error!("Error during authentication init phase: {:?}", e);
                 std::process::exit(1);
-            }
-        };
+            })
+            .into_iter()
+            .collect();
 
         let mech = match mechs.len() {
             0 => {
@@ -208,13 +205,10 @@ impl LoginOpt {
                 for (i, val) in mechs.iter().enumerate() {
                     println!("{}: {}", i, val)
                 }
-                let mech_idx = match get_index_choice(len) {
-                    Ok(v) => v,
-                    Err(e) => {
-                        error!("Error getting index choice -> {:?}", e);
-                        std::process::exit(1);
-                    }
-                };
+                let mech_idx = get_index_choice(len).unwrap_or_else(|e| {
+                    error!("Error getting index choice -> {:?}", e);
+                    std::process::exit(1);
+                });
                 #[allow(clippy::expect_used)]
                 mechs
                     .get(mech_idx as usize)
@@ -222,13 +216,10 @@ impl LoginOpt {
             }
         };
 
-        let mut allowed = match client.auth_step_begin((*mech).clone()) {
-            Ok(s) => s,
-            Err(e) => {
-                error!("Error during authentication begin phase: {:?}", e);
-                std::process::exit(1);
-            }
-        };
+        let mut allowed = client.auth_step_begin((*mech).clone()).unwrap_or_else(|e| {
+            error!("Error during authentication begin phase: {:?}", e);
+            std::process::exit(1);
+        });
 
         // We now have the first auth state, so we can proceed until complete.
         loop {
@@ -253,13 +244,10 @@ impl LoginOpt {
                     for (i, val) in allowed.iter().enumerate() {
                         println!("{}: {}", i, val)
                     }
-                    let idx = match get_index_choice(len) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error getting index choice -> {:?}", e);
-                            std::process::exit(1);
-                        }
-                    };
+                    let idx = get_index_choice(len).unwrap_or_else(|e| {
+                        error!("Error getting index choice -> {:?}", e);
+                        std::process::exit(1);
+                    });
                     #[allow(clippy::expect_used)]
                     allowed
                         .get(idx as usize)
@@ -275,13 +263,12 @@ impl LoginOpt {
             };
 
             // Now update state.
-            let state = match res {
-                Ok(s) => s.state,
-                Err(e) => {
+            let state = res
+                .unwrap_or_else(|e| {
                     error!("Error in authentication phase: {:?}", e);
                     std::process::exit(1);
-                }
-            };
+                })
+                .state;
 
             // What auth state are we in?
             allowed = match &state {
@@ -300,13 +287,10 @@ impl LoginOpt {
         }
 
         // Read the current tokens
-        let mut tokens = match read_tokens() {
-            Ok(t) => t,
-            Err(_e) => {
-                error!("Error retrieving authentication token store");
-                std::process::exit(1);
-            }
-        };
+        let mut tokens = read_tokens().unwrap_or_else(|_| {
+            error!("Error retrieving authentication token store");
+            std::process::exit(1);
+        });
         // Add our new one
         match client.get_token() {
             Some(t) => tokens.insert(username.to_string(), t),
@@ -317,7 +301,7 @@ impl LoginOpt {
         };
 
         // write them out.
-        if let Err(_e) = write_tokens(&tokens) {
+        if let Err(_) = write_tokens(&tokens) {
             error!("Error persisting authentication token store");
             std::process::exit(1);
         };
@@ -337,13 +321,10 @@ impl LogoutOpt {
 
         // For now we just remove this from the token store.
         // Read the current tokens
-        let mut tokens = match read_tokens() {
-            Ok(t) => t,
-            Err(_e) => {
-                error!("Error retrieving authentication token store");
-                std::process::exit(1);
-            }
-        };
+        let mut tokens = read_tokens().unwrap_or_else(|_| {
+            error!("Error retrieving authentication token store");
+            std::process::exit(1);
+        });
 
         // Remove our old one
         if tokens.remove(username).is_some() {
@@ -362,21 +343,16 @@ impl LogoutOpt {
 impl SessionOpt {
     pub fn debug(&self) -> bool {
         match self {
-            SessionOpt::List(dopt) => dopt.debug,
-            SessionOpt::Cleanup(dopt) => dopt.debug,
+            SessionOpt::List(dopt) | SessionOpt::Cleanup(dopt) => dopt.debug,
         }
     }
 
     fn read_valid_tokens() -> BTreeMap<String, (String, UserAuthToken)> {
-        let tokens = match read_tokens() {
-            Ok(t) => t,
-            Err(_e) => {
+        read_tokens()
+            .unwrap_or_else(|_| {
                 error!("Error retrieving authentication token store");
                 std::process::exit(1);
-            }
-        };
-
-        tokens
+            })
             .into_iter()
             .filter_map(|(u, t)| {
                 unsafe { bundy::Data::parse_without_verification::<UserAuthToken>(&t) }
@@ -390,10 +366,10 @@ impl SessionOpt {
         match self {
             SessionOpt::List(_) => {
                 let tokens = Self::read_valid_tokens();
-                tokens.values().for_each(|(_, uat)| {
+                for (_, uat) in tokens.values() {
                     println!("---");
                     println!("{}", uat);
-                })
+                }
             }
             SessionOpt::Cleanup(_) => {
                 let tokens = Self::read_valid_tokens();

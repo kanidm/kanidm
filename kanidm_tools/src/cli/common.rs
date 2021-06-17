@@ -7,19 +7,14 @@ impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
 
-        let client_builder = match KanidmClientBuilder::new()
+        let client_builder = KanidmClientBuilder::new()
             .read_options_from_optional_config("/etc/kanidm/config")
             .and_then(|cb| cb.read_options_from_optional_config(&config_path))
-        {
-            Ok(c) => {
-                debug!("Successfully read configuration from {}", &config_path);
-                c
-            }
-            Err(e) => {
+            .unwrap_or_else(|e| {
                 error!("Failed to parse config (if present) -- {:?}", e);
                 std::process::exit(1);
-            }
-        };
+            });
+        debug!("Successfully read configuration from {}", &config_path);
 
         let client_builder = match &self.addr {
             Some(a) => client_builder.address(a.to_string()),
@@ -28,23 +23,19 @@ impl CommonOpt {
 
         let ca_path: Option<&str> = self.ca_path.as_ref().map(|p| p.to_str()).flatten();
         let client_builder = match ca_path {
-            Some(p) => match client_builder.add_root_certificate_filepath(p) {
-                Ok(cb) => cb,
-                Err(e) => {
+            Some(p) => client_builder
+                .add_root_certificate_filepath(p)
+                .unwrap_or_else(|e| {
                     error!("Failed to add ca certificate -- {:?}", e);
                     std::process::exit(1);
-                }
-            },
+                }),
             None => client_builder,
         };
 
-        match client_builder.build() {
-            Ok(c) => c,
-            Err(e) => {
-                error!("Failed to build client instance -- {:?}", e);
-                std::process::exit(1);
-            }
-        }
+        client_builder.build().unwrap_or_else(|e| {
+            error!("Failed to build client instance -- {:?}", e);
+            std::process::exit(1);
+        })
     }
 
     pub fn to_client(&self) -> KanidmClient {
