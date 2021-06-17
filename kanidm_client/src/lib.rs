@@ -455,17 +455,17 @@ impl KanidmClient {
     }
 
     // create
-    pub fn create(&self, entries: Vec<Entry>) -> Result<bool, ClientError> {
+    pub fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.create(entries))
     }
 
     // modify
-    pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<bool, ClientError> {
+    pub fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.modify(filter, modlist))
     }
 
     // delete
-    pub fn delete(&self, filter: Filter) -> Result<bool, ClientError> {
+    pub fn delete(&self, filter: Filter) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.delete(filter))
     }
 
@@ -484,11 +484,11 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_group_get_members(id))
     }
 
-    pub fn idm_group_set_members(&self, id: &str, members: &[&str]) -> Result<bool, ClientError> {
+    pub fn idm_group_set_members(&self, id: &str, members: &[&str]) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_set_members(id, members))
     }
 
-    pub fn idm_group_add_members(&self, id: &str, members: &[&str]) -> Result<bool, ClientError> {
+    pub fn idm_group_add_members(&self, id: &str, members: &[&str]) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_add_members(id, members))
     }
 
@@ -496,11 +496,11 @@ impl KanidmClient {
         &self,
         group: &str,
         members: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_remove_members(group, members))
     }
 
-    pub fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_purge_members(id))
     }
 
@@ -512,15 +512,15 @@ impl KanidmClient {
         &self,
         id: &str,
         gidnumber: Option<u32>,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_unix_extend(id, gidnumber))
     }
 
-    pub fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_delete(id))
     }
 
-    pub fn idm_group_create(&self, name: &str) -> Result<bool, ClientError> {
+    pub fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_group_create(name))
     }
 
@@ -529,19 +529,19 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_list())
     }
 
-    pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_create(&self, name: &str, dn: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_create(name, dn))
     }
 
-    pub fn idm_account_set_password(&self, cleartext: String) -> Result<bool, ClientError> {
+    pub fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_set_password(cleartext))
     }
 
-    pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_set_displayname(id, dn))
     }
 
-    pub fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_delete(id))
     }
 
@@ -570,7 +570,7 @@ impl KanidmClient {
         )
     }
 
-    pub fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_purge_attr(id, attr))
     }
 
@@ -579,7 +579,7 @@ impl KanidmClient {
         id: &str,
         attr: &str,
         values: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_add_attr(id, attr, values))
     }
 
@@ -588,7 +588,7 @@ impl KanidmClient {
         id: &str,
         attr: &str,
         values: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_set_attr(id, attr, values))
     }
 
@@ -596,7 +596,7 @@ impl KanidmClient {
         &self,
         id: &str,
         pw: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_import_password(id, pw),
@@ -630,17 +630,14 @@ impl KanidmClient {
         id: &str,
         otp: u32,
         session: Uuid,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_verify_totp(id, otp, session),
         )
     }
 
-    pub fn idm_account_primary_credential_remove_totp(
-        &self,
-        id: &str,
-    ) -> Result<bool, ClientError> {
+    pub fn idm_account_primary_credential_remove_totp(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_primary_credential_remove_totp(id))
     }
 
@@ -671,7 +668,7 @@ impl KanidmClient {
         &self,
         id: &str,
         label: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_remove_webauthn(id, label),
@@ -699,7 +696,7 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_radius_credential_regenerate(id))
     }
 
-    pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_radius_credential_delete(id))
     }
 
@@ -712,7 +709,7 @@ impl KanidmClient {
         id: &str,
         gidnumber: Option<u32>,
         shell: Option<&str>,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_unix_extend(id, gidnumber, shell))
     }
 
@@ -720,11 +717,11 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_unix_token_get(id))
     }
 
-    pub fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_unix_cred_put(id, cred))
     }
 
-    pub fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_unix_cred_delete(id))
     }
 
@@ -745,11 +742,11 @@ impl KanidmClient {
         id: &str,
         tag: &str,
         pubkey: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_post_ssh_pubkey(id, tag, pubkey))
     }
 
-    pub fn idm_account_person_extend(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_person_extend(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_person_extend(id))
     }
 
@@ -767,7 +764,7 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_get_ssh_pubkey(id, tag))
     }
 
-    pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<bool, ClientError> {
+    pub fn idm_account_delete_ssh_pubkey(&self, id: &str, tag: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_account_delete_ssh_pubkey(id, tag))
     }
 
@@ -786,7 +783,7 @@ impl KanidmClient {
     }
 
     // pub fn idm_domain_put_attr
-    pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<bool, ClientError> {
+    pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_domain_set_ssid(id, ssid))
     }
 
@@ -820,7 +817,7 @@ impl KanidmClient {
         tokio_block_on(self.asclient.recycle_bin_get(id))
     }
 
-    pub fn recycle_bin_revive(&self, id: &str) -> Result<bool, ClientError> {
+    pub fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.recycle_bin_revive(id))
     }
 }

@@ -96,13 +96,13 @@ impl KanidmAsyncClient {
             let mut sguard = self.auth_session_id.write().await;
             *sguard = headers
                 .get(KSESSIONID)
-                .map(|hv| hv.to_str().ok().map(|s| s.to_string()))
+                .map(|hv| hv.to_str().ok().map(str::to_string))
                 .flatten();
         }
 
         let opid = headers
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -154,7 +154,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -209,7 +209,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
 
         debug!("opid -> {:?}", opid);
@@ -251,7 +251,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
 
         debug!("opid -> {:?}", opid);
@@ -273,7 +273,7 @@ impl KanidmAsyncClient {
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
 
-    async fn perform_delete_request(&self, dest: &str) -> Result<bool, ClientError> {
+    async fn perform_delete_request(&self, dest: &str) -> Result<(), ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
         let response = self
@@ -295,7 +295,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -315,11 +315,12 @@ impl KanidmAsyncClient {
             .await
             .map_err(|e| ClientError::JsonDecode(e, opid))
     }
+
     async fn perform_delete_request_with_body<R: Serialize>(
         &self,
         dest: &str,
         request: R,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let dest = format!("{}{}", self.addr, dest);
 
         let req_string = serde_json::to_string(&request).map_err(ClientError::JsonEncode)?;
@@ -343,7 +344,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -624,7 +625,7 @@ impl KanidmAsyncClient {
         let opid = response
             .headers()
             .get(KOPID)
-            .and_then(|hv| hv.to_str().ok().map(|s| s.to_string()))
+            .and_then(|hv| hv.to_str().ok().map(str::to_string))
             .unwrap_or_else(|| "missing_kopid".to_string());
         debug!("opid -> {:?}", opid);
 
@@ -656,22 +657,22 @@ impl KanidmAsyncClient {
         r.map(|v| v.entries)
     }
 
-    pub async fn create(&self, entries: Vec<Entry>) -> Result<bool, ClientError> {
+    pub async fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
         let c = CreateRequest { entries };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/create", c).await;
-        r.map(|_| true)
+        r.map(|_| ())
     }
 
-    pub async fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<bool, ClientError> {
+    pub async fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
         let mr = ModifyRequest { filter, modlist };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr).await;
-        r.map(|_| true)
+        r.map(|_| ())
     }
 
-    pub async fn delete(&self, filter: Filter) -> Result<bool, ClientError> {
+    pub async fn delete(&self, filter: Filter) -> Result<(), ClientError> {
         let dr = DeleteRequest { filter };
         let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr).await;
-        r.map(|_| true)
+        r.map(|_| ())
     }
 
     // === idm actions here ==
@@ -694,7 +695,7 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_group_create(&self, name: &str) -> Result<bool, ClientError> {
+    pub async fn idm_group_create(&self, name: &str) -> Result<(), ClientError> {
         let mut new_group = Entry {
             attrs: BTreeMap::new(),
         };
@@ -703,14 +704,14 @@ impl KanidmAsyncClient {
             .insert("name".to_string(), vec![name.to_string()]);
         self.perform_post_request("/v1/group", new_group)
             .await
-            .map(|_: OperationResponse| true)
+            .map(|_: OperationResponse| ())
     }
 
     pub async fn idm_group_set_members(
         &self,
         id: &str,
         members: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(format!("/v1/group/{}/_attr/member", id).as_str(), m)
             .await
@@ -720,7 +721,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         members: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let m: Vec<_> = members.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(["/v1/group/", id, "/_attr/member"].concat().as_str(), m)
             .await
@@ -730,7 +731,7 @@ impl KanidmAsyncClient {
         &self,
         group: &str,
         members: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         debug!(
             "{}",
             &[
@@ -748,7 +749,7 @@ impl KanidmAsyncClient {
         .await
     }
 
-    pub async fn idm_group_purge_members(&self, id: &str) -> Result<bool, ClientError> {
+    pub async fn idm_group_purge_members(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/group/{}/_attr/member", id).as_str())
             .await
     }
@@ -757,7 +758,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         gidnumber: Option<u32>,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let gx = GroupUnixExtend { gidnumber };
         self.perform_post_request(format!("/v1/group/{}/_unix", id).as_str(), gx)
             .await
@@ -770,7 +771,7 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_group_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub async fn idm_group_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/group/", id].concat().as_str())
             .await
     }
@@ -780,7 +781,7 @@ impl KanidmAsyncClient {
         self.perform_get_request("/v1/account").await
     }
 
-    pub async fn idm_account_create(&self, name: &str, dn: &str) -> Result<bool, ClientError> {
+    pub async fn idm_account_create(&self, name: &str, dn: &str) -> Result<(), ClientError> {
         let mut new_acct = Entry {
             attrs: BTreeMap::new(),
         };
@@ -792,23 +793,19 @@ impl KanidmAsyncClient {
             .insert("displayname".to_string(), vec![dn.to_string()]);
         self.perform_post_request("/v1/account", new_acct)
             .await
-            .map(|_: OperationResponse| true)
+            .map(|_: OperationResponse| ())
     }
 
-    pub async fn idm_account_set_password(&self, cleartext: String) -> Result<bool, ClientError> {
+    pub async fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
         let s = SingleStringRequest { value: cleartext };
 
         let r: Result<OperationResponse, _> = self
             .perform_post_request("/v1/self/_credential/primary/set_password", s)
             .await;
-        r.map(|_| true)
+        r.map(|_| ())
     }
 
-    pub async fn idm_account_set_displayname(
-        &self,
-        id: &str,
-        dn: &str,
-    ) -> Result<bool, ClientError> {
+    pub async fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
         self.idm_account_set_attr(id, "displayname", &[dn]).await
     }
 
@@ -819,7 +816,7 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_account_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub async fn idm_account_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/account/", id].concat().as_str())
             .await
     }
@@ -834,7 +831,7 @@ impl KanidmAsyncClient {
         id: &str,
         attr: &str,
         values: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let msg: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
         self.perform_post_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), msg)
             .await
@@ -845,7 +842,7 @@ impl KanidmAsyncClient {
         id: &str,
         attr: &str,
         values: &[&str],
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let m: Vec<_> = values.iter().map(|v| (*v).to_string()).collect();
         self.perform_put_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str(), m)
             .await
@@ -860,7 +857,7 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<bool, ClientError> {
+    pub async fn idm_account_purge_attr(&self, id: &str, attr: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_attr/{}", id, attr).as_str())
             .await
     }
@@ -882,7 +879,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         pw: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         self.perform_put_request(
             format!("/v1/account/{}/_attr/password_import", id).as_str(),
             vec![pw.to_string()],
@@ -933,7 +930,7 @@ impl KanidmAsyncClient {
         id: &str,
         otp: u32,
         session: Uuid,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let r = SetCredentialRequest::TotpVerify(session, otp);
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
@@ -942,7 +939,7 @@ impl KanidmAsyncClient {
             )
             .await;
         match res {
-            Ok(SetCredentialResponse::Success) => Ok(true),
+            Ok(SetCredentialResponse::Success) => Ok(()),
             Ok(SetCredentialResponse::TotpCheck(u, s)) => Err(ClientError::TotpVerifyFailed(u, s)),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
@@ -952,7 +949,7 @@ impl KanidmAsyncClient {
     pub async fn idm_account_primary_credential_remove_totp(
         &self,
         id: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let r = SetCredentialRequest::TotpRemove;
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
@@ -961,7 +958,7 @@ impl KanidmAsyncClient {
             )
             .await;
         match res {
-            Ok(SetCredentialResponse::Success) => Ok(true),
+            Ok(SetCredentialResponse::Success) => Ok(()),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }
@@ -1010,7 +1007,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         label: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let r = SetCredentialRequest::WebauthnRemove(label.to_string());
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
@@ -1019,7 +1016,7 @@ impl KanidmAsyncClient {
             )
             .await;
         match res {
-            Ok(SetCredentialResponse::Success) => Ok(true),
+            Ok(SetCredentialResponse::Success) => Ok(()),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }
@@ -1057,10 +1054,7 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_account_radius_credential_delete(
-        &self,
-        id: &str,
-    ) -> Result<bool, ClientError> {
+    pub async fn idm_account_radius_credential_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_radius", id).as_str())
             .await
     }
@@ -1078,20 +1072,16 @@ impl KanidmAsyncClient {
         id: &str,
         gidnumber: Option<u32>,
         shell: Option<&str>,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let ux = AccountUnixExtend {
-            shell: shell.map(|s| s.to_string()),
+            shell: shell.map(str::to_string),
             gidnumber,
         };
         self.perform_post_request(format!("/v1/account/{}/_unix", id).as_str(), ux)
             .await
     }
 
-    pub async fn idm_account_unix_cred_put(
-        &self,
-        id: &str,
-        cred: &str,
-    ) -> Result<bool, ClientError> {
+    pub async fn idm_account_unix_cred_put(&self, id: &str, cred: &str) -> Result<(), ClientError> {
         let req = SingleStringRequest {
             value: cred.to_string(),
         };
@@ -1102,7 +1092,7 @@ impl KanidmAsyncClient {
         .await
     }
 
-    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<bool, ClientError> {
+    pub async fn idm_account_unix_cred_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/account/", id, "/_unix/_credential"].concat().as_str())
             .await
     }
@@ -1129,13 +1119,13 @@ impl KanidmAsyncClient {
         id: &str,
         tag: &str,
         pubkey: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         let sk = (tag.to_string(), pubkey.to_string());
         self.perform_post_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str(), sk)
             .await
     }
 
-    pub async fn idm_account_person_extend(&self, id: &str) -> Result<bool, ClientError> {
+    pub async fn idm_account_person_extend(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), ())
             .await
     }
@@ -1153,7 +1143,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
         tag: &str,
-    ) -> Result<bool, ClientError> {
+    ) -> Result<(), ClientError> {
         self.perform_delete_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, tag).as_str())
             .await
     }
@@ -1181,7 +1171,7 @@ impl KanidmAsyncClient {
     }
 
     // pub fn idm_domain_put_attr
-    pub async fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<bool, ClientError> {
+    pub async fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<(), ClientError> {
         self.perform_put_request(
             format!("/v1/domain/{}/_attr/domain_ssid", id).as_str(),
             vec![ssid.to_string()],
@@ -1225,7 +1215,7 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn recycle_bin_revive(&self, id: &str) -> Result<bool, ClientError> {
+    pub async fn recycle_bin_revive(&self, id: &str) -> Result<(), ClientError> {
         self.perform_post_request(format!("/v1/recycle_bin/{}/_revive", id).as_str(), ())
             .await
     }
