@@ -39,7 +39,7 @@ pub fn password_from_random() -> String {
 }
 
 pub fn backup_code_from_random() -> HashSet<String> {
-    (1..9)
+    (0..8)
         .into_iter()
         .map(|_| readable_password_from_random())
         .collect()

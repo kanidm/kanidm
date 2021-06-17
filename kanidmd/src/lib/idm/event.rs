@@ -115,6 +115,22 @@ impl GenerateBackupCodeEvent {
     }
 }
 
+pub struct RemoveBackupCodeEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+}
+
+impl RemoveBackupCodeEvent {
+    pub fn from_parts(
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        Ok(RemoveBackupCodeEvent { ident, target })
+    }
+}
+
 #[derive(Debug)]
 pub struct RegenerateRadiusSecretEvent {
     pub ident: Identity,
@@ -461,6 +477,30 @@ impl CredentialStatusEvent {
         let ident = Identity::from_internal();
 
         CredentialStatusEvent { ident, target }
+    }
+}
+
+#[derive(Debug)]
+pub struct ReadBackupCodeEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+}
+
+impl ReadBackupCodeEvent {
+    pub fn from_parts(
+        _audit: &mut AuditScope,
+        // qs: &QueryServerReadTransaction,
+        ident: Identity,
+        target: Uuid,
+    ) -> Result<Self, OperationError> {
+        Ok(ReadBackupCodeEvent { ident, target })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let ident = Identity::from_internal();
+
+        ReadBackupCodeEvent { ident, target }
     }
 }
 

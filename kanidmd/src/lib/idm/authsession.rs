@@ -311,14 +311,11 @@ impl CredHandler {
                         }
                     }
                     (AuthCredential::BackupCode(code_chal), _, _, Some(backup_codes)) => {
-                        // Clone backup_codes because it's not mutable. If I make it a mutable ref,
-                        // then I have to pass it as &BackupCodes and specify lifetime on BackupCodeRemoval
-                        let mut cloned_codes = backup_codes.clone();
-                        if cloned_codes.verify(&code_chal) {
+                        if backup_codes.verify(&code_chal) {
                             if let Err(_e) =
                                 async_tx.send(DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
                                     target_uuid: who,
-                                    updated_codes: cloned_codes,
+                                    code_to_remove: code_chal.to_string(),
                                 }))
                             {
                                 ladmin_warning!(

@@ -1,8 +1,6 @@
 use uuid::Uuid;
 use webauthn_rs::proto::{Counter, CredentialID};
 
-use crate::credential::BackupCodes;
-
 pub(crate) enum DelayedAction {
     PwUpgrade(PasswordUpgrade),
     UnixPwUpgrade(UnixPasswordUpgrade),
@@ -28,5 +26,5 @@ pub(crate) struct WebauthnCounterIncrement {
 
 pub(crate) struct BackupCodeRemoval {
     pub target_uuid: Uuid,
-    pub updated_codes: BackupCodes,
+    pub code_to_remove: String,
 }

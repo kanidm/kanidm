@@ -382,6 +382,12 @@ impl fmt::Display for CredentialStatus {
     }
 }
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BackupCodesView {
+    // Or use SetCredentialResponse::BackupCodes?
+    pub backup_codes: Vec<String>,
+}
+
 /* ===== low level proto types ===== */
 
 // ProtoEntry vs Entry
@@ -682,6 +688,7 @@ pub enum SetCredentialRequest {
     // Remove
     WebauthnRemove(String),
     GenerateBackupCode,
+    BackupCodeRemove,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

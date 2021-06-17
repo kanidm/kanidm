@@ -2,9 +2,9 @@ use crate::credential::BackupCodes;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 
-use kanidm_proto::v1::CredentialStatus;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
+use kanidm_proto::v1::{BackupCodesView, CredentialStatus};
 
 use crate::constants::UUID_ANONYMOUS;
 use crate::credential::policy::CryptoPolicy;
@@ -360,7 +360,7 @@ impl Account {
 
     pub(crate) fn gen_backup_code_mod(
         &self,
-        backup_codes: BackupCodes, // Should I be passing reference??
+        backup_codes: BackupCodes,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
         match &self.primary {
             // Change the cred
@@ -381,7 +381,29 @@ impl Account {
         }
     }
 
-    #[allow(dead_code)] // WIP_TODO: implement delete API
+    pub(crate) fn invalidate_backup_code_mod(
+        self,
+        code_to_remove: &str,
+    ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
+        match self.primary {
+            // Change the cred
+            Some(primary) => {
+                let r_ncred = primary.invalidate_backup_code(code_to_remove);
+                match r_ncred {
+                    Ok(ncred) => {
+                        let vcred = Value::new_credential("primary", ncred);
+                        Ok(ModifyList::new_purge_and_set("primary_credential", vcred))
+                    }
+                    Err(e) => Err(e),
+                }
+            }
+            None => {
+                // No credential exists, we can't supplementy it.
+                Err(OperationError::InvalidState)
+            }
+        }
+    }
+
     pub(crate) fn gen_backup_code_remove_mod(
         &self,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
@@ -428,6 +450,13 @@ impl Account {
                 creds: vec![cred.into()],
             })
             .ok_or(OperationError::NoMatchingAttributes)
+    }
+
+    pub(crate) fn to_backupcodesview(&self) -> Result<BackupCodesView, OperationError> {
+        self.primary
+            .as_ref()
+            .ok_or(OperationError::InvalidState)
+            .and_then(|cred| cred.get_backup_code_view())
     }
 }
 

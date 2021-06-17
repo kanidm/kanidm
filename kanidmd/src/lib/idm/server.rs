@@ -28,8 +28,8 @@ use crate::idm::delayed::{
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    AuthType, CredentialStatus, RadiusAuthToken, SetCredentialResponse, UnixGroupToken,
-    UnixUserToken, UserAuthToken,
+    AuthType, BackupCodesView, CredentialStatus, RadiusAuthToken, SetCredentialResponse,
+    UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 use std::str::FromStr;
 
@@ -60,7 +60,7 @@ use url::Url;
 use webauthn_rs::Webauthn;
 
 use super::delayed::BackupCodeRemoval;
-use super::event::GenerateBackupCodeEvent;
+use super::event::{GenerateBackupCodeEvent, ReadBackupCodeEvent, RemoveBackupCodeEvent};
 
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
@@ -1003,6 +1003,25 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
         account.to_credentialstatus()
     }
+
+    pub fn get_backup_codes(
+        &mut self,
+        au: &mut AuditScope,
+        rbce: &ReadBackupCodeEvent,
+    ) -> Result<BackupCodesView, OperationError> {
+        let account = self
+            .qs_read
+            .impersonate_search_ext_uuid(au, &rbce.target, &rbce.ident)
+            .and_then(|account_entry| {
+                Account::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
+            })
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to search account {:?}", e);
+                e
+            })?;
+
+        account.to_backupcodesview()
+    }
 }
 
 impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
@@ -1401,6 +1420,36 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
     }
 
+    pub fn remove_backup_code(
+        &mut self,
+        au: &mut AuditScope,
+        rte: &RemoveBackupCodeEvent,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        ltrace!(au, "Attempting to remove backup code -> {:?}", rte.target);
+
+        let account = self.target_to_account(au, &rte.target)?;
+        let modlist = account.gen_backup_code_remove_mod().map_err(|e| {
+            ladmin_error!(au, "Failed to gen backup code remove mod {:?}", e);
+            e
+        })?;
+        // Perform the mod
+        self.qs_write
+            .impersonate_modify(
+                au,
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                // Filter as intended (acp)
+                &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                &modlist,
+                &rte.ident,
+            )
+            .map_err(|e| {
+                ladmin_error!(au, "remove_backup_code {:?}", e);
+                e
+            })
+            .map(|_| SetCredentialResponse::Success)
+    }
+
     pub fn regenerate_radius_secret(
         &mut self,
         au: &mut AuditScope,
@@ -1767,10 +1816,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         bcr: &BackupCodeRemoval,
     ) -> Result<(), OperationError> {
         let account = self.target_to_account(au, &bcr.target_uuid)?;
-
         // Generate an optional mod and then attempt to apply it.
         let modlist = account
-            .gen_backup_code_mod(bcr.updated_codes.clone())
+            .invalidate_backup_code_mod(&bcr.code_to_remove)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
                 e

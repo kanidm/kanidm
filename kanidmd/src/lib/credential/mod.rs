@@ -1,7 +1,7 @@
 use crate::be::dbvalue::DbBackupCodeV1;
 use crate::be::dbvalue::{DbCredTypeV1, DbCredV1, DbPasswordV1, DbWebauthnV1};
 use hashbrown::HashMap as Map;
-use kanidm_proto::v1::{CredentialDetail, CredentialDetailType, OperationError};
+use kanidm_proto::v1::{BackupCodesView, CredentialDetail, CredentialDetailType, OperationError};
 use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
@@ -215,11 +215,9 @@ impl Password {
 
 #[derive(Clone, Debug)]
 pub struct BackupCodes {
-    // WIP_TODO: any other attributes?
     code_set: HashSet<String>,
 }
 
-//WIP_TODO: No need a separate DbBackupCodeV1 struct probably?
 impl TryFrom<DbBackupCodeV1> for BackupCodes {
     type Error = ();
 
@@ -234,7 +232,10 @@ impl BackupCodes {
     pub fn new(code_set: HashSet<String>) -> Self {
         BackupCodes { code_set }
     }
-    pub fn verify(&mut self, code_chal: &str) -> bool {
+    pub fn verify(&self, code_chal: &str) -> bool {
+        self.code_set.contains(code_chal)
+    }
+    pub fn remove(&mut self, code_chal: &str) -> bool {
         self.code_set.remove(code_chal)
     }
     pub fn to_dbbackupcodev1(&self) -> DbBackupCodeV1 {
@@ -775,7 +776,7 @@ impl Credential {
 
     pub(crate) fn update_backup_code(
         &self,
-        backup_codes: BackupCodes, // Should I be passing reference??
+        backup_codes: BackupCodes,
     ) -> Result<Self, OperationError> {
         match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
@@ -794,7 +795,37 @@ impl Credential {
         }
     }
 
-    #[allow(dead_code)] // WIP_TODO: implement delete API
+    pub(crate) fn invalidate_backup_code(
+        self,
+        code_to_remove: &str,
+    ) -> Result<Self, OperationError> {
+        match self.type_ {
+            CredentialType::PasswordMfa(pw, totp, wan, opt_backup_codes) => {
+                match opt_backup_codes {
+                    Some(mut backup_codes) => {
+                        backup_codes.remove(&code_to_remove);
+                        Ok(Credential {
+                            type_: CredentialType::PasswordMfa(
+                                pw.clone(),
+                                totp.clone(),
+                                wan.clone(),
+                                Some(backup_codes),
+                            ),
+                            claims: self.claims.clone(),
+                            uuid: self.uuid,
+                        })
+                    }
+                    _ => Err(OperationError::InvalidAccountState(
+                        "backup code does not exist".to_string(),
+                    )),
+                }
+            }
+            _ => Err(OperationError::InvalidAccountState(
+                "non-mfa cred type".to_string(),
+            )),
+        }
+    }
+
     pub(crate) fn remove_backup_code(&self) -> Result<Self, OperationError> {
         match &self.type_ {
             CredentialType::PasswordMfa(pw, totp, wan, _) => Ok(Credential {
@@ -802,6 +833,24 @@ impl Credential {
                 claims: self.claims.clone(),
                 uuid: self.uuid,
             }),
+            _ => Err(OperationError::InvalidAccountState(
+                "non-mfa cred type".to_string(),
+            )),
+        }
+    }
+
+    pub(crate) fn get_backup_code_view(&self) -> Result<BackupCodesView, OperationError> {
+        match &self.type_ {
+            CredentialType::PasswordMfa(_, _, _, opt_bc) => opt_bc
+                .as_ref()
+                .ok_or(OperationError::InvalidAccountState(
+                    "no backup codes avaialble".to_string(),
+                ))
+                .and_then(|bc| {
+                    Ok(BackupCodesView {
+                        backup_codes: bc.code_set.clone().into_iter().collect(),
+                    })
+                }),
             _ => Err(OperationError::InvalidAccountState(
                 "non-mfa cred type".to_string(),
             )),

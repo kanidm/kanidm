@@ -555,28 +555,18 @@ pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> t
     to_tide_response(res, hvalue)
 }
 
-// WIP_TODO: Return a list of backup code
-pub async fn account_get_backup_code(_req: tide::Request<AppState>) -> tide::Result {
-    // let uat = req.get_current_uat();
-    // let uuid_or_name = req.get_url_param("id")?;
+pub async fn account_get_backup_code(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
 
-    // let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = new_eventid!();
 
-    // let res = req
-    //     .state()
-    //     .qe_r_ref
-    //     .handle_idmcredentialstatus(uat, uuid_or_name, eventid)
-    //     .await;
-    // to_tide_response(res, hvalue)
-    unimplemented!();
-}
-
-// WIP_TODO: Remove backup code, and remove it from account credential
-pub async fn account_delete_backup_code(_req: tide::Request<AppState>) -> tide::Result {
-    // let attr = "radius_secret".to_string();
-    // let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    // json_rest_event_delete_id_attr(req, filter, attr).await
-    unimplemented!();
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_idmbackupcodeview(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 // Return a vec of str
@@ -1303,10 +1293,10 @@ pub fn create_https_server(
         .at("/:id/_credential/:cid/_lock")
         .get(do_nothing);
     account_route
-        .at("/:id/_credential/backup_code")
-        .get(account_get_backup_code)
-        // .post(account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
-        .delete(account_delete_backup_code);
+        .at("/:id/_credential/:cid/backup_code")
+        .get(account_get_backup_code);
+    // .post(account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
+    // .delete(account_delete_backup_code); // same as above
 
     account_route
         .at("/:id/_ssh_pubkeys")
