@@ -901,7 +901,8 @@ impl IdlArcSqlite {
             None => {
                 // For now I've noticed about 20% of the number of entries
                 // works well, but it may not be perfect ...
-                db.get_allids_count(audit)
+                let tmpsize = db
+                    .get_allids_count(audit)
                     .map(|c| {
                         (if c > 0 {
                             // We want one fifth of this.
@@ -910,7 +911,13 @@ impl IdlArcSqlite {
                             c
                         }) as usize
                     })
-                    .unwrap_or(DEFAULT_CACHE_TARGET)
+                    .unwrap_or(DEFAULT_CACHE_TARGET);
+                // if our calculation's too small anyway, just set it to the minimum target
+                if tmpsize < DEFAULT_CACHE_TARGET {
+                    DEFAULT_CACHE_TARGET
+                } else {
+                    tmpsize
+                }
             }
         };
 
@@ -918,7 +925,8 @@ impl IdlArcSqlite {
             cache_size = DEFAULT_CACHE_TARGET;
             ladmin_warning!(
                 audit,
-                "Arc Cache size too low - setting to {} ...",
+                "Configured Arc Cache size too low {} - setting to {} ...",
+                &cache_size,
                 DEFAULT_CACHE_TARGET
             );
         }

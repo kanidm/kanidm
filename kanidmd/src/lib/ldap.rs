@@ -474,7 +474,7 @@ fn ldap_domain_to_dc(input: &str) -> String {
     input.split('.').for_each(|dc| {
         output.push_str("dc=");
         output.push_str(dc);
-        #[allow(clippy::single_char_pattern)]
+        #[allow(clippy::single_char_pattern, clippy::single_char_add_str)]
         output.push_str(",");
     });
     // Remove the last ','
