@@ -269,8 +269,7 @@ async fn json_rest_event_delete_id(
         .state()
         .qe_w_ref
         .handle_internaldelete(uat, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -325,8 +324,7 @@ async fn json_rest_event_post_id_attr(
         .state()
         .qe_w_ref
         .handle_appendattribute(uat, uuid_or_name, attr, values, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -344,8 +342,7 @@ async fn json_rest_event_put_id_attr(
         .state()
         .qe_w_ref
         .handle_setattribute(uat, uuid_or_name, attr, values, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -374,16 +371,14 @@ async fn json_rest_event_delete_id_attr(
             .state()
             .qe_w_ref
             .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
-            .await
-            .map(|()| true);
+            .await;
         to_tide_response(res, hvalue)
     } else {
         let res = req
             .state()
             .qe_w_ref
             .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
-            .await
-            .map(|()| true);
+            .await;
         to_tide_response(res, hvalue)
     }
 }
@@ -582,8 +577,7 @@ pub async fn account_post_id_ssh_pubkey(mut req: tide::Request<AppState>) -> tid
         .state()
         .qe_w_ref
         .handle_sshkeycreate(uat, uuid_or_name, tag, key, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -616,8 +610,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
         .state()
         .qe_w_ref
         .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -679,8 +672,7 @@ pub async fn account_post_id_person_extend(req: tide::Request<AppState>) -> tide
         .state()
         .qe_w_ref
         .handle_idmaccountpersonextend(uat, uuid_or_name, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -693,8 +685,7 @@ pub async fn account_post_id_unix(mut req: tide::Request<AppState>) -> tide::Res
         .state()
         .qe_w_ref
         .handle_idmaccountunixextend(uat, uuid_or_name, obj, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -736,8 +727,7 @@ pub async fn account_put_id_unix_credential(mut req: tide::Request<AppState>) ->
         .state()
         .qe_w_ref
         .handle_idmaccountunixsetcred(uat, uuid_or_name, cred, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -753,8 +743,7 @@ pub async fn account_delete_id_unix_credential(req: tide::Request<AppState>) -> 
         .state()
         .qe_w_ref
         .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -808,8 +797,7 @@ pub async fn group_post_id_unix(mut req: tide::Request<AppState>) -> tide::Resul
         .state()
         .qe_w_ref
         .handle_idmgroupunixextend(uat, uuid_or_name, obj, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
@@ -892,8 +880,7 @@ pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::R
         .state()
         .qe_w_ref
         .handle_reviverecycled(uat, filter, eventid)
-        .await
-        .map(|()| true);
+        .await;
     to_tide_response(res, hvalue)
 }
 
