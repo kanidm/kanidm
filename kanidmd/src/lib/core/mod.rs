@@ -435,7 +435,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
         Ok(new_pw) => match idms_prox_write.commit(&mut audit) {
             Ok(()) => {
                 audit.write_log();
-                info!("Password reset to -> {}", new_pw);
+                eprintln!("Password reset to -> {}", new_pw);
             }
             Err(e) => {
                 error!("A critical error during commit occured {:?}", e);

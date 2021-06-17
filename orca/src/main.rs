@@ -1,8 +1,8 @@
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
@@ -18,6 +18,7 @@ extern crate log;
 #[macro_use]
 extern crate serde_derive;
 
+use crate::ds::DirectoryServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -26,6 +27,7 @@ use structopt::StructOpt;
 use uuid::Uuid;
 
 mod data;
+mod ds;
 mod kani;
 mod ldap;
 mod preprocess;
@@ -48,6 +50,7 @@ impl OrcaOpt {
 pub enum TargetServerBuilder {
     Kanidm(String, String),
     KanidmLdap(String, String, String, String),
+    DirSrv(String, String, String),
 }
 
 impl TargetServerBuilder {
@@ -55,13 +58,15 @@ impl TargetServerBuilder {
         match self {
             TargetServerBuilder::Kanidm(a, b) => KaniHttpServer::build(a, b),
             TargetServerBuilder::KanidmLdap(a, b, c, d) => KaniLdapServer::build(a, b, c, d),
+            TargetServerBuilder::DirSrv(a, b, c) => DirectoryServer::build(a, b, c),
         }
     }
 }
 
 pub enum TargetServer {
     Kanidm(KaniHttpServer),
-    KanidmLdap(KaniLdapServer),
+    KanidmLdap(Box<KaniLdapServer>),
+    DirSrv(DirectoryServer),
 }
 
 impl TargetServer {
@@ -69,6 +74,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.info(),
             TargetServer::KanidmLdap(k) => k.info(),
+            TargetServer::DirSrv(k) => k.info(),
         }
     }
 
@@ -76,6 +82,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(_) => "kanidm_http",
             TargetServer::KanidmLdap(_) => "kanidm_ldap",
+            TargetServer::DirSrv(_) => "directory_server",
         }
     }
 
@@ -83,6 +90,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.builder(),
             TargetServer::KanidmLdap(k) => k.builder(),
+            TargetServer::DirSrv(k) => k.builder(),
         }
     }
 
@@ -90,6 +98,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.open_admin_connection().await,
             TargetServer::KanidmLdap(k) => k.open_admin_connection().await,
+            TargetServer::DirSrv(k) => k.open_admin_connection().await,
         }
     }
 
@@ -97,6 +106,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.setup_admin_delete_uuids(targets).await,
             TargetServer::KanidmLdap(k) => k.setup_admin_delete_uuids(targets).await,
+            TargetServer::DirSrv(k) => k.setup_admin_delete_uuids(targets).await,
         }
     }
 
@@ -114,6 +124,10 @@ impl TargetServer {
                 k.setup_admin_precreate_entities(targets, all_entities)
                     .await
             }
+            TargetServer::DirSrv(k) => {
+                k.setup_admin_precreate_entities(targets, all_entities)
+                    .await
+            }
         }
     }
 
@@ -125,6 +139,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.setup_access_controls(access, all_entities).await,
             TargetServer::KanidmLdap(k) => k.setup_access_controls(access, all_entities).await,
+            TargetServer::DirSrv(k) => k.setup_access_controls(access, all_entities).await,
         }
     }
 
@@ -137,6 +152,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.open_user_connection(test_start, name, pw).await,
             TargetServer::KanidmLdap(k) => k.open_user_connection(test_start, name, pw).await,
+            TargetServer::DirSrv(k) => k.open_user_connection(test_start, name, pw).await,
         }
     }
 
@@ -144,6 +160,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.close_connection().await,
             TargetServer::KanidmLdap(k) => k.close_connection().await,
+            TargetServer::DirSrv(k) => k.close_connection().await,
         }
     }
 
@@ -155,6 +172,7 @@ impl TargetServer {
         match self {
             TargetServer::Kanidm(k) => k.search(test_start, ids).await,
             TargetServer::KanidmLdap(k) => k.search(test_start, ids).await,
+            TargetServer::DirSrv(k) => k.search(test_start, ids).await,
         }
     }
 }

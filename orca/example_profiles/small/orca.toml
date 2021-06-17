@@ -3,7 +3,8 @@ data = "data.json"
 results = "/tmp/small_results"
 
 [ds_config]
-uri = "ldaps://localhost:3636"
+uri = "ldaps://localhost:636"
+base_dn = "dc=example,dc=com"
 dm_pw = "password"
 
 [kani_http_config]

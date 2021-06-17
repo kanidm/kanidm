@@ -79,6 +79,7 @@ fn parse_rtime(s: &str) -> Result<Duration, ()> {
 }
 
 impl Record {
+    #[allow(clippy::wrong_self_convention)]
     fn into_op(&self, all_entities: &HashMap<Uuid, Entity>, exists: &mut Vec<Uuid>) -> Op {
         let op_type = match self.op_type {
             RawOpType::Add => {
@@ -140,7 +141,7 @@ impl Record {
             _ => panic!(),
         };
         Op {
-            orig_etime: self.etime.clone(),
+            orig_etime: self.etime,
             rtime: self.rtime,
             op_type,
         }
@@ -216,7 +217,7 @@ pub fn doit(input: &Path, output: &Path) {
         }
     };
 
-    let data: Result<Vec<_>, _> = u.into_iter().map(|v| Record::try_from(v)).collect();
+    let data: Result<Vec<_>, _> = u.into_iter().map(Record::try_from).collect();
 
     let data = match data {
         Ok(d) => d,

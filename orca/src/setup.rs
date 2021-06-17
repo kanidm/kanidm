@@ -1,4 +1,5 @@
 use crate::data::TestData;
+use crate::ds::DirectoryServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
 use crate::profile::Profile;
 use crate::TargetOpt;
@@ -31,16 +32,14 @@ pub(crate) fn config(
 
     let data_path = if Path::new(&profile.data).is_absolute() {
         PathBuf::from(&profile.data)
+    } else if let Some(p) = profile_path.parent() {
+        p.join(&profile.data)
     } else {
-        if let Some(p) = profile_path.parent() {
-            p.join(&profile.data)
-        } else {
-            error!(
-                "Unable to find parent directory of {}",
-                profile_path.to_str().unwrap()
-            );
-            return Err(());
-        }
+        error!(
+            "Unable to find parent directory of {}",
+            profile_path.to_str().unwrap()
+        );
+        return Err(());
     };
 
     debug!("Data Path -> {}", data_path.to_str().unwrap());
@@ -48,7 +47,12 @@ pub(crate) fn config(
     // Does our target section exist?
     let server: TargetServer = match target {
         TargetOpt::Ds => {
-            unimplemented!();
+            if let Some(dsconfig) = profile.ds_config.as_ref() {
+                DirectoryServer::new(dsconfig)?
+            } else {
+                error!("To use ds, you must have the ds_config section in your profile");
+                return Err(());
+            }
         }
         TargetOpt::KanidmLdap => {
             if let Some(klconfig) = profile.kani_ldap_config.as_ref() {
