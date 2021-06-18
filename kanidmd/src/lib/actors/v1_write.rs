@@ -26,7 +26,7 @@ use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
     AccountUnixExtend, CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest,
-    OperationResponse, SetCredentialRequest, SetCredentialResponse,
+    SetCredentialRequest, SetCredentialResponse,
 };
 
 use uuid::Uuid;
@@ -169,7 +169,7 @@ impl QueryServerWriteV1 {
         uat: Option<String>,
         req: CreateRequest,
         eventid: Uuid,
-    ) -> Result<OperationResponse, OperationError> {
+    ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("create", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
@@ -204,11 +204,7 @@ impl QueryServerWriteV1 {
                 idms_prox_write
                     .qs_write
                     .create(&mut audit, &crt)
-                    .and_then(|_| {
-                        idms_prox_write
-                            .commit(&mut audit)
-                            .map(|_| OperationResponse {})
-                    })
+                    .and_then(|_| idms_prox_write.commit(&mut audit))
             }
         );
         // At the end of the event we send it for logging.
@@ -224,7 +220,7 @@ impl QueryServerWriteV1 {
         uat: Option<String>,
         req: ModifyRequest,
         eventid: Uuid,
-    ) -> Result<OperationResponse, OperationError> {
+    ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("modify", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_segment!(
@@ -258,11 +254,7 @@ impl QueryServerWriteV1 {
                 idms_prox_write
                     .qs_write
                     .modify(&mut audit, &mdf)
-                    .and_then(|_| {
-                        idms_prox_write
-                            .commit(&mut audit)
-                            .map(|_| OperationResponse {})
-                    })
+                    .and_then(|_| idms_prox_write.commit(&mut audit))
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -277,7 +269,7 @@ impl QueryServerWriteV1 {
         uat: Option<String>,
         req: DeleteRequest,
         eventid: Uuid,
-    ) -> Result<OperationResponse, OperationError> {
+    ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("delete", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = lperf_op_segment!(
@@ -310,11 +302,7 @@ impl QueryServerWriteV1 {
                 idms_prox_write
                     .qs_write
                     .delete(&mut audit, &del)
-                    .and_then(|_| {
-                        idms_prox_write
-                            .commit(&mut audit)
-                            .map(|_| OperationResponse {})
-                    })
+                    .and_then(|_| idms_prox_write.commit(&mut audit))
             }
         );
         self.log.send(audit).map_err(|_| {
@@ -639,7 +627,7 @@ impl QueryServerWriteV1 {
         uat: Option<String>,
         cleartext: String,
         eventid: Uuid,
-    ) -> Result<OperationResponse, OperationError> {
+    ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("idm_account_set_password", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
@@ -669,7 +657,6 @@ impl QueryServerWriteV1 {
                 idms_prox_write
                     .set_account_password(&mut audit, &pce)
                     .and_then(|_| idms_prox_write.commit(&mut audit))
-                    .map(|_| OperationResponse::new(()))
             }
         );
         self.log.send(audit).map_err(|_| {
