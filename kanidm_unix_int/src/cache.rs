@@ -1,3 +1,4 @@
+use crate::constants::DEFAULT_SHELL;
 use crate::db::Db;
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
@@ -8,6 +9,7 @@ use lru::LruCache;
 use reqwest::StatusCode;
 use std::collections::BTreeSet;
 use std::ops::{Add, Sub};
+use std::path::Path;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{Mutex, RwLock};
@@ -264,17 +266,36 @@ impl CacheLayer {
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
+        // WIP #392: check user/default shell
+        // check if the provided `shell` exists on the system.
+        let mut new_token = token.clone();
+        let user_shell = new_token.shell.unwrap_or_default();
+        let shell_to_use = if Path::new(&user_shell).exists() {
+            // good - the shell exists
+            eprintln!("x392 WIP - OK user_shell <{}> exists.", user_shell);
+            user_shell
+        } else {
+            // bad luck - we have to put our fall back DEFAULT_SHELL
+            eprintln!("x392 WIP - BAD user_shell <{}> missing.", user_shell);
+            // using constants.DEFAULT_SHELL
+            DEFAULT_SHELL.to_string()
+        };
+        eprintln!(
+            "x392 WIP - FIN we will set <{}> as shell_to_use.",
+            shell_to_use
+        );
+        new_token.shell = shell_to_use.into();
 
         let dbtxn = self.db.write().await;
         // We need to add the groups first
-        token
+        new_token
             .groups
             .iter()
             .try_for_each(|g| dbtxn.update_group(g, offset.as_secs()))
             .and_then(|_|
                 // So that when we add the account it can make the relationships.
                 dbtxn
-                    .update_account(token, offset.as_secs()))
+                    .update_account(&new_token, offset.as_secs()))
             .and_then(|_| dbtxn.commit())
     }
 
@@ -645,7 +666,11 @@ impl CacheLayer {
                     name: self.token_uidattr(&tok),
                     gid: tok.gidnumber,
                     gecos: tok.displayname,
-                    shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
+                    // WIP #392: default shell
+                    // this should now be valid, so simply unwrap?
+                    // where and how is `self.default_shell` set?
+                    shell: tok.shell.unwrap_or_default(),
+                    //shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
                 })
                 .collect()
         })
