@@ -667,7 +667,7 @@ impl CacheLayer {
                     gid: tok.gidnumber,
                     gecos: tok.displayname,
                     // WIP #392: default shell
-                    // this should now be valid, so simply unwrap?
+                    // this should now be valid, so simply unwrap it?
                     // where and how is `self.default_shell` set?
                     shell: tok.shell.unwrap_or_default(),
                     //shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
