@@ -118,7 +118,7 @@ fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
         .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
         .unwrap();
     rsclient
-        .idm_account_unix_extend(id, None, Some(&"/bin/bash"))
+        .idm_account_unix_extend(id, None, Some(&"/bin/sh"))
         .unwrap();
     rsclient.idm_group_unix_extend(&group_name, None).unwrap();
 

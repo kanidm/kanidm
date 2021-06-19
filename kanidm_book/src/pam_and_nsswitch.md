@@ -44,7 +44,7 @@ Both unixd daemons use the connection configuration from /etc/kanidm/config. Thi
 You can also configure some unixd specific options with the file /etc/kanidm/unixd.
 
     pam_allowed_login_groups = ["posix_group"]
-    default_shell = "/bin/bash"
+    default_shell = "/bin/sh"
     home_prefix = "/home/"
     home_attr = "uuid"
     home_alias = "spn"
@@ -55,7 +55,7 @@ The `pam_allowed_login_groups` defines a set of posix groups where membership of
 groups will be allowed to login via pam. All posix users and groups can be resolved by nss
 regardless of pam login status. This may be a group name, spn or uuid.
 
-`default_shell` is the default shell for users with none defined. Defaults to /bin/bash.
+`default_shell` is the default shell for users with none defined. Defaults to `/bin/sh`.
 
 `home_prefix` is the prepended path to where home directories are stored. Must end with
 a trailing `/`. Defaults to `/home/`.
@@ -108,7 +108,7 @@ You can then test that the posix extended user is able to be resolved with:
 
     $ getent passwd <account name>
     $ getent passwd testunix
-    testunix:x:3524161420:3524161420:testunix:/home/testunix:/bin/bash
+    testunix:x:3524161420:3524161420:testunix:/home/testunix:/bin/sh
 
 You can also do the same for groups.
 
