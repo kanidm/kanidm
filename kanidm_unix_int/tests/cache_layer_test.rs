@@ -239,6 +239,9 @@ fn test_cache_account() {
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_some());
+            // WIP #392
+            // At creation, shell was set to `None` this should be fixed.
+            assert!(ut.unwrap().shell == DEFAULT_SHELL.to_string());
 
             // go offline
             cachelayer.mark_offline().await;
