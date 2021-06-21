@@ -265,9 +265,8 @@ impl CacheLayer {
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
-        // WIP #392: check user/default shell
-        // check if the provided `shell` exists on the system.
-
+        // WIP #392
+        // Check if requested `shell` exists on the system, else use `default_shell`
         let requested_shell_exists: bool = token
             .shell
             .as_ref()
@@ -299,7 +298,7 @@ impl CacheLayer {
             .and_then(|_|
                 // So that when we add the account it can make the relationships.
                 dbtxn
-                    .update_account(&token, offset.as_secs()))
+                    .update_account(token, offset.as_secs()))
             .and_then(|_| dbtxn.commit())
     }
 
