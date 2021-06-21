@@ -1,4 +1,3 @@
-use crate::constants::DEFAULT_SHELL;
 use crate::db::Db;
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
@@ -278,7 +277,7 @@ impl CacheLayer {
             // bad luck - we have to put our fall back DEFAULT_SHELL
             eprintln!("x392 WIP - BAD user_shell <{}> missing.", user_shell);
             // using constants.DEFAULT_SHELL
-            DEFAULT_SHELL.to_string()
+            self.default_shell.clone()
         };
         eprintln!(
             "x392 WIP - FIN we will set <{}> as shell_to_use.",
@@ -666,11 +665,7 @@ impl CacheLayer {
                     name: self.token_uidattr(&tok),
                     gid: tok.gidnumber,
                     gecos: tok.displayname,
-                    // WIP #392: default shell
-                    // this should now be valid, so simply unwrap it?
-                    // where and how is `self.default_shell` set?
-                    shell: tok.shell.unwrap_or_default(),
-                    //shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
+                    shell: tok.shell.unwrap_or_else(|| self.default_shell.clone()),
                 })
                 .collect()
         })
