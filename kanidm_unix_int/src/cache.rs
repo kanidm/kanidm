@@ -268,22 +268,28 @@ impl CacheLayer {
         // WIP #392: check user/default shell
         // check if the provided `shell` exists on the system.
         let mut new_token = token.clone();
-        let user_shell = new_token.shell.unwrap_or_default();
-        let shell_to_use = if Path::new(&user_shell).exists() {
-            // good - the shell exists
-            eprintln!("x392 WIP - OK user_shell <{}> exists.", user_shell);
-            user_shell
-        } else {
-            // bad luck - we have to put our fall back DEFAULT_SHELL
-            eprintln!("x392 WIP - BAD user_shell <{}> missing.", user_shell);
-            // using constants.DEFAULT_SHELL
-            self.default_shell.clone()
-        };
-        eprintln!(
-            "x392 WIP - FIN we will set <{}> as shell_to_use.",
-            shell_to_use
-        );
-        new_token.shell = shell_to_use.into();
+
+        let requested_shell_exists: bool = new_token
+            .shell
+            .as_ref()
+            .map(|shell| {
+                let exists = Path::new(shell).exists();
+                if !exists {
+                    info!(
+                        "User requested shell is not present on this system - {}",
+                        shell
+                    )
+                }
+                exists
+            })
+            .unwrap_or_else(|| {
+                info!("User has not specified a shell, using default");
+                false
+            });
+
+        if !requested_shell_exists {
+            new_token.shell = Some(self.default_shell.clone())
+        }
 
         let dbtxn = self.db.write().await;
         // We need to add the groups first
