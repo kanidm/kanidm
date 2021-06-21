@@ -438,15 +438,6 @@ impl ModifyList {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct OperationResponse {}
-
-impl OperationResponse {
-    pub fn new(_: ()) -> Self {
-        OperationResponse {}
-    }
-}
-
-#[derive(Debug, Serialize, Deserialize)]
 pub struct SearchRequest {
     pub filter: Filter,
 }

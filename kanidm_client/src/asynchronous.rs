@@ -659,20 +659,17 @@ impl KanidmAsyncClient {
 
     pub async fn create(&self, entries: Vec<Entry>) -> Result<(), ClientError> {
         let c = CreateRequest { entries };
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/create", c).await;
-        r.map(|_| ())
+        self.perform_post_request("/v1/raw/create", c).await
     }
 
     pub async fn modify(&self, filter: Filter, modlist: ModifyList) -> Result<(), ClientError> {
         let mr = ModifyRequest { filter, modlist };
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/modify", mr).await;
-        r.map(|_| ())
+        self.perform_post_request("/v1/raw/modify", mr).await
     }
 
     pub async fn delete(&self, filter: Filter) -> Result<(), ClientError> {
         let dr = DeleteRequest { filter };
-        let r: Result<OperationResponse, _> = self.perform_post_request("/v1/raw/delete", dr).await;
-        r.map(|_| ())
+        self.perform_post_request("/v1/raw/delete", dr).await
     }
 
     // === idm actions here ==
@@ -702,9 +699,7 @@ impl KanidmAsyncClient {
         new_group
             .attrs
             .insert("name".to_string(), vec![name.to_string()]);
-        self.perform_post_request("/v1/group", new_group)
-            .await
-            .map(|_: OperationResponse| ())
+        self.perform_post_request("/v1/group", new_group).await
     }
 
     pub async fn idm_group_set_members(
@@ -791,18 +786,14 @@ impl KanidmAsyncClient {
         new_acct
             .attrs
             .insert("displayname".to_string(), vec![dn.to_string()]);
-        self.perform_post_request("/v1/account", new_acct)
-            .await
-            .map(|_: OperationResponse| ())
+        self.perform_post_request("/v1/account", new_acct).await
     }
 
     pub async fn idm_account_set_password(&self, cleartext: String) -> Result<(), ClientError> {
         let s = SingleStringRequest { value: cleartext };
 
-        let r: Result<OperationResponse, _> = self
-            .perform_post_request("/v1/self/_credential/primary/set_password", s)
-            .await;
-        r.map(|_| ())
+        self.perform_post_request("/v1/self/_credential/primary/set_password", s)
+            .await
     }
 
     pub async fn idm_account_set_displayname(&self, id: &str, dn: &str) -> Result<(), ClientError> {
