@@ -239,8 +239,8 @@ fn test_cache_account() {
                 .await
                 .expect("Failed to get from cache");
             assert!(ut.is_some());
-            // WIP #392
-            // At creation, shell was set to `None` this should be fixed.
+
+            // #392: Check that a `shell=None` is set to `default_shell`.
             assert!(ut.unwrap().shell == DEFAULT_SHELL.to_string());
 
             // go offline
