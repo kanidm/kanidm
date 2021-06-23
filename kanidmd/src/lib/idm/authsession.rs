@@ -365,7 +365,7 @@ impl CredHandler {
                                     pw_mfa.pw_state = CredVerifyState::Success;
                                     lsecurity!(
                                         au,
-                                        "Handler::PasswordMfa -> Result::Success - TOTP OK, password OK"
+                                        "Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK"
                                     );
                                     Self::maybe_pw_upgrade(
                                         au,
@@ -381,7 +381,7 @@ impl CredHandler {
                             pw_mfa.pw_state = CredVerifyState::Fail;
                             lsecurity!(
                                 au,
-                                "Handler::PasswordMfa -> Result::Denied - TOTP OK, password Fail"
+                                "Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail"
                             );
                             CredState::Denied(BAD_PASSWORD_MSG)
                         }
@@ -810,10 +810,10 @@ mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::webauthn::WebauthnDomainConfig;
-    use crate::credential::Credential;
+    use crate::credential::{BackupCodes, Credential};
     use crate::idm::authsession::{
-        AuthSession, BAD_AUTH_TYPE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG, BAD_WEBAUTHN_MSG,
-        PW_BADLIST_MSG,
+        AuthSession, BAD_AUTH_TYPE_MSG, BAD_BACKUPCODE_MSG, BAD_PASSWORD_MSG, BAD_TOTP_MSG,
+        BAD_WEBAUTHN_MSG, PW_BADLIST_MSG,
     };
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
@@ -821,7 +821,7 @@ mod tests {
     use hashbrown::HashSet;
     pub use std::collections::BTreeSet as Set;
 
-    use crate::utils::duration_from_epoch_now;
+    use crate::utils::{duration_from_epoch_now, readable_password_from_random};
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
     use std::time::Duration;
     use webauthn_rs::proto::UserVerificationPolicy;
@@ -1987,8 +1987,200 @@ mod tests {
         assert!(async_rx.blocking_recv().is_none());
         audit.write_log();
     }
-    // WIP_TODO: extensive testing for login with AuthCredential::BackupCode(code_chal)
-    // Test successful login
-    // Test unsuccessful login: wrong pw, wrong backup code, used backup code
-    // What else??
+
+    #[test]
+    fn test_idm_authsession_backup_code_mech() {
+        let mut audit = AuditScope::new(
+            "test_idm_authsession_backup_code_mech",
+            uuid::Uuid::new_v4(),
+            None,
+        );
+        let hs512 = create_hs512();
+        let webauthn = create_webauthn();
+        // create the ent
+        let mut account = entry_str_to_account!(JSON_ADMIN_V1);
+
+        // Setup a fake time stamp for consistency.
+        let ts = Duration::from_secs(12345);
+
+        // manually load in a cred
+        let totp = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        let totp_good = totp
+            .do_totp_duration_from_epoch(&ts)
+            .expect("failed to perform totp.");
+
+        let pw_good = "test_password";
+        let pw_bad = "bad_password";
+
+        let backup_code_good = readable_password_from_random();
+        let backup_code_bad = readable_password_from_random();
+        assert!(backup_code_bad != backup_code_good);
+        let mut code_set = std::collections::HashSet::new();
+        code_set.insert(backup_code_good.clone());
+
+        let backup_codes = BackupCodes::new(code_set);
+
+        // add totp and backup codes also
+        let p = CryptoPolicy::minimum();
+        let cred = Credential::new_password_only(&p, pw_good)
+            .unwrap()
+            .update_totp(totp)
+            .update_backup_code(backup_codes)
+            .unwrap();
+
+        account.primary = Some(cred);
+
+        let (async_tx, mut async_rx) = unbounded();
+
+        // now check
+        // == two step checks
+
+        // Sending a PW first is an immediate fail.
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_AUTH_TYPE_MSG),
+                _ => panic!(),
+            };
+        }
+        // check send wrong backup code, should fail immediate
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::BackupCode(backup_code_bad),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_BACKUPCODE_MSG),
+                _ => panic!(),
+            };
+        }
+        // check send good backup code, should continue
+        //      then bad pw, fail pw
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::BackupCode(backup_code_good.clone()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_bad.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Denied(msg)) => assert!(msg == BAD_PASSWORD_MSG),
+                _ => panic!(),
+            };
+        }
+        // Can't process BackupCodeRemoval without the server instance
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::BackupCodeRemoval(_)) => {}
+            _ => assert!(false),
+        }
+
+        // check send good backup code, should continue
+        //      then good pw, success
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::BackupCode(backup_code_good.clone()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+        }
+        // Can't process BackupCodeRemoval without the server instance
+        match async_rx.blocking_recv() {
+            Some(DelayedAction::BackupCodeRemoval(_)) => {}
+            _ => assert!(false),
+        }
+
+        // TOTP should also work:
+        // check send good TOTP, should continue
+        //      then good pw, success
+        {
+            let (mut session, _, pw_badlist_cache) =
+                start_password_mfa_session!(&mut audit, account, &webauthn);
+
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Totp(totp_good),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Continue(cont)) => assert!(cont == vec![AuthAllowed::Password]),
+                _ => panic!(),
+            };
+            match session.validate_creds(
+                &mut audit,
+                &AuthCredential::Password(pw_good.to_string()),
+                &ts,
+                &async_tx,
+                &webauthn,
+                Some(&pw_badlist_cache),
+                &hs512,
+            ) {
+                Ok(AuthState::Success(_)) => {}
+                _ => panic!(),
+            };
+        }
+
+        drop(async_tx);
+        assert!(async_rx.blocking_recv().is_none());
+        audit.write_log();
+    }
 }

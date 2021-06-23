@@ -18,8 +18,10 @@ use crate::idm::unix::{UnixGroup, UnixUserAccount};
 use crate::idm::AuthState;
 use crate::ldap::LdapBoundToken;
 use crate::prelude::*;
-use crate::utils::backup_code_from_random;
-use crate::utils::{password_from_random, readable_password_from_random, uuid_from_duration, Sid};
+use crate::utils::{
+    backup_code_from_random, password_from_random, readable_password_from_random,
+    uuid_from_duration, Sid,
+};
 
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{
@@ -1884,12 +1886,12 @@ mod tests {
     use crate::credential::totp::Totp;
     use crate::credential::{Credential, Password};
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
-    use crate::idm::delayed::{DelayedAction, WebauthnCounterIncrement};
+    use crate::idm::delayed::{BackupCodeRemoval, DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
-        GenerateTotpEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
-        RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
-        UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent,
-        WebauthnInitRegisterEvent,
+        GenerateBackupCodeEvent, GenerateTotpEvent, PasswordChangeEvent, RadiusAuthTokenEvent,
+        RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent,
+        UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent,
+        WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -3521,6 +3523,86 @@ mod tests {
 
             check_admin_password(idms, au, TEST_PASSWORD);
             // All done!
+        })
+    }
+
+    #[test]
+    fn test_idm_backup_code_removal_delayed_action() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       idms_delayed: &mut IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let ct = duration_from_epoch_now();
+            let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            // let mut wa_softtok = WebauthnAuthenticator::new(U2FSoft::new());
+
+            // The account must has primary credential + uses MFA before generating backup codes
+            // Set a password.
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+            // Generate TOTP
+            let gte1 = GenerateTotpEvent::new_internal(UUID_ADMIN.clone());
+            // == reg, verify w_ correct totp (success)
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let (sesid, tok) = match res {
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
+                _ => panic!("invalid state!"),
+            };
+            let r_tok: Totp = tok.into();
+            let chal = r_tok
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to do totp?");
+            // attempt the verify
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+
+            match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
+                Ok(SetCredentialResponse::Success) => {}
+                _ => panic!(),
+            };
+            idms_prox_write.expire_mfareg_sessions(expire.clone());
+
+            // Generate backup codes
+            let gbe = GenerateBackupCodeEvent::new_internal(UUID_ADMIN.clone());
+
+            let backup_codes_vec = idms_prox_write.generate_backup_code(au, &gbe).unwrap();
+            let code_for_test = &backup_codes_vec[0];
+            // Get the account now so we can peek at the registered credential.
+            let account = idms_prox_write
+                .target_to_account(au, &UUID_ADMIN)
+                .expect("account must exist");
+
+            let cred = account.primary.expect("Must exist.");
+
+            let backup_codes_view = cred.get_backup_code_view().expect("must have view");
+            assert!(backup_codes_view.backup_codes.contains(code_for_test));
+            assert!(idms_prox_write.commit(au).is_ok());
+
+            // Assert the delayed action queue is empty
+            idms_delayed.is_empty_or_panic();
+
+            // Generate a fake action to remove one backup code
+            let da = DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
+                target_uuid: UUID_ADMIN.clone(),
+                code_to_remove: code_for_test.to_string(),
+            });
+            let r = task::block_on(idms.delayed_action(au, duration_from_epoch_now(), da));
+            assert!(Ok(true) == r);
+
+            // Check the removed backup code is no longer in the set
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            let account = idms_prox_write
+                .target_to_account(au, &UUID_ADMIN)
+                .expect("account must exist");
+
+            let cred = account.primary.expect("Must exist.");
+
+            let backup_codes_view = cred.get_backup_code_view().expect("must have view");
+            assert!(!backup_codes_view.backup_codes.contains(code_for_test));
         })
     }
 

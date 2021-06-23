@@ -113,6 +113,13 @@ impl GenerateBackupCodeEvent {
     ) -> Result<Self, OperationError> {
         Ok(GenerateBackupCodeEvent { ident, target })
     }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let ident = Identity::from_internal();
+
+        GenerateBackupCodeEvent { ident, target }
+    }
 }
 
 pub struct RemoveBackupCodeEvent {
@@ -128,6 +135,13 @@ impl RemoveBackupCodeEvent {
         target: Uuid,
     ) -> Result<Self, OperationError> {
         Ok(RemoveBackupCodeEvent { ident, target })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid) -> Self {
+        let ident = Identity::from_internal();
+
+        RemoveBackupCodeEvent { ident, target }
     }
 }
 
