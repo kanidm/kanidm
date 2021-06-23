@@ -8,6 +8,7 @@ use lru::LruCache;
 use reqwest::StatusCode;
 use std::collections::BTreeSet;
 use std::ops::{Add, Sub};
+use std::path::Path;
 use std::string::ToString;
 use std::time::{Duration, SystemTime};
 use tokio::sync::{Mutex, RwLock};
@@ -256,7 +257,7 @@ impl CacheLayer {
         }
     }
 
-    async fn set_cache_usertoken(&self, token: &UnixUserToken) -> Result<(), ()> {
+    async fn set_cache_usertoken(&self, token: &mut UnixUserToken) -> Result<(), ()> {
         // Set an expiry
         let ex_time = SystemTime::now() + Duration::from_secs(self.timeout_seconds);
         let offset = ex_time
@@ -264,6 +265,29 @@ impl CacheLayer {
             .map_err(|e| {
                 error!("time conversion error - ex_time less than epoch? {:?}", e);
             })?;
+        // WIP #392
+        // Check if requested `shell` exists on the system, else use `default_shell`
+        let requested_shell_exists: bool = token
+            .shell
+            .as_ref()
+            .map(|shell| {
+                let exists = Path::new(shell).exists();
+                if !exists {
+                    info!(
+                        "User requested shell is not present on this system - {}",
+                        shell
+                    )
+                }
+                exists
+            })
+            .unwrap_or_else(|| {
+                info!("User has not specified a shell, using default");
+                false
+            });
+
+        if !requested_shell_exists {
+            token.shell = Some(self.default_shell.clone())
+        }
 
         let dbtxn = self.db.write().await;
         // We need to add the groups first
@@ -329,9 +353,9 @@ impl CacheLayer {
             .idm_account_unix_token_get(account_id.to_string().as_str())
             .await
         {
-            Ok(n_tok) => {
+            Ok(mut n_tok) => {
                 // We have the token!
-                self.set_cache_usertoken(&n_tok).await?;
+                self.set_cache_usertoken(&mut n_tok).await?;
                 Ok(Some(n_tok))
             }
             Err(e) => {
@@ -732,9 +756,9 @@ impl CacheLayer {
             .idm_account_unix_cred_verify(account_id, cred)
             .await
         {
-            Ok(Some(n_tok)) => {
+            Ok(Some(mut n_tok)) => {
                 debug!("online password check success.");
-                self.set_cache_usertoken(&n_tok).await?;
+                self.set_cache_usertoken(&mut n_tok).await?;
                 self.set_cache_userpassword(&n_tok.uuid, cred).await?;
                 Ok(Some(true))
             }
