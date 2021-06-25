@@ -16,8 +16,11 @@ use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_u
 
 use serde_derive::Deserialize;
 use std::fs::{metadata, File, Metadata};
-use std::io::Read;
+
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
+
+use std::io::Read;
 use std::path::Path;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -28,6 +31,7 @@ use kanidm::core::{
     backup_server_core, create_server_core, domain_rename_core, recover_account_core,
     reindex_server_core, restore_server_core, vacuum_server_core, verify_server_core,
 };
+use kanidm::utils::file_permissions_readonly;
 
 use structopt::StructOpt;
 
@@ -118,7 +122,7 @@ async fn main() {
     let mut config = Configuration::new();
     // Check the permissions are sane.
     let cfg_meta = read_file_metadata(&(opt.commonopt().config_path));
-    if !cfg_meta.permissions().readonly() {
+    if !file_permissions_readonly(&cfg_meta) {
         eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
             opt.commonopt().config_path.to_str().unwrap_or("invalid file path"));
     }
@@ -159,7 +163,7 @@ async fn main() {
     if let Some(i_str) = &(sconfig.tls_chain) {
         let i_path = PathBuf::from(i_str.as_str());
         let i_meta = read_file_metadata(&i_path);
-        if !i_meta.permissions().readonly() {
+        if !file_permissions_readonly(&i_meta) {
             eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
         }
     }
@@ -167,7 +171,7 @@ async fn main() {
     if let Some(i_str) = &(sconfig.tls_key) {
         let i_path = PathBuf::from(i_str.as_str());
         let i_meta = read_file_metadata(&i_path);
-        if !i_meta.permissions().readonly() {
+        if !file_permissions_readonly(&i_meta) {
             eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
         }
 
@@ -195,7 +199,7 @@ async fn main() {
             );
             std::process::exit(1);
         }
-        if i_meta.permissions().readonly() {
+        if !file_permissions_readonly(&i_meta) {
             eprintln!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str().unwrap_or("invalid file path"));
         }
 

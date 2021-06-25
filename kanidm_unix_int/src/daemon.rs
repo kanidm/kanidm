@@ -40,6 +40,8 @@ use kanidm_unix_common::cache::CacheLayer;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse, TaskRequest, TaskResponse};
 
+use kanidm::utils::file_permissions_readonly;
+
 //=== the codec
 
 type AsyncTaskRequest = (TaskRequest, oneshot::Sender<()>);
@@ -406,7 +408,7 @@ async fn main() {
                 std::process::exit(1);
             }
         };
-        if !cfg_meta.permissions().readonly() {
+        if !file_permissions_readonly(&cfg_meta) {
             warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                 cfg_path_str
                 );
@@ -442,7 +444,7 @@ async fn main() {
                 std::process::exit(1);
             }
         };
-        if !unixd_meta.permissions().readonly() {
+        if !file_permissions_readonly(&unixd_meta) {
             warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
                 unixd_path_str);
         }
@@ -525,7 +527,7 @@ async fn main() {
                 );
                 std::process::exit(1);
             }
-            if i_meta.permissions().readonly() {
+            if !file_permissions_readonly(&i_meta) {
                 warn!("WARNING: DB folder permissions on {} indicate it may not be RW. This could cause the server start up to fail!", db_par_path_buf.to_str()
                 .unwrap_or_else(|| "<db_par_path_buf invalid>")
                 );

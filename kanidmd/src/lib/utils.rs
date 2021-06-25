@@ -5,6 +5,14 @@ use uuid::{Builder, Uuid};
 use rand::distributions::Distribution;
 use rand::{thread_rng, Rng};
 
+use std::fs::Metadata;
+#[cfg(target_os = "linux")]
+use std::os::linux::fs::MetadataExt;
+#[cfg(target_os = "macos")]
+use std::os::macos::fs::MetadataExt;
+
+use users::{get_current_gid, get_current_uid};
+
 #[derive(Debug)]
 pub struct DistinctAlpha;
 
@@ -99,6 +107,29 @@ impl Distribution<char> for DistinctAlpha {
             }
         }
     }
+}
+
+#[cfg(target_family = "unix")]
+pub fn file_permissions_readonly(meta: &Metadata) -> bool {
+    // Who are we running as?
+    let cuid = get_current_uid();
+    let cgid = get_current_gid();
+
+    // Who owns the file?
+    // Who is the group owner of the file?
+    let f_gid = meta.st_gid();
+    let f_uid = meta.st_uid();
+
+    let f_mode = meta.st_mode();
+
+    !(
+        // If we are the owner, we have write perms as we can alter the DAC rights
+        cuid == f_uid ||
+        // If we are the group owner, check the mode bits do not have write.
+        (cgid == f_gid && (f_mode & 0o0020) != 0) ||
+        // Finally, check that everyone bits don't have write.
+        ((f_mode & 0o0002) != 0)
+    )
 }
 
 #[cfg(test)]
