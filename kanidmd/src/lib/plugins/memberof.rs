@@ -468,10 +468,20 @@ mod tests {
                 f_eq("uuid", PartialValue::new_uuids($ea).unwrap()),
                 f_eq($mo, PartialValue::new_refer_s($eb).unwrap())
             ]));
-            let cands = $qs
-                .internal_search($au, filt)
-                .expect("Internal search failure");
-            debug!("assert_mo_cands {:?}", cands);
+            tracing::trace!("doing QueryServer internal search");
+            // there's an lperf_segment in this code, so we should
+            // wrap it here to avoid having to touch it
+            let cands = {
+                let _entered = tracing::trace_span!("server::internal_search").entered();
+                tracing::info!(tag = "perf", "Starting internal_search");
+                let cands = $qs
+                    .internal_search($au, filt)
+                    .expect("Internal search failure");
+                tracing::info!(tag = "perf", "Finished internal_search");
+                cands
+            };
+
+            tracing::debug!("assert_mo_cands {:?}", cands);
             assert!(cands.len() == $cand);
         }};
     }

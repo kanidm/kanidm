@@ -240,41 +240,77 @@ macro_rules! run_create_test {
         use crate::prelude::*;
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
+        use crate::logbuffer::LogBuffer;
 
-        let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
-            let qs = setup_test!(&mut au, $preload_entries);
+        use tracing::{self, Level};
+        use tracing_subscriber::FmtSubscriber;
+        use tracing_subscriber::fmt::format::{FmtSpan, debug_fn};
+        use tracing_subscriber::field::MakeExt;
 
-            let ce = match $internal {
-                None => CreateEvent::new_internal($create_entries.clone()),
-                Some(e_str) => unsafe {
-                    CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
-                },
-            };
+        // https://docs.rs/tracing-subscriber/0.2.18/tracing_subscriber/fmt/struct.SubscriberBuilder.html
+        let subscriber = FmtSubscriber::builder()
+            // SETTINGS
+            .with_max_level(Level::TRACE)
+            .with_ansi(false) // no colors (good for .log files)
 
-            {
-                let qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.create(&mut au, &ce);
-                debug!("test result: {:?}", r);
-                assert!(r == $expect);
-                $check(&mut au, &qs_write);
-                match r {
-                    Ok(_) => {
-                        qs_write.commit(&mut au).expect("commit failure!");
+            // JSON
+            // .json() // machine-readable
+            // .with_span_list(false) // displays all open spans
+
+            .with_writer(LogBuffer::default())
+            .with_span_events(FmtSpan::NEW | FmtSpan::CLOSE) // logs when `span`s are initialized or terminated
+
+            .fmt_fields({
+                debug_fn(|writer, key, value| {
+                    match key.to_string().as_str() {
+                        "message" => write!(writer, "{:?}", value),
+                        _ => write!(writer, "{}={:?}", key, value),
                     }
-                    Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                }).delimited(" | ")
+            })
+
+            .finish();
+
+        tracing::subscriber::with_default(subscriber, || {
+            let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
+
+            lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
+                let _e = tracing::info_span!("plugins>macros>create_run_test").entered();
+                tracing::info!("setting up test");
+                let qs = setup_test!(&mut au, $preload_entries);
+
+                let ce = match $internal {
+                    None => CreateEvent::new_internal($create_entries.clone()),
+                    Some(e_str) => unsafe {
+                        CreateEvent::new_impersonate_entry_ser(e_str, $create_entries.clone())
+                    },
+                };
+
+                tracing::info_span!("Body thing").in_scope(|| {
+                    let qs_write = qs.write(duration_from_epoch_now());
+                    let r = qs_write.create(&mut au, &ce);
+                    tracing::debug!("test result: {:?}", r);
+                    assert!(r == $expect);
+                    $check(&mut au, &qs_write);
+                    match r {
+                        Ok(_) => qs_write.commit(&mut au).expect("commit failure!"),
+                        Err(e) => {
+                            tracing::error!(tag = "admin", "Rolling back => {:?}", e);
+                            ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        }
                     }
-                }
-            }
-            // Make sure there are no errors.
-            debug!("starting verification");
-            let ver = qs.verify(&mut au);
-            debug!("verification -> {:?}", ver);
-            assert!(ver.len() == 0);
+                });
+                // Make sure there are no errors.
+                tracing::debug!("starting verification");
+                let ver = qs.verify(&mut au);
+                tracing::debug!("verification -> {:?}", ver);
+                assert!(ver.len() == 0);
+            });
+            // Dump the raw audit log.
+            tracing::info!("dumping audit log");
+            au.write_log();
         });
-        // Dump the raw audit log.
-        au.write_log();
+        // `subscriber` drops, dropping the `LogBuffer` and thus writing all the logs
     }};
 }
 

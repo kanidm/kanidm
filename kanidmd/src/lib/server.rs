@@ -221,8 +221,9 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    fn exists(&self, audit: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
-        lperf_segment!(audit, "server::exists", || {
+    fn exists(&self, au: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
+        let _entered = tracing::trace_span!("server>exists").entered();
+        lperf_segment!(au, "server::exists", || {
             let be_txn = self.get_be_txn();
             let idxmeta = be_txn.get_idxmeta_ref();
 
@@ -232,16 +233,23 @@ pub trait QueryServerTransaction<'a> {
                 .filter
                 .resolve(&ee.ident, Some(idxmeta), Some(resolve_filter_cache))
                 .map_err(|e| {
-                    ladmin_error!(audit, "Failed to resolve filter {:?}", e);
+                    tracing::error!(tag = "admin", "Failed to resolve filter {:?}", e);
+                    ladmin_error!(au, "Failed to resolve filter {:?}", e);
                     e
                 })?;
 
+            tracing::debug!(tag = "admin", "Successfully resolved filter");
+
             let lims = ee.get_limits();
 
-            self.get_be_txn().exists(audit, &lims, &vfr).map_err(|e| {
-                ladmin_error!(audit, "backend failure -> {:?}", e);
+            let ret = self.get_be_txn().exists(au, &lims, &vfr).map_err(|e| {
+                tracing::error!(tag = "admin", "backend failure -> {:?}", e);
+                ladmin_error!(au, "backend failure -> {:?}", e);
                 OperationError::Backend
-            })
+            });
+            tracing::debug!(tag = "admin", "backend did not fail");
+
+            ret
         })
     }
 
