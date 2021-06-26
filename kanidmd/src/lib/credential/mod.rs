@@ -790,7 +790,7 @@ impl Credential {
                 uuid: self.uuid,
             }),
             _ => Err(OperationError::InvalidAccountState(
-                "non-mfa cred type".to_string(),
+                "Non-MFA credential type".to_string(),
             )),
         }
     }
@@ -821,7 +821,7 @@ impl Credential {
                 }
             }
             _ => Err(OperationError::InvalidAccountState(
-                "non-mfa cred type".to_string(),
+                "Non-MFA credential type".to_string(),
             )),
         }
     }
@@ -834,7 +834,7 @@ impl Credential {
                 uuid: self.uuid,
             }),
             _ => Err(OperationError::InvalidAccountState(
-                "non-mfa cred type".to_string(),
+                "Non-MFA credential type".to_string(),
             )),
         }
     }
@@ -844,7 +844,7 @@ impl Credential {
             CredentialType::PasswordMfa(_, _, _, opt_bc) => opt_bc
                 .as_ref()
                 .ok_or(OperationError::InvalidAccountState(
-                    "no backup codes avaialble".to_string(),
+                    "No backup codes are available for this account".to_string(),
                 ))
                 .and_then(|bc| {
                     Ok(BackupCodesView {
@@ -852,7 +852,7 @@ impl Credential {
                     })
                 }),
             _ => Err(OperationError::InvalidAccountState(
-                "non-mfa cred type".to_string(),
+                "Non-MFA credential type".to_string(),
             )),
         }
     }
