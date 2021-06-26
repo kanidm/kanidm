@@ -6,11 +6,11 @@ use crate::prelude::*;
 
 use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
-    CredentialStatusEvent, RadiusAuthTokenEvent, UnixGroupTokenEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent,
+    CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
+    UnixUserAuthEvent, UnixUserTokenEvent,
 };
 use crate::value::PartialValue;
-use kanidm_proto::v1::{OperationError, RadiusAuthToken};
+use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::server::{IdmServer, IdmServerTransaction};
@@ -834,6 +834,61 @@ impl QueryServerReadV1 {
                 ltrace!(audit, "Begin event {:?}", cse);
 
                 idms_prox_read.get_credentialstatus(&mut audit, &cse)
+            }
+        );
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
+        res
+    }
+
+    pub async fn handle_idmbackupcodeview(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        eventid: Uuid,
+    ) -> Result<BackupCodesView, OperationError> {
+        let mut audit = AuditScope::new("idm_backup_code_view", eventid, self.log_level);
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_read = self.idms.proxy_read_async().await;
+
+        let res = lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<IdmBackupCodeViewMessage>",
+            || {
+                let ident = idms_prox_read
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        e
+                    })?;
+                let target_uuid = idms_prox_read
+                    .qs_read
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .map_err(|e| {
+                        ladmin_error!(&mut audit, "Error resolving id to target");
+                        e
+                    })?;
+
+                // Make an event from the request
+                let rbce = match ReadBackupCodeEvent::from_parts(
+                    &mut audit,
+                    // &idms_prox_read.qs_read,
+                    ident,
+                    target_uuid,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        ladmin_error!(audit, "Failed to begin backup code read: {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+                ltrace!(audit, "Begin event {:?}", rbce);
+
+                idms_prox_read.get_backup_codes(&mut audit, &rbce)
             }
         );
         self.log.send(audit).map_err(|_| {

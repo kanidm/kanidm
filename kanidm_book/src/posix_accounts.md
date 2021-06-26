@@ -68,7 +68,9 @@ autoallocation policy and the simplicity of its design, while larger enterprises
 will already have IDM or Business process applications for HR/People that are
 capable of supplying this kind of data in batch jobs.
 
-## Enabling Posix Attributes on Accounts
+## Enabling Posix Attributes
+
+### Enabling Posix Attributes on Accounts
 
 To enable posix account features and ids on an account, you require the permission `idm_account_unix_extend_priv`.
 This is provided to `idm_admins` in the default database.
@@ -84,7 +86,7 @@ You can view the accounts posix token details with:
 
     kanidm account posix show --name anonymous demo_user
 
-## Enabling Posix Attributes on Groups
+### Enabling Posix Attributes on Groups
 
 To enable posix group features and ids on an account, you require the permission `idm_group_unix_extend_priv`.
 This is provided to `idm_admins` in the default database.
@@ -101,3 +103,18 @@ You can view the accounts posix token details with:
 
 Posix enabled groups will supply their members as posix members to clients. There is no
 special or separate type of membership for posix members required.
+
+## Troubleshooting Common Issues
+
+### Subid conflicts with Podman
+
+Due to the way that podman operates, in some cases using non-root containers with
+kanidm accounts may fail with an error such as:
+
+    ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "NAME" in /etc/subuid
+
+This is a fault in podman and how it attempts to provide non-root containers, when uid/gids
+are greater than 65535. In this case you may manually allocate your users gidnumber to be
+between 1000 - 65535 which may not have the fault.
+
+

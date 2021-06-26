@@ -2,39 +2,14 @@
 
 To interact with Kanidm as an administrator, you'll need to use our command line tools.
 
-## From (experimental) packages
+## From packages
 
 Kanidm currently supports:
 
- * Fedora 33
- * OpenSUSE Leap 15.2
  * OpenSUSE Tumbleweed
+ * OpenSUSE Leap 15.3
+ * Fedora 33/34
 
-
-### Fedora
-
-Fedora is still experimentally supported through the development repository. You need to add the repository metadata into the correct directory.
-
-    cd /etc/yum.repos.d
-    wget https://download.opensuse.org/repositories/home:/firstyear:/kanidm/Fedora_33/home:firstyear:kanidm.repo
-
-You can then install with:
-
-    dnf install kanidm-clients
-
-### OpenSUSE Leap 15.2
-
-Leap 15.2 is still not fully supported with Kanidm. For an experimental client, you can
-try the development repository. Using zypper you can add the repository with:
-
-    zypper ar obs://home:firstyear:kanidm home_firstyear_kanidm
-    zypper mr -f home_firstyear_kanidm
-
-Then you need to refresh your metadata and install the clients.
-
-    zypper ref
-    zypper in kanidm-clients
-    
 ### OpenSUSE Tumbleweed
 
 Kanidm is part of OpenSUSE Tumbleweed since October 2020. This means you can install
@@ -43,7 +18,33 @@ the clients with:
     zypper ref
     zypper in kanidm-clients
 
-## From source
+### OpenSUSE Leap 15.3
+
+Leap 15.3 is still not fully supported with Kanidm. For an experimental client, you can
+try the development repository. Using zypper you can add the repository with:
+
+    zypper ar -f obs://network:idm network_idm
+
+Then you need to refresh your metadata and install the clients.
+
+    zypper ref
+    zypper in kanidm-clients
+
+### Fedora
+
+Fedora is still experimentally supported through the development repository. You need to add the repository metadata into the correct directory.
+
+    cd /etc/yum.repos.d
+    # 33
+    wget https://download.opensuse.org/repositories/network:/idm/Fedora_33/network:idm.repo
+    # 34
+    wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
+
+You can then install with:
+
+    dnf install kanidm-clients
+
+## From source (CLI only, not recommended)
 
 After you check out the source (see [GitHub](https://github.com/kanidm/kanidm)), navigate to:
 
@@ -61,7 +62,7 @@ with the -C parameter:
 
 Now you can take some time to look at what commands are available - please [ask for help at any time](https://github.com/kanidm/kanidm#getting-in-contact--questions).
 
-## Kandim configuration
+## Kanidm configuration
 
 You can configure kanidm to help make commands simpler by modifying ~/.config/kanidm OR /etc/kanidm/config
 

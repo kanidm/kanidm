@@ -2,6 +2,8 @@ use std::iter;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
+use crate::idm::event::GenerateBackupCodeEvent;
+use crate::idm::event::RemoveBackupCodeEvent;
 use crate::prelude::*;
 
 use crate::event::{
@@ -610,6 +612,45 @@ impl QueryServerWriteV1 {
                         })?;
                         idms_prox_write
                             .remove_account_webauthn(&mut audit, &rwe)
+                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                    }
+                    SetCredentialRequest::GenerateBackupCode => {
+                        let gbe = GenerateBackupCodeEvent::from_parts(
+                            &mut audit,
+                            // &idms_prox_write.qs_write,
+                            ident,
+                            target_uuid,
+                        )
+                        .map_err(|e| {
+                            ladmin_error!(
+                                audit,
+                                "Failed to begin internal_credential_set_message: {:?}",
+                                e
+                            );
+                            e
+                        })?;
+                        idms_prox_write
+                            .generate_backup_code(&mut audit, &gbe)
+                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                            .map(SetCredentialResponse::BackupCodes)
+                    }
+                    SetCredentialRequest::BackupCodeRemove => {
+                        let rbe = RemoveBackupCodeEvent::from_parts(
+                            &mut audit,
+                            // &idms_prox_write.qs_write,
+                            ident,
+                            target_uuid,
+                        )
+                        .map_err(|e| {
+                            ladmin_error!(
+                                audit,
+                                "Failed to begin internal_credential_set_message: {:?}",
+                                e
+                            );
+                            e
+                        })?;
+                        idms_prox_write
+                            .remove_backup_code(&mut audit, &rbe)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
                 }

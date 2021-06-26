@@ -310,7 +310,7 @@ pub enum CredentialDetailType {
     GeneratedPassword,
     Webauthn(Vec<String>),
     /// totp, webauthn
-    PasswordMfa(bool, Vec<String>),
+    PasswordMfa(bool, Vec<String>, usize),
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -341,12 +341,17 @@ impl fmt::Display for CredentialDetail {
                     write!(f, "")
                 }
             }
-            CredentialDetailType::PasswordMfa(totp, labels) => {
+            CredentialDetailType::PasswordMfa(totp, labels, backup_code) => {
                 writeln!(f, "password: set")?;
                 if *totp {
                     writeln!(f, "totp: enabled")?;
                 } else {
                     writeln!(f, "totp: disabled")?;
+                }
+                if *backup_code > 0 {
+                    writeln!(f, "backup_code: enabled")?;
+                } else {
+                    writeln!(f, "backup_code: disabled")?;
                 }
                 if labels.is_empty() {
                     writeln!(f, "webauthn: no authenticators")
@@ -375,6 +380,12 @@ impl fmt::Display for CredentialStatus {
         }
         writeln!(f, "---")
     }
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct BackupCodesView {
+    // Or use SetCredentialResponse::BackupCodes?
+    pub backup_codes: Vec<String>,
 }
 
 /* ===== low level proto types ===== */
@@ -513,6 +524,7 @@ pub enum AuthCredential {
     Password(String),
     Totp(u32),
     Webauthn(PublicKeyCredential),
+    BackupCode(String),
 }
 
 impl fmt::Debug for AuthCredential {
@@ -522,6 +534,7 @@ impl fmt::Debug for AuthCredential {
             AuthCredential::Password(_) => write!(fmt, "Password(_)"),
             AuthCredential::Totp(_) => write!(fmt, "TOTP(_)"),
             AuthCredential::Webauthn(_) => write!(fmt, "Webauthn(_)"),
+            AuthCredential::BackupCode(_) => write!(fmt, "BackupCode(_)"),
         }
     }
 }
@@ -665,6 +678,8 @@ pub enum SetCredentialRequest {
     WebauthnRegister(Uuid, RegisterPublicKeyCredential),
     // Remove
     WebauthnRemove(String),
+    GenerateBackupCode,
+    BackupCodeRemove,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -731,6 +746,7 @@ pub enum SetCredentialResponse {
     Token(String),
     TotpCheck(Uuid, TotpSecret),
     WebauthnCreateChallenge(Uuid, CreationChallengeResponse),
+    BackupCodes(Vec<String>),
 }
 
 /* Recycle Requests area */
