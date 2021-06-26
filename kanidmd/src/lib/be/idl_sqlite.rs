@@ -1,7 +1,8 @@
 use crate::audit::AuditScope;
-use crate::be::{BackendConfig, IdList, IdRawEntry};
+use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::{IndexType, Value};
+use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use r2d2::Pool;
@@ -195,13 +196,7 @@ pub trait IdlSqliteTransaction {
         }
     }
 
-    fn exists_idx(
-        &self,
-        audit: &mut AuditScope,
-        attr: &str,
-        itype: &IndexType,
-    ) -> Result<bool, OperationError> {
-        let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
+    fn exists_table(&self, audit: &mut AuditScope, tname: &str) -> Result<bool, OperationError> {
         let mut stmt = self
             .get_conn()
             .prepare("SELECT COUNT(name) from sqlite_master where name = :tname")
@@ -210,7 +205,7 @@ pub trait IdlSqliteTransaction {
                 OperationError::SqliteError
             })?;
         let i: Option<i64> = stmt
-            .query_row(&[(":tname", &tname)], |row| row.get(0))
+            .query_row(&[(":tname", tname)], |row| row.get(0))
             .map_err(|e| {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SqliteError
@@ -221,6 +216,16 @@ pub trait IdlSqliteTransaction {
         } else {
             Ok(true)
         }
+    }
+
+    fn exists_idx(
+        &self,
+        audit: &mut AuditScope,
+        attr: &str,
+        itype: &IndexType,
+    ) -> Result<bool, OperationError> {
+        let tname = format!("idx_{}_{}", itype.as_idx_str(), attr);
+        self.exists_table(audit, &tname)
     }
 
     fn get_idl(
@@ -1067,6 +1072,94 @@ impl IdlSqliteWriteTransaction {
         })
     }
 
+    pub fn store_idx_slope_analysis(
+        &self,
+        audit: &mut AuditScope,
+        slopes: &HashMap<IdxKey, IdxSlope>,
+    ) -> Result<(), OperationError> {
+        self.conn
+            .execute(
+                "CREATE TABLE IF NOT EXISTS idxslope_analysis (
+                    id TEXT PRIMARY KEY,
+                    slope INTEGER
+                )",
+                [],
+            )
+            .map(|_| ())
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+
+        // Remove any data if it exists.
+        self.conn
+            .execute("DELETE FROM idxslope_analysis", [])
+            .map(|_| ())
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+
+        slopes.iter().try_for_each(|(k, v)| {
+            let key = format!("idx_{}_{}", k.itype.as_idx_str(), k.attr);
+            self.conn
+                .execute(
+                    "INSERT OR REPLACE INTO idxslope_analysis (id, slope) VALUES(:id, :slope)",
+                    named_params! {
+                        ":id": &key,
+                        ":slope": &v,
+                    },
+                )
+                .map(|_| ())
+                .map_err(|e| {
+                    eprintln!("CRITICAL: rusqlite error {:?}", e);
+                    OperationError::SqliteError
+                })
+        })
+    }
+
+    pub fn is_idx_slopeyness_generated(
+        &self,
+        audit: &mut AuditScope,
+    ) -> Result<bool, OperationError> {
+        self.exists_table(audit, "idxslope_analysis")
+    }
+
+    pub fn get_idx_slope(
+        &self,
+        audit: &mut AuditScope,
+        ikey: &IdxKey,
+    ) -> Result<Option<IdxSlope>, OperationError> {
+        let analysis_exists = self.exists_table(audit, "idxslope_analysis")?;
+        if !analysis_exists {
+            return Ok(None);
+        }
+
+        // Then we have the table and it should have things in it, lets put
+        // it all together.
+        let key = format!("idx_{}_{}", ikey.itype.as_idx_str(), ikey.attr);
+
+        let mut stmt = self
+            .get_conn()
+            .prepare("SELECT slope FROM idxslope_analysis WHERE id = :id")
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+
+        let slope: Option<IdxSlope> = stmt
+            .query_row(&[(":id", &key)], |row| row.get(0))
+            // We don't mind if it doesn't exist
+            .optional()
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+        ltrace!(audit, "Got slope for index name {} -> {:?}", key, slope);
+
+        Ok(slope)
+    }
+
     pub unsafe fn purge_id2entry(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         ltrace!(audit, "purge id2entry ...");
         self.conn
@@ -1303,7 +1396,7 @@ impl IdlSqliteWriteTransaction {
                 dbv_id2entry
             );
         }
-        //   * if v3 -> complete.
+        //   * if v3 -> create name2uuid, uuid2spn, uuid2rdn.
         if dbv_id2entry == 3 {
             self.create_name2uuid(audit)
                 .and_then(|_| self.create_uuid2spn(audit))

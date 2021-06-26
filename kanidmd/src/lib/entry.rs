@@ -38,14 +38,14 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
-use crate::be::IdxKey;
+use crate::be::{IdxKey, IdxSlope};
 
 use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeMap as Map;
 pub use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
 // use hashbrown::HashMap as Map;
-use hashbrown::HashSet;
+use hashbrown::HashMap;
 use smartstring::alias::String as AttrString;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -1097,7 +1097,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Given the previous and current state of this entry, determine the indexing differential
     /// that needs to be applied. i.e. what indexes must be created, modified and removed.
     pub(crate) fn idx_diff<'a>(
-        idxmeta: &'a HashSet<IdxKey>,
+        idxmeta: &'a HashMap<IdxKey, IdxSlope>,
         pre: Option<&Self>,
         post: Option<&Self>,
     ) -> IdxDiff<'a> {
@@ -1113,7 +1113,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             (Some(pre_e), None) => {
                 // If we are none (?), yield our pre-state as removals.
                 idxmeta
-                    .iter()
+                    .keys()
                     .flat_map(|ikey| {
                         match pre_e.get_ava(ikey.attr.as_str()) {
                             None => Vec::new(),
@@ -1143,7 +1143,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             (None, Some(post_e)) => {
                 // If the pre-state is none, yield our additions.
                 idxmeta
-                    .iter()
+                    .keys()
                     .flat_map(|ikey| {
                         match post_e.get_ava(ikey.attr.as_str()) {
                             None => Vec::new(),
@@ -1175,7 +1175,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             (Some(pre_e), Some(post_e)) => {
                 assert!(pre_e.state.id == post_e.state.id);
                 idxmeta
-                    .iter()
+                    .keys()
                     .flat_map(|ikey| {
                         match (
                             pre_e.get_ava_set(ikey.attr.as_str()),
@@ -1804,16 +1804,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 self.attribute_lessthan(attr.as_str(), subvalue)
             }
             // Check with ftweedal about or filter zero len correctness.
-            FilterResolved::Or(l) => l.iter().any(|f| self.entry_match_no_index_inner(f)),
+            FilterResolved::Or(l, _) => l.iter().any(|f| self.entry_match_no_index_inner(f)),
             // Check with ftweedal about and filter zero len correctness.
-            FilterResolved::And(l) => l.iter().all(|f| self.entry_match_no_index_inner(f)),
-            FilterResolved::Inclusion(_) => {
+            FilterResolved::And(l, _) => l.iter().all(|f| self.entry_match_no_index_inner(f)),
+            FilterResolved::Inclusion(_, _) => {
                 // An inclusion doesn't make sense on an entry in isolation!
                 // Inclusions are part of exists queries, on search they mean
                 // nothing!
                 false
             }
-            FilterResolved::AndNot(f) => !self.entry_match_no_index_inner(f),
+            FilterResolved::AndNot(f, _) => !self.entry_match_no_index_inner(f),
         }
     }
 
@@ -2091,11 +2091,11 @@ impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
 
 #[cfg(test)]
 mod tests {
-    use crate::be::IdxKey;
+    use crate::be::{IdxKey, IdxSlope};
     use crate::entry::{Entry, EntryInit, EntryInvalid, EntryNew};
     use crate::modify::{Modify, ModifyList};
     use crate::value::{IndexType, PartialValue, Value};
-    use hashbrown::HashSet;
+    use hashbrown::HashMap;
     use smartstring::alias::String as AttrString;
     use std::collections::BTreeSet as Set;
 
@@ -2270,19 +2270,28 @@ mod tests {
         e2.add_ava("userid", Value::from("claire"));
         let e2 = unsafe { e2.into_sealed_committed() };
 
-        let mut idxmeta = HashSet::with_capacity(8);
-        idxmeta.insert(IdxKey {
-            attr: AttrString::from("userid"),
-            itype: IndexType::Equality,
-        });
-        idxmeta.insert(IdxKey {
-            attr: AttrString::from("userid"),
-            itype: IndexType::Presence,
-        });
-        idxmeta.insert(IdxKey {
-            attr: AttrString::from("extra"),
-            itype: IndexType::Equality,
-        });
+        let mut idxmeta = HashMap::with_capacity(8);
+        idxmeta.insert(
+            IdxKey {
+                attr: AttrString::from("userid"),
+                itype: IndexType::Equality,
+            },
+            IdxSlope::MAX,
+        );
+        idxmeta.insert(
+            IdxKey {
+                attr: AttrString::from("userid"),
+                itype: IndexType::Presence,
+            },
+            IdxSlope::MAX,
+        );
+        idxmeta.insert(
+            IdxKey {
+                attr: AttrString::from("extra"),
+                itype: IndexType::Equality,
+            },
+            IdxSlope::MAX,
+        );
 
         // When we do None, None, we get nothing back.
         let r1 = Entry::idx_diff(&idxmeta, None, None);

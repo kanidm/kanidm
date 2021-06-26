@@ -7,7 +7,8 @@
 use std::fs;
 
 use crate::value::IndexType;
-use hashbrown::HashSet as Set;
+use hashbrown::HashMap as Map;
+use hashbrown::HashSet;
 use std::cell::UnsafeCell;
 use std::sync::Arc;
 
@@ -32,7 +33,7 @@ mod idl_arc_sqlite;
 mod idl_sqlite;
 pub(crate) mod idxkey;
 
-pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef};
+pub(crate) use self::idxkey::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxSlope};
 
 use crate::be::idl_arc_sqlite::{
     IdlArcSqlite, IdlArcSqliteReadTransaction, IdlArcSqliteTransaction,
@@ -61,11 +62,11 @@ pub struct IdRawEntry {
 
 #[derive(Debug, Clone)]
 pub struct IdxMeta {
-    pub idxkeys: Set<IdxKey>,
+    pub idxkeys: Map<IdxKey, IdxSlope>,
 }
 
 impl IdxMeta {
-    pub fn new(idxkeys: Set<IdxKey>) -> Self {
+    pub fn new(idxkeys: Map<IdxKey, IdxSlope>) -> Self {
         IdxMeta { idxkeys }
     }
 }
@@ -158,7 +159,7 @@ pub trait BackendTransaction {
     ) -> Result<(IdList, FilterPlan), OperationError> {
         Ok(match filt {
             FilterResolved::Eq(attr, value, idx) => {
-                if *idx {
+                if idx.is_some() {
                     // Get the idx_key
                     let idx_key = value.get_idx_eq_key();
                     // Get the idl for this
@@ -178,7 +179,7 @@ pub trait BackendTransaction {
                 }
             }
             FilterResolved::Sub(attr, subvalue, idx) => {
-                if *idx {
+                if idx.is_some() {
                     // Get the idx_key
                     let idx_key = subvalue.get_idx_sub_key();
                     // Get the idl for this
@@ -198,7 +199,7 @@ pub trait BackendTransaction {
                 }
             }
             FilterResolved::Pres(attr, idx) => {
-                if *idx {
+                if idx.is_some() {
                     // Get the idl for this
                     match self.get_idlayer().get_idl(
                         au,
@@ -218,7 +219,7 @@ pub trait BackendTransaction {
                 // We have no process for indexing this right now.
                 (IdList::AllIds, FilterPlan::LessThanUnindexed(attr.clone()))
             }
-            FilterResolved::Or(l) => {
+            FilterResolved::Or(l, _) => {
                 // Importantly if this has no inner elements, this returns
                 // an empty list.
                 let mut plan = Vec::new();
@@ -270,7 +271,7 @@ pub trait BackendTransaction {
                     (IdList::Indexed(result), setplan)
                 }
             }
-            FilterResolved::And(l) => {
+            FilterResolved::And(l, _) => {
                 // This algorithm is a little annoying. I couldn't get it to work with iter and
                 // folds due to the logic needed ...
 
@@ -382,7 +383,7 @@ pub trait BackendTransaction {
                 for f in f_andnot.iter() {
                     f_rem_count -= 1;
                     let f_in = match f {
-                        FilterResolved::AndNot(f_in) => f_in,
+                        FilterResolved::AndNot(f_in, _) => f_in,
                         _ => {
                             lfilter_error!(
                                 au,
@@ -465,7 +466,7 @@ pub trait BackendTransaction {
                 // debug!("final cand set ==> {:?}", cand_idl);
                 (cand_idl, setplan)
             } // end and
-            FilterResolved::Inclusion(l) => {
+            FilterResolved::Inclusion(l, _) => {
                 // For inclusion to be valid, every term must have *at least* one element present.
                 // This really relies on indexing, and so it's internal only - generally only
                 // for fully indexed existance queries, such as from refint.
@@ -507,7 +508,7 @@ pub trait BackendTransaction {
             // of an "AND" query, but if it's used anywhere else IE the root filter, then there is
             // no other set to exclude - therefore it's empty set. Additionally, even in an OR query
             // the AndNot will be skipped as an empty set for the same reason.
-            FilterResolved::AndNot(_f) => {
+            FilterResolved::AndNot(_f, _) => {
                 // get the idl for f
                 // now do andnot?
                 lfilter_error!(
@@ -1046,8 +1047,32 @@ impl<'a> BackendWriteTransaction<'a> {
         })
     }
 
-    pub fn update_idxmeta(&mut self, mut idxkeys: Set<IdxKey>) {
+    pub fn update_idxmeta(
+        &mut self,
+        audit: &mut AuditScope,
+        idxkeys: Vec<IdxKey>,
+    ) -> Result<(), OperationError> {
+        if self.is_idx_slopeyness_generated(audit)? {
+            ltrace!(audit, "Indexing slopes available");
+        } else {
+            ladmin_warning!(
+                audit,
+                "No indexing slopes available. You should consider reindexing to generate these"
+            );
+        };
+
+        // Setup idxkeys here. By default we set these all to "max slope" aka
+        // all indexes are "equal" but also worse case unless analysed. If they
+        // have been analysed, we can set the slope factor into here.
+        let idxkeys: Result<Map<_, _>, _> = idxkeys
+            .into_iter()
+            .map(|k| self.get_idx_slope(audit, &k).map(|slope| (k, slope)))
+            .collect();
+
+        let mut idxkeys = idxkeys?;
+
         std::mem::swap(&mut self.idxmeta_wr.deref_mut().idxkeys, &mut idxkeys);
+        Ok(())
     }
 
     // Should take a mut index set, and then we write the whole thing back
@@ -1234,12 +1259,12 @@ impl<'a> BackendWriteTransaction<'a> {
         let idx_table_list = self.get_idlayer().list_idxs(audit)?;
 
         // Turn the vec to a real set
-        let idx_table_set: Set<_> = idx_table_list.into_iter().collect();
+        let idx_table_set: HashSet<_> = idx_table_list.into_iter().collect();
 
         let missing: Vec<_> = self
             .idxmeta
             .idxkeys
-            .iter()
+            .keys()
             .filter_map(|ikey| {
                 // what would the table name be?
                 let tname = format!("idx_{}_{}", ikey.itype.as_idx_str(), ikey.attr.as_str());
@@ -1269,7 +1294,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
         self.idxmeta
             .idxkeys
-            .iter()
+            .keys()
             .try_for_each(|ikey| idlayer.create_idx(audit, &ikey.attr, &ikey.itype))
     }
 
@@ -1327,7 +1352,12 @@ impl<'a> BackendWriteTransaction<'a> {
         limmediate_warning!(audit, "Optimising Indexes ... ");
         idlayer.optimise_dirty_idls(audit);
         limmediate_warning!(audit, "done ✅\n");
-
+        limmediate_warning!(audit, "Calculating Index Optimisation Slopes ... ");
+        idlayer.analyse_idx_slopes(audit).map_err(|e| {
+            ladmin_error!(audit, "index optimisation failed -> {:?}", e);
+            e
+        })?;
+        limmediate_warning!(audit, "done ✅\n");
         Ok(())
     }
 
@@ -1345,6 +1375,24 @@ impl<'a> BackendWriteTransaction<'a> {
         idx_key: &String,
     ) -> Result<Option<IDLBitRange>, OperationError> {
         self.get_idlayer().get_idl(audit, attr, itype, idx_key)
+    }
+
+    fn is_idx_slopeyness_generated(&self, audit: &mut AuditScope) -> Result<bool, OperationError> {
+        self.get_idlayer().is_idx_slopeyness_generated(audit)
+    }
+
+    fn get_idx_slope(
+        &self,
+        audit: &mut AuditScope,
+        ikey: &IdxKey,
+    ) -> Result<IdxSlope, OperationError> {
+        // Do we have the slopeyness?
+        let slope = self
+            .get_idlayer()
+            .get_idx_slope(audit, ikey)?
+            .unwrap_or_else(|| get_idx_slope_default(ikey));
+        ltrace!(audit, "index slope - {:?} -> {:?}", ikey, slope);
+        Ok(slope)
     }
 
     pub fn restore(&self, audit: &mut AuditScope, src_path: &str) -> Result<(), OperationError> {
@@ -1369,35 +1417,6 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::SerdeJsonError
         })?;
 
-        // Filter all elements that have a UUID in the system range.
-        /*
-        use crate::constants::UUID_ANONYMOUS;
-        use crate::be::dbentry::DbEntryVers;
-        use crate::be::dbvalue::DbValueV1;
-        let uuid_anonymous = UUID_ANONYMOUS.clone();
-        let dbentries: Vec<DbEntry> = dbentries.into_iter()
-            .filter(|e| {
-                let e_uuid = match &e.ent {
-                    DbEntryVers::V1(dbe) => dbe.attrs.get("uuid")
-                        .and_then(|dbvs| dbvs.first())
-                        .and_then(|dbv| {
-                            match dbv {
-                                DbValueV1::UU(u) => Some(u),
-                                _ => panic!(),
-                            }
-                        })
-                        .unwrap()
-                };
-
-                e_uuid > &uuid_anonymous
-            })
-            .collect();
-
-        dbentries.iter().for_each(|e| {
-            ltrace!(audit, "importing -> {:?}", e);
-        });
-        */
-
         // Now, we setup all the entries with new ids.
         let mut id_max = 0;
         let identries: Result<Vec<IdRawEntry>, _> = dbentries
@@ -1410,16 +1429,6 @@ impl<'a> BackendWriteTransaction<'a> {
             .collect();
 
         idlayer.write_identries_raw(audit, identries?.into_iter())?;
-
-        // for debug
-        /*
-        self.idlayer.get_identry(audit, &IdList::AllIds)
-            .unwrap()
-            .iter()
-            .for_each(|dbe| {
-                ltrace!(audit, "dbe -> {:?}", dbe.id);
-            });
-        */
 
         // Reindex now we are loaded.
         self.reindex(audit)?;
@@ -1505,6 +1514,21 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 }
 
+// We have a number of hardcoded, "obvious" slopes that should
+// exist. We return these when the analysis has not been run, as
+// these are values that are generally "good enough" for most applications
+fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
+    match (ikey.attr.as_str(), &ikey.itype) {
+        ("name", IndexType::Equality)
+        | ("spn", IndexType::Equality)
+        | ("uuid", IndexType::Equality) => 1,
+        ("class", IndexType::Equality) => 180,
+        (_, IndexType::Equality) => 45,
+        (_, IndexType::SubString) => 90,
+        (_, IndexType::Presence) => 90,
+    }
+}
+
 // In the future this will do the routing between the chosen backends etc.
 impl Backend {
     pub fn new(
@@ -1513,7 +1537,7 @@ impl Backend {
         // path: &str,
         // mut pool_size: u32,
         // fstype: FsType,
-        idxkeys: Set<IdxKey>,
+        idxkeys: Vec<IdxKey>,
         vacuum: bool,
     ) -> Result<Self, OperationError> {
         info!("DB tickets -> {:?}", cfg.pool_size);
@@ -1524,6 +1548,19 @@ impl Backend {
         if cfg.path.is_empty() {
             cfg.pool_size = 1;
         }
+
+        // Setup idxkeys here. By default we set these all to "max slope" aka
+        // all indexes are "equal" but also worse case unless analysed.
+        //
+        // During startup this will be "fixed" as the schema core will call reload_idxmeta
+        // which will trigger a reload of the analysis data (if present).
+        let idxkeys: Map<_, _> = idxkeys
+            .into_iter()
+            .map(|ikey| {
+                let slope = get_idx_slope_default(&ikey);
+                (ikey, slope)
+            })
+            .collect();
 
         // this has a ::memory() type, but will path == "" work?
         lperf_trace_segment!(audit, "be::new", || {
@@ -1597,7 +1634,6 @@ impl Backend {
 
 #[cfg(test)]
 mod tests {
-    use hashbrown::HashSet as Set;
     use idlset::v2::IDLBitRange;
     use std::fs;
     use std::iter::FromIterator;
@@ -1626,35 +1662,36 @@ mod tests {
             let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
             // This is a demo idxmeta, purely for testing.
-            let mut idxmeta = Set::with_capacity(16);
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("name"),
-                itype: IndexType::Equality,
-            });
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("name"),
-                itype: IndexType::Presence,
-            });
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("name"),
-                itype: IndexType::SubString,
-            });
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("uuid"),
-                itype: IndexType::Equality,
-            });
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("uuid"),
-                itype: IndexType::Presence,
-            });
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("ta"),
-                itype: IndexType::Equality,
-            });
-            idxmeta.insert(IdxKey {
-                attr: AttrString::from("tb"),
-                itype: IndexType::Equality,
-            });
+            let idxmeta = vec![
+                IdxKey {
+                    attr: AttrString::from("name"),
+                    itype: IndexType::Equality,
+                },
+                IdxKey {
+                    attr: AttrString::from("name"),
+                    itype: IndexType::Presence,
+                },
+                IdxKey {
+                    attr: AttrString::from("name"),
+                    itype: IndexType::SubString,
+                },
+                IdxKey {
+                    attr: AttrString::from("uuid"),
+                    itype: IndexType::Equality,
+                },
+                IdxKey {
+                    attr: AttrString::from("uuid"),
+                    itype: IndexType::Presence,
+                },
+                IdxKey {
+                    attr: AttrString::from("ta"),
+                    itype: IndexType::Equality,
+                },
+                IdxKey {
+                    attr: AttrString::from("tb"),
+                    itype: IndexType::Equality,
+                },
+            ];
 
             let be = Backend::new(&mut audit, BackendConfig::new_test(), idxmeta, false)
                 .expect("Failed to setup backend");
@@ -2762,6 +2799,103 @@ mod tests {
                     panic!("");
                 }
             }
+        })
+    }
+
+    #[test]
+    fn test_be_index_slope_generation() {
+        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+            // Create some test entry with some indexed / unindexed values.
+            let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+            e1.add_ava("ta", Value::from("dupe"));
+            e1.add_ava("tb", Value::from("1"));
+            let e1 = unsafe { e1.into_sealed_new() };
+
+            let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+            e2.add_ava("name", Value::from("claire"));
+            e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
+            e2.add_ava("ta", Value::from("dupe"));
+            e2.add_ava("tb", Value::from("1"));
+            let e2 = unsafe { e2.into_sealed_new() };
+
+            let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
+            e3.add_ava("name", Value::from("benny"));
+            e3.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"));
+            e3.add_ava("ta", Value::from("dupe"));
+            e3.add_ava("tb", Value::from("2"));
+            let e3 = unsafe { e3.into_sealed_new() };
+
+            let _rset = be
+                .create(audit, vec![e1.clone(), e2.clone(), e3.clone()])
+                .unwrap();
+
+            // If the slopes haven't been generated yet, there are some hardcoded values
+            // that we can use instead. They aren't generated until a first re-index.
+            assert!(!be.is_idx_slopeyness_generated(audit).unwrap());
+
+            let ta_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))
+                .unwrap();
+            assert_eq!(ta_eq_slope, 45);
+
+            let tb_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("tb", IndexType::Equality))
+                .unwrap();
+            assert_eq!(tb_eq_slope, 45);
+
+            let name_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Equality))
+                .unwrap();
+            assert_eq!(name_eq_slope, 1);
+            let uuid_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Equality))
+                .unwrap();
+            assert_eq!(uuid_eq_slope, 1);
+
+            let name_pres_slope = be
+                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Presence))
+                .unwrap();
+            assert_eq!(name_pres_slope, 90);
+            let uuid_pres_slope = be
+                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Presence))
+                .unwrap();
+            assert_eq!(uuid_pres_slope, 90);
+            // Check the slopes are what we expect for hardcoded values.
+
+            // Now check slope generation for the values. Today these are calculated
+            // at reindex time, so we now perform the re-index.
+            assert!(be.reindex(audit).is_ok());
+            assert!(be.is_idx_slopeyness_generated(audit).unwrap());
+
+            let ta_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))
+                .unwrap();
+            assert_eq!(ta_eq_slope, 143);
+
+            let tb_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("tb", IndexType::Equality))
+                .unwrap();
+            assert_eq!(tb_eq_slope, 95);
+
+            let name_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Equality))
+                .unwrap();
+            assert_eq!(name_eq_slope, 36);
+            let uuid_eq_slope = be
+                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Equality))
+                .unwrap();
+            assert_eq!(uuid_eq_slope, 36);
+
+            let name_pres_slope = be
+                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Presence))
+                .unwrap();
+            assert_eq!(name_pres_slope, 143);
+            let uuid_pres_slope = be
+                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Presence))
+                .unwrap();
+            assert_eq!(uuid_pres_slope, 143);
         })
     }
 

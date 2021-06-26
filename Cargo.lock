@@ -1735,6 +1735,7 @@ dependencies = [
 name = "kanidm"
 version = "1.1.0-alpha.4"
 dependencies = [
+ "ahash 0.7.4",
  "async-h1",
  "async-std",
  "async-trait",
