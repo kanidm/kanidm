@@ -9,7 +9,6 @@ use time::OffsetDateTime;
 
 use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
-use kanidm::constants::PW_MIN_LENGTH;
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_proto::v1::OperationError::{PasswordBadListed, PasswordTooShort, PasswordTooWeak};
 
@@ -75,7 +74,7 @@ impl AccountOpt {
                         match e {
                             // TODO: once the password length is configurable at a system level (#498), pull from the configuration.
                             ClientErrorHttp(_, Some(PasswordBadListed), _) => error!("Password is banned by the administrator of this system, please try a different one."),
-                            ClientErrorHttp(_, Some(PasswordTooShort(PW_MIN_LENGTH)), _) => error!("Password was too short (needs to be at least {} characters), please try again.", PW_MIN_LENGTH),
+                            ClientErrorHttp(_, Some(PasswordTooShort(pwminlength)), _) => error!("Password was too short (needs to be at least {} characters), please try again.", pwminlength),
                             ClientErrorHttp(_, Some(PasswordTooWeak), _) => error!("Password too weak, please try a more complex password."),
                             _ => error!("Error setting password -> {:?}", e)
                         }

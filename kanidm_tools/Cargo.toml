@@ -27,7 +27,6 @@ name = "kanidm_badlist_preprocess"
 path = "src/badlist_preprocess.rs"
 
 [dependencies]
-kanidm = { path = "../kanidmd", version = "1.1.0-alpha.4" }
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.4" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.4" }
 rpassword = "5.0"

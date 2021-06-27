@@ -1829,7 +1829,6 @@ version = "1.1.0-alpha.4"
 dependencies = [
  "bundy",
  "env_logger",
- "kanidm",
  "kanidm_client",
  "kanidm_proto",
  "libc",
