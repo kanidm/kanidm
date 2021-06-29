@@ -14,7 +14,6 @@ extern crate log;
 use serde_derive::Deserialize;
 use serde_json::error::Error as SerdeJsonError;
 use std::collections::BTreeSet as Set;
-use std::env::consts::FAMILY;
 use std::fs::{metadata, File, Metadata};
 use std::io::ErrorKind;
 use std::io::Read;
