@@ -10,6 +10,8 @@ use std::fs::Metadata;
 use std::os::linux::fs::MetadataExt;
 #[cfg(target_os = "macos")]
 use std::os::macos::fs::MetadataExt;
+#[cfg(target_os = "windows")]
+use std::os::windows::fs::MetadataExt;
 
 use users::{get_current_gid, get_current_uid};
 
