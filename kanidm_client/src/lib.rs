@@ -23,8 +23,8 @@ use std::io::Read;
 use std::os::unix::fs::MetadataExt;
 #[cfg(target_os = "macos")]
 use std::os::unix::fs::MetadataExt;
-#[cfg(target_os = "windows")]
-use std::os::windows::fs::MetadataExt;
+// #[cfg(target_os = "windows")]
+// use std::os::windows::fs::MetadataExt;
 
 use std::path::Path;
 use std::time::Duration;
@@ -118,6 +118,7 @@ impl KanidmClientBuilder {
                 warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", ca_path);
             }
 
+            #[cfg(target_family = "unix")]
             if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
                 warn!(
                     "{} should be owned be root:root to prevent tampering",
