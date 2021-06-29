@@ -93,21 +93,21 @@ made based on other factors like group membership.
 
 ::
 
-    class: oauth_resource_server
-    class: oauth_resource_server_basic
-    oauth_rs_name: String,
-    oauth_rs_basic_secret: String,
+    class: oauth2_resource_server
+    class: oauth2_resource_server_basic
+    oauth2_rs_name: String,
+    oauth2_rs_basic_secret: String,
     # To validate the redirect root
-    oauth_rs_origin: String/URI
+    oauth2_rs_origin: String/URI
     # Scopes that apply to all users
-    oauth_rs_scope_implicit: String
+    oauth2_rs_scope_implicit: String
     # Scopes that map to groups which will be enforced.
-    oauth_rs_scope_map: (String, reference)
+    oauth2_rs_scope_map: (String, reference)
     # Filter of accounts that may authorise through this.
-    oauth_rs_account_filter: Filter
+    oauth2_rs_account_filter: Filter
     # A per-resource server fernet key for token/codes.
     # Allows reset per/application in case of suspect compromise.
-    oauth_rs_token_key: String
+    oauth2_rs_token_key: String
 
 The returned authorisation code should be fernet encrypted and contains the unsigned UAT content of the authorised
 user.

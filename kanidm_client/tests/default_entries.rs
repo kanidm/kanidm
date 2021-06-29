@@ -319,7 +319,7 @@ fn test_default_entries_rbac_group_managers() {
             .map(|entry| entry.attrs.get("name").unwrap().first().unwrap())
             .cloned()
             .collect();
-        assert_eq!(default_group_names, group_names);
+        assert!(default_group_names.is_subset(&group_names));
 
         test_modify_group(&rsclient, &DEFAULT_HP_GROUP_NAMES, false);
         test_modify_group(&rsclient, &DEFAULT_NOT_HP_GROUP_NAMES, true);
@@ -423,7 +423,7 @@ fn test_default_entries_rbac_admins_schema_entries() {
             .collect();
         println!("{:?}", classnames);
 
-        assert_eq!(default_classnames, classnames);
+        assert!(default_classnames.is_subset(&classnames));
 
         let default_attributenames: HashSet<String> = [
             "acp_create_attr",
@@ -486,7 +486,6 @@ fn test_default_entries_rbac_admins_schema_entries() {
             .cloned()
             .collect();
 
-        // I wonder if this should be a subset op?
         assert!(default_attributenames.is_subset(&attributenames));
     });
 }

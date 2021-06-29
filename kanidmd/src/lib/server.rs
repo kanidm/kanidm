@@ -47,6 +47,7 @@ lazy_static! {
     static ref PVCLASS_ACM: PartialValue = PartialValue::new_class("access_control_modify");
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
+    static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -86,6 +87,7 @@ pub struct QueryServerWriteTransaction<'a> {
     // changing content.
     changed_schema: Cell<bool>,
     changed_acp: Cell<bool>,
+    changed_oauth2: Cell<bool>,
     // Store the list of changed uuids for other invalidation needs?
     changed_uuid: Cell<HashSet<Uuid>>,
     _db_ticket: SemaphorePermit<'a>,
@@ -528,7 +530,7 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::JSON_FILTER => Value::new_json_filter(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
                     SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::RadiusUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SshKey => Err(OperationError::InvalidAttribute("SSH public keys can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SecurityPrincipalName => Err(OperationError::InvalidAttribute("SPNs are generated and not able to be set.".to_string())),
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
@@ -538,6 +540,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::DateTime => Value::new_datetime_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
                     SyntaxType::EmailAddress => Ok(Value::new_email_address_s(value)),
+                    SyntaxType::Url => Value::new_url_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                 }
             }
             None => {
@@ -611,7 +615,7 @@ pub trait QueryServerTransaction<'a> {
                         })
                     }
                     SyntaxType::Credential => Ok(PartialValue::new_credential_tag(value)),
-                    SyntaxType::RadiusUtf8String => Ok(PartialValue::new_radius_string()),
+                    SyntaxType::SecretUtf8String => Ok(PartialValue::new_secret_str()),
                     SyntaxType::SshKey => Ok(PartialValue::new_sshkey_tag_s(value)),
                     SyntaxType::SecurityPrincipalName => {
                         PartialValue::new_spn_s(value).ok_or_else(|| {
@@ -631,6 +635,11 @@ pub trait QueryServerTransaction<'a> {
                         )
                     }),
                     SyntaxType::EmailAddress => Ok(PartialValue::new_email_address_s(value)),
+                    SyntaxType::Url => PartialValue::new_url_s(value).ok_or_else(|| {
+                        OperationError::InvalidAttribute(
+                            "Invalid Url (whatwg/url) syntax".to_string(),
+                        )
+                    }),
                 }
             }
             None => {
@@ -719,6 +728,19 @@ pub trait QueryServerTransaction<'a> {
                 ladmin_error!(audit, "Failed to retrieve system configuration {:?}", e);
                 e
             })
+    }
+
+    fn get_oauth2rs_set(
+        &self,
+        audit: &mut AuditScope,
+    ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
+        self.internal_search(
+            audit,
+            filter!(f_eq(
+                "class",
+                PartialValue::new_class("oauth2_resource_server")
+            )),
+        )
     }
 }
 
@@ -839,10 +861,14 @@ struct QueryServerMeta {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema) -> Self {
+    pub fn new(audit: &mut AuditScope, be: Backend, schema: Schema) -> Self {
         let (s_uuid, d_uuid) = {
             let wr = be.write();
-            (wr.get_db_s_uuid(), wr.get_db_d_uuid())
+            let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
+            #[allow(clippy::expect_used)]
+            wr.commit(audit)
+                .expect("Critical - unable to commit db_s_uuid or db_d_uuid");
+            res
         };
 
         let pool_size = be.get_pool_size();
@@ -933,6 +959,7 @@ impl QueryServer {
             accesscontrols: self.accesscontrols.write(),
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
+            changed_oauth2: Cell::new(false),
             changed_uuid: Cell::new(HashSet::new()),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
@@ -1136,6 +1163,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
+            if !self.changed_oauth2.get() {
+                self.changed_oauth2.set(
+                    commit_cand
+                        .iter()
+                        .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
+                )
+            }
 
             let cu = self.changed_uuid.as_ptr();
             unsafe {
@@ -1143,9 +1177,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
             ltrace!(
                 audit,
-                "Schema reload: {:?}, ACP reload: {:?}",
+                "Schema reload: {:?}, ACP reload: {:?}, Oauth2 reload: {:?}",
                 self.changed_schema,
-                self.changed_acp
+                self.changed_acp,
+                self.changed_oauth2
             );
 
             // We are complete, finalise logging and return
@@ -1270,6 +1305,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
+            if !self.changed_oauth2.get() {
+                self.changed_oauth2.set(
+                    del_cand
+                        .iter()
+                        .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
+                )
+            }
 
             let cu = self.changed_uuid.as_ptr();
             unsafe {
@@ -1278,9 +1320,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             ltrace!(
                 audit,
-                "Schema reload: {:?}, ACP reload: {:?}",
+                "Schema reload: {:?}, ACP reload: {:?}, Oauth2 reload: {:?}",
                 self.changed_schema,
-                self.changed_acp
+                self.changed_acp,
+                self.changed_oauth2,
             );
 
             // Send result
@@ -1640,6 +1683,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
+            if !self.changed_oauth2.get() {
+                self.changed_oauth2.set(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter())
+                        .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
+                )
+            }
+
             let cu = self.changed_uuid.as_ptr();
             unsafe {
                 (*cu).extend(
@@ -1652,9 +1704,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             ltrace!(
                 audit,
-                "Schema reload: {:?}, ACP reload: {:?}",
+                "Schema reload: {:?}, ACP reload: {:?}, Oauth2 reload: {:?}",
                 self.changed_schema,
-                self.changed_acp
+                self.changed_acp,
+                self.changed_oauth2,
             );
 
             // return
@@ -1778,6 +1831,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
+            if !self.changed_oauth2.get() {
+                self.changed_oauth2.set(
+                    norm_cand
+                        .iter()
+                        .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
+                )
+            }
             let cu = self.changed_uuid.as_ptr();
             unsafe {
                 (*cu).extend(
@@ -1789,9 +1849,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
             ltrace!(
                 audit,
-                "Schema reload: {:?}, ACP reload: {:?}",
+                "Schema reload: {:?}, ACP reload: {:?}, Oauth2 reload: {:?}",
                 self.changed_schema,
-                self.changed_acp
+                self.changed_acp,
+                self.changed_oauth2,
             );
 
             ltrace!(audit, "Modify operation success");
@@ -2177,6 +2238,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_UNIX_PASSWORD,
             JSON_SCHEMA_ATTR_ACCOUNT_EXPIRE,
             JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_NAME,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_ACCOUNT_FILTER,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
@@ -2184,6 +2250,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_CLASS_POSIXACCOUNT,
             JSON_SCHEMA_CLASS_POSIXGROUP,
             JSON_SCHEMA_CLASS_SYSTEM_CONFIG,
+            JSON_SCHEMA_CLASS_OAUTH2_RS,
+            JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC,
             JSON_SCHEMA_ATTR_NSUNIQUEID,
         ];
 
@@ -2272,6 +2340,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_HP_GROUP_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_ACP_MANAGE_PRIV_V1,
             JSON_DOMAIN_ADMINS,
+            JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1,
+            // All members must exist before we write HP
             JSON_IDM_HIGH_PRIVILEGE_V1,
             // Built in access controls.
             JSON_IDM_ADMINS_ACP_RECYCLE_SEARCH_V1,
@@ -2305,6 +2375,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1,
             JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1,
             JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1,
+            JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1,
         ];
 
         let res: Result<(), _> = idm_entries
@@ -2319,6 +2390,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if res.is_err() {
             return res;
         }
+
+        self.changed_schema.set(true);
+        self.changed_acp.set(true);
 
         Ok(())
     }
@@ -2555,6 +2629,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn get_changed_uuids(&self) -> &HashSet<Uuid> {
         unsafe { &(*self.changed_uuid.as_ptr()) }
+    }
+
+    pub fn get_changed_ouath2(&self) -> bool {
+        self.changed_oauth2.get()
     }
 
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {

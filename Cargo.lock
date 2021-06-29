@@ -1469,9 +1469,9 @@ dependencies = [
 
 [[package]]
 name = "hermit-abi"
-version = "0.1.18"
+version = "0.1.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "322f4de77956e22ed0e5032c359a0f1273f1f7f0d79bfa3b8ffbc730d7fbcc5c"
+checksum = "62b467343b94ba476dcb2500d242dadbb39557df889310ac77c5d99100aaac33"
 dependencies = [
  "libc",
 ]
@@ -1793,11 +1793,13 @@ name = "kanidm_client"
 version = "1.1.0-alpha.4"
 dependencies = [
  "async-std",
+ "base64 0.13.0",
  "env_logger",
  "futures",
  "kanidm",
  "kanidm_proto",
  "log",
+ "oauth2",
  "reqwest",
  "serde",
  "serde_derive",
@@ -1819,6 +1821,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "time 0.2.27",
+ "url",
  "uuid",
  "webauthn-rs",
 ]
@@ -2182,6 +2185,24 @@ checksum = "05499f3756671c15885fee9034446956fff3f243d6077b91e5767df161f766b3"
 dependencies = [
  "hermit-abi",
  "libc",
+]
+
+[[package]]
+name = "oauth2"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "10ad4d0136960353683efa6160b9c867088b4b8f567b762cd37420a10ce32703"
+dependencies = [
+ "base64 0.12.3",
+ "chrono",
+ "http",
+ "rand 0.7.3",
+ "serde",
+ "serde_json",
+ "serde_path_to_error",
+ "sha2 0.9.5",
+ "thiserror",
+ "url",
 ]
 
 [[package]]
@@ -2997,6 +3018,15 @@ checksum = "799e97dc9fdae36a5c8b8f2cae9ce2ee9fdce2058c57a93e6099d919fd982f79"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_path_to_error"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42f6109f0506e20f7e0f910e51a0079acf41da8e0694e6442527c4ddf5a2b158"
+dependencies = [
  "serde",
 ]
 

@@ -558,16 +558,11 @@ impl ModifyEvent {
     pub fn from_internal_parts(
         _audit: &mut AuditScope,
         ident: Identity,
-        target_uuid: Uuid,
         ml: &ModifyList<ModifyInvalid>,
-        filter: Filter<FilterInvalid>,
+        filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let f_uuid = filter_all!(f_eq("uuid", PartialValue::new_uuid(target_uuid)));
-        // Add any supplemental conditions we have.
-        let f = Filter::join_parts_and(f_uuid, filter);
-
-        let filter_orig = f
+        let filter_orig = filter
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
         let filter = filter_orig.clone().into_ignore_hidden();

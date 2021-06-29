@@ -292,6 +292,17 @@ pub const JSON_DOMAIN_ADMINS: &str = r#"{
         ]
     }
 }"#;
+pub const JSON_IDM_HP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_oauth2_manage_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000027"],
+        "description": ["Builtin IDM Group for managing oauth2 resource server integrations to this authentication domain."],
+        "member": [
+            "00000000-0000-0000-0000-000000000019"
+        ]
+    }
+}"#;
 
 // This must be the last group to init to include the UUID of the other high priv groups.
 pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
@@ -324,6 +335,7 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
             "00000000-0000-0000-0000-000000000024",
             "00000000-0000-0000-0000-000000000025",
             "00000000-0000-0000-0000-000000000026",
+            "00000000-0000-0000-0000-000000000027",
             "00000000-0000-0000-0000-000000001000"
         ]
     }

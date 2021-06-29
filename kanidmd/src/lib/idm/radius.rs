@@ -38,7 +38,7 @@ impl RadiusAccount {
         }
 
         let radius_secret = value
-            .get_ava_single_radiuscred("radius_secret")
+            .get_ava_single_secret("radius_secret")
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: radius_secret".to_string())
             })?

@@ -343,6 +343,40 @@ pub enum SelfOpt {
 }
 
 #[derive(Debug, StructOpt)]
+pub struct Oauth2BasicCreateOpt {
+    #[structopt(name = "origin")]
+    origin: String,
+    #[structopt(flatten)]
+    nopt: Named,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum Oauth2Opt {
+    #[structopt(name = "list")]
+    /// List all configured oauth2 resource servers
+    List(CommonOpt),
+    #[structopt(name = "get")]
+    /// Display a selected oauth2 resource server
+    Get(Named),
+    // #[structopt(name = "set")]
+    // /// Set options for a selected oauth2 resource server
+    // Set(),
+    #[structopt(name = "create")]
+    /// Create a new oauth2 resource server
+    CreateBasic(Oauth2BasicCreateOpt),
+    #[structopt(name = "delete")]
+    /// Delete a oauth2 resource server
+    Delete(Named),
+}
+
+#[derive(Debug, StructOpt)]
+pub enum SystemOpt {
+    #[structopt(name = "oauth2")]
+    /// Configure and display oauth2/oidc resource server configuration
+    Oauth2(Oauth2Opt),
+}
+
+#[derive(Debug, StructOpt)]
 #[structopt(about = "Kanidm Client Utility")]
 pub enum KanidmClientOpt {
     #[structopt(name = "login")]
@@ -363,6 +397,9 @@ pub enum KanidmClientOpt {
     #[structopt(name = "group")]
     /// Group operations
     Group(GroupOpt),
+    #[structopt(name = "system")]
+    /// System configuration operations
+    System(SystemOpt),
     #[structopt(name = "recycle_bin")]
     /// Recycle Bin operations
     Recycle(RecycleOpt),

@@ -13,6 +13,10 @@ use crate::value::PartialValue;
 use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
+use crate::idm::oauth2::{
+    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess,
+    ConsentRequest, Oauth2Error,
+};
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
 
@@ -392,9 +396,10 @@ impl QueryServerReadV1 {
                         let r = entries
                             .pop()
                             // From the entry, turn it into the value
-                            .and_then(|e| {
-                                e.get_ava_single("radius_secret")
-                                    .and_then(|v| v.get_radius_secret().map(|s| s.to_string()))
+                            .and_then(|entry| {
+                                entry
+                                    .get_ava_single("radius_secret")
+                                    .and_then(|v| v.get_secret_str().map(str::to_string))
                             });
                         Ok(r)
                     }
@@ -894,6 +899,112 @@ impl QueryServerReadV1 {
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
+        })?;
+        res
+    }
+
+    pub async fn handle_oauth2_authorise(
+        &self,
+        uat: Option<String>,
+        auth_req: AuthorisationRequest,
+        eventid: Uuid,
+    ) -> Result<ConsentRequest, Oauth2Error> {
+        let mut audit = AuditScope::new("oauth2_authorise", eventid, self.log_level);
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<Oauth2Authorise>",
+            || {
+                let (ident, uat) = idms_prox_read
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .and_then(|uat| {
+                        idms_prox_read
+                            .process_uat_to_identity(&mut audit, &uat, ct)
+                            .map(|ident| (ident, uat))
+                    })
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        Oauth2Error::AuthenticationRequired
+                    })?;
+
+                // Now we can send to the idm server for authorisation checking.
+                idms_prox_read.check_oauth2_authorisation(&mut audit, &ident, &uat, &auth_req, ct)
+            }
+        );
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            Oauth2Error::ServerError(OperationError::InvalidState)
+        })?;
+        res
+    }
+
+    pub async fn handle_oauth2_authorise_permit(
+        &self,
+        uat: Option<String>,
+        consent_req: String,
+        eventid: Uuid,
+    ) -> Result<AuthorisePermitSuccess, OperationError> {
+        let mut audit = AuditScope::new("oauth2_authorise_permit", eventid, self.log_level);
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<Oauth2AuthorisePermit>",
+            || {
+                let (ident, uat) = idms_prox_read
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .and_then(|uat| {
+                        idms_prox_read
+                            .process_uat_to_identity(&mut audit, &uat, ct)
+                            .map(|ident| (ident, uat))
+                    })
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        e
+                    })?;
+
+                idms_prox_read.check_oauth2_authorise_permit(
+                    &mut audit,
+                    &ident,
+                    &uat,
+                    &consent_req,
+                    ct,
+                )
+            }
+        );
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
+        res
+    }
+
+    pub async fn handle_oauth2_token_exchange(
+        &self,
+        client_authz: String,
+        token_req: AccessTokenRequest,
+        eventid: Uuid,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        let mut audit = AuditScope::new("oauth2_token_exchange", eventid, self.log_level);
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<Oauth2TokenExchange>",
+            || {
+                // Now we can send to the idm server for authorisation checking.
+                idms_prox_read.check_oauth2_token_exchange(
+                    &mut audit,
+                    &client_authz,
+                    &token_req,
+                    ct,
+                )
+            }
+        );
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            Oauth2Error::ServerError(OperationError::InvalidState)
         })?;
         res
     }

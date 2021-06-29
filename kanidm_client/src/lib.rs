@@ -368,6 +368,10 @@ impl KanidmClient {
         self.asclient.get_origin()
     }
 
+    pub fn get_url(&self) -> &str {
+        self.asclient.get_url()
+    }
+
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {
         // Copy our builder, and then just process it.
         self.asclient
@@ -806,6 +810,41 @@ impl KanidmClient {
 
     pub fn idm_schema_classtype_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
         tokio_block_on(self.asclient.idm_schema_classtype_get(id))
+    }
+
+    // ==== Oauth2 resource server configuration
+
+    pub fn idm_oauth2_rs_list(&self) -> Result<Vec<Entry>, ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_list())
+    }
+
+    pub fn idm_oauth2_rs_basic_create(&self, name: &str, origin: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_basic_create(name, origin))
+    }
+
+    pub fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_get(id))
+    }
+
+    pub fn idm_oauth2_rs_update(
+        &self,
+        id: &str,
+        name: Option<&str>,
+        origin: Option<&str>,
+        reset_secret: bool,
+        reset_token_key: bool,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_update(
+            id,
+            name,
+            origin,
+            reset_secret,
+            reset_token_key,
+        ))
+    }
+
+    pub fn idm_oauth2_rs_delete(&self, id: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_delete(id))
     }
 
     // ==== recycle bin

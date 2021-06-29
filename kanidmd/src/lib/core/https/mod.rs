@@ -1,11 +1,15 @@
+mod oauth2;
+
+use self::oauth2::*;
+
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{ServerRole, TlsConfiguration};
 use crate::event::AuthResult;
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::AuthState;
+use crate::prelude::*;
 use crate::status::{StatusActor, StatusRequestEvent};
-use crate::value::PartialValue;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
@@ -42,6 +46,8 @@ pub trait RequestExtensions {
     fn get_current_auth_session_id(&self) -> Option<Uuid>;
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error>;
+
+    fn new_eventid(&self) -> (Uuid, String);
 }
 
 impl RequestExtensions for tide::Request<AppState> {
@@ -59,6 +65,7 @@ impl RequestExtensions for tide::Request<AppState> {
                 h.as_str().strip_prefix("Bearer ")
             })
             .map(|s| s.to_string())
+            .or_else(|| self.session().get::<String>("bearer"))
         /*
         .and_then(|ts| {
             // Take the token str and attempt to decrypt
@@ -91,8 +98,14 @@ impl RequestExtensions for tide::Request<AppState> {
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
         self.param(param)
-            .map(|s| s.to_string())
+            .map(str::to_string)
             .map_err(|_| tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot"))
+    }
+
+    fn new_eventid(&self) -> (Uuid, String) {
+        let eventid = Uuid::new_v4();
+        let hv = eventid.to_hyphenated().to_string();
+        (eventid, hv)
     }
 }
 
@@ -135,14 +148,6 @@ pub fn to_tide_response<T: Serialize>(
     })
 }
 
-macro_rules! new_eventid {
-    () => {{
-        let eventid = Uuid::new_v4();
-        let hv = eventid.to_hyphenated().to_string();
-        (eventid, hv)
-    }};
-}
-
 // Handle the various end points we need to expose
 async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
@@ -177,7 +182,7 @@ pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
     // parse the req to a CreateRequest
     let msg: CreateRequest = req.body_json().await?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req.state().qe_w_ref.handle_create(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
@@ -186,7 +191,7 @@ pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
 pub async fn modify(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let msg: ModifyRequest = req.body_json().await?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req.state().qe_w_ref.handle_modify(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
@@ -194,7 +199,7 @@ pub async fn modify(mut req: tide::Request<AppState>) -> tide::Result {
 pub async fn delete(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let msg: DeleteRequest = req.body_json().await?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req.state().qe_w_ref.handle_delete(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
@@ -202,14 +207,14 @@ pub async fn delete(mut req: tide::Request<AppState>) -> tide::Result {
 pub async fn search(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let msg: SearchRequest = req.body_json().await?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req.state().qe_r_ref.handle_search(uat, msg, eventid).await;
     to_tide_response(res, hvalue)
 }
 
 pub async fn whoami(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     // New event, feed current auth data from the token to it.
     let res = req.state().qe_r_ref.handle_whoami(uat, eventid).await;
     to_tide_response(res, hvalue)
@@ -224,7 +229,7 @@ pub async fn json_rest_event_get(
 ) -> tide::Result {
     let uat = req.get_current_uat();
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -244,7 +249,7 @@ async fn json_rest_event_get_id(
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -263,7 +268,7 @@ async fn json_rest_event_delete_id(
     let id = req.get_url_param("id")?;
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -282,7 +287,7 @@ async fn json_rest_event_get_id_attr(
     let uat = req.get_current_uat();
 
     let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let attrs = Some(vec![attr.clone()]);
 
@@ -300,7 +305,7 @@ async fn json_rest_event_post(
     classes: Vec<String>,
 ) -> tide::Result {
     debug_assert!(!classes.is_empty());
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     // Read the json from the wire.
     let uat = req.get_current_uat();
     let mut obj: ProtoEntry = req.body_json().await?;
@@ -319,7 +324,7 @@ async fn json_rest_event_post_id_attr(
     let uuid_or_name = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -337,7 +342,7 @@ async fn json_rest_event_put_id_attr(
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -354,7 +359,7 @@ async fn json_rest_event_delete_id_attr(
 ) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     // TODO #211: Attempt to get an option Vec<String> here?
     // It's probably better to focus on SCIM instead, it seems richer than this.
@@ -388,7 +393,7 @@ async fn json_rest_event_credential_put(mut req: tide::Request<AppState>) -> tid
     let uuid_or_name = req.get_url_param("id")?;
     let sac: SetCredentialRequest = req.body_json().await?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -435,7 +440,7 @@ pub async fn schema_attributetype_get_id(req: tide::Request<AppState>) -> tide::
         f_eq("attributename", PartialValue::new_iutf8(id.as_str()))
     ]));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -461,7 +466,7 @@ pub async fn schema_classtype_get_id(req: tide::Request<AppState>) -> tide::Resu
         f_eq("classname", PartialValue::new_iutf8(id.as_str()))
     ]));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -540,7 +545,7 @@ pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> t
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -554,7 +559,7 @@ pub async fn account_get_backup_code(req: tide::Request<AppState>) -> tide::Resu
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -569,7 +574,7 @@ pub async fn account_get_id_ssh_pubkeys(req: tide::Request<AppState>) -> tide::R
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -585,7 +590,7 @@ pub async fn account_post_id_ssh_pubkey(mut req: tide::Request<AppState>) -> tid
     let (tag, key): (String, String) = req.body_json().await?;
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     // Add a msg here
     let res = req
         .state()
@@ -600,7 +605,7 @@ pub async fn account_get_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide
     let uuid_or_name = req.get_url_param("id")?;
     let tag = req.get_url_param("tag")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -618,7 +623,7 @@ pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> t
     let values = vec![tag];
     let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -633,7 +638,7 @@ pub async fn account_get_id_radius(req: tide::Request<AppState>) -> tide::Result
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -648,7 +653,7 @@ pub async fn account_post_id_radius_regenerate(req: tide::Request<AppState>) -> 
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -668,7 +673,7 @@ pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -681,7 +686,7 @@ pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::
 pub async fn account_post_id_person_extend(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -694,7 +699,7 @@ pub async fn account_post_id_unix(mut req: tide::Request<AppState>) -> tide::Res
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
     let obj: AccountUnixExtend = req.body_json().await?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -707,7 +712,7 @@ pub async fn account_get_id_unix_token(req: tide::Request<AppState>) -> tide::Re
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -722,7 +727,7 @@ pub async fn account_post_id_unix_auth(mut req: tide::Request<AppState>) -> tide
     let uuid_or_name = req.get_url_param("id")?;
     let obj: SingleStringRequest = req.body_json().await?;
     let cred = obj.value;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_r_ref
@@ -736,7 +741,7 @@ pub async fn account_put_id_unix_credential(mut req: tide::Request<AppState>) ->
     let uuid_or_name = req.get_url_param("id")?;
     let obj: SingleStringRequest = req.body_json().await?;
     let cred = obj.value;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -751,7 +756,7 @@ pub async fn account_delete_id_unix_credential(req: tide::Request<AppState>) -> 
     let attr = "unix_password".to_string();
     let filter = filter_all!(f_eq("class", PartialValue::new_class("posixaccount")));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -806,7 +811,7 @@ pub async fn group_post_id_unix(mut req: tide::Request<AppState>) -> tide::Resul
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
     let obj: GroupUnixExtend = req.body_json().await?;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -819,7 +824,7 @@ pub async fn group_get_id_unix_token(req: tide::Request<AppState>) -> tide::Resu
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -857,7 +862,7 @@ pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let attrs = None;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -873,7 +878,7 @@ pub async fn recycle_bin_id_get(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_id(id.as_str()));
     let attrs = None;
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
@@ -889,7 +894,7 @@ pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::R
     let id = req.get_url_param("id")?;
     let filter = filter_all!(f_id(id.as_str()));
 
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -908,7 +913,7 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
     // out of the req cookie.
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
 
     let maybe_sessionid = req.get_current_auth_session_id();
     debug!("🍿 {:?}", maybe_sessionid);
@@ -987,7 +992,12 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
                     // Remove the auth-session-id
                     let msession = req.session_mut();
                     msession.remove("auth-session-id");
-                    Ok(ProtoAuthState::Success(token))
+                    // Create a session cookie?
+                    msession.remove("bearer");
+                    msession
+                        .insert("bearer", token.clone())
+                        .map_err(|_| OperationError::InvalidSessionState)
+                        .map(|_| ProtoAuthState::Success(token))
                 }
                 AuthState::Denied(reason) => {
                     debug!("🧩 -> AuthState::Denied");
@@ -1016,7 +1026,7 @@ pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide:
     let uat = req.get_current_uat();
     let obj: SingleStringRequest = req.body_json().await?;
     let cleartext = obj.value;
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
@@ -1029,7 +1039,7 @@ pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide:
 
 pub async fn status(req: tide::Request<AppState>) -> tide::Result {
     // We ignore the body in this req
-    let (eventid, hvalue) = new_eventid!();
+    let (eventid, hvalue) = req.new_eventid();
     let r = req
         .state()
         .status_ref
@@ -1209,6 +1219,20 @@ pub fn create_https_server(
         .at("/openid-configuration")
         .get(get_openid_configuration);
 
+    // == oauth endpoints.
+
+    let mut oauth2_process = tserver.at("/oauth2");
+    oauth2_process.at("/authorise").get(oauth2_authorise_get);
+    oauth2_process
+        .at("/authorise/permit")
+        .get(oauth2_authorise_permit_get);
+    oauth2_process.at("/token").post(oauth2_token_post);
+    /*
+    oauth2_process
+        .at("/token/introspect")
+        .get(oauth2_token_introspect_get);
+    */
+
     let mut raw_route = tserver.at("/v1/raw");
     raw_route.at("/create").post(create);
     raw_route.at("/modify").post(modify);
@@ -1238,6 +1262,19 @@ pub fn create_https_server(
         .get(schema_classtype_get_id)
         .put(do_nothing)
         .patch(do_nothing);
+
+    let mut oauth2_route = tserver.at("/v1/oauth2");
+    oauth2_route.at("/").get(oauth2_get);
+
+    oauth2_route.at("/_basic").post(oauth2_basic_post);
+
+    oauth2_route
+        .at("/:id")
+        .get(oauth2_id_get)
+        // It's not really possible to replace this wholesale.
+        // .put(oauth2_id_put)
+        .patch(oauth2_id_patch)
+        .delete(oauth2_id_delete);
 
     let mut self_route = tserver.at("/v1/self");
     self_route.at("/").get(whoami);

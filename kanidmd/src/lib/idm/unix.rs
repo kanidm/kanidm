@@ -94,8 +94,8 @@ macro_rules! try_from_entry {
             .map(|v| v.clone());
 
         let radius_secret = $value
-            .get_ava_single_radiuscred("radius_secret")
-            .map(|s| s.to_string());
+            .get_ava_single_secret("radius_secret")
+            .map(str::to_string);
 
         let valid_from = $value.get_ava_single_datetime("account_valid_from");
 

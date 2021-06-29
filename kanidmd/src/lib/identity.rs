@@ -53,7 +53,7 @@ pub enum IdentType {
     Internal,
 }
 
-#[derive(Debug, Clone, PartialEq, Hash, Ord, PartialOrd, Eq)]
+#[derive(Debug, Clone, PartialEq, Hash, Ord, PartialOrd, Eq, Serialize, Deserialize)]
 /// A unique identifier of this Identity, that can be associated to various
 /// caching components.
 pub enum IdentityId {

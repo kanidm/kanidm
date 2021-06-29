@@ -11,4 +11,5 @@
 #[macro_use]
 extern crate serde_derive;
 
+pub mod oauth2;
 pub mod v1;

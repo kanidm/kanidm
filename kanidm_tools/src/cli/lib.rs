@@ -18,6 +18,7 @@ include!("../opt/kanidm.rs");
 pub mod account;
 pub mod common;
 pub mod group;
+pub mod oauth2;
 pub mod raw;
 pub mod recycle;
 pub mod session;
@@ -71,6 +72,20 @@ impl SelfOpt {
     }
 }
 
+impl SystemOpt {
+    pub fn debug(&self) -> bool {
+        match self {
+            SystemOpt::Oauth2(oopt) => oopt.debug(),
+        }
+    }
+
+    pub fn exec(&self) {
+        match self {
+            SystemOpt::Oauth2(oopt) => oopt.exec(),
+        }
+    }
+}
+
 impl KanidmClientOpt {
     pub fn debug(&self) -> bool {
         match self {
@@ -81,6 +96,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::CSelf(csopt) => csopt.debug(),
             KanidmClientOpt::Account(aopt) => aopt.debug(),
             KanidmClientOpt::Group(gopt) => gopt.debug(),
+            KanidmClientOpt::System(sopt) => sopt.debug(),
             KanidmClientOpt::Recycle(ropt) => ropt.debug(),
         }
     }
@@ -94,6 +110,7 @@ impl KanidmClientOpt {
             KanidmClientOpt::CSelf(csopt) => csopt.exec(),
             KanidmClientOpt::Account(aopt) => aopt.exec(),
             KanidmClientOpt::Group(gopt) => gopt.exec(),
+            KanidmClientOpt::System(sopt) => sopt.exec(),
             KanidmClientOpt::Recycle(ropt) => ropt.exec(),
         }
     }

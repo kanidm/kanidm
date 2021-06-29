@@ -67,8 +67,8 @@ macro_rules! try_from_entry {
         let expire = $value.get_ava_single_datetime("account_expire");
 
         let radius_secret = $value
-            .get_ava_single_radiuscred("radius_secret")
-            .map(|s| s.to_string());
+            .get_ava_single_secret("radius_secret")
+            .map(str::to_string);
 
         // Resolved by the caller
         let groups = $groups;
@@ -176,14 +176,14 @@ impl Account {
         Some(UserAuthToken {
             session_id,
             expiry,
-            name: self.name.clone(),
+            // name: self.name.clone(),
             spn: self.spn.clone(),
-            displayname: self.displayname.clone(),
+            // displayname: self.displayname.clone(),
             uuid: self.uuid,
             // application: None,
-            groups: self.groups.iter().map(|g| g.to_proto()).collect(),
+            // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
             // claims: claims.iter().map(|c| c.to_proto()).collect(),
-            claims: Vec::new(),
+            // claims: Vec::new(),
             auth_type,
             // What's the best way to get access to these limits with regard to claims/other?
             lim_uidx: false,
@@ -437,7 +437,7 @@ impl Account {
         &self,
         cleartext: &str,
     ) -> Result<ModifyList<ModifyInvalid>, OperationError> {
-        let vcred = Value::new_radius_str(cleartext);
+        let vcred = Value::new_secret_str(cleartext);
         Ok(ModifyList::new_purge_and_set("radius_secret", vcred))
     }
 

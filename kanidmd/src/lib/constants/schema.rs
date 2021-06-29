@@ -175,7 +175,7 @@ pub const JSON_SCHEMA_ATTR_RADIUS_SECRET: &str = r#"{
         "radius_secret"
       ],
       "syntax": [
-        "RADIUS_UTF8STRING"
+        "SECRET_UTF8STRING"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000051"
@@ -484,6 +484,153 @@ pub const JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_NAME: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The unique name of an external Oauth2 resource"
+      ],
+      "index": [
+        "EQUALITY"
+      ],
+      "unique": [
+        "true"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_rs_name"
+      ],
+      "syntax": [
+        "UTF8STRING_INAME"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000080"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The origin domain of an oauth2 resource server"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_rs_origin"
+      ],
+      "syntax": [
+        "URL"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000081"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ACCOUNT_FILTER: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "A filter describing who may access the associated oauth2 resource server"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_rs_account_filter"
+      ],
+      "syntax": [
+        "JSON_FILTER"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000082"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "When using oauth2 basic authentication, the secret string of the resource server"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_rs_basic_secret"
+      ],
+      "syntax": [
+        "UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000083"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "An oauth2 basic resource servers unique token signing key"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_rs_basic_token_key"
+      ],
+      "syntax": [
+        "SECRET_UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000084"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -682,6 +829,61 @@ pub const JSON_SCHEMA_CLASS_SYSTEM_CONFIG: &str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000060"
+      ]
+    }
+  }
+"#;
+
+pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "The class representing a configured Oauth2 Resource Server"
+      ],
+      "classname": [
+        "oauth2_resource_server"
+      ],
+      "systemmay": [
+        "description",
+        "oauth2_rs_account_filter"
+      ],
+      "systemmust": [
+        "oauth2_rs_name",
+        "oauth2_rs_origin"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000085"
+      ]
+    }
+  }
+"#;
+
+pub const JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC: &str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "The class representing a configured Oauth2 Resource Server"
+      ],
+      "classname": [
+        "oauth2_resource_server_basic"
+      ],
+      "systemmay": [],
+      "systemmust": [
+        "oauth2_rs_basic_secret",
+        "oauth2_rs_basic_token_key"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000086"
       ]
     }
   }
