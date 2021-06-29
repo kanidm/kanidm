@@ -1,6 +1,7 @@
 use crate::{LoginOpt, LogoutOpt, SessionOpt};
 use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
+#[cfg(target_family = "unix")]
 use libc::umask;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
@@ -86,13 +87,16 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
     }
 
     // Take away group/everyone read/write
+    #[cfg(target_family = "unix")]
     let before = unsafe { umask(0o177) };
 
     let file = File::create(&token_path).map_err(|e| {
+        #[cfg(target_family = "unix")]
         let _ = unsafe { umask(before) };
         error!("Can not write to {} -> {:?}", TOKEN_PATH, e);
     })?;
 
+    #[cfg(target_family = "unix")]
     let _ = unsafe { umask(before) };
 
     let writer = BufWriter::new(file);
