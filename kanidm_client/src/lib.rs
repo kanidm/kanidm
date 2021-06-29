@@ -14,7 +14,6 @@ extern crate log;
 use serde_derive::Deserialize;
 use serde_json::error::Error as SerdeJsonError;
 use std::collections::BTreeSet as Set;
-use std::env::consts::FAMILY;
 use std::fs::{metadata, File, Metadata};
 use std::io::ErrorKind;
 use std::io::Read;
@@ -104,9 +103,11 @@ impl KanidmClientBuilder {
     fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
         let mut buf = Vec::new();
         // Is the CA secure?
-        if FAMILY == "windows" {
-            warn!("File metadata checks on Windows aren't supported right now...");
-        } else {
+        #[cfg(target_family = "windows")]
+        warn!("File metadata checks on Windows aren't supported right now, this could be a security risk.");
+
+        #[cfg(target_family = "unix")]
+        {
             let path = Path::new(ca_path);
             let ca_meta = read_file_metadata(&path)?;
 
