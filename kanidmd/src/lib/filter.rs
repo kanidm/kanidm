@@ -23,6 +23,7 @@ use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::iter;
+use std::num::NonZeroU8;
 use uuid::Uuid;
 
 use hashbrown::HashMap;
@@ -30,7 +31,6 @@ use hashbrown::HashMap;
 use hashbrown::HashSet;
 
 const FILTER_DEPTH_MAX: usize = 16;
-const NO_INDEX_SLOPE: IdxSlope = 50;
 
 // Default filter is safe, ignores all hidden types!
 
@@ -153,15 +153,15 @@ enum FilterComp {
 #[derive(Debug, Clone, Eq)]
 pub enum FilterResolved {
     // This is attr - value - indexed slope factor
-    Eq(AttrString, PartialValue, Option<IdxSlope>),
-    Sub(AttrString, PartialValue, Option<IdxSlope>),
-    Pres(AttrString, Option<IdxSlope>),
-    LessThan(AttrString, PartialValue, Option<IdxSlope>),
-    Or(Vec<FilterResolved>, Option<IdxSlope>),
-    And(Vec<FilterResolved>, Option<IdxSlope>),
+    Eq(AttrString, PartialValue, Option<NonZeroU8>),
+    Sub(AttrString, PartialValue, Option<NonZeroU8>),
+    Pres(AttrString, Option<NonZeroU8>),
+    LessThan(AttrString, PartialValue, Option<NonZeroU8>),
+    Or(Vec<FilterResolved>, Option<NonZeroU8>),
+    And(Vec<FilterResolved>, Option<NonZeroU8>),
     // All terms must have 1 or more items, or the inclusion is false!
-    Inclusion(Vec<FilterResolved>, Option<IdxSlope>),
-    AndNot(Box<FilterResolved>, Option<IdxSlope>),
+    Inclusion(Vec<FilterResolved>, Option<NonZeroU8>),
+    AndNot(Box<FilterResolved>, Option<NonZeroU8>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1003,25 +1003,20 @@ impl FilterResolved {
     unsafe fn from_invalid(fc: FilterComp, idxmeta: &HashSet<(&AttrString, &IndexType)>) -> Self {
         match fc {
             FilterComp::Eq(a, v) => {
-                let idx = if idxmeta.contains(&(&a, &IndexType::Equality)) {
-                    Some(IdxSlope::MAX)
-                } else {
-                    None
-                };
+                let idx = idxmeta.contains(&(&a, &IndexType::Equality));
+                let idx = NonZeroU8::new(idx as u8);
                 FilterResolved::Eq(a, v, idx)
             }
+            FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
             FilterComp::Sub(a, v) => {
-                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 // TODO: For now, don't emit substring indexes.
-                let idx = None;
-                FilterResolved::Sub(a, v, idx)
+                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
+                // let idx = NonZeroU8::new(idx as u8);
+                FilterResolved::Sub(a, v, None)
             }
             FilterComp::Pres(a) => {
-                let idx = if idxmeta.contains(&(&a, &IndexType::Presence)) {
-                    Some(IdxSlope::MAX)
-                } else {
-                    None
-                };
+                let idx = idxmeta.contains(&(&a, &IndexType::Presence));
+                let idx = NonZeroU8::new(idx as u8);
                 FilterResolved::Pres(a, idx)
             }
             FilterComp::LessThan(a, v) => {
@@ -1059,7 +1054,6 @@ impl FilterResolved {
                     None,
                 )
             }
-            FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
         }
     }
 
@@ -1071,29 +1065,40 @@ impl FilterResolved {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Equality);
-                let idx = idxmeta.get(&idxkref as &dyn IdxKeyToRef).copied();
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 let uuid_s = AttrString::from("uuid");
                 let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
-                let idx = idxmeta.get(&idxkref as &dyn IdxKeyToRef).copied();
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
             }),
             FilterComp::Sub(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
-                let idx = idxmeta.get(&idxkref as &dyn IdxKeyToRef).copied();
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 Some(FilterResolved::Sub(a, v, idx))
             }
             FilterComp::Pres(a) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Presence);
-                let idx = idxmeta.get(&idxkref as &dyn IdxKeyToRef).copied();
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 Some(FilterResolved::Pres(a, idx))
             }
             FilterComp::LessThan(a, v) => {
                 // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
-                let idx = None;
-                Some(FilterResolved::LessThan(a, v, idx))
+                Some(FilterResolved::LessThan(a, v, None))
             }
             // We set the compound filters slope factor to "None" here, because when we do
             // optimise we'll actually fill in the correct slope factors after we sort those
@@ -1132,22 +1137,23 @@ impl FilterResolved {
     }
 
     fn resolve_no_idx(fc: FilterComp, ev: &Identity) -> Option<Self> {
+        // ⚠️  ⚠️  ⚠️  ⚠️
+        // Remember, this function means we have NO INDEX METADATA so we can only
+        // asssign slopes to values we can GUARANTEE will EXIST.
         match fc {
             FilterComp::Eq(a, v) => {
-                let idx = if a == "name" || a == "uuid" {
-                    // Since we have no index data, we manually configure a reasonable
-                    // slope for the index here.
-                    Some(NO_INDEX_SLOPE)
-                } else {
-                    None
-                };
+                // Since we have no index data, we manually configure a reasonable
+                // slope and indicate the presence of some expected basic
+                // indexes.
+                let idx = a == "name" || a == "uuid";
+                let idx = NonZeroU8::new(idx as u8);
                 Some(FilterResolved::Eq(a, v, idx))
             }
             FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
                 FilterResolved::Eq(
                     AttrString::from("uuid"),
                     PartialValue::new_uuid(uuid),
-                    Some(NO_INDEX_SLOPE),
+                    NonZeroU8::new(true as u8),
                 )
             }),
             FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, None)),
@@ -1311,7 +1317,7 @@ impl FilterResolved {
     }
 
     #[inline(always)]
-    fn get_slopeyness_factor(&self) -> Option<IdxSlope> {
+    fn get_slopeyness_factor(&self) -> Option<NonZeroU8> {
         match self {
             FilterResolved::Eq(_, _, sf)
             | FilterResolved::Sub(_, _, sf)

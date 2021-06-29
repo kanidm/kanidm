@@ -840,8 +840,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
          * loading larger most costly indexs that either have large idls, high variation
          * or few keys and are likely to miss and have to go out to disk.
          *
-         * A few methods were proposed, but thanks to advice from a Psychology researcher
-         * and statistics enthustiast, we were able to device a reasonable approach.
+         * A few methods were proposed, but thanks to advice from Perri Boulton (psychology
+         * researcher with a background in statistics), we were able to device a reasonable
+         * approach.
          *
          * These are commented in line to help understand the process.
          */
