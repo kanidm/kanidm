@@ -988,8 +988,8 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         *         nkeys
         *
         * Since this is right angled we can use arctan to work out the degress of the line. This
-        * gives us a value from 1.0 to 90.0 (We clamp to a minimum of 1.0, but really 0.0 would
-        * be okay).
+        * gives us a value from 1.0 to 90.0 (We clamp to a minimum of 1.0, because we use 0 as "None"
+        * in the NonZeroU8 type in filter.rs, which allows ZST optimisation)
         *
         * The problem is that we have to go from float to u8 - this means we lose decimal precision
         * in the conversion. To lessen this, we multiply by 2 to give some extra weight to each angle
@@ -1002,7 +1002,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             .into_iter()
             .filter_map(|(k, lens)| {
                 let slope_factor = Self::calculate_sd_slope(lens);
-                if slope_factor == 0 {
+                if slope_factor == 0 || slope_factor == IdxSlope::MAX {
                     None
                 } else {
                     Some((k, slope_factor))
@@ -1047,8 +1047,8 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         // by 2. This gives us a little more precision when we drop the decimal point.
         let sf = (sd_1 / n_keys).atan().to_degrees() * 2.0;
 
-        // Now these are fractions, and we can't use those in u8, so we resolve where this
-        // point would be at 100.
+        // Now these are fractions, and we can't use those in u8, so we clamp the min/max values
+        // that we expect to be yielded.
         let sf = sf.clamp(1.0, 180.0);
         if !sf.is_finite() {
             IdxSlope::MAX
