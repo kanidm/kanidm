@@ -2124,6 +2124,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         Err(e) => Err(OperationError::SchemaViolation(e)),
                     }
                 } else {
+                    ladmin_error!(audit, "Invalid Result Set - Expected One Entry for {:?} - {:?}", filt, results);
                     Err(OperationError::InvalidDbState)
                 }
             }

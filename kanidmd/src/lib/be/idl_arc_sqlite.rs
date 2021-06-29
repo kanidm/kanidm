@@ -292,9 +292,11 @@ macro_rules! verify {
             match $self.db.get_allids($audit) {
                 Ok(db_allids) => {
                     if !db_allids.is_compressed() || !(*($self).allids).is_compressed() {
+                        ladmin_warning!($audit, "Inconsistent ALLIDS compression state");
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                     if db_allids != (*($self).allids) {
+                        ladmin_warning!($audit, "Inconsistent ALLIDS set");
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                 }

@@ -21,8 +21,7 @@ use crate::be::IdxKey;
 use crate::prelude::*;
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
-use hashbrown::HashMap;
-use hashbrown::HashSet;
+use hashbrown::{HashMap, HashSet};
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use uuid::Uuid;
@@ -366,9 +365,29 @@ pub trait SchemaTransaction {
 
         let class_snapshot = self.get_classes();
         let attribute_snapshot = self.get_attributes();
-        // Does this need to validate anything further at all? The UUID
-        // will be checked as part of the schema migration on startup, so I think
-        // just that all the content is sane is fine.
+
+        // We need to check that every uuid is unique because during tests we aren't doing
+        // a disk reload, which means we were missing this and causing potential migration
+        // failures on upgrade.
+
+        let mut unique_uuid_set = HashSet::new();
+        class_snapshot.values()
+            .map(|class| {
+                &class.uuid
+            })
+            .chain(
+                attribute_snapshot.values()
+                    .map(|attr| {
+                        &attr.uuid
+                    })
+            )
+            .for_each(|uuid| {
+                // If the set did not have this value present, true is returned.
+                if !unique_uuid_set.insert(uuid) {
+                    res.push(Err(ConsistencyError::SchemaUuidNotUnique(*uuid)))
+                }
+            });
+
         class_snapshot.values().for_each(|class| {
             // report the class we are checking
             class
