@@ -31,6 +31,12 @@ pub struct IdSqliteEntry {
     data: Vec<u8>,
 }
 
+#[derive(Debug)]
+struct KeyIdl {
+    key: String,
+    data: Vec<u8>,
+}
+
 impl TryFrom<IdSqliteEntry> for IdRawEntry {
     type Error = OperationError;
 
@@ -443,6 +449,95 @@ pub trait IdlSqliteTransaction {
             i.compress()
         }
         ids
+    }
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        let mut stmt = self
+            .get_conn()
+            .prepare("SELECT name from sqlite_master where type='table' and name GLOB 'idx_*'")
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+        let idx_table_iter = stmt.query_map([], |row| row.get(0)).map_err(|e| {
+            ladmin_error!(audit, "SQLite Error {:?}", e);
+            OperationError::SqliteError
+        })?;
+
+        let r: Result<_, _> = idx_table_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SqliteError
+                })
+            })
+            .collect();
+
+        r
+    }
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+        let allids = self.get_identry_raw(audit, &IdList::AllIds)?;
+        allids
+            .into_iter()
+            .map(|data| data.into_dbentry().map(|(id, db_e)| (id, db_e.to_string())))
+            .collect()
+    }
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        let idl = IdList::Indexed(IDLBitRange::from_u64(id));
+        let mut allids = self.get_identry_raw(audit, &idl)?;
+        allids
+            .pop()
+            .ok_or(OperationError::InvalidEntryId)
+            .and_then(|data| {
+                data.into_dbentry()
+                    .map(|(id, db_e)| (id, format!("{:?}", db_e)))
+            })
+    }
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        // TODO: Once we have slopes we can add .exists_table, and assert
+        // it's an idx table.
+
+        let query = format!("SELECT key, idl FROM {}", index_name);
+        let mut stmt = self.get_conn().prepare(query.as_str()).map_err(|e| {
+            ladmin_error!(audit, "SQLite Error {:?}", e);
+            OperationError::SqliteError
+        })?;
+
+        let idx_iter = stmt
+            .query_map([], |row| {
+                Ok(KeyIdl {
+                    key: row.get(0)?,
+                    data: row.get(1)?,
+                })
+            })
+            .map_err(|e| {
+                ladmin_error!(audit, "SQLite Error {:?}", e);
+                OperationError::SqliteError
+            })?;
+        idx_iter
+            .map(|v| {
+                v.map_err(|e| {
+                    ladmin_error!(audit, "SQLite Error {:?}", e);
+                    OperationError::SqliteError
+                })
+                .and_then(|KeyIdl { key, data }| {
+                    serde_cbor::from_slice(data.as_slice())
+                        .map_err(|_| OperationError::SerdeCborError)
+                        .map(|idl| (key, idl))
+                })
+            })
+            .collect()
     }
 
     // This allow is critical as it resolves a life time issue in stmt.
@@ -955,31 +1050,6 @@ impl IdlSqliteWriteTransaction {
                 ladmin_error!(audit, "SQLite Error {:?}", e);
                 OperationError::SqliteError
             })
-    }
-
-    pub fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
-        let mut stmt = self
-            .get_conn()
-            .prepare("SELECT name from sqlite_master where type='table' and name LIKE 'idx_%'")
-            .map_err(|e| {
-                ladmin_error!(audit, "SQLite Error {:?}", e);
-                OperationError::SqliteError
-            })?;
-        let idx_table_iter = stmt.query_map([], |row| row.get(0)).map_err(|e| {
-            ladmin_error!(audit, "SQLite Error {:?}", e);
-            OperationError::SqliteError
-        })?;
-
-        let r: Result<_, _> = idx_table_iter
-            .map(|v| {
-                v.map_err(|e| {
-                    ladmin_error!(audit, "SQLite Error {:?}", e);
-                    OperationError::SqliteError
-                })
-            })
-            .collect();
-
-        r
     }
 
     pub unsafe fn purge_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {

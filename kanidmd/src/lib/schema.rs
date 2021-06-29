@@ -371,16 +371,10 @@ pub trait SchemaTransaction {
         // failures on upgrade.
 
         let mut unique_uuid_set = HashSet::new();
-        class_snapshot.values()
-            .map(|class| {
-                &class.uuid
-            })
-            .chain(
-                attribute_snapshot.values()
-                    .map(|attr| {
-                        &attr.uuid
-                    })
-            )
+        class_snapshot
+            .values()
+            .map(|class| &class.uuid)
+            .chain(attribute_snapshot.values().map(|attr| &attr.uuid))
             .for_each(|uuid| {
                 // If the set did not have this value present, true is returned.
                 if !unique_uuid_set.insert(uuid) {

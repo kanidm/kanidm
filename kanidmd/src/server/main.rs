@@ -28,8 +28,10 @@ use std::str::FromStr;
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, ServerRole};
 use kanidm::core::{
-    backup_server_core, create_server_core, domain_rename_core, recover_account_core,
-    reindex_server_core, restore_server_core, vacuum_server_core, verify_server_core,
+    backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
+    dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
+    domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
+    vacuum_server_core, verify_server_core,
 };
 use kanidm::utils::file_permissions_readonly;
 
@@ -73,11 +75,17 @@ impl KanidmdOpt {
             KanidmdOpt::Server(sopt)
             | KanidmdOpt::Verify(sopt)
             | KanidmdOpt::Reindex(sopt)
-            | KanidmdOpt::Vacuum(sopt) => &sopt,
+            | KanidmdOpt::Vacuum(sopt)
+            | KanidmdOpt::DbScan(DbScanOpt::ListIndexes(sopt))
+            | KanidmdOpt::DbScan(DbScanOpt::ListId2Entry(sopt))
+            | KanidmdOpt::DbScan(DbScanOpt::ListIndexAnalysis(sopt)) => &sopt,
             KanidmdOpt::Backup(bopt) => &bopt.commonopts,
             KanidmdOpt::Restore(ropt) => &ropt.commonopts,
             KanidmdOpt::RecoverAccount(ropt) => &ropt.commonopts,
             KanidmdOpt::DomainChange(dopt) => &dopt.commonopts,
+            KanidmdOpt::DbScan(DbScanOpt::ListIndex(dopt)) => &dopt.commonopts,
+            // KanidmdOpt::DbScan(DbScanOpt::GetIndex(dopt)) => &dopt.commonopts,
+            KanidmdOpt::DbScan(DbScanOpt::GetId2Entry(dopt)) => &dopt.commonopts,
         }
     }
 }
@@ -290,6 +298,26 @@ async fn main() {
         KanidmdOpt::DomainChange(dopt) => {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
             domain_rename_core(&config, &dopt.new_domain_name);
+        }
+        KanidmdOpt::DbScan(DbScanOpt::ListIndexes(_)) => {
+            eprintln!("👀 db scan - list indexes");
+            dbscan_list_indexes_core(&config);
+        }
+        KanidmdOpt::DbScan(DbScanOpt::ListId2Entry(_)) => {
+            eprintln!("👀 db scan - list id2entry");
+            dbscan_list_id2entry_core(&config);
+        }
+        KanidmdOpt::DbScan(DbScanOpt::ListIndexAnalysis(_)) => {
+            eprintln!("👀 db scan - list index analysis");
+            dbscan_list_index_analysis_core(&config);
+        }
+        KanidmdOpt::DbScan(DbScanOpt::ListIndex(dopt)) => {
+            eprintln!("👀 db scan - list index content - {}", dopt.index_name);
+            dbscan_list_index_core(&config, dopt.index_name.as_str());
+        }
+        KanidmdOpt::DbScan(DbScanOpt::GetId2Entry(dopt)) => {
+            eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
+            dbscan_get_id2entry_core(&config, dopt.id);
         }
     }
 }

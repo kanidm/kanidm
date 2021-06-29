@@ -360,6 +360,22 @@ pub trait IdlArcSqliteTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError>;
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError>;
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError>;
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError>;
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError>;
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
@@ -437,6 +453,34 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     ) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, audit, uuid)
     }
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_idxs(audit)
+    }
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_id2entry(audit)
+    }
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_index_content(audit, index_name)
+    }
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.get_id2entry(audit, id)
+    }
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
@@ -513,6 +557,34 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, audit, uuid)
+    }
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_idxs(audit)
+    }
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_id2entry(audit)
+    }
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_index_content(audit, index_name)
+    }
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.get_id2entry(audit, id)
     }
 }
 
@@ -825,11 +897,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
         self.db.create_idx(audit, attr, itype)
-    }
-
-    pub fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
-        // This is only used in tests, so bypass the cache.
-        self.db.list_idxs(audit)
     }
 
     pub unsafe fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {

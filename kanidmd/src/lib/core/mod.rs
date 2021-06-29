@@ -110,6 +110,124 @@ fn setup_qs_idms(
     Ok((query_server, idms, idms_delayed))
 }
 
+macro_rules! dbscan_setup_be {
+    (
+        $audit:expr,
+        $config:expr
+    ) => {{
+        let schema = match Schema::new(&mut $audit) {
+            Ok(s) => s,
+            Err(e) => {
+                $audit.write_log();
+                error!("Failed to setup in memory schema: {:?}", e);
+                std::process::exit(1);
+            }
+        };
+
+        match setup_backend($config, &schema) {
+            Ok(be) => be,
+            Err(e) => {
+                error!("Failed to setup BE: {:?}", e);
+                return;
+            }
+        }
+    }};
+}
+
+pub fn dbscan_list_indexes_core(config: &Configuration) {
+    let mut audit = AuditScope::new(
+        "dbscan_list_indexes",
+        uuid::Uuid::new_v4(),
+        config.log_level,
+    );
+    let be = dbscan_setup_be!(audit, &config);
+    let be_rotxn = be.read();
+
+    match be_rotxn.list_indexes(&mut audit) {
+        Ok(mut idx_list) => {
+            idx_list.sort_unstable();
+            idx_list.iter().for_each(|idx_name| {
+                println!("{}", idx_name);
+            })
+        }
+        Err(e) => {
+            audit.write_log();
+            error!("Failed to retrieve index list: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_list_id2entry_core(config: &Configuration) {
+    let mut audit = AuditScope::new(
+        "dbscan_list_id2entry",
+        uuid::Uuid::new_v4(),
+        config.log_level,
+    );
+    let be = dbscan_setup_be!(audit, &config);
+    let be_rotxn = be.read();
+
+    match be_rotxn.list_id2entry(&mut audit) {
+        Ok(mut id_list) => {
+            id_list.sort_unstable_by_key(|k| k.0);
+            id_list.iter().for_each(|(id, value)| {
+                println!("{:>8}: {}", id, value);
+            })
+        }
+        Err(e) => {
+            audit.write_log();
+            error!("Failed to retrieve id2entry list: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_list_index_analysis_core(config: &Configuration) {
+    let mut audit = AuditScope::new(
+        "dbscan_list_index_analysis",
+        uuid::Uuid::new_v4(),
+        config.log_level,
+    );
+
+    let _be = dbscan_setup_be!(audit, &config);
+    // TBD in after slopes merge.
+}
+
+pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
+    let mut audit = AuditScope::new("dbscan_list_index", uuid::Uuid::new_v4(), config.log_level);
+    let be = dbscan_setup_be!(audit, &config);
+    let be_rotxn = be.read();
+
+    match be_rotxn.list_index_content(&mut audit, index_name) {
+        Ok(mut idx_list) => {
+            idx_list.sort_unstable_by(|a, b| a.0.cmp(&b.0));
+            idx_list.iter().for_each(|(key, value)| {
+                println!("{:>50}: {:?}", key, value);
+            })
+        }
+        Err(e) => {
+            audit.write_log();
+            error!("Failed to retrieve index list: {:?}", e);
+        }
+    };
+}
+
+pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
+    let mut audit = AuditScope::new(
+        "dbscan_get_id2entry",
+        uuid::Uuid::new_v4(),
+        config.log_level,
+    );
+    let be = dbscan_setup_be!(audit, &config);
+    let be_rotxn = be.read();
+
+    match be_rotxn.get_id2entry(&mut audit, id) {
+        Ok((id, value)) => println!("{:>8}: {}", id, value),
+        Err(e) => {
+            audit.write_log();
+            error!("Failed to retrieve id2entry value: {:?}", e);
+        }
+    };
+}
+
 pub fn backup_server_core(config: &Configuration, dst_path: &str) {
     let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4(), config.log_level);
     let schema = match Schema::new(&mut audit) {

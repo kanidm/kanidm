@@ -121,14 +121,21 @@ pub struct BackendWriteTransaction<'a> {
 }
 
 impl IdRawEntry {
+    fn into_dbentry(self) -> Result<(u64, DbEntry), OperationError> {
+        serde_cbor::from_slice(self.data.as_slice())
+            .map_err(|_| OperationError::SerdeCborError)
+            .map(|dbe| (self.id, dbe))
+    }
+
     fn into_entry(
         self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
-        Entry::from_dbentry(au, db_e, self.id).map_err(|_| OperationError::CorruptedEntry(self.id))
+        Entry::from_dbentry(audit, db_e, self.id)
+            .map_err(|_| OperationError::CorruptedEntry(self.id))
     }
 }
 
@@ -866,6 +873,35 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 
     fn get_idxmeta_ref(&self) -> &IdxMeta {
         &self.idxmeta
+    }
+}
+
+impl<'a> BackendReadTransaction<'a> {
+    pub fn list_indexes(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        self.get_idlayer().list_idxs(audit)
+    }
+
+    pub fn list_id2entry(
+        &self,
+        audit: &mut AuditScope,
+    ) -> Result<Vec<(u64, String)>, OperationError> {
+        self.get_idlayer().list_id2entry(audit)
+    }
+
+    pub fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        self.get_idlayer().list_index_content(audit, index_name)
+    }
+
+    pub fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        self.get_idlayer().get_id2entry(audit, id)
     }
 }
 
