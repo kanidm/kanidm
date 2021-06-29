@@ -21,10 +21,6 @@ use std::io::Read;
 
 #[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
-#[cfg(target_os = "macos")]
-use std::os::unix::fs::MetadataExt;
-// #[cfg(target_os = "windows")]
-// use std::os::windows::fs::MetadataExt;
 
 use std::path::Path;
 use std::time::Duration;
