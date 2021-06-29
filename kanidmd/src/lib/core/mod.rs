@@ -506,7 +506,7 @@ pub fn verify_server_core(config: &Configuration) {
     audit.write_log();
 
     if r.is_empty() {
-        info!("Verification passed!");
+        eprintln!("Verification passed!");
         std::process::exit(0);
     } else {
         for er in r {

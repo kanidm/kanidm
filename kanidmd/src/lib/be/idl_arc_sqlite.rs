@@ -9,7 +9,7 @@ use crate::value::IndexType;
 use crate::value::Value;
 use concread::arcache::{ARCache, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
-use idlset::v2::IDLBitRange;
+use idlset::{v2::IDLBitRange, AndNot};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -297,6 +297,16 @@ macro_rules! verify {
                     }
                     if db_allids != (*($self).allids) {
                         ladmin_warning!($audit, "Inconsistent ALLIDS set");
+                        ladmin_warning!(
+                            $audit,
+                            "db_allids: {:?}",
+                            (&db_allids).andnot(&($self).allids)
+                        );
+                        ladmin_warning!(
+                            $audit,
+                            "arc_allids: {:?}",
+                            (&(*($self).allids)).andnot(&db_allids)
+                        );
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                 }
@@ -711,7 +721,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 
     pub fn write_identries_raw<I>(
         &mut self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
         entries: I,
     ) -> Result<(), OperationError>
     where
@@ -720,7 +730,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         // Drop the entry cache.
         self.entry_cache.clear();
         // Write the raw ents
-        self.db.write_identries_raw(au, entries)
+        self.db
+            .write_identries_raw(audit, entries)
+            .and_then(|()| self.db.get_allids(audit))
+            .map(|mut ids| {
+                // Update allids since we cleared them and need to reset it in the cache.
+                std::mem::swap(self.allids.deref_mut(), &mut ids);
+            })
     }
 
     pub fn delete_identry<I>(
