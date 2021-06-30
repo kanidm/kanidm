@@ -1145,7 +1145,7 @@ impl FilterResolved {
                 // Since we have no index data, we manually configure a reasonable
                 // slope and indicate the presence of some expected basic
                 // indexes.
-                let idx = a == "name" || a == "uuid";
+                let idx = matches!(a, "name" | "uuid");
                 let idx = NonZeroU8::new(idx as u8);
                 Some(FilterResolved::Eq(a, v, idx))
             }
