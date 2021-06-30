@@ -147,7 +147,7 @@ enum FilterComp {
 ///
 /// Each filter that has been resolved also has been enriched with metadata about its
 /// index, and index slope. For the purpose of this module, consider slope as a "weight"
-/// where small value - faster index, larger value - slower index. This metadat is extremely
+/// where small value - faster index, larger value - slower index. This metadata is extremely
 /// important for the query optimiser to make decisions about how to re-arrange queries
 /// correctly.
 #[derive(Debug, Clone, Eq)]
