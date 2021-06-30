@@ -145,6 +145,7 @@ impl LoginOpt {
     fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         let totp = loop {
             print!("Enter TOTP: ");
+            // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
             io::stdout().flush().unwrap();
             let mut buffer = String::new();
             if let Err(e) = io::stdin().read_line(&mut buffer) {
