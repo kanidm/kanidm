@@ -1019,15 +1019,16 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             // We can only do SD on sets greater than 2
             let l: u32 = data.len().try_into().unwrap_or(u32::MAX);
             let c = f64::from(l);
-            let mean = data
+            let mean = data.iter().take(u32::MAX as usize).sum::<f64>() / c;
+            let varience: f64 = data
                 .iter()
                 .take(u32::MAX as usize)
+                .map(|len| {
+                    let delta = mean - len;
+                    delta * delta
+                })
                 .sum::<f64>()
-                / c;
-            let varience: f64 = data.iter().take(u32::MAX as usize).map(|len| {
-                let delta = mean - len;
-                delta * delta
-            }).sum::<f64>() / (c - 1.0);
+                / (c - 1.0);
 
             let sd = varience.sqrt();
 
@@ -1046,11 +1047,11 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         // elements have the smallest sd_1 and most keys available. Then because this
         // is bound between 0.0 -> 90.0, we "unfurl" this around a half circle by multipling
         // by 2. This gives us a little more precision when we drop the decimal point.
-        let sf = (sd_1 / n_keys).atan().to_degrees() * 2.0;
+        let sf = (sd_1 / n_keys).atan().to_degrees() * 2.8;
 
         // Now these are fractions, and we can't use those in u8, so we clamp the min/max values
         // that we expect to be yielded.
-        let sf = sf.clamp(1.0, 180.0);
+        let sf = sf.clamp(1.0, 254.0);
         if !sf.is_finite() {
             IdxSlope::MAX
         } else {

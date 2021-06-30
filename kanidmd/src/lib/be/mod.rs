@@ -2872,30 +2872,30 @@ mod tests {
             let ta_eq_slope = be
                 .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))
                 .unwrap();
-            assert_eq!(ta_eq_slope, 143);
+            assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
                 .get_idx_slope(audit, &IdxKey::new("tb", IndexType::Equality))
                 .unwrap();
-            assert_eq!(tb_eq_slope, 95);
+            assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
                 .get_idx_slope(audit, &IdxKey::new("name", IndexType::Equality))
                 .unwrap();
-            assert_eq!(name_eq_slope, 36);
+            assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
                 .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Equality))
                 .unwrap();
-            assert_eq!(uuid_eq_slope, 36);
+            assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
                 .get_idx_slope(audit, &IdxKey::new("name", IndexType::Presence))
                 .unwrap();
-            assert_eq!(name_pres_slope, 143);
+            assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
                 .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Presence))
                 .unwrap();
-            assert_eq!(uuid_pres_slope, 143);
+            assert_eq!(uuid_pres_slope, 200);
         })
     }
 
