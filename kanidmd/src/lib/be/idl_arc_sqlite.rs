@@ -1054,6 +1054,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         if !sf.is_finite() {
             IdxSlope::MAX
         } else {
+            // SAFETY
+            // `sf` is clamped between 1.0 and 180.0 above, ensuring it is
+            // always in range.
             unsafe { sf.to_int_unchecked::<IdxSlope>() }
         }
     }
