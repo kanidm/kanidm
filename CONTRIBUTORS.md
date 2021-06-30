@@ -14,6 +14,7 @@
 * Samuel Cabrero (scabrero)
 * Victor Wai (vcwai)
 * James Hodgkinson (yaleman)
+* Quinn Okabayashi (QnnOkabayashi)
 
 ## Acknowledgements
 
