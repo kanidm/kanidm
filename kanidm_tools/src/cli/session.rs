@@ -6,7 +6,7 @@ use libc::umask;
 use std::collections::BTreeMap;
 use std::fs::{create_dir, File};
 use std::io::ErrorKind;
-use std::io::{self, BufReader, BufWriter};
+use std::io::{self, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, WebauthnAuthenticator};
 
@@ -144,7 +144,8 @@ impl LoginOpt {
 
     fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         let totp = loop {
-            println!("Enter TOTP: ");
+            print!("Enter TOTP: ");
+            io::stdout().flush().unwrap();
             let mut buffer = String::new();
             if let Err(e) = io::stdin().read_line(&mut buffer) {
                 eprintln!("Failed to read from stdin -> {:?}", e);
