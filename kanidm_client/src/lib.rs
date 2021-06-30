@@ -17,7 +17,10 @@ use std::collections::BTreeSet as Set;
 use std::fs::{metadata, File, Metadata};
 use std::io::ErrorKind;
 use std::io::Read;
+
+#[cfg(target_family = "unix")]
 use std::os::unix::fs::MetadataExt;
+
 use std::path::Path;
 use std::time::Duration;
 use tokio::sync::RwLock;
@@ -100,18 +103,25 @@ impl KanidmClientBuilder {
     fn parse_certificate(ca_path: &str) -> Result<reqwest::Certificate, ()> {
         let mut buf = Vec::new();
         // Is the CA secure?
-        let path = Path::new(ca_path);
-        let ca_meta = read_file_metadata(&path)?;
+        #[cfg(target_family = "windows")]
+        warn!("File metadata checks on Windows aren't supported right now, this could be a security risk.");
 
-        if !ca_meta.permissions().readonly() {
-            warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", ca_path);
-        }
+        #[cfg(target_family = "unix")]
+        {
+            let path = Path::new(ca_path);
+            let ca_meta = read_file_metadata(&path)?;
 
-        if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
-            warn!(
-                "{} should be owned be root:root to prevent tampering",
-                ca_path
-            );
+            if !ca_meta.permissions().readonly() {
+                warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", ca_path);
+            }
+
+            #[cfg(target_family = "unix")]
+            if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
+                warn!(
+                    "{} should be owned be root:root to prevent tampering",
+                    ca_path
+                );
+            }
         }
 
         // TODO #253: Handle these errors better, or at least provide diagnostics?
