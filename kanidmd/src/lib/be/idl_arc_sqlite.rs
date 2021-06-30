@@ -1022,7 +1022,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             let mean = data
                 .iter()
                 .take(u32::MAX as usize)
-                .fold(0.0, |acc, x| x + acc)
+                .sum::<f64>()
                 / c;
             let varience: f64 = data.iter().take(u32::MAX as usize).fold(0.0, |acc, i| {
                 let diff = mean - i;
