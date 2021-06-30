@@ -1024,10 +1024,11 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 .take(u32::MAX as usize)
                 .sum::<f64>()
                 / c;
-            let varience: f64 = data.iter().take(u32::MAX as usize).fold(0.0, |acc, i| {
-                let diff = mean - i;
-                acc + (diff * diff)
-            }) / (c - 1.0);
+            let varience: f64 = data.iter().take(u32::MAX as usize).map(|len| {
+                let delta = mean - len;
+                delta * delta
+            }).sum::<f64>() / (c - 1.0);
+
             let sd = varience.sqrt();
 
             // This is saying ~85% of values will be at least this len or less.
