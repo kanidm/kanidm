@@ -11,9 +11,9 @@ use crate::event::{
     ReviveRecycledEvent,
 };
 use crate::idm::event::{
-    GeneratePasswordEvent, GenerateTotpEvent, PasswordChangeEvent, RegenerateRadiusSecretEvent,
-    RemoveTotpEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent, VerifyTotpEvent,
-    WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    AcceptSha1TotpEvent, GeneratePasswordEvent, GenerateTotpEvent, PasswordChangeEvent,
+    RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent, UnixPasswordChangeEvent,
+    VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
 };
 use crate::modify::{Modify, ModifyInvalid, ModifyList};
 use crate::value::{PartialValue, Value};
@@ -594,6 +594,21 @@ impl QueryServerWriteV1 {
                         })?;
                         idms_prox_write
                             .verify_account_totp(&mut audit, &vte, ct)
+                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                    }
+                    SetCredentialRequest::TotpAcceptSha1(uuid) => {
+                        let aste =
+                            AcceptSha1TotpEvent::from_parts(&mut audit, ident, target_uuid, uuid)
+                                .map_err(|e| {
+                                ladmin_error!(
+                                    audit,
+                                    "Failed to begin internal_credential_set_message: {:?}",
+                                    e
+                                );
+                                e
+                            })?;
+                        idms_prox_write
+                            .accept_account_sha1_totp(&mut audit, &aste)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
                     SetCredentialRequest::TotpRemove => {

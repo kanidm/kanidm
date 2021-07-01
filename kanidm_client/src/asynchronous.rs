@@ -982,6 +982,27 @@ impl KanidmAsyncClient {
         match res {
             Ok(SetCredentialResponse::Success) => Ok(()),
             Ok(SetCredentialResponse::TotpCheck(u, s)) => Err(ClientError::TotpVerifyFailed(u, s)),
+            Ok(SetCredentialResponse::TotpInvalidSha1(u)) => Err(ClientError::TotpInvalidSha1(u)),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    // Accept a sha1 totp
+    pub async fn idm_account_primary_credential_accept_sha1_totp(
+        &self,
+        id: &str,
+        session: Uuid,
+    ) -> Result<(), ClientError> {
+        let r = SetCredentialRequest::TotpAcceptSha1(session);
+        let res: Result<SetCredentialResponse, ClientError> = self
+            .perform_put_request(
+                format!("/v1/account/{}/_credential/primary", id).as_str(),
+                r,
+            )
+            .await;
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(()),
             Ok(_) => Err(ClientError::EmptyResponse),
             Err(e) => Err(e),
         }

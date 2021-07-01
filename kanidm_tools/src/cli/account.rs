@@ -9,6 +9,7 @@ use time::OffsetDateTime;
 
 use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
+use kanidm_client::ClientError;
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_proto::v1::OperationError::{PasswordBadListed, PasswordTooShort, PasswordTooWeak};
 
@@ -189,37 +190,81 @@ impl AccountOpt {
 
                     // prompt for the totp.
                     eprintln!("--------------------------------------------------------------");
-                    eprint!(
-                        "Enter a TOTP from your authenticator to complete registration: \nTOTP: "
-                    );
+                    eprintln!("Enter a TOTP from your authenticator to complete registration:");
 
-                    let mut totp_input = String::new();
-                    if let Err(e) = io::stdin().read_line(&mut totp_input) {
-                        eprintln!("Failed to read from stdin -> {:?}", e);
-                        return;
-                    };
+                    loop {
+                        eprint!("TOTP: ");
+                        let mut totp_input = String::new();
+                        let input_result = io::stdin().read_line(&mut totp_input);
+                        // Finish the line?
+                        eprintln!("");
+                        if let Err(e) = input_result {
+                            eprintln!("Failed to read from stdin -> {:?}", e);
+                            break;
+                        };
 
-                    // Convert to a u32.
-                    let totp = match u32::from_str_radix(totp_input.trim(), 10) {
-                        Ok(v) => v,
-                        Err(e) => {
-                            eprintln!("Invalid TOTP -> {:?}", e);
-                            return;
-                        }
-                    };
+                        // Convert to a u32.
+                        let totp = match u32::from_str_radix(totp_input.trim(), 10) {
+                            Ok(v) => v,
+                            Err(e) => {
+                                eprintln!("Invalid TOTP -> {:?}", e);
+                                // Try again.
+                                continue;
+                            }
+                        };
 
-                    match client.idm_account_primary_credential_verify_totp(
-                        acsopt.aopts.account_id.as_str(),
-                        totp,
-                        session,
-                    ) {
-                        Ok(_) => {
-                            println!("TOTP registration success.");
+                        match client.idm_account_primary_credential_verify_totp(
+                            acsopt.aopts.account_id.as_str(),
+                            totp,
+                            session,
+                        ) {
+                            Ok(_) => {
+                                println!("TOTP registration success.");
+                                break;
+                            }
+                            Err(ClientError::TotpInvalidSha1(session)) => {
+                                eprintln!("⚠️  WARNING - It appears your authenticator app may be broken ⚠️  ");
+                                eprintln!(" The TOTP authenticator you are using is forcing the use of SHA1");
+                                eprintln!("");
+                                eprintln!(" -- If you accept this risk, and wish to proceed, type 'I am sure' ");
+                                eprintln!(" -- Otherwise press ENTER to cancel this operation");
+                                eprintln!("");
+                                eprint!("Are you sure: ");
+
+                                let mut confirm_input = String::new();
+                                if let Err(e) = io::stdin().read_line(&mut confirm_input) {
+                                    eprintln!("Failed to read from stdin -> {:?}", e);
+                                    break;
+                                };
+
+                                if confirm_input.trim() == "I am sure" {
+                                    match client.idm_account_primary_credential_accept_sha1_totp(
+                                        acsopt.aopts.account_id.as_str(),
+                                        session,
+                                    ) {
+                                        Ok(_) => {
+                                            println!("TOTP registration success.");
+                                        }
+                                        Err(e) => {
+                                            eprintln!("Error Completing -> {:?}", e);
+                                        }
+                                    };
+                                    break;
+                                } else {
+                                    eprintln!("Cancelling TOTP registration");
+                                    break;
+                                }
+                            }
+                            Err(ClientError::TotpVerifyFailed(_, _)) => {
+                                eprintln!("Incorrect TOTP code - try again");
+                                continue;
+                            }
+                            Err(e) => {
+                                eprintln!("Error Completing -> {:?}", e);
+                                break;
+                            }
                         }
-                        Err(e) => {
-                            eprintln!("Error Completing -> {:?}", e);
-                        }
-                    }
+                    } // end loop
                 }
                 AccountCredential::RemoveTotp(acsopt) => {
                     let client = acsopt.copt.to_client();

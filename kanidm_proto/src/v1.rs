@@ -673,6 +673,7 @@ pub enum SetCredentialRequest {
     GeneratePassword,
     TotpGenerate,
     TotpVerify(Uuid, u32),
+    TotpAcceptSha1(Uuid),
     TotpRemove,
     // Start the rego.
     WebauthnBegin(String),
@@ -747,6 +748,7 @@ pub enum SetCredentialResponse {
     Success,
     Token(String),
     TotpCheck(Uuid, TotpSecret),
+    TotpInvalidSha1(Uuid),
     WebauthnCreateChallenge(Uuid, CreationChallengeResponse),
     BackupCodes(Vec<String>),
 }

@@ -22,6 +22,7 @@ pub(crate) enum MfaRegCred {
 pub(crate) enum MfaRegNext {
     Success,
     TotpCheck(TotpSecret),
+    TotpInvalidSha1,
     WebauthnChallenge(CreationChallengeResponse),
 }
 
@@ -31,6 +32,7 @@ impl MfaRegNext {
         match self {
             MfaRegNext::Success => SetCredentialResponse::Success,
             MfaRegNext::TotpCheck(secret) => SetCredentialResponse::TotpCheck(u, secret),
+            MfaRegNext::TotpInvalidSha1 => SetCredentialResponse::TotpInvalidSha1(u),
             MfaRegNext::WebauthnChallenge(ccr) => {
                 SetCredentialResponse::WebauthnCreateChallenge(u, ccr)
             }
@@ -41,6 +43,7 @@ impl MfaRegNext {
 #[derive(Clone)]
 enum MfaRegState {
     TotpInit(Totp),
+    TotpInvalidSha1(Totp),
     TotpDone,
     WebauthnInit(String, WebauthnRegistrationState),
     WebauthnDone,
@@ -103,13 +106,54 @@ impl MfaRegSession {
                         _ => Err(OperationError::InvalidState),
                     }
                 } else {
-                    // Let them try again?
-                    let accountname = self.account.name.as_str();
-                    let issuer = self.account.spn.as_str();
-                    Ok((
-                        MfaRegNext::TotpCheck(token.to_proto(accountname, issuer)),
-                        None,
-                    ))
+                    // What if it's a broken authenticator app? Google authenticator
+                    // and authy both force sha1 and ignore the algo we send. So lets
+                    // check that just in case.
+
+                    let token_sha1 = token.clone().downgrade_to_legacy();
+
+                    if token_sha1.verify(chal, ct) {
+                        // Greeeaaaaaatttt it's a broken app. Let's check the user
+                        // knows this is broken, before we proceed.
+                        let mut nstate = MfaRegState::TotpInvalidSha1(token_sha1);
+                        mem::swap(&mut self.state, &mut nstate);
+                        Ok((MfaRegNext::TotpInvalidSha1, None))
+                    } else {
+                        // Prooobbably a bad code or typo then. Lte them try again.
+                        let accountname = self.account.name.as_str();
+                        let issuer = self.account.spn.as_str();
+                        Ok((
+                            MfaRegNext::TotpCheck(token.to_proto(accountname, issuer)),
+                            None,
+                        ))
+                    }
+                }
+            }
+            _ => Err(OperationError::InvalidRequestState),
+        }
+    }
+
+    pub fn totp_accept_sha1(
+        &mut self,
+        origin: &IdentityId,
+        target: &Uuid,
+    ) -> Result<(MfaRegNext, Option<MfaRegCred>), OperationError> {
+        if &self.origin != origin || target != &self.account.uuid {
+            // Verify that the same event source is the one continuing this attempt
+            return Err(OperationError::InvalidRequestState);
+        };
+
+        match &self.state {
+            MfaRegState::TotpInvalidSha1(_token) => {
+                // They have accepted the token to be sha1, so lets yield that.
+                // The token was mutated to sha1 in the previous step.
+                let mut nstate = MfaRegState::TotpDone;
+                mem::swap(&mut self.state, &mut nstate);
+                match nstate {
+                    MfaRegState::TotpInvalidSha1(token) => {
+                        Ok((MfaRegNext::Success, Some(MfaRegCred::Totp(token))))
+                    }
+                    _ => Err(OperationError::InvalidState),
                 }
             }
             _ => Err(OperationError::InvalidRequestState),
