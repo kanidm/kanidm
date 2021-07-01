@@ -16,7 +16,59 @@ pub enum DbEntryVers {
 }
 
 // This is actually what we store into the DB.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct DbEntry {
     pub ent: DbEntryVers,
+}
+
+impl std::fmt::Debug for DbEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.ent {
+            DbEntryVers::V1(dbe_v1) => {
+                write!(f, "v1 - {{ ")?;
+                for (k, vs) in dbe_v1.attrs.iter() {
+                    write!(f, "{} - [", k)?;
+                    for v in vs {
+                        write!(f, "{:?}, ", v)?;
+                    }
+                    write!(f, "], ")?;
+                }
+                write!(f, "}}")
+            }
+        }
+    }
+}
+
+impl std::fmt::Display for DbEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match &self.ent {
+            DbEntryVers::V1(dbe_v1) => {
+                write!(f, "v1 - {{ ")?;
+                match dbe_v1.attrs.get("uuid") {
+                    Some(uuids) => {
+                        for uuid in uuids {
+                            write!(f, "{:?}, ", uuid)?;
+                        }
+                    }
+                    None => write!(f, "Uuid(INVALID), ")?,
+                };
+                if let Some(names) = dbe_v1.attrs.get("name") {
+                    for name in names {
+                        write!(f, "{:?}, ", name)?;
+                    }
+                }
+                if let Some(names) = dbe_v1.attrs.get("attributename") {
+                    for name in names {
+                        write!(f, "{:?}, ", name)?;
+                    }
+                }
+                if let Some(names) = dbe_v1.attrs.get("classname") {
+                    for name in names {
+                        write!(f, "{:?}, ", name)?;
+                    }
+                }
+                write!(f, "}}")
+            }
+        }
+    }
 }

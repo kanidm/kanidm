@@ -121,14 +121,21 @@ pub struct BackendWriteTransaction<'a> {
 }
 
 impl IdRawEntry {
+    fn into_dbentry(self) -> Result<(u64, DbEntry), OperationError> {
+        serde_cbor::from_slice(self.data.as_slice())
+            .map_err(|_| OperationError::SerdeCborError)
+            .map(|dbe| (self.id, dbe))
+    }
+
     fn into_entry(
         self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice())
             .map_err(|_| OperationError::SerdeCborError)?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
-        Entry::from_dbentry(au, db_e, self.id).map_err(|_| OperationError::CorruptedEntry(self.id))
+        Entry::from_dbentry(audit, db_e, self.id)
+            .map_err(|_| OperationError::CorruptedEntry(self.id))
     }
 }
 
@@ -869,6 +876,35 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
     }
 }
 
+impl<'a> BackendReadTransaction<'a> {
+    pub fn list_indexes(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        self.get_idlayer().list_idxs(audit)
+    }
+
+    pub fn list_id2entry(
+        &self,
+        audit: &mut AuditScope,
+    ) -> Result<Vec<(u64, String)>, OperationError> {
+        self.get_idlayer().list_id2entry(audit)
+    }
+
+    pub fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        self.get_idlayer().list_index_content(audit, index_name)
+    }
+
+    pub fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        self.get_idlayer().get_id2entry(audit, id)
+    }
+}
+
 impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
     type IdlLayerType = IdlArcSqliteWriteTransaction<'a>;
 
@@ -1569,10 +1605,10 @@ mod tests {
 
     use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInit, EntryNew};
-    use super::IdxKey;
     use super::{
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, IdList, OperationError,
     };
+    use super::{DbEntry, IdxKey};
     use crate::identity::Limits;
     use crate::value::{IndexType, PartialValue, Value};
     use smartstring::alias::String as AttrString;
@@ -1872,7 +1908,7 @@ mod tests {
         });
     }
 
-    pub const DB_BACKUP_FILE_NAME: &'static str = "./.backup_test.db";
+    pub const DB_BACKUP_FILE_NAME: &'static str = "./.backup_test.json";
 
     #[test]
     fn test_be_backup_restore() {
@@ -1917,6 +1953,67 @@ mod tests {
                 .expect("Backup failed!");
             be.restore(audit, DB_BACKUP_FILE_NAME)
                 .expect("Restore failed!");
+
+            assert!(be.verify(audit).len() == 0);
+        });
+    }
+
+    pub const DB_BACKUP2_FILE_NAME: &'static str = "./.backup2_test.json";
+
+    #[test]
+    fn test_be_backup_restore_tampered() {
+        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+            // First create some entries (3?)
+            let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
+            e1.add_ava("userid", Value::from("william"));
+            e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
+
+            let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
+            e2.add_ava("userid", Value::from("alice"));
+            e2.add_ava("uuid", Value::from("4b6228ab-1dbe-42a4-a9f5-f6368222438e"));
+
+            let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
+            e3.add_ava("userid", Value::from("lucy"));
+            e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
+
+            let ve1 = unsafe { e1.clone().into_sealed_new() };
+            let ve2 = unsafe { e2.clone().into_sealed_new() };
+            let ve3 = unsafe { e3.clone().into_sealed_new() };
+
+            assert!(be.create(audit, vec![ve1, ve2, ve3]).is_ok());
+            assert!(entry_exists!(audit, be, e1));
+            assert!(entry_exists!(audit, be, e2));
+            assert!(entry_exists!(audit, be, e3));
+
+            let result = fs::remove_file(DB_BACKUP2_FILE_NAME);
+
+            match result {
+                Err(e) => {
+                    // if the error is the file is not found, thats what we want so continue,
+                    // otherwise return the error
+                    match e.kind() {
+                        std::io::ErrorKind::NotFound => {}
+                        _ => (),
+                    }
+                }
+                _ => (),
+            }
+
+            be.backup(audit, DB_BACKUP2_FILE_NAME)
+                .expect("Backup failed!");
+
+            // Now here, we need to tamper with the file.
+            let serialized_string = fs::read_to_string(DB_BACKUP2_FILE_NAME).unwrap();
+            let mut dbentries: Vec<DbEntry> = serde_json::from_str(&serialized_string).unwrap();
+            let _ = dbentries.pop();
+
+            let serialized_entries_str = serde_json::to_string_pretty(&dbentries).unwrap();
+            fs::write(DB_BACKUP2_FILE_NAME, serialized_entries_str).unwrap();
+
+            be.restore(audit, DB_BACKUP2_FILE_NAME)
+                .expect("Restore failed!");
+
+            assert!(be.verify(audit).len() == 0);
         });
     }
 

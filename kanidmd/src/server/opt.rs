@@ -45,6 +45,54 @@ struct DomainOpt {
 }
 
 #[derive(Debug, StructOpt)]
+struct DbScanListIndex {
+    /// The name of the index to list
+    index_name: String,
+    #[structopt(flatten)]
+    commonopts: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+struct DbScanGetIndex {
+    /// The name of the index to list
+    index_name: String,
+    /// The name of the index key to retrieve
+    key: String,
+    #[structopt(flatten)]
+    commonopts: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+struct DbScanGetId2Entry {
+    /// The id of the entry to display
+    id: u64,
+    #[structopt(flatten)]
+    commonopts: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+enum DbScanOpt {
+    #[structopt(name = "list_all_indexes")]
+    /// List all index tables that exist on the system.
+    ListIndexes(CommonOpt),
+    #[structopt(name = "list_index")]
+    /// List all content of a named index
+    ListIndex(DbScanListIndex),
+    // #[structopt(name = "get_index")]
+    // /// Display the content of a single index key
+    // GetIndex(DbScanGetIndex),
+    #[structopt(name = "list_id2entry")]
+    /// List all id2entry values with reduced entry content
+    ListId2Entry(CommonOpt),
+    #[structopt(name = "get_id2entry")]
+    /// View the data of a specific entry from id2entry
+    GetId2Entry(DbScanGetId2Entry),
+    #[structopt(name = "list_index_analysis")]
+    /// List all content of index analysis
+    ListIndexAnalysis(CommonOpt),
+}
+
+#[derive(Debug, StructOpt)]
 enum KanidmdOpt {
     #[structopt(name = "server")]
     /// Start the IDM Server
@@ -72,5 +120,8 @@ enum KanidmdOpt {
     #[structopt(name = "domain_name_change")]
     /// Change the IDM domain name
     DomainChange(DomainOpt),
+    #[structopt(name = "db_scan")]
+    /// Inspect the internal content of the database datastructures.
+    DbScan(DbScanOpt),
 }
 

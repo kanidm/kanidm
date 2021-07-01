@@ -207,7 +207,10 @@ impl IdmServer {
             })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
-        let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set)?;
+        let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set).map_err(|e| {
+            ladmin_error!(au, "Failed to load oauth2 resource servers - {:?}", e);
+            e
+        })?;
 
         Ok((
             IdmServer {

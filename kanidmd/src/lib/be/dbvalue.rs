@@ -13,10 +13,19 @@ pub struct DbCidV1 {
     pub timestamp: Duration,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub enum DbPasswordV1 {
     PBKDF2(usize, Vec<u8>, Vec<u8>),
     SSHA512(Vec<u8>, Vec<u8>),
+}
+
+impl std::fmt::Debug for DbPasswordV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            DbPasswordV1::PBKDF2(_, _, _) => write!(f, "PBKDF2"),
+            DbPasswordV1::SSHA512(_, _) => write!(f, "SSHA512"),
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -26,7 +35,7 @@ pub enum DbTotpAlgoV1 {
     S512,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct DbTotpV1 {
     #[serde(rename = "l")]
     pub label: String,
@@ -36,6 +45,16 @@ pub struct DbTotpV1 {
     pub step: u64,
     #[serde(rename = "a")]
     pub algo: DbTotpAlgoV1,
+}
+
+impl std::fmt::Debug for DbTotpV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        f.debug_struct("DbTotpV1")
+            .field("label", &self.label)
+            .field("step", &self.step)
+            .field("algo", &self.algo)
+            .finish()
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -52,9 +71,15 @@ pub struct DbWebauthnV1 {
     pub verified: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize)]
 pub struct DbBackupCodeV1 {
     pub code_set: HashSet<String>, // has to use std::HashSet for serde
+}
+
+impl std::fmt::Debug for DbBackupCodeV1 {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "codes remaining: {}", self.code_set.len())
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

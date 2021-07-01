@@ -9,7 +9,7 @@ use crate::value::IndexType;
 use crate::value::Value;
 use concread::arcache::{ARCache, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
-use idlset::v2::IDLBitRange;
+use idlset::{v2::IDLBitRange, AndNot};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 use std::collections::BTreeSet;
 use std::ops::DerefMut;
@@ -292,9 +292,21 @@ macro_rules! verify {
             match $self.db.get_allids($audit) {
                 Ok(db_allids) => {
                     if !db_allids.is_compressed() || !(*($self).allids).is_compressed() {
+                        ladmin_warning!($audit, "Inconsistent ALLIDS compression state");
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                     if db_allids != (*($self).allids) {
+                        ladmin_warning!($audit, "Inconsistent ALLIDS set");
+                        ladmin_warning!(
+                            $audit,
+                            "db_allids: {:?}",
+                            (&db_allids).andnot(&($self).allids)
+                        );
+                        ladmin_warning!(
+                            $audit,
+                            "arc_allids: {:?}",
+                            (&(*($self).allids)).andnot(&db_allids)
+                        );
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                 }
@@ -358,6 +370,22 @@ pub trait IdlArcSqliteTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError>;
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError>;
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError>;
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError>;
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError>;
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
@@ -435,6 +463,34 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     ) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, audit, uuid)
     }
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_idxs(audit)
+    }
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_id2entry(audit)
+    }
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_index_content(audit, index_name)
+    }
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.get_id2entry(audit, id)
+    }
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
@@ -511,6 +567,34 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, audit, uuid)
+    }
+
+    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_idxs(audit)
+    }
+
+    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_id2entry(audit)
+    }
+
+    fn list_index_content(
+        &self,
+        audit: &mut AuditScope,
+        index_name: &str,
+    ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.list_index_content(audit, index_name)
+    }
+
+    fn get_id2entry(
+        &self,
+        audit: &mut AuditScope,
+        id: u64,
+    ) -> Result<(u64, String), OperationError> {
+        // This is only used in tests or debug tools, so bypass the cache.
+        self.db.get_id2entry(audit, id)
     }
 }
 
@@ -637,7 +721,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 
     pub fn write_identries_raw<I>(
         &mut self,
-        au: &mut AuditScope,
+        audit: &mut AuditScope,
         entries: I,
     ) -> Result<(), OperationError>
     where
@@ -646,7 +730,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         // Drop the entry cache.
         self.entry_cache.clear();
         // Write the raw ents
-        self.db.write_identries_raw(au, entries)
+        self.db
+            .write_identries_raw(audit, entries)
+            .and_then(|()| self.db.get_allids(audit))
+            .map(|mut ids| {
+                // Update allids since we cleared them and need to reset it in the cache.
+                std::mem::swap(self.allids.deref_mut(), &mut ids);
+            })
     }
 
     pub fn delete_identry<I>(
@@ -823,11 +913,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
         self.db.create_idx(audit, attr, itype)
-    }
-
-    pub fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
-        // This is only used in tests, so bypass the cache.
-        self.db.list_idxs(audit)
     }
 
     pub unsafe fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
