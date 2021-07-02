@@ -81,3 +81,4 @@ pub mod prelude {
     pub use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 }
 pub mod logbuffer;
+pub mod subscriber;

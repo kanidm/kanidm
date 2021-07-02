@@ -241,6 +241,7 @@ macro_rules! run_create_test {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
         use crate::logbuffer::LogBuffer;
+        use crate::subscriber::KaniSubscriber;
 
         use tracing::{self, Level};
         use tracing_subscriber::FmtSubscriber;
@@ -270,6 +271,9 @@ macro_rules! run_create_test {
             })
 
             .finish();
+
+        let _ = subscriber;
+        let subscriber = KaniSubscriber::new();
 
         tracing::subscriber::with_default(subscriber, || {
             let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
