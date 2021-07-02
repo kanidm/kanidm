@@ -512,7 +512,7 @@ impl<'a> SchemaWriteTransaction<'a> {
         r
     }
 
-    pub(crate) fn reload_idxmeta(&self) -> HashSet<IdxKey> {
+    pub(crate) fn reload_idxmeta(&self) -> Vec<IdxKey> {
         self.get_attributes()
             .values()
             .flat_map(|a| {

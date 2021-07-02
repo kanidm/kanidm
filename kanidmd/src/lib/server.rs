@@ -1014,6 +1014,12 @@ impl QueryServer {
             .upgrade_reindex(audit, SYSTEM_INDEX_VERSION + 1)
             .and_then(|_| reindex_write_2.commit(audit))?;
 
+        // Force the schema to reload - this is so that any changes to index slope
+        // analysis are now reflected correctly.
+        let slope_reload = task::block_on(self.write_async(ts));
+        slope_reload.force_schema_reload();
+        slope_reload.commit(audit)?;
+
         // Now, based on the system version apply migrations. You may ask "should you not
         // be doing migrations before indexes?". And this is a very good question! The issue
         // is within a migration we must be able to search for content by pres index, and those
@@ -2457,8 +2463,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             if valid_r.is_empty() {
                 // Now use this to reload the backend idxmeta
                 ltrace!(audit, "Reloading idxmeta ...");
-                self.be_txn.update_idxmeta(self.schema.reload_idxmeta());
-                Ok(())
+                self.be_txn
+                    .update_idxmeta(audit, self.schema.reload_idxmeta())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "reload schema update idxmeta {:?}", e);
+                        e
+                    })
             } else {
                 // Log the failures?
                 ladmin_error!(audit, "Schema reload failed -> {:?}", valid_r);
@@ -2623,6 +2633,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // the versions, or it could just be from the cli where an admin needs to do an
         // indexing.
         self.be_txn.reindex(audit)
+    }
+
+    fn force_schema_reload(&self) {
+        self.changed_schema.set(true);
     }
 
     pub(crate) fn upgrade_reindex(

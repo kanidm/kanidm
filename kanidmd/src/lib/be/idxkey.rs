@@ -4,12 +4,23 @@ use std::borrow::Borrow;
 use std::cmp::Ordering;
 use std::hash::{Hash, Hasher};
 
+pub type IdxSlope = u8;
+
 // Huge props to https://github.com/sunshowers/borrow-complex-key-example/blob/master/src/lib.rs
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct IdxKey {
     pub attr: AttrString,
     pub itype: IndexType,
+}
+
+impl IdxKey {
+    pub fn new(attr: &str, itype: IndexType) -> Self {
+        IdxKey {
+            attr: attr.into(),
+            itype,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -21,6 +32,13 @@ pub struct IdxKeyRef<'a> {
 impl<'a> IdxKeyRef<'a> {
     pub fn new(attr: &'a str, itype: &'a IndexType) -> Self {
         IdxKeyRef { attr, itype }
+    }
+
+    pub fn to_key(&self) -> IdxKey {
+        IdxKey {
+            attr: self.attr.into(),
+            itype: self.itype.clone(),
+        }
     }
 }
 

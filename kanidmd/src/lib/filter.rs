@@ -8,24 +8,27 @@
 //! [`Filter`]: struct.Filter.html
 //! [`Entry`]: ../entry/struct.Entry.html
 
-use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta};
+use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
 use crate::identity::IdentityId;
 use crate::ldap::ldap_attr_filter_map;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
-use hashbrown::HashSet;
+use concread::arcache::ARCacheReadTxn;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::proto::{LdapFilter, LdapSubstringFilter};
-// use smartstring::alias::String;
-use concread::arcache::ARCacheReadTxn;
-use smartstring::alias::String as AttrString;
+// use smartstring::alias::String as AttrString;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::iter;
+use std::num::NonZeroU8;
 use uuid::Uuid;
+
+use hashbrown::HashMap;
+#[cfg(test)]
+use hashbrown::HashSet;
 
 const FILTER_DEPTH_MAX: usize = 16;
 
@@ -104,8 +107,8 @@ pub fn f_spn_name(id: &str) -> FC<'static> {
     FC::Or(f)
 }
 
-// This is the short-form for tests and internal filters that can then
-// be transformed into a filter for the server to use.
+/// This is the short-form for tests and internal filters that can then
+/// be transformed into a filter for the server to use.
 #[derive(Debug, Deserialize)]
 pub enum FC<'a> {
     Eq(&'a str, PartialValue),
@@ -120,7 +123,7 @@ pub enum FC<'a> {
     // Not(Box<FC>),
 }
 
-// This is the filters internal representation.
+/// This is the filters internal representation
 #[derive(Debug, Clone, Hash, PartialEq, PartialOrd, Ord, Eq)]
 enum FilterComp {
     // This is attr - value
@@ -137,22 +140,28 @@ enum FilterComp {
     // Not(Box<FilterComp>),
 }
 
-// This is the fully resolved internal representation. Note the lack of Not and selfUUID
-// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
-// Importantly, we make this accessible to Entry so that it can then match on filters
-// properly.
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// This is the fully resolved internal representation. Note the lack of Not and selfUUID
+/// because these are resolved into And(Pres(class), AndNot(term)) and Eq(uuid, ...).
+/// Importantly, we make this accessible to Entry so that it can then match on filters
+/// internally.
+///
+/// Each filter that has been resolved also has been enriched with metadata about its
+/// index, and index slope. For the purpose of this module, consider slope as a "weight"
+/// where small value - faster index, larger value - slower index. This metadata is extremely
+/// important for the query optimiser to make decisions about how to re-arrange queries
+/// correctly.
+#[derive(Debug, Clone, Eq)]
 pub enum FilterResolved {
-    // This is attr - value - indexed
-    Eq(AttrString, PartialValue, bool),
-    Sub(AttrString, PartialValue, bool),
-    Pres(AttrString, bool),
-    LessThan(AttrString, PartialValue, bool),
-    Or(Vec<FilterResolved>),
-    And(Vec<FilterResolved>),
+    // This is attr - value - indexed slope factor
+    Eq(AttrString, PartialValue, Option<NonZeroU8>),
+    Sub(AttrString, PartialValue, Option<NonZeroU8>),
+    Pres(AttrString, Option<NonZeroU8>),
+    LessThan(AttrString, PartialValue, Option<NonZeroU8>),
+    Or(Vec<FilterResolved>, Option<NonZeroU8>),
+    And(Vec<FilterResolved>, Option<NonZeroU8>),
     // All terms must have 1 or more items, or the inclusion is false!
-    Inclusion(Vec<FilterResolved>),
-    AndNot(Box<FilterResolved>),
+    Inclusion(Vec<FilterResolved>, Option<NonZeroU8>),
+    AndNot(Box<FilterResolved>, Option<NonZeroU8>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -904,26 +913,6 @@ impl PartialEq for Filter<FilterValidResolved> {
 */
 
 /*
-impl PartialEq for FilterResolved {
-    fn eq(&self, rhs: &FilterResolved) -> bool {
-        match (self, rhs) {
-            (FilterResolved::Eq(a1, v1, i1), FilterResolved::Eq(a2, v2, i2)) => {
-                a1 == a2 && v1 == v2 && i1 == i2
-            }
-            (FilterResolved::Sub(a1, v1, i1), FilterResolved::Sub(a2, v2, i2)) => {
-                a1 == a2 && v1 == v2 && i1 == i2
-            }
-            (FilterResolved::Pres(a1, i1), FilterResolved::Pres(a2, i2)) => a1 == a2 && i1 == i2,
-            (FilterResolved::And(vs1), FilterResolved::And(vs2)) => vs1 == vs2,
-            (FilterResolved::Or(vs1), FilterResolved::Or(vs2)) => vs1 == vs2,
-            (FilterResolved::AndNot(f1), FilterResolved::AndNot(f2)) => f1 == f2,
-            (_, _) => false,
-        }
-    }
-}
-*/
-
-/*
  * Only needed in tests, in run time order only matters on the inner for
  * optimisation.
  */
@@ -934,8 +923,26 @@ impl PartialOrd for Filter<FilterValidResolved> {
     }
 }
 
-// remember, this isn't ordering by alphanumeric, this is ordering of
-// optimisation preference!
+impl PartialEq for FilterResolved {
+    fn eq(&self, rhs: &FilterResolved) -> bool {
+        match (self, rhs) {
+            (FilterResolved::Eq(a1, v1, _), FilterResolved::Eq(a2, v2, _)) => a1 == a2 && v1 == v2,
+            (FilterResolved::Sub(a1, v1, _), FilterResolved::Sub(a2, v2, _)) => {
+                a1 == a2 && v1 == v2
+            }
+            (FilterResolved::Pres(a1, _), FilterResolved::Pres(a2, _)) => a1 == a2,
+            (FilterResolved::LessThan(a1, v1, _), FilterResolved::LessThan(a2, v2, _)) => {
+                a1 == a2 && v1 == v2
+            }
+            (FilterResolved::And(vs1, _), FilterResolved::And(vs2, _)) => vs1 == vs2,
+            (FilterResolved::Or(vs1, _), FilterResolved::Or(vs2, _)) => vs1 == vs2,
+            (FilterResolved::Inclusion(vs1, _), FilterResolved::Inclusion(vs2, _)) => vs1 == vs2,
+            (FilterResolved::AndNot(f1, _), FilterResolved::AndNot(f2, _)) => f1 == f2,
+            (_, _) => false,
+        }
+    }
+}
+
 impl PartialOrd for FilterResolved {
     fn partial_cmp(&self, rhs: &FilterResolved) -> Option<Ordering> {
         Some(self.cmp(rhs))
@@ -943,41 +950,50 @@ impl PartialOrd for FilterResolved {
 }
 
 impl Ord for FilterResolved {
+    /// Ordering of filters for optimisation and subsequent dead term elimination.
+    ///
     fn cmp(&self, rhs: &FilterResolved) -> Ordering {
-        match (self, rhs) {
-            (FilterResolved::Eq(a1, v1, true), FilterResolved::Eq(a2, v2, true)) => {
-                match a1.cmp(a2) {
-                    Ordering::Equal => v1.cmp(v2),
-                    o => o,
+        let left_slopey = self.get_slopeyness_factor();
+        let right_slopey = rhs.get_slopeyness_factor();
+
+        let r = match (left_slopey, right_slopey) {
+            (Some(sfl), Some(sfr)) => sfl.cmp(&sfr),
+            (Some(_), None) => Ordering::Less,
+            (None, Some(_)) => Ordering::Greater,
+            (None, None) => Ordering::Equal,
+        };
+
+        // If they are equal, compare other elements for determining the order. This is what
+        // allows dead term elimination to occur.
+        //
+        // In almost all cases, we'll miss this step though as slopes will vary distinctly.
+        //
+        // We do NOT need to check for indexed vs unindexed here, we already did it in the slope check!
+        if r == Ordering::Equal {
+            match (self, rhs) {
+                (FilterResolved::Eq(a1, v1, _), FilterResolved::Eq(a2, v2, _))
+                | (FilterResolved::Sub(a1, v1, _), FilterResolved::Sub(a2, v2, _))
+                | (FilterResolved::LessThan(a1, v1, _), FilterResolved::LessThan(a2, v2, _)) => {
+                    match a1.cmp(a2) {
+                        Ordering::Equal => v1.cmp(v2),
+                        o => o,
+                    }
                 }
+                (FilterResolved::Pres(a1, _), FilterResolved::Pres(a2, _)) => a1.cmp(a2),
+                // Now sort these into the generally "best" order.
+                (FilterResolved::Eq(_, _, _), _) => Ordering::Less,
+                (_, FilterResolved::Eq(_, _, _)) => Ordering::Greater,
+                (FilterResolved::Pres(_, _), _) => Ordering::Less,
+                (_, FilterResolved::Pres(_, _)) => Ordering::Greater,
+                (FilterResolved::LessThan(_, _, _), _) => Ordering::Less,
+                (_, FilterResolved::LessThan(_, _, _)) => Ordering::Greater,
+                (FilterResolved::Sub(_, _, _), _) => Ordering::Less,
+                (_, FilterResolved::Sub(_, _, _)) => Ordering::Greater,
+                // They can't be re-arranged, they don't move!
+                (_, _) => Ordering::Equal,
             }
-            (FilterResolved::Sub(a1, v1, true), FilterResolved::Sub(a2, v2, true)) => {
-                match a1.cmp(a2) {
-                    Ordering::Equal => v1.cmp(v2),
-                    o => o,
-                }
-            }
-            (FilterResolved::Pres(a1, true), FilterResolved::Pres(a2, true)) => a1.cmp(a2),
-            // Always higher prefer indexed Eq over all else, as these will have
-            // the best indexes and return smallest candidates.
-            (FilterResolved::Eq(_, _, true), _) => Ordering::Less,
-            (_, FilterResolved::Eq(_, _, true)) => Ordering::Greater,
-            (FilterResolved::Pres(_, true), _) => Ordering::Less,
-            (_, FilterResolved::Pres(_, true)) => Ordering::Greater,
-            (FilterResolved::Sub(_, _, true), _) => Ordering::Greater,
-            (_, FilterResolved::Sub(_, _, true)) => Ordering::Less,
-            // Now prefer the unindexed types by performance order.
-            (FilterResolved::Pres(_, false), FilterResolved::Pres(_, false)) => Ordering::Equal,
-            (FilterResolved::Pres(_, false), _) => Ordering::Less,
-            (_, FilterResolved::Pres(_, false)) => Ordering::Greater,
-            (FilterResolved::Eq(_, _, false), FilterResolved::Eq(_, _, false)) => Ordering::Equal,
-            (FilterResolved::Eq(_, _, false), _) => Ordering::Less,
-            (_, FilterResolved::Eq(_, _, false)) => Ordering::Greater,
-            (FilterResolved::Sub(_, _, false), FilterResolved::Sub(_, _, false)) => Ordering::Equal,
-            (FilterResolved::Sub(_, _, false), _) => Ordering::Greater,
-            (_, FilterResolved::Sub(_, _, false)) => Ordering::Less,
-            // They can't be compared, they don't move!
-            (_, _) => Ordering::Equal,
+        } else {
+            r
         }
     }
 }
@@ -988,38 +1004,44 @@ impl FilterResolved {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Equality));
+                let idx = NonZeroU8::new(idx as u8);
                 FilterResolved::Eq(a, v, idx)
             }
+            FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
             FilterComp::Sub(a, v) => {
-                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
                 // TODO: For now, don't emit substring indexes.
-                let idx = false;
-                FilterResolved::Sub(a, v, idx)
+                // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
+                // let idx = NonZeroU8::new(idx as u8);
+                FilterResolved::Sub(a, v, None)
             }
             FilterComp::Pres(a) => {
                 let idx = idxmeta.contains(&(&a, &IndexType::Presence));
+                let idx = NonZeroU8::new(idx as u8);
                 FilterResolved::Pres(a, idx)
             }
             FilterComp::LessThan(a, v) => {
                 // let idx = idxmeta.contains(&(&a, &IndexType::ORDERING));
                 // TODO: For now, don't emit ordering indexes.
-                let idx = false;
+                let idx = None;
                 FilterResolved::LessThan(a, v, idx)
             }
             FilterComp::Or(vs) => FilterResolved::Or(
                 vs.into_iter()
                     .map(|v| FilterResolved::from_invalid(v, idxmeta))
                     .collect(),
+                None,
             ),
             FilterComp::And(vs) => FilterResolved::And(
                 vs.into_iter()
                     .map(|v| FilterResolved::from_invalid(v, idxmeta))
                     .collect(),
+                None,
             ),
             FilterComp::Inclusion(vs) => FilterResolved::Inclusion(
                 vs.into_iter()
                     .map(|v| FilterResolved::from_invalid(v, idxmeta))
                     .collect(),
+                None,
             ),
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
@@ -1027,57 +1049,80 @@ impl FilterResolved {
                 // not today remove the box, and we need f in our ownership. Since
                 // AndNot currently is a rare request, cloning is not the worst thing
                 // here ...
-                FilterResolved::AndNot(Box::new(FilterResolved::from_invalid(
-                    (*f).clone(),
-                    idxmeta,
-                )))
+                FilterResolved::AndNot(
+                    Box::new(FilterResolved::from_invalid((*f).clone(), idxmeta)),
+                    None,
+                )
             }
-            FilterComp::SelfUuid => panic!("Not possible to resolve SelfUuid in from_invalid!"),
         }
     }
 
-    fn resolve_idx(fc: FilterComp, ev: &Identity, idxmeta: &HashSet<IdxKey>) -> Option<Self> {
+    fn resolve_idx(
+        fc: FilterComp,
+        ev: &Identity,
+        idxmeta: &HashMap<IdxKey, IdxSlope>,
+    ) -> Option<Self> {
         match fc {
             FilterComp::Eq(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Equality);
-                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 Some(FilterResolved::Eq(a, v, idx))
             }
+            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
+                let uuid_s = AttrString::from("uuid");
+                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
+                FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
+            }),
             FilterComp::Sub(a, v) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::SubString);
-                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 Some(FilterResolved::Sub(a, v, idx))
             }
             FilterComp::Pres(a) => {
                 let idxkref = IdxKeyRef::new(&a, &IndexType::Presence);
-                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
+                let idx = idxmeta
+                    .get(&idxkref as &dyn IdxKeyToRef)
+                    .copied()
+                    .and_then(NonZeroU8::new);
                 Some(FilterResolved::Pres(a, idx))
             }
             FilterComp::LessThan(a, v) => {
                 // let idx = idxmeta.contains(&(&a, &IndexType::SubString));
-                let idx = false;
-                Some(FilterResolved::LessThan(a, v, idx))
+                Some(FilterResolved::LessThan(a, v, None))
             }
+            // We set the compound filters slope factor to "None" here, because when we do
+            // optimise we'll actually fill in the correct slope factors after we sort those
+            // inner terms in a more optimial way.
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
-                fi.map(FilterResolved::Or)
+                fi.map(|fi| FilterResolved::Or(fi, None))
             }
             FilterComp::And(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
-                fi.map(FilterResolved::And)
+                fi.map(|fi| FilterResolved::And(fi, None))
             }
             FilterComp::Inclusion(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_idx(f, ev, idxmeta))
                     .collect();
-                fi.map(FilterResolved::Inclusion)
+                fi.map(|fi| FilterResolved::Inclusion(fi, None))
             }
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
@@ -1086,43 +1131,54 @@ impl FilterResolved {
                 // AndNot currently is a rare request, cloning is not the worst thing
                 // here ...
                 FilterResolved::resolve_idx((*f).clone(), ev, idxmeta)
-                    .map(|fi| FilterResolved::AndNot(Box::new(fi)))
+                    .map(|fi| FilterResolved::AndNot(Box::new(fi), None))
             }
-            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                let uuid_s = AttrString::from("uuid");
-                let idxkref = IdxKeyRef::new(&uuid_s, &IndexType::Equality);
-                let idx = idxmeta.contains(&idxkref as &dyn IdxKeyToRef);
-                FilterResolved::Eq(uuid_s, PartialValue::new_uuid(uuid), idx)
-            }),
         }
     }
 
     fn resolve_no_idx(fc: FilterComp, ev: &Identity) -> Option<Self> {
+        // ⚠️  ⚠️  ⚠️  ⚠️
+        // Remember, this function means we have NO INDEX METADATA so we can only
+        // asssign slopes to values we can GUARANTEE will EXIST.
         match fc {
-            FilterComp::Eq(a, v) => Some(FilterResolved::Eq(a, v, false)),
-            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, false)),
-            FilterComp::Pres(a) => Some(FilterResolved::Pres(a, false)),
-            FilterComp::LessThan(a, v) => Some(FilterResolved::LessThan(a, v, false)),
+            FilterComp::Eq(a, v) => {
+                // Since we have no index data, we manually configure a reasonable
+                // slope and indicate the presence of some expected basic
+                // indexes.
+                let idx = matches!(a.as_str(), "name" | "uuid");
+                let idx = NonZeroU8::new(idx as u8);
+                Some(FilterResolved::Eq(a, v, idx))
+            }
+            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
+                FilterResolved::Eq(
+                    AttrString::from("uuid"),
+                    PartialValue::new_uuid(uuid),
+                    NonZeroU8::new(true as u8),
+                )
+            }),
+            FilterComp::Sub(a, v) => Some(FilterResolved::Sub(a, v, None)),
+            FilterComp::Pres(a) => Some(FilterResolved::Pres(a, None)),
+            FilterComp::LessThan(a, v) => Some(FilterResolved::LessThan(a, v, None)),
             FilterComp::Or(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_no_idx(f, ev))
                     .collect();
-                fi.map(FilterResolved::Or)
+                fi.map(|fi| FilterResolved::Or(fi, None))
             }
             FilterComp::And(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_no_idx(f, ev))
                     .collect();
-                fi.map(FilterResolved::And)
+                fi.map(|fi| FilterResolved::And(fi, None))
             }
             FilterComp::Inclusion(vs) => {
                 let fi: Option<Vec<_>> = vs
                     .into_iter()
                     .map(|f| FilterResolved::resolve_no_idx(f, ev))
                     .collect();
-                fi.map(FilterResolved::Inclusion)
+                fi.map(|fi| FilterResolved::Inclusion(fi, None))
             }
             FilterComp::AndNot(f) => {
                 // TODO: pattern match box here. (AndNot(box f)).
@@ -1131,31 +1187,25 @@ impl FilterResolved {
                 // AndNot currently is a rare request, cloning is not the worst thing
                 // here ...
                 FilterResolved::resolve_no_idx((*f).clone(), ev)
-                    .map(|fi| FilterResolved::AndNot(Box::new(fi)))
+                    .map(|fi| FilterResolved::AndNot(Box::new(fi), None))
             }
-
-            FilterComp::SelfUuid => ev.get_uuid().map(|uuid| {
-                FilterResolved::Eq(
-                    AttrString::from("uuid"),
-                    PartialValue::new_uuid(uuid),
-                    false,
-                )
-            }),
         }
     }
 
     // This is an optimise that only attempts to optimise the outer terms.
     fn fast_optimise(self) -> Self {
         match self {
-            FilterResolved::Inclusion(mut f_list) => {
+            FilterResolved::Inclusion(mut f_list, _) => {
                 f_list.sort_unstable();
                 f_list.dedup();
-                FilterResolved::Inclusion(f_list)
+                let sf = f_list.last().and_then(|f| f.get_slopeyness_factor());
+                FilterResolved::Inclusion(f_list, sf)
             }
-            FilterResolved::And(mut f_list) => {
+            FilterResolved::And(mut f_list, _) => {
                 f_list.sort_unstable();
                 f_list.dedup();
-                FilterResolved::And(f_list)
+                let sf = f_list.first().and_then(|f| f.get_slopeyness_factor());
+                FilterResolved::And(f_list, sf)
             }
             v => v,
         }
@@ -1164,29 +1214,31 @@ impl FilterResolved {
     fn optimise(&self) -> Self {
         // Most optimisations only matter around or/and terms.
         match self {
-            FilterResolved::Inclusion(f_list) => {
+            FilterResolved::Inclusion(f_list, _) => {
                 // first, optimise all our inner elements
                 let (f_list_inc, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| matches!(f, FilterResolved::Inclusion(_)));
+                    .partition(|f| matches!(f, FilterResolved::Inclusion(_, _)));
 
                 f_list_inc.into_iter().for_each(|fc| {
-                    if let FilterResolved::Inclusion(mut l) = fc {
+                    if let FilterResolved::Inclusion(mut l, _) = fc {
                         f_list_new.append(&mut l)
                     }
                 });
                 // finally, optimise this list by sorting.
                 f_list_new.sort_unstable();
                 f_list_new.dedup();
-                FilterResolved::Inclusion(f_list_new)
+                // Inclusions are similar to or, so what's our worst case?
+                let sf = f_list_new.last().and_then(|f| f.get_slopeyness_factor());
+                FilterResolved::Inclusion(f_list_new, sf)
             }
-            FilterResolved::And(f_list) => {
+            FilterResolved::And(f_list, _) => {
                 // first, optimise all our inner elements
                 let (f_list_and, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     .map(|f_ref| f_ref.optimise())
-                    .partition(|f| matches!(f, FilterResolved::And(_)));
+                    .partition(|f| matches!(f, FilterResolved::And(_, _)));
 
                 // now, iterate over this list - for each "and" term, fold
                 // it's elements to this level.
@@ -1201,12 +1253,12 @@ impl FilterResolved {
                 // shortcutting
 
                 f_list_and.into_iter().for_each(|fc| {
-                    if let FilterResolved::And(mut l) = fc {
+                    if let FilterResolved::And(mut l, _) = fc {
                         f_list_new.append(&mut l)
                     }
                 });
 
-                // If the f_list_or only has one element, pop it and return.
+                // If the f_list_and only has one element, pop it and return.
                 if f_list_new.len() == 1 {
                     #[allow(clippy::expect_used)]
                     f_list_new.pop().expect("corrupt?")
@@ -1214,21 +1266,25 @@ impl FilterResolved {
                     // finally, optimise this list by sorting.
                     f_list_new.sort_unstable();
                     f_list_new.dedup();
+                    // Which ever element as the head is first must be the min SF
+                    // so we use this in our And to represent us.
+                    let sf = f_list_new.first().and_then(|f| f.get_slopeyness_factor());
+                    //
                     // return!
-                    FilterResolved::And(f_list_new)
+                    FilterResolved::And(f_list_new, sf)
                 }
             }
-            FilterResolved::Or(f_list) => {
+            FilterResolved::Or(f_list, _) => {
                 let (f_list_or, mut f_list_new): (Vec<_>, Vec<_>) = f_list
                     .iter()
                     // Optimise all inner items.
                     .map(|f_ref| f_ref.optimise())
                     // Split out inner-or terms to fold into this term.
-                    .partition(|f| matches!(f, FilterResolved::Or(_)));
+                    .partition(|f| matches!(f, FilterResolved::Or(_, _)));
 
                 // Append the inner terms.
                 f_list_or.into_iter().for_each(|fc| {
-                    if let FilterResolved::Or(mut l) = fc {
+                    if let FilterResolved::Or(mut l, _) = fc {
                         f_list_new.append(&mut l)
                     }
                 });
@@ -1247,8 +1303,9 @@ impl FilterResolved {
                     #[allow(clippy::unnecessary_sort_by)]
                     f_list_new.sort_unstable_by(|a, b| b.cmp(a));
                     f_list_new.dedup();
-
-                    FilterResolved::Or(f_list_new)
+                    // The *last* element is the most here, and our worst case factor.
+                    let sf = f_list_new.last().and_then(|f| f.get_slopeyness_factor());
+                    FilterResolved::Or(f_list_new, sf)
                 }
             }
             f => f.clone(),
@@ -1256,7 +1313,21 @@ impl FilterResolved {
     }
 
     pub fn is_andnot(&self) -> bool {
-        matches!(self, FilterResolved::AndNot(_))
+        matches!(self, FilterResolved::AndNot(_, _))
+    }
+
+    #[inline(always)]
+    fn get_slopeyness_factor(&self) -> Option<NonZeroU8> {
+        match self {
+            FilterResolved::Eq(_, _, sf)
+            | FilterResolved::Sub(_, _, sf)
+            | FilterResolved::Pres(_, sf)
+            | FilterResolved::LessThan(_, _, sf)
+            | FilterResolved::Or(_, sf)
+            | FilterResolved::And(_, sf)
+            | FilterResolved::Inclusion(_, sf)
+            | FilterResolved::AndNot(_, sf) => *sf,
+        }
     }
 }
 
@@ -1452,8 +1523,8 @@ mod tests {
         // antisymmetry: if a < b then !(a > b), as well as a > b implying !(a < b); and
         // These are unindexed so we have to check them this way.
         let f_t3b = unsafe { filter_resolved!(f_eq("userid", PartialValue::new_iutf8(""))) };
-        assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Less));
-        assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Greater));
+        assert_eq!(f_t1a.partial_cmp(&f_t3b), Some(Ordering::Greater));
+        assert_eq!(f_t3b.partial_cmp(&f_t1a), Some(Ordering::Less));
 
         // transitivity: a < b and b < c implies a < c. The same must hold for both == and >.
         let f_t4b = unsafe { filter_resolved!(f_sub("userid", PartialValue::new_iutf8(""))) };
