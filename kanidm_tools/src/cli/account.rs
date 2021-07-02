@@ -192,7 +192,8 @@ impl AccountOpt {
                     eprintln!("--------------------------------------------------------------");
                     eprintln!("Enter a TOTP from your authenticator to complete registration:");
 
-                    loop {
+                    let mut attempts = 3;
+                    while attempts > 0 {
                         eprint!("TOTP: ");
                         let mut totp_input = String::new();
                         let input_result = io::stdin().read_line(&mut totp_input);
@@ -237,7 +238,7 @@ impl AccountOpt {
                                     break;
                                 };
 
-                                if confirm_input.trim() == "I am sure" {
+                                if confirm_input.to_lowercase().trim() == "i am sure" {
                                     match client.idm_account_primary_credential_accept_sha1_totp(
                                         acsopt.aopts.account_id.as_str(),
                                         session,
@@ -257,6 +258,7 @@ impl AccountOpt {
                             }
                             Err(ClientError::TotpVerifyFailed(_, _)) => {
                                 eprintln!("Incorrect TOTP code - try again");
+                                attempts -= 1;
                                 continue;
                             }
                             Err(e) => {
