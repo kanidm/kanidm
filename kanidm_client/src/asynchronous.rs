@@ -721,6 +721,10 @@ impl KanidmAsyncClient {
         }
     }
 
+    pub async fn auth_valid(&self) -> Result<(), ClientError> {
+        self.perform_get_request("/v1/auth/valid").await
+    }
+
     pub async fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
         let whoami_dest = [self.addr.as_str(), "/v1/self"].concat();
         // format!("{}/v1/self", self.addr);

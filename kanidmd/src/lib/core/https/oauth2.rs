@@ -147,6 +147,11 @@ pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
 //  valid Kanidm instance in the topology can handle these request.
 //
 
+pub async fn oauth2_authorise_post(mut req: tide::Request<AppState>) -> tide::Result {
+    let auth_req: AuthorisationRequest = req.body_json().await?;
+    oauth2_authorise(req, auth_req).await
+}
+
 pub async fn oauth2_authorise_get(req: tide::Request<AppState>) -> tide::Result {
     // Start the oauth2 authorisation flow to present to the user.
     debug!("Request Query - {:?}", req.url().query());
@@ -159,6 +164,13 @@ pub async fn oauth2_authorise_get(req: tide::Request<AppState>) -> tide::Result 
         )
     })?;
 
+    oauth2_authorise(req, auth_req).await
+}
+
+async fn oauth2_authorise(
+    req: tide::Request<AppState>,
+    auth_req: AuthorisationRequest,
+) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
 
@@ -209,6 +221,17 @@ pub async fn oauth2_authorise_get(req: tide::Request<AppState>) -> tide::Result 
     })
 }
 
+pub async fn oauth2_authorise_permit_post(mut req: tide::Request<AppState>) -> tide::Result {
+    let consent_req: String = req.body_json().await?;
+    oauth2_authorise_permit(req, consent_req)
+        .await
+        .map(|mut res| {
+            // in post, we need the redirect not to be issued, so we mask 302 to 200
+            res.set_status(200);
+            res
+        })
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 struct ConsentRequestData {
     token: String,
@@ -226,13 +249,20 @@ pub async fn oauth2_authorise_permit_get(req: tide::Request<AppState>) -> tide::
         )
     })?;
 
+    oauth2_authorise_permit(req, consent_req.token).await
+}
+
+async fn oauth2_authorise_permit(
+    req: tide::Request<AppState>,
+    consent_req: String,
+) -> tide::Result {
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
 
     let res = req
         .state()
         .qe_r_ref
-        .handle_oauth2_authorise_permit(uat, consent_req.token, eventid)
+        .handle_oauth2_authorise_permit(uat, consent_req, eventid)
         .await;
 
     let mut res = match res {
@@ -248,6 +278,8 @@ pub async fn oauth2_authorise_permit_get(req: tide::Request<AppState>) -> tide::
                 .append_pair("state", &state.to_string())
                 .append_pair("code", &code);
             res.insert_header("Location", redirect_uri.as_str());
+            // I think the client server needs this
+            // res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
             res
         }
         Err(_e) => {

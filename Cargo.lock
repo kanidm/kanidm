@@ -591,12 +591,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "baf1de4339761588bc0619e3cbc0120ee582ebb74b53b4efbf79117bd2da40fd"
 
 [[package]]
-name = "cfg-match"
-version = "0.2.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8100e46ff92eb85bf6dc2930c73f2a4f7176393c84a9446b3d501e1b354e7b34"
-
-[[package]]
 name = "checked_int_cast"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1947,11 +1941,15 @@ dependencies = [
  "anyhow",
  "js-sys",
  "kanidm_proto",
+ "serde",
+ "serde_derive",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
  "webauthn-rs",
  "yew",
+ "yew-router",
+ "yew-services",
 ]
 
 [[package]]
@@ -2848,6 +2846,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "56770675ebc04927ded3e60633437841581c285dc6236109ea25fbf3beb7b59e"
 
 [[package]]
+name = "route-recognizer"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "824172f0afccf3773c3905f5550ac94572144efe0deaf49a1f22bbca188d193e"
+
+[[package]]
 name = "rpassword"
 version = "5.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3436,7 +3440,7 @@ dependencies = [
  "kv-log-macro",
  "log",
  "pin-project-lite 0.2.7",
- "route-recognizer",
+ "route-recognizer 0.2.0",
  "serde",
  "serde_json",
 ]
@@ -3948,6 +3952,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "weblog"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6eec0958e0181982bc8b4577b1363f21300a670603615c58643f172c92c47357"
+dependencies = [
+ "wasm-bindgen",
+ "web-sys",
+ "weblog-proc-macro",
+]
+
+[[package]]
+name = "weblog-proc-macro"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9d9abb8ee84ede5408a346721d72fb216a27f53a539ff3c83ed1bf7625af7104"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "webpki"
 version = "0.21.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4014,25 +4040,18 @@ checksum = "85e60b0d1b5f99db2556934e21937020776a5d31520bf169e851ac44e6420214"
 
 [[package]]
 name = "yew"
-version = "0.17.4"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d8703eb5b883e816cd74c65e2f6dd4144eeedb77c1b3e0284e8f3f593b80ab1"
+version = "0.18.0"
+source = "git+https://github.com/yewstack/yew?rev=1280dfd8315b893e96727b5ca5ad852919563823#1280dfd8315b893e96727b5ca5ad852919563823"
 dependencies = [
  "anyhow",
  "anymap",
  "bincode",
- "cfg-if 0.1.10",
- "cfg-match",
  "console_error_panic_hook",
- "futures",
  "gloo",
  "http",
  "indexmap",
  "js-sys",
  "log",
- "proc-macro-hack",
- "proc-macro-nested",
- "ryu",
  "serde",
  "serde_json",
  "slab",
@@ -4045,16 +4064,60 @@ dependencies = [
 
 [[package]]
 name = "yew-macro"
-version = "0.17.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "61a9a452e63b6222b28b426dafbc6b207192e0127cdb93324cc7407b8c7e1768"
+version = "0.18.0"
+source = "git+https://github.com/yewstack/yew?rev=1280dfd8315b893e96727b5ca5ad852919563823#1280dfd8315b893e96727b5ca5ad852919563823"
 dependencies = [
  "boolinator",
  "lazy_static",
- "proc-macro-hack",
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "yew-router"
+version = "0.15.0"
+source = "git+https://github.com/yewstack/yew?rev=1280dfd8315b893e96727b5ca5ad852919563823#1280dfd8315b893e96727b5ca5ad852919563823"
+dependencies = [
+ "gloo",
+ "js-sys",
+ "route-recognizer 0.3.0",
+ "serde",
+ "serde_urlencoded",
+ "wasm-bindgen",
+ "web-sys",
+ "weblog",
+ "yew",
+ "yew-router-macro",
+]
+
+[[package]]
+name = "yew-router-macro"
+version = "0.15.0"
+source = "git+https://github.com/yewstack/yew?rev=1280dfd8315b893e96727b5ca5ad852919563823#1280dfd8315b893e96727b5ca5ad852919563823"
+dependencies = [
+ "heck",
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
+name = "yew-services"
+version = "0.1.0"
+source = "git+https://github.com/yewstack/yew?rev=1280dfd8315b893e96727b5ca5ad852919563823#1280dfd8315b893e96727b5ca5ad852919563823"
+dependencies = [
+ "anyhow",
+ "gloo",
+ "http",
+ "js-sys",
+ "serde",
+ "serde_json",
+ "thiserror",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "yew",
 ]
 
 [[package]]
