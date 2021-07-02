@@ -89,7 +89,7 @@ smartstring = { version = "0.2", features = ["serde"] }
 validator = { version = "0.13" }
 
 tracing = "0.1.26"
-tracing-subscriber = "0.2.18"
+tracing-subscriber = "0.2.19"
 
 [features]
 simd_support = [ "concread/simd_support" ]
