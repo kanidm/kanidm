@@ -182,6 +182,18 @@ impl Totp {
             },
         }
     }
+
+    pub fn is_legacy_algo(&self) -> bool {
+        matches!(&self.algo, TotpAlgo::Sha1)
+    }
+
+    pub fn downgrade_to_legacy(self) -> Self {
+        Totp {
+            secret: self.secret,
+            step: self.step,
+            algo: TotpAlgo::Sha1,
+        }
+    }
 }
 
 #[cfg(test)]

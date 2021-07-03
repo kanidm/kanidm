@@ -7,10 +7,11 @@ use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
 use crate::idm::event::{
-    CredentialStatusEvent, GeneratePasswordEvent, GenerateTotpEvent, LdapAuthEvent,
-    PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTotpEvent,
-    RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent,
-    UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+    AcceptSha1TotpEvent, CredentialStatusEvent, GeneratePasswordEvent, GenerateTotpEvent,
+    LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
+    RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent, UnixPasswordChangeEvent,
+    UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent, WebauthnDoRegisterEvent,
+    WebauthnInitRegisterEvent,
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
@@ -1741,6 +1742,62 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    pub fn accept_account_sha1_totp(
+        &mut self,
+        au: &mut AuditScope,
+        aste: &AcceptSha1TotpEvent,
+    ) -> Result<SetCredentialResponse, OperationError> {
+        let sessionid = aste.session;
+        let origin = (&aste.ident.origin).into();
+
+        ltrace!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
+
+        let (next, opt_cred) = self
+            .mfareg_sessions
+            .get_mut(&sessionid)
+            .ok_or(OperationError::InvalidRequestState)
+            .and_then(|session| session.totp_accept_sha1(&origin, &aste.target))
+            .map_err(|e| {
+                ladmin_error!(au, "Failed to accept sha1 totp {:?}", e);
+                e
+            })?;
+
+        if let (MfaRegNext::Success, Some(MfaRegCred::Totp(token))) = (&next, opt_cred) {
+            // Purge the session.
+            let session = self
+                .mfareg_sessions
+                .remove(&sessionid)
+                .ok_or(OperationError::InvalidState)
+                .map_err(|e| {
+                    ladmin_error!(au, "Session within transaction vanished!");
+                    e
+                })?;
+            // reg the token
+            let modlist = session.account.gen_totp_mod(token).map_err(|e| {
+                ladmin_error!(au, "Failed to gen totp mod {:?}", e);
+                e
+            })?;
+            // Perform the mod
+            self.qs_write
+                .impersonate_modify(
+                    au,
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    // Filter as intended (acp)
+                    &filter_all!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                    &modlist,
+                    &aste.ident,
+                )
+                .map_err(|e| {
+                    ladmin_error!(au, "accept_account_sha1_totp {:?}", e);
+                    e
+                })?;
+        };
+
+        let next = next.to_proto(sessionid);
+        Ok(next)
+    }
+
     pub fn remove_account_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1950,10 +2007,10 @@ mod tests {
     use crate::event::{AuthEvent, AuthResult, CreateEvent, ModifyEvent};
     use crate::idm::delayed::{BackupCodeRemoval, DelayedAction, WebauthnCounterIncrement};
     use crate::idm::event::{
-        GenerateBackupCodeEvent, GenerateTotpEvent, PasswordChangeEvent, RadiusAuthTokenEvent,
-        RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent, UnixGroupTokenEvent,
-        UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent, VerifyTotpEvent,
-        WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
+        AcceptSha1TotpEvent, GenerateBackupCodeEvent, GenerateTotpEvent, PasswordChangeEvent,
+        RadiusAuthTokenEvent, RegenerateRadiusSecretEvent, RemoveTotpEvent, RemoveWebauthnEvent,
+        UnixGroupTokenEvent, UnixPasswordChangeEvent, UnixUserAuthEvent, UnixUserTokenEvent,
+        VerifyTotpEvent, WebauthnDoRegisterEvent, WebauthnInitRegisterEvent,
     };
     use crate::idm::AuthState;
     use crate::modify::{Modify, ModifyList};
@@ -2876,6 +2933,56 @@ mod tests {
 
             check_admin_password(idms, au, TEST_PASSWORD);
             // All done!
+        })
+    }
+
+    #[test]
+    fn test_idm_totp_sha1_registration() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &IdmServerDelayed,
+                       au: &mut AuditScope| {
+            let ct = duration_from_epoch_now();
+            let mut idms_prox_write = idms.proxy_write(ct.clone());
+
+            let pce = PasswordChangeEvent::new_internal(&UUID_ADMIN, TEST_PASSWORD);
+            assert!(idms_prox_write.set_account_password(au, &pce).is_ok());
+
+            // Start registering the TOTP
+            let gte1 = GenerateTotpEvent::new_internal(UUID_ADMIN.clone());
+            let res = idms_prox_write
+                .generate_account_totp(au, &gte1, ct.clone())
+                .unwrap();
+            let (sesid, tok) = match res {
+                SetCredentialResponse::TotpCheck(id, tok) => (id, tok),
+                _ => panic!("invalid state!"),
+            };
+
+            let r_tok: Totp = tok.into();
+            // Now, assert that the Totp is NOT sha1 (correct default behaviour).
+            assert!(!r_tok.is_legacy_algo());
+            // Mutate the tok to a legacy token.
+            let legacy_tok = r_tok.downgrade_to_legacy();
+
+            let chal = legacy_tok
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to do totp?");
+            // attempt the verify
+            let vte3 = VerifyTotpEvent::new_internal(UUID_ADMIN.clone(), sesid, chal);
+
+            match idms_prox_write.verify_account_totp(au, &vte3, ct.clone()) {
+                Ok(SetCredentialResponse::TotpInvalidSha1(_)) => {}
+                _ => panic!(),
+            };
+
+            let aste = AcceptSha1TotpEvent::new_internal(UUID_ADMIN.clone(), sesid);
+
+            match idms_prox_write.accept_account_sha1_totp(au, &aste) {
+                Ok(SetCredentialResponse::Success) => {}
+                _ => panic!(),
+            };
+
+            // Done!
         })
     }
 

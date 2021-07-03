@@ -343,6 +343,40 @@ impl VerifyTotpEvent {
 }
 
 #[derive(Debug)]
+pub struct AcceptSha1TotpEvent {
+    pub ident: Identity,
+    pub target: Uuid,
+    pub session: Uuid,
+}
+
+impl AcceptSha1TotpEvent {
+    pub fn from_parts(
+        _audit: &mut AuditScope,
+        // qs: &QueryServerWriteTransaction,
+        ident: Identity,
+        target: Uuid,
+        session: Uuid,
+    ) -> Result<Self, OperationError> {
+        Ok(AcceptSha1TotpEvent {
+            ident,
+            target,
+            session,
+        })
+    }
+
+    #[cfg(test)]
+    pub fn new_internal(target: Uuid, session: Uuid) -> Self {
+        let ident = Identity::from_internal();
+
+        AcceptSha1TotpEvent {
+            ident,
+            target,
+            session,
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct RemoveTotpEvent {
     pub ident: Identity,
     pub target: Uuid,

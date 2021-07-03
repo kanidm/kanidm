@@ -53,6 +53,7 @@ pub enum ClientError {
     AuthenticationFailed,
     EmptyResponse,
     TotpVerifyFailed(Uuid, TotpSecret),
+    TotpInvalidSha1(Uuid),
     JsonDecode(reqwest::Error, String),
     JsonEncode(SerdeJsonError),
     SystemError,
@@ -648,6 +649,17 @@ impl KanidmClient {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_verify_totp(id, otp, session),
+        )
+    }
+
+    pub fn idm_account_primary_credential_accept_sha1_totp(
+        &self,
+        id: &str,
+        session: Uuid,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_accept_sha1_totp(id, session),
         )
     }
 
