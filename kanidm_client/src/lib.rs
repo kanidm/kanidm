@@ -701,7 +701,6 @@ impl KanidmClient {
         )
     }
 
-    // backup codes
     pub fn idm_account_primary_credential_generate_backup_code(
         &self,
         id: &str,
