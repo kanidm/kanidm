@@ -701,6 +701,27 @@ impl KanidmClient {
         )
     }
 
+    // backup codes
+    pub fn idm_account_primary_credential_generate_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<Vec<String>, ClientError> {
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_generate_backup_code(id),
+        )
+    }
+
+    pub fn idm_account_primary_credential_remove_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_remove_backup_code(id),
+        )
+    }
+
     pub fn idm_account_get_credential_status(
         &self,
         id: &str,

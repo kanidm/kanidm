@@ -76,8 +76,6 @@ pub enum GroupOpt {
     Posix(GroupPosix),
 }
 
-
-
 #[derive(Debug, StructOpt)]
 pub struct AccountCommonOpt {
     #[structopt()]
@@ -181,6 +179,12 @@ pub enum AccountCredential {
     /// and generate a new strong random password.
     #[structopt(name = "reset_credential")]
     GeneratePassword(AccountCredentialSet),
+    /// Generate a new set of backup codes.
+    #[structopt(name = "generate_backup_codes")]
+    GenerateBackupCode(AccountNamedOpt),
+    /// Remove backup codes from the account.
+    #[structopt(name = "remove_backup_codes")]
+    BackupCodeRemove(AccountNamedOpt),
 }
 
 #[derive(Debug, StructOpt)]
@@ -407,4 +411,3 @@ pub enum KanidmClientOpt {
     /// Unsafe - low level, raw database operations.
     Raw(RawOpt),
 }
-

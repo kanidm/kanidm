@@ -1084,6 +1084,42 @@ impl KanidmAsyncClient {
         }
     }
 
+    pub async fn idm_account_primary_credential_generate_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<Vec<String>, ClientError> {
+        let r = SetCredentialRequest::GenerateBackupCode;
+        let res: Result<SetCredentialResponse, ClientError> = self
+            .perform_put_request(
+                format!("/v1/account/{}/_credential/primary", id).as_str(),
+                r,
+            )
+            .await;
+        match res {
+            Ok(SetCredentialResponse::BackupCodes(s)) => Ok(s),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn idm_account_primary_credential_remove_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let r = SetCredentialRequest::BackupCodeRemove;
+        let res: Result<SetCredentialResponse, ClientError> = self
+            .perform_put_request(
+                format!("/v1/account/{}/_credential/primary", id).as_str(),
+                r,
+            )
+            .await;
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(()),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
     pub async fn idm_account_get_credential_status(
         &self,
         id: &str,
