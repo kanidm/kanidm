@@ -290,7 +290,7 @@ impl AccountOpt {
                     ) {
                         Ok(s) => {
                             println!("GenerateBackupCode success.");
-                            println!("{:?}", s);
+                            println!("{:#?}", s);
                         }
                         Err(e) => {
                             eprintln!("Error GenerateBackupCode for account -> {:?}", e);
