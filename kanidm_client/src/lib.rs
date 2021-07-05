@@ -425,6 +425,10 @@ impl KanidmClient {
         tokio_block_on(self.asclient.auth_step_password(password))
     }
 
+    pub fn auth_step_backup_code(&self, backup_code: &str) -> Result<AuthResponse, ClientError> {
+        tokio_block_on(self.asclient.auth_step_backup_code(backup_code))
+    }
+
     pub fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         tokio_block_on(self.asclient.auth_step_totp(totp))
     }

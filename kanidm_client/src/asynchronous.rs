@@ -481,6 +481,23 @@ impl KanidmAsyncClient {
         r
     }
 
+    pub async fn auth_step_backup_code(
+        &self,
+        backup_code: &str,
+    ) -> Result<AuthResponse, ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::BackupCode(backup_code.to_string())),
+        };
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
+
+        if let Ok(ar) = &r {
+            if let AuthState::Success(token) = &ar.state {
+                self.set_token(token.clone()).await;
+            };
+        };
+        r
+    }
+
     pub async fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Totp(totp)),
