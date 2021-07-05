@@ -8,6 +8,7 @@ use openssl::sha::Sha512;
 use rand::prelude::*;
 use std::collections::HashSet;
 use std::convert::TryFrom;
+use std::fmt;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 use webauthn_rs::proto::Credential as WebauthnCredential;
@@ -216,6 +217,17 @@ impl Password {
 #[derive(Clone, Debug)]
 pub struct BackupCodes {
     code_set: HashSet<String>,
+}
+
+impl fmt::Display for BackupCodes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        writeln!(f, "Backup Codes:")?;
+        writeln!(f, "---")?;
+        for code in &self.code_set {
+            code.fmt(f)?;
+        }
+        writeln!(f, "---")
+    }
 }
 
 impl TryFrom<DbBackupCodeV1> for BackupCodes {
