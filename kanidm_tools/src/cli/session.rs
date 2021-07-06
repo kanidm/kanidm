@@ -143,12 +143,15 @@ impl LoginOpt {
     }
 
     fn do_backup_code(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+        print!("Enter Backup Code: ");
+        // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
+        io::stdout().flush().unwrap();
         let mut backup_code = String::new();
         if let Err(e) = io::stdin().read_line(&mut backup_code) {
             eprintln!("Failed to read from stdin -> {:?}", e);
             return Err(ClientError::SystemError);
         };
-        client.auth_step_backup_code(backup_code.as_str())
+        client.auth_step_backup_code(backup_code.trim())
     }
 
     fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
