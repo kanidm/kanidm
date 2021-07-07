@@ -16,6 +16,27 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 # Release Notes
 
+## 2021-07-07 - Kanidm 1.1.0-alpha5
+
+This is the fifth alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+### Release Highlights
+
+* Fix a major defect in how backup/restore worked
+* Improve query performance by caching partial queries
+* Clarity of error messages and user communication
+* Password badlist caching
+* Orca, a kanidm and ldap load testing system
+* TOTP usability improvements
+* Oauth2 foundations
+* CLI tool session management improvements
+* Default shell falls back if the requested shell is not found
+* Optional backup codes in case of lost MFA device
+* Statistical analysis of indexes to improve query optimisation
+* Handle broken TOTP authenticator apps
+
 ## 2021-04-01 - Kanidm 1.1.0-alpha4
 
 This is the fourth alpha series release of the Kanidm Identity Management
