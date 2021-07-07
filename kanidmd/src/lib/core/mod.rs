@@ -13,10 +13,9 @@ mod ldaps;
 use libc::umask;
 
 // use crossbeam::channel::unbounded;
+use crate::prelude::*;
 use std::sync::Arc;
 use tokio::sync::mpsc::unbounded_channel as unbounded;
-
-use crate::prelude::*;
 
 use crate::config::Configuration;
 
@@ -32,7 +31,7 @@ use crate::interval::IntervalActor;
 use crate::ldap::LdapServer;
 use crate::schema::Schema;
 use crate::status::StatusActor;
-use crate::utils::duration_from_epoch_now;
+use crate::utils::{duration_from_epoch_now, touch_file_or_quit};
 
 use kanidm_proto::v1::OperationError;
 
@@ -262,6 +261,7 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
 
 pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4(), config.log_level);
+    touch_file_or_quit(&config.db_path.as_str());
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new(&mut audit) {
@@ -276,7 +276,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     let be = match setup_backend(&config, &schema) {
         Ok(be) => be,
         Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
+            error!("Failed to setup backend: {:?}", e);
             return;
         }
     };
