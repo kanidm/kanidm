@@ -289,13 +289,13 @@ impl AccountOpt {
                         acsopt.aopts.account_id.as_str(),
                     ) {
                         Ok(s) => {
-                            println!("GenerateBackupCode success.");
+                            println!("Please store these Backup codes in a safe place");
                             println!("---");
                             println!("{}", s.join("\n"));
                             println!("---");
                         }
                         Err(e) => {
-                            eprintln!("Error GenerateBackupCode for account -> {:?}", e);
+                            eprintln!("Error generating Backup Codes for account -> {:?}", e);
                         }
                     }
                 }

@@ -147,10 +147,15 @@ impl LoginOpt {
         // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
         io::stdout().flush().unwrap();
         let mut backup_code = String::new();
-        if let Err(e) = io::stdin().read_line(&mut backup_code) {
-            eprintln!("Failed to read from stdin -> {:?}", e);
-            return Err(ClientError::SystemError);
-        };
+        loop {
+            if let Err(e) = io::stdin().read_line(&mut backup_code) {
+                eprintln!("Failed to read from stdin -> {:?}", e);
+                return Err(ClientError::SystemError);
+            };
+            if backup_code.trim().len() > 0 {
+                break;
+            };
+        }
         client.auth_step_backup_code(backup_code.trim())
     }
 
