@@ -8,7 +8,6 @@ use openssl::sha::Sha512;
 use rand::prelude::*;
 use std::collections::HashSet;
 use std::convert::TryFrom;
-use std::fmt;
 use std::time::{Duration, Instant};
 use uuid::Uuid;
 use webauthn_rs::proto::Credential as WebauthnCredential;
