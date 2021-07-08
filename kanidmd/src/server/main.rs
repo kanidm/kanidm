@@ -189,7 +189,7 @@ async fn main() {
     }
 
     let db_path = PathBuf::from(sconfig.db_path.as_str());
-    // We can't check the db_path permissions because it may note exist yet!
+    // We can't check the db_path permissions because it may not exist yet!
     if let Some(db_parent_path) = db_path.parent() {
         if !db_parent_path.exists() {
             eprintln!(
