@@ -181,7 +181,7 @@ pub enum AccountCredential {
     GeneratePassword(AccountCredentialSet),
     /// Generate a new set of backup codes.
     #[structopt(name = "generate_backup_codes")]
-    GenerateBackupCode(AccountNamedOpt),
+    BackupCodeGenerate(AccountNamedOpt),
     /// Remove backup codes from the account.
     #[structopt(name = "remove_backup_codes")]
     BackupCodeRemove(AccountNamedOpt),

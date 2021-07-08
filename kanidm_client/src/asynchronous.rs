@@ -1105,7 +1105,7 @@ impl KanidmAsyncClient {
         &self,
         id: &str,
     ) -> Result<Vec<String>, ClientError> {
-        let r = SetCredentialRequest::GenerateBackupCode;
+        let r = SetCredentialRequest::BackupCodeGenerate;
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
                 format!("/v1/account/{}/_credential/primary", id).as_str(),
