@@ -168,26 +168,6 @@ async fn main() {
 
     // Check the permissions of the files from the configuration.
 
-    if let Some(i_str) = &(sconfig.tls_chain) {
-        let i_path = PathBuf::from(i_str.as_str());
-        let i_meta = read_file_metadata(&i_path);
-        if !file_permissions_readonly(&i_meta) {
-            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-        }
-    }
-
-    if let Some(i_str) = &(sconfig.tls_key) {
-        let i_path = PathBuf::from(i_str.as_str());
-        let i_meta = read_file_metadata(&i_path);
-        if !file_permissions_readonly(&i_meta) {
-            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
-        }
-
-        if i_meta.mode() & 0o007 != 0 {
-            eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
-        }
-    }
-
     let db_path = PathBuf::from(sconfig.db_path.as_str());
     // We can't check the db_path permissions because it may not exist yet!
     if let Some(db_parent_path) = db_path.parent() {
@@ -219,9 +199,6 @@ async fn main() {
     config.update_log_level(ll);
     config.update_db_path(&sconfig.db_path.as_str());
     config.update_db_fs_type(&sconfig.db_fs_type);
-    config.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
-    config.update_bind(&sconfig.bindaddress);
-    config.update_ldapbind(&sconfig.ldapbindaddress);
     config.update_origin(&sconfig.origin.as_str());
     config.update_db_arc_size(sconfig.db_arc_size);
     config.update_role(sconfig.role);
@@ -241,6 +218,32 @@ async fn main() {
     match opt {
         KanidmdOpt::Server(_sopt) => {
             eprintln!("Running in server mode ...");
+
+            // configuration options that only relate to server mode
+            config.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
+            config.update_bind(&sconfig.bindaddress);
+            config.update_ldapbind(&sconfig.ldapbindaddress);
+
+            if let Some(i_str) = &(sconfig.tls_chain) {
+                let i_path = PathBuf::from(i_str.as_str());
+                let i_meta = read_file_metadata(&i_path);
+                if !file_permissions_readonly(&i_meta) {
+                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                }
+            }
+
+            if let Some(i_str) = &(sconfig.tls_key) {
+                let i_path = PathBuf::from(i_str.as_str());
+                let i_meta = read_file_metadata(&i_path);
+                if !file_permissions_readonly(&i_meta) {
+                    eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", i_str);
+                }
+
+                if i_meta.mode() & 0o007 != 0 {
+                    eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...", i_str);
+                }
+            }
+
             let sctx = create_server_core(config).await;
             match sctx {
                 Ok(_sctx) => match tokio::signal::ctrl_c().await {
