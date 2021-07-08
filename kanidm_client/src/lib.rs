@@ -425,6 +425,10 @@ impl KanidmClient {
         tokio_block_on(self.asclient.auth_step_password(password))
     }
 
+    pub fn auth_step_backup_code(&self, backup_code: &str) -> Result<AuthResponse, ClientError> {
+        tokio_block_on(self.asclient.auth_step_backup_code(backup_code))
+    }
+
     pub fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         tokio_block_on(self.asclient.auth_step_totp(totp))
     }
@@ -698,6 +702,26 @@ impl KanidmClient {
         tokio_block_on(
             self.asclient
                 .idm_account_primary_credential_remove_webauthn(id, label),
+        )
+    }
+
+    pub fn idm_account_primary_credential_generate_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<Vec<String>, ClientError> {
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_generate_backup_code(id),
+        )
+    }
+
+    pub fn idm_account_primary_credential_remove_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(
+            self.asclient
+                .idm_account_primary_credential_remove_backup_code(id),
         )
     }
 

@@ -499,9 +499,10 @@ impl CredHandler {
             CredHandler::Anonymous => vec![AuthAllowed::Anonymous],
             CredHandler::Password(_, _) => vec![AuthAllowed::Password],
             CredHandler::PasswordMfa(ref pw_mfa) => pw_mfa
-                .totp
+                .backup_code
                 .iter()
-                .map(|_| AuthAllowed::Totp)
+                .map(|_| AuthAllowed::BackupCode)
+                .chain(pw_mfa.totp.iter().map(|_| AuthAllowed::Totp))
                 .chain(
                     pw_mfa
                         .wan

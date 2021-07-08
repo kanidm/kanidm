@@ -23,6 +23,8 @@ impl AccountOpt {
                 AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RegisterTotp(acs) => acs.copt.debug,
                 AccountCredential::RemoveTotp(acs) => acs.copt.debug,
+                AccountCredential::GenerateBackupCode(acs) => acs.copt.debug,
+                AccountCredential::BackupCodeRemove(acs) => acs.copt.debug,
                 AccountCredential::Status(acs) => acs.copt.debug,
             },
             AccountOpt::Radius(acopt) => match acopt {
@@ -278,6 +280,35 @@ impl AccountOpt {
                         }
                         Err(e) => {
                             eprintln!("Error Removing TOTP from account -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::GenerateBackupCode(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    match client.idm_account_primary_credential_generate_backup_code(
+                        acsopt.aopts.account_id.as_str(),
+                    ) {
+                        Ok(s) => {
+                            println!("Please store these Backup codes in a safe place");
+                            println!("---");
+                            println!("{}", s.join("\n"));
+                            println!("---");
+                        }
+                        Err(e) => {
+                            eprintln!("Error generating Backup Codes for account -> {:?}", e);
+                        }
+                    }
+                }
+                AccountCredential::BackupCodeRemove(acsopt) => {
+                    let client = acsopt.copt.to_client();
+                    match client.idm_account_primary_credential_remove_backup_code(
+                        acsopt.aopts.account_id.as_str(),
+                    ) {
+                        Ok(_) => {
+                            println!("BackupCodeRemove success.");
+                        }
+                        Err(e) => {
+                            eprintln!("Error BackupCodeRemove for account -> {:?}", e);
                         }
                     }
                 }

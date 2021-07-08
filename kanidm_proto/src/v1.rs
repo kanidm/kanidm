@@ -594,6 +594,7 @@ pub struct AuthRequest {
 #[serde(rename_all = "lowercase")]
 pub enum AuthAllowed {
     Anonymous,
+    BackupCode,
     Password,
     Totp,
     Webauthn(RequestChallengeResponse),
@@ -618,6 +619,8 @@ impl Ord for AuthAllowed {
                 (_, AuthAllowed::Anonymous) => Ordering::Greater,
                 (AuthAllowed::Password, _) => Ordering::Less,
                 (_, AuthAllowed::Password) => Ordering::Greater,
+                (AuthAllowed::BackupCode, _) => Ordering::Less,
+                (_, AuthAllowed::BackupCode) => Ordering::Greater,
                 (AuthAllowed::Totp, _) => Ordering::Less,
                 (_, AuthAllowed::Totp) => Ordering::Greater,
                 (AuthAllowed::Webauthn(_), _) => Ordering::Less,
@@ -639,6 +642,7 @@ impl fmt::Display for AuthAllowed {
         match self {
             AuthAllowed::Anonymous => write!(f, "Anonymous (no credentials)"),
             AuthAllowed::Password => write!(f, "Password"),
+            AuthAllowed::BackupCode => write!(f, "Backup Code"),
             AuthAllowed::Totp => write!(f, "TOTP"),
             AuthAllowed::Webauthn(_) => write!(f, "Webauthn Token"),
         }

@@ -481,6 +481,23 @@ impl KanidmAsyncClient {
         r
     }
 
+    pub async fn auth_step_backup_code(
+        &self,
+        backup_code: &str,
+    ) -> Result<AuthResponse, ClientError> {
+        let auth_req = AuthRequest {
+            step: AuthStep::Cred(AuthCredential::BackupCode(backup_code.to_string())),
+        };
+        let r: Result<AuthResponse, _> = self.perform_auth_post_request("/v1/auth", auth_req).await;
+
+        if let Ok(ar) = &r {
+            if let AuthState::Success(token) = &ar.state {
+                self.set_token(token.clone()).await;
+            };
+        };
+        r
+    }
+
     pub async fn auth_step_totp(&self, totp: u32) -> Result<AuthResponse, ClientError> {
         let auth_req = AuthRequest {
             step: AuthStep::Cred(AuthCredential::Totp(totp)),
@@ -1071,6 +1088,42 @@ impl KanidmAsyncClient {
         label: &str,
     ) -> Result<(), ClientError> {
         let r = SetCredentialRequest::WebauthnRemove(label.to_string());
+        let res: Result<SetCredentialResponse, ClientError> = self
+            .perform_put_request(
+                format!("/v1/account/{}/_credential/primary", id).as_str(),
+                r,
+            )
+            .await;
+        match res {
+            Ok(SetCredentialResponse::Success) => Ok(()),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn idm_account_primary_credential_generate_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<Vec<String>, ClientError> {
+        let r = SetCredentialRequest::GenerateBackupCode;
+        let res: Result<SetCredentialResponse, ClientError> = self
+            .perform_put_request(
+                format!("/v1/account/{}/_credential/primary", id).as_str(),
+                r,
+            )
+            .await;
+        match res {
+            Ok(SetCredentialResponse::BackupCodes(s)) => Ok(s),
+            Ok(_) => Err(ClientError::EmptyResponse),
+            Err(e) => Err(e),
+        }
+    }
+
+    pub async fn idm_account_primary_credential_remove_backup_code(
+        &self,
+        id: &str,
+    ) -> Result<(), ClientError> {
+        let r = SetCredentialRequest::BackupCodeRemove;
         let res: Result<SetCredentialResponse, ClientError> = self
             .perform_put_request(
                 format!("/v1/account/{}/_credential/primary", id).as_str(),

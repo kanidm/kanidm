@@ -142,6 +142,23 @@ impl LoginOpt {
         client.auth_step_password(password.as_str())
     }
 
+    fn do_backup_code(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+        print!("Enter Backup Code: ");
+        // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
+        io::stdout().flush().unwrap();
+        let mut backup_code = String::new();
+        loop {
+            if let Err(e) = io::stdin().read_line(&mut backup_code) {
+                eprintln!("Failed to read from stdin -> {:?}", e);
+                return Err(ClientError::SystemError);
+            };
+            if backup_code.trim().len() > 0 {
+                break;
+            };
+        }
+        client.auth_step_backup_code(backup_code.trim())
+    }
+
     fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         let totp = loop {
             print!("Enter TOTP: ");
@@ -264,6 +281,7 @@ impl LoginOpt {
             let res = match choice {
                 AuthAllowed::Anonymous => client.auth_step_anonymous(),
                 AuthAllowed::Password => self.do_password(&mut client),
+                AuthAllowed::BackupCode => self.do_backup_code(&mut client),
                 AuthAllowed::Totp => self.do_totp(&mut client),
                 AuthAllowed::Webauthn(chal) => self.do_webauthn(&mut client, chal.clone()),
             };

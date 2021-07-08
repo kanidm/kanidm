@@ -39,6 +39,7 @@ enum LoginState {
     // MechChoice
     // CredChoice
     Password(bool),
+    BackupCode(bool),
     Totp(TotpState),
     Webauthn(web_sys::CredentialRequestOptions),
     Error(String, Option<String>),
@@ -51,6 +52,7 @@ pub enum LoginAppMsg {
     Restart,
     Begin,
     PasswordSubmit,
+    BackupCodeSubmit,
     TotpSubmit,
     WebauthnSubmit(PublicKeyCredential),
     Start(String, AuthResponse),
@@ -154,6 +156,23 @@ impl LoginApp {
                         <div>
                             <input id="password" type="password" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
                             <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::PasswordSubmit) disabled=!enable >{" Submit "}</button>
+                        </div>
+                    </div>
+                    </>
+                }
+            }
+            LoginState::BackupCode(enable) => {
+                html! {
+                    <>
+                    <div class="container">
+                        <p>
+                        {" Backup Code: "}
+                        </p>
+                    </div>
+                    <div class="container">
+                        <div>
+                            <input id="backupcode" type="text" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
+                            <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::BackupCodeSubmit) disabled=!enable >{" Submit "}</button>
                         </div>
                     </div>
                     </>
@@ -321,6 +340,18 @@ impl Component for LoginApp {
                 self.inputvalue = "".to_string();
                 true
             }
+            LoginAppMsg::BackupCodeSubmit => {
+                ConsoleService::log("backupcode");
+                // Disable the button?
+                self.state = LoginState::BackupCode(false);
+                let authreq = AuthRequest {
+                    step: AuthStep::Cred(AuthCredential::BackupCode(self.inputvalue.clone())),
+                };
+                self.auth_step(authreq);
+                // Clear the backup code from memory.
+                self.inputvalue = "".to_string();
+                true
+            }
             LoginAppMsg::TotpSubmit => {
                 ConsoleService::log("totp");
                 // Disable the button?
@@ -410,6 +441,9 @@ impl Component for LoginApp {
                                 AuthAllowed::Password => {
                                     // Go to the password view.
                                     self.state = LoginState::Password(true);
+                                }
+                                AuthAllowed::BackupCode => {
+                                    self.state = LoginState::BackupCode(true);
                                 }
                                 AuthAllowed::Totp => {
                                     self.state = LoginState::Totp(TotpState::Enabled);
