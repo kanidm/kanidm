@@ -2,3 +2,6 @@
 uri = "https://idm.example.com"
 verify_ca = true
 verify_hostnames = true
+
+# disable the ncurses menu to prompt users for the token they want to use when multiple tokens exist
+prompt_user_tokens = false

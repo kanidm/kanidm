@@ -1860,6 +1860,7 @@ dependencies = [
  "structopt",
  "time 0.2.27",
  "webauthn-authenticator-rs",
+ "youchoose",
  "zxcvbn",
 ]
 
@@ -2112,6 +2113,17 @@ dependencies = [
  "security-framework",
  "security-framework-sys",
  "tempfile",
+]
+
+[[package]]
+name = "ncurses"
+version = "5.101.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5e2c5d34d72657dc4b638a1c25d40aae81e4f1c699062f72f467237920752032"
+dependencies = [
+ "cc",
+ "libc",
+ "pkg-config",
 ]
 
 [[package]]
@@ -3989,6 +4001,15 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn",
+]
+
+[[package]]
+name = "youchoose"
+version = "0.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38603aee8738ef227e6c1418bf1870738b5a84882e6736319def6c7ee6b65983"
+dependencies = [
+ "ncurses",
 ]
 
 [[package]]

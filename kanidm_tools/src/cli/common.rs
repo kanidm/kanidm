@@ -3,6 +3,13 @@ use crate::CommonOpt;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UserAuthToken;
 
+use youchoose::Menu as youchoose_menu;
+
+fn menu_preview(token: String) -> String {
+    // tiny function used to format preview in the user token selection menu
+    format!("Press enter to select username: {}", token)
+}
+
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
@@ -76,9 +83,38 @@ impl CommonOpt {
                     info!("Using cached token for name {}", f_uname);
                     f_token.clone()
                 } else {
-                    // Unable to select
-                    error!("Multiple authentication tokens exist. Please select one with --name.");
-                    std::process::exit(1);
+                    // Unable to automatically select the user because multiple tokens exist
+                    if !client.get_prompt_user_token() {
+                        error!("Multiple authentication tokens exist and menu is disabled, please prompt using --name <username>.");
+                        std::process::exit(1);
+                    } else {
+                        warn!("Multiple authentication tokens exist. Please select one.");
+                        let mut usermenu =
+                            youchoose_menu::new(tokens.iter().map(|v| (*v.0).to_string()))
+                                .preview(menu_preview)
+                                .preview_label(
+                                    " Multiple authentication tokens exist. Please select one "
+                                        .to_string(),
+                                )
+                                .preview_pos(youchoose::ScreenSide::Top, 0.2);
+                        let choice = usermenu.show();
+                        // `choice` is a Vec<usize> containing the chosen indices
+                        debug!("Index of the chosen menu item: {:?}", choice);
+                        // unwrap the choice
+                        let choice_usable = match choice.first() {
+                            Some(value) => value,
+                            None => {
+                                error!("Somehow you didn't choose a username, quitting.");
+                                std::process::exit(1);
+                            }
+                        };
+                        let (f_uname, f_token) = tokens
+                            .iter()
+                            .nth(*choice_usable)
+                            .expect("Memory Corruption");
+                        info!("Using cached token for name {}", f_uname);
+                        f_token.clone()
+                    }
                 }
             }
         };
