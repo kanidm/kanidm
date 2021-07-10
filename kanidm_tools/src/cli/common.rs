@@ -3,12 +3,7 @@ use crate::CommonOpt;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UserAuthToken;
 
-use youchoose::Menu as youchoose_menu;
-
-fn menu_preview(token: String) -> String {
-    // tiny function used to format preview in the user token selection menu
-    format!("Press enter to select username: {}", token)
-}
+use dialoguer::{theme::ColorfulTheme, Select};
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
@@ -88,32 +83,23 @@ impl CommonOpt {
                         error!("Multiple authentication tokens exist and menu is disabled, please prompt using --name <username>.");
                         std::process::exit(1);
                     } else {
-                        warn!("Multiple authentication tokens exist. Please select one.");
-                        let mut usermenu =
-                            youchoose_menu::new(tokens.iter().map(|v| (*v.0).to_string()))
-                                .preview(menu_preview)
-                                .preview_label(
-                                    " Multiple authentication tokens exist. Please select one "
-                                        .to_string(),
-                                )
-                                .preview_pos(youchoose::ScreenSide::Top, 0.2);
-                        let choice = usermenu.show();
-                        // `choice` is a Vec<usize> containing the chosen indices
-                        debug!("Index of the chosen menu item: {:?}", choice);
-                        // unwrap the choice
-                        let choice_usable = match choice.first() {
-                            Some(value) => value,
-                            None => {
-                                error!("Somehow you didn't choose a username, quitting.");
-                                std::process::exit(1);
-                            }
-                        };
-                        let (f_uname, f_token) = tokens
-                            .iter()
-                            .nth(*choice_usable)
-                            .expect("Memory Corruption");
+                        let mut options = Vec::new();
+                        for option in tokens.iter() {
+                            options.push(String::from(option.0));
+                        }
+                        let selection = Select::with_theme(&ColorfulTheme::default())
+                            .with_prompt("Multiple authentication tokens exist. Please select one")
+                            .default(0)
+                            .items(&options)
+                            .interact()
+                            .unwrap();
+                        debug!("Index of the chosen menu item: {:?}", selection);
+
+                        let (f_uname, f_token) =
+                            tokens.iter().nth(selection).expect("Memory Corruption");
                         info!("Using cached token for name {}", f_uname);
                         f_token.clone()
+                        //String::from("lol")
                     }
                 }
             }

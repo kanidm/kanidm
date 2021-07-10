@@ -44,7 +44,7 @@ bundy = "0.1"
 
 zxcvbn = "2.0"
 
-youchoose = "0.1.1"
+dialoguer =  "0.5.1"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.9"
 # webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs/" }
