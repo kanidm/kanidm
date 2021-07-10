@@ -101,7 +101,7 @@ impl KanidmClientBuilder {
             connect_timeout: None,
             use_system_proxies: true,
             // default to prompting users with a menu if they have multiple tokens
-            prompt_user_token: false,
+            prompt_user_token: true,
         }
     }
 
