@@ -65,9 +65,10 @@ struct KanidmClientConfig {
     verify_ca: Option<bool>,
     verify_hostnames: Option<bool>,
     ca_path: Option<String>,
-    prompt_user_token: Option<bool>, // prompt users for tokens instead of just bailing
-                                     // Should we add username/pw later? They could be part of the builder
-                                     // process ...
+    // prompt users for tokens instead of just bailing
+    prompt_user_token: Option<bool>,
+    // Should we add username/pw later? They could be part of the builder
+    // process ...
 }
 
 #[derive(Debug, Clone, Default)]
