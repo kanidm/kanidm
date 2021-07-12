@@ -65,8 +65,6 @@ struct KanidmClientConfig {
     verify_ca: Option<bool>,
     verify_hostnames: Option<bool>,
     ca_path: Option<String>,
-    // prompt users for tokens instead of just bailing
-    prompt_user_token: Option<bool>,
     // Should we add username/pw later? They could be part of the builder
     // process ...
 }
@@ -79,7 +77,6 @@ pub struct KanidmClientBuilder {
     ca: Option<reqwest::Certificate>,
     connect_timeout: Option<u64>,
     use_system_proxies: bool,
-    prompt_user_token: bool,
 }
 
 fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
@@ -101,8 +98,6 @@ impl KanidmClientBuilder {
             ca: None,
             connect_timeout: None,
             use_system_proxies: true,
-            // default to prompting users with a menu if they have multiple tokens
-            prompt_user_token: true,
         }
     }
 
@@ -144,7 +139,6 @@ impl KanidmClientBuilder {
             ca,
             connect_timeout,
             use_system_proxies,
-            prompt_user_token,
         } = self;
         // Process and apply all our options if they exist.
         let address = match kcc.uri {
@@ -161,8 +155,6 @@ impl KanidmClientBuilder {
             None => ca,
         };
 
-        let prompt_user_token = kcc.prompt_user_token.unwrap_or(prompt_user_token);
-
         Ok(KanidmClientBuilder {
             address,
             verify_ca,
@@ -170,7 +162,6 @@ impl KanidmClientBuilder {
             ca,
             connect_timeout,
             use_system_proxies,
-            prompt_user_token,
         })
     }
 
@@ -228,7 +219,6 @@ impl KanidmClientBuilder {
             ca: self.ca,
             connect_timeout: self.connect_timeout,
             use_system_proxies: self.use_system_proxies,
-            prompt_user_token: self.prompt_user_token,
         }
     }
 
@@ -241,7 +231,6 @@ impl KanidmClientBuilder {
             ca: self.ca,
             connect_timeout: self.connect_timeout,
             use_system_proxies: self.use_system_proxies,
-            prompt_user_token: self.prompt_user_token,
         }
     }
 
@@ -254,7 +243,6 @@ impl KanidmClientBuilder {
             ca: self.ca,
             connect_timeout: self.connect_timeout,
             use_system_proxies: self.use_system_proxies,
-            prompt_user_token: self.prompt_user_token,
         }
     }
 
@@ -266,7 +254,6 @@ impl KanidmClientBuilder {
             ca: self.ca,
             connect_timeout: Some(secs),
             use_system_proxies: self.use_system_proxies,
-            prompt_user_token: self.prompt_user_token,
         }
     }
 
@@ -278,7 +265,6 @@ impl KanidmClientBuilder {
             ca: self.ca,
             connect_timeout: self.connect_timeout,
             use_system_proxies: false,
-            prompt_user_token: self.prompt_user_token,
         }
     }
 
@@ -293,7 +279,6 @@ impl KanidmClientBuilder {
             ca: Some(ca),
             connect_timeout: self.connect_timeout,
             use_system_proxies: self.use_system_proxies,
-            prompt_user_token: self.prompt_user_token,
         })
     }
 
@@ -396,12 +381,6 @@ impl KanidmClient {
 
     pub fn get_url(&self) -> &str {
         self.asclient.get_url()
-    }
-
-    pub fn get_prompt_user_token(&self) -> &bool {
-        // returns the client config option about prompting for users
-        // when you've got multiple tokens
-        self.asclient.get_prompt_user_token()
     }
 
     pub fn new_session(&self) -> Result<Self, reqwest::Error> {

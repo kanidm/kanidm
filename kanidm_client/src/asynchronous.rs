@@ -33,12 +33,6 @@ impl KanidmAsyncClient {
         self.addr.as_str()
     }
 
-    pub fn get_prompt_user_token(&self) -> &bool {
-        // returns the client config option about prompting for users
-        // when you've got multiple tokens
-        &self.builder.prompt_user_token
-    }
-
     pub async fn set_token(&self, new_token: String) {
         let mut tguard = self.bearer_token.write().await;
         *tguard = Some(new_token);

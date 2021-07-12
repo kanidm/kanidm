@@ -70,7 +70,6 @@ You can configure kanidm to help make commands simpler by modifying ~/.config/ka
     verify_ca = true|false
     verify_hostnames = true|false
     ca_path = "/path/to/ca.pem"
-    prompt_user_token = true|false
 
 Once configured, you can test this with:
 

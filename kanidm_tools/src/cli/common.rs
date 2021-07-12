@@ -79,27 +79,23 @@ impl CommonOpt {
                     f_token.clone()
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
-                    if !client.get_prompt_user_token() {
-                        error!("Multiple authentication tokens exist and menu is disabled, please prompt using --name <username>.");
-                        std::process::exit(1);
-                    } else {
-                        let mut options = Vec::new();
-                        for option in tokens.iter() {
-                            options.push(String::from(option.0));
-                        }
-                        let selection = Select::with_theme(&ColorfulTheme::default())
-                            .with_prompt("Multiple authentication tokens exist. Please select one")
-                            .default(0)
-                            .items(&options)
-                            .interact()
-                            .unwrap();
-                        debug!("Index of the chosen menu item: {:?}", selection);
-
-                        let (f_uname, f_token) =
-                            tokens.iter().nth(selection).expect("Memory Corruption");
-                        info!("Using cached token for name {}", f_uname);
-                        f_token.clone()
+                    // so we'll prompt the user to select one
+                    let mut options = Vec::new();
+                    for option in tokens.iter() {
+                        options.push(String::from(option.0));
                     }
+                    let selection = Select::with_theme(&ColorfulTheme::default())
+                        .with_prompt("Multiple authentication tokens exist. Please select one")
+                        .default(0)
+                        .items(&options)
+                        .interact()
+                        .unwrap();
+                    debug!("Index of the chosen menu item: {:?}", selection);
+
+                    let (f_uname, f_token) =
+                        tokens.iter().nth(selection).expect("Memory Corruption");
+                    info!("Using cached token for name {}", f_uname);
+                    f_token.clone()
                 }
             }
         };
