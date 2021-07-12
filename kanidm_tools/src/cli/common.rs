@@ -99,7 +99,6 @@ impl CommonOpt {
                             tokens.iter().nth(selection).expect("Memory Corruption");
                         info!("Using cached token for name {}", f_uname);
                         f_token.clone()
-                        //String::from("lol")
                     }
                 }
             }
