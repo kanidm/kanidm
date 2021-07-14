@@ -81,7 +81,7 @@ correct privileges. This can be created and assigned through the group
 
     kanidm account create --name admin radius_service_account "Radius Service Account"
     kanidm group add_members --name admin idm_radius_servers radius_service_account
-    kanidm account credential generate_password --name admin radius_service_account
+    kanidm account credential reset_credential --name admin radius_service_account
 
 ## Deploying a RADIUS Container
 
