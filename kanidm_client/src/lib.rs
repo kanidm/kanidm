@@ -457,6 +457,18 @@ impl KanidmClient {
         tokio_block_on(self.asclient.auth_password_totp(ident, password, totp))
     }
 
+    pub fn auth_password_backup_code(
+        &self,
+        ident: &str,
+        password: &str,
+        backup_code: &str,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(
+            self.asclient
+                .auth_password_backup_code(ident, password, backup_code),
+        )
+    }
+
     pub fn auth_webauthn_begin(
         &self,
         ident: &str,

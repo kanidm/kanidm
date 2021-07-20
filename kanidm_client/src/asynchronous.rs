@@ -634,6 +634,56 @@ impl KanidmAsyncClient {
         }
     }
 
+    pub async fn auth_password_backup_code(
+        &self,
+        ident: &str,
+        password: &str,
+        backup_code: &str,
+    ) -> Result<(), ClientError> {
+        let mechs = match self.auth_step_init(ident).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !mechs.contains(&AuthMech::PasswordMfa) {
+            debug!("PasswordMfa mech not presented");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let state = match self.auth_step_begin(AuthMech::PasswordMfa).await {
+            Ok(s) => s,
+            Err(e) => return Err(e),
+        };
+
+        if !state.contains(&AuthAllowed::BackupCode) {
+            debug!("Backup Code step not offered.");
+            return Err(ClientError::AuthenticationFailed);
+        }
+
+        let r = self.auth_step_backup_code(backup_code).await?;
+
+        // Should need to continue.
+        match r.state {
+            AuthState::Continue(allowed) => {
+                if !allowed.contains(&AuthAllowed::Password) {
+                    debug!("Password step not offered.");
+                    return Err(ClientError::AuthenticationFailed);
+                }
+            }
+            _ => {
+                debug!("Invalid AuthState presented.");
+                return Err(ClientError::AuthenticationFailed);
+            }
+        };
+
+        let r = self.auth_step_password(password).await?;
+
+        match r.state {
+            AuthState::Success(_token) => Ok(()),
+            _ => Err(ClientError::AuthenticationFailed),
+        }
+    }
+
     pub async fn auth_webauthn_begin(
         &self,
         ident: &str,
