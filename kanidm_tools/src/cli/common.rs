@@ -3,6 +3,8 @@ use crate::CommonOpt;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UserAuthToken;
 
+use dialoguer::{theme::ColorfulTheme, Select};
+
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
@@ -76,9 +78,24 @@ impl CommonOpt {
                     info!("Using cached token for name {}", f_uname);
                     f_token.clone()
                 } else {
-                    // Unable to select
-                    error!("Multiple authentication tokens exist. Please select one with --name.");
-                    std::process::exit(1);
+                    // Unable to automatically select the user because multiple tokens exist
+                    // so we'll prompt the user to select one
+                    let mut options = Vec::new();
+                    for option in tokens.iter() {
+                        options.push(String::from(option.0));
+                    }
+                    let selection = Select::with_theme(&ColorfulTheme::default())
+                        .with_prompt("Multiple authentication tokens exist. Please select one")
+                        .default(0)
+                        .items(&options)
+                        .interact()
+                        .unwrap();
+                    debug!("Index of the chosen menu item: {:?}", selection);
+
+                    let (f_uname, f_token) =
+                        tokens.iter().nth(selection).expect("Memory Corruption");
+                    info!("Using cached token for name {}", f_uname);
+                    f_token.clone()
                 }
             }
         };

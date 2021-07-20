@@ -25,10 +25,10 @@ and sensitive data), group management, and more.
 ## Recovering the Initial idm_admin Account
 
 By default the idm_admin has no password, and can not be accessed. You should recover it with the
-admin (system admin) account. We recommend the use of "generate_password" as it provides a high
+admin (system admin) account. We recommend the use of "reset_credential" as it provides a high
 strength, random, machine only password.
 
-    kanidm account credential generate_password  --name admin idm_admin
+    kanidm account credential reset_credential  --name admin idm_admin
     Generated password for idm_admin: tqoReZfz....
 
 ## Creating Accounts
