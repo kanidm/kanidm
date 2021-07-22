@@ -685,7 +685,7 @@ pub enum SetCredentialRequest {
     WebauthnRegister(Uuid, RegisterPublicKeyCredential),
     // Remove
     WebauthnRemove(String),
-    GenerateBackupCode,
+    BackupCodeGenerate,
     BackupCodeRemove,
 }
 

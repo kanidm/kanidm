@@ -691,7 +691,7 @@ impl QueryServerWriteV1 {
                             .remove_account_webauthn(&mut audit, &rwe)
                             .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                     }
-                    SetCredentialRequest::GenerateBackupCode => {
+                    SetCredentialRequest::BackupCodeGenerate => {
                         let gbe = GenerateBackupCodeEvent::from_parts(
                             &mut audit,
                             // &idms_prox_write.qs_write,

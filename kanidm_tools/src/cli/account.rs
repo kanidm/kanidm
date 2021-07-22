@@ -23,7 +23,7 @@ impl AccountOpt {
                 AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
                 AccountCredential::RegisterTotp(acs) => acs.copt.debug,
                 AccountCredential::RemoveTotp(acs) => acs.copt.debug,
-                AccountCredential::GenerateBackupCode(acs) => acs.copt.debug,
+                AccountCredential::BackupCodeGenerate(acs) => acs.copt.debug,
                 AccountCredential::BackupCodeRemove(acs) => acs.copt.debug,
                 AccountCredential::Status(acs) => acs.copt.debug,
             },
@@ -283,7 +283,7 @@ impl AccountOpt {
                         }
                     }
                 }
-                AccountCredential::GenerateBackupCode(acsopt) => {
+                AccountCredential::BackupCodeGenerate(acsopt) => {
                     let client = acsopt.copt.to_client();
                     match client.idm_account_primary_credential_generate_backup_code(
                         acsopt.aopts.account_id.as_str(),

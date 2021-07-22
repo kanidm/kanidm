@@ -821,6 +821,79 @@ fn test_server_rest_totp_auth_lifecycle() {
 }
 
 #[test]
+fn test_server_rest_backup_code_auth_lifecycle() {
+    run_test(|rsclient: KanidmClient| {
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
+
+        // Not recommended in production!
+        rsclient
+            .idm_group_add_members("idm_admins", &["admin"])
+            .unwrap();
+
+        // Create a new account
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
+        // Enroll a totp to the account
+        assert!(rsclient
+            .idm_account_primary_credential_set_password("demo_account", "sohdi3iuHo6mai7noh0a")
+            .is_ok());
+        let (sessionid, tok) = rsclient
+            .idm_account_primary_credential_generate_totp("demo_account")
+            .unwrap();
+
+        let r_tok: Totp = tok.into();
+        let totp = r_tok
+            .do_totp_duration_from_epoch(
+                &SystemTime::now()
+                    .duration_since(SystemTime::UNIX_EPOCH)
+                    .unwrap(),
+            )
+            .expect("Failed to do totp?");
+
+        rsclient
+            .idm_account_primary_credential_verify_totp("demo_account", totp, sessionid)
+            .unwrap(); // the result
+
+        // Generate backup codes
+        let backup_codes = rsclient
+            .idm_account_primary_credential_generate_backup_code("demo_account")
+            .expect("Failed to generate backup codes?");
+
+        // Check a good auth using a backup code
+        let rsclient_good = rsclient.new_session().unwrap();
+        assert!(rsclient_good
+            .auth_password_backup_code(
+                "demo_account",
+                "sohdi3iuHo6mai7noh0a",
+                backup_codes[0].as_str()
+            )
+            .is_ok());
+
+        // Check a bad auth - needs to be second as we are going to trigger the slock.
+        // Get a new connection
+        let rsclient_bad = rsclient.new_session().unwrap();
+        assert!(rsclient_bad
+            .auth_password_backup_code("demo_account", "sohdi3iuHo6mai7noh0a", "wrong-backup-code")
+            .is_err());
+        // Delay by one second to allow the account to recover from the softlock.
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+
+        // Remove TOTP and backup codes on the account.
+        rsclient
+            .idm_account_primary_credential_remove_totp("demo_account")
+            .unwrap();
+        // Check password auth.
+        let rsclient_good = rsclient.new_session().unwrap();
+        assert!(rsclient_good
+            .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
+            .is_ok());
+    });
+}
+
+#[test]
 fn test_server_rest_webauthn_auth_lifecycle() {
     run_test(|rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
