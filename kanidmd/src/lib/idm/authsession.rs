@@ -269,32 +269,38 @@ impl CredHandler {
                     pw_mfa.backup_code.as_ref(),
                 ) {
                     (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
-                        match 
-                        webauthn.authenticate_credential(&resp, &wan_state) {
-                                Ok((cid, auth_data)) => {
-                                    pw_mfa.mfa_state = CredVerifyState::Success;
-                                    // Success. Determine if we need to update the counter
-                                    // async from r.
-                                    if auth_data.counter != 0 {
-                                        // Do async
-                                        if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
-                                            target_uuid: who,
-                                            cid: cid.clone(),
-                                            counter: auth_data.counter,
-                                        })) {
-                                            ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
-                                        };
+                        match webauthn.authenticate_credential(&resp, &wan_state) {
+                            Ok((cid, auth_data)) => {
+                                pw_mfa.mfa_state = CredVerifyState::Success;
+                                // Success. Determine if we need to update the counter
+                                // async from r.
+                                if auth_data.counter != 0 {
+                                    // Do async
+                                    if let Err(_e) =
+                                        async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                            WebauthnCounterIncrement {
+                                                target_uuid: who,
+                                                cid: cid.clone(),
+                                                counter: auth_data.counter,
+                                            },
+                                        ))
+                                    {
+                                        ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                                     };
-                                    CredState::Continue(vec![AuthAllowed::Password])
-                                }
-                                Err(e) => 
-                                {
-                                    pw_mfa.mfa_state = CredVerifyState::Fail;
-                                    // Denied.
-                                    lsecurity!(au, "Handler::Webauthn -> Result::Denied - webauthn error {:?}", e);
-                                    CredState::Denied(BAD_WEBAUTHN_MSG)
-                                }
+                                };
+                                CredState::Continue(vec![AuthAllowed::Password])
                             }
+                            Err(e) => {
+                                pw_mfa.mfa_state = CredVerifyState::Fail;
+                                // Denied.
+                                lsecurity!(
+                                    au,
+                                    "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
+                                    e
+                                );
+                                CredState::Denied(BAD_WEBAUTHN_MSG)
+                            }
+                        }
                     }
                     (AuthCredential::Totp(totp_chal), Some(totp), _, _) => {
                         if totp.verify(*totp_chal, ts) {
@@ -435,11 +441,13 @@ impl CredHandler {
                         // async from r.
                         if auth_data.counter != 0 {
                             // Do async
-                            if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
-                                target_uuid: who,
-                                cid: cid.clone(),
-                                counter: auth_data.counter,
-                            })) {
+                            if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                WebauthnCounterIncrement {
+                                    target_uuid: who,
+                                    cid: cid.clone(),
+                                    counter: auth_data.counter,
+                                },
+                            )) {
                                 ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                             };
                         };
@@ -448,7 +456,11 @@ impl CredHandler {
                     Err(e) => {
                         wan_cred.state = CredVerifyState::Fail;
                         // Denied.
-                        lsecurity!(au, "Handler::Webauthn -> Result::Denied - webauthn error {:?}", e);
+                        lsecurity!(
+                            au,
+                            "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
+                            e
+                        );
                         CredState::Denied(BAD_WEBAUTHN_MSG)
                     }
                 }
@@ -1508,10 +1520,7 @@ mod tests {
         {
             let mut inv_wa = WebauthnAuthenticator::new(U2FSoft::new());
             let (chal, reg_state) = webauthn
-                .generate_challenge_register(
-                    &account.name,
-                    false,
-                )
+                .generate_challenge_register(&account.name, false)
                 .expect("Failed to setup webauthn rego challenge");
 
             let r = inv_wa
