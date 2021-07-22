@@ -11,7 +11,7 @@ Before=radiusd.service
 Type=simple
 DynamicUser=yes
 UMask=0027
-StateDirectory=kanidmd
+StateDirectory=kanidm
 ExecStart=/usr/sbin/kanidmd server -c /etc/kanidm/server.toml
 
 NoNewPrivileges=true
