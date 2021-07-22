@@ -19,6 +19,7 @@ use kanidm_proto::v1::{
 };
 
 use serde::Serialize;
+use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -1199,6 +1200,15 @@ pub fn create_https_server(
 
     // If we are no-ui, we remove this.
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
+        let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
+        if !pkg_path.exists() {
+            eprintln!(
+                "Couldn't find Web UI package path: ({}), quitting.",
+                env!("KANIDM_WEB_UI_PKG_PATH")
+            );
+            std::process::exit(1);
+        }
+
         tserver.at("/").get(index_view);
         tserver
             .at("/pkg")

@@ -140,3 +140,5 @@ Then you are able to build the UI.
     ./build_wasm.sh
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
+
+Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in `/profiles`. For example: `KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd`
