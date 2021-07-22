@@ -144,7 +144,7 @@ impl KanidmClientBuilder {
         let address = match kcc.uri {
             Some(uri) => Some(uri),
             None => {
-                debug!("No URI in supplied config");
+                debug!("No URI in config supplied to apply_config_options");
                 address
             }
         };
@@ -285,17 +285,17 @@ impl KanidmClientBuilder {
     fn display_warnings(&self, address: &str) {
         // Check for problems now
         if !self.verify_ca {
-            warn!("verify_ca set to false - this may allow network interception of passwords!");
+            warn!("verify_ca set to false in client configuration - this may allow network interception of passwords!");
         }
 
         if !self.verify_hostnames {
             warn!(
-                "verify_hostnames set to false - this may allow network interception of passwords!"
+                "verify_hostnames set to false in client configuration - this may allow network interception of passwords!"
             );
         }
 
         if !address.starts_with("https://") {
-            warn!("address does not start with 'https://' - this may allow network interception of passwords!");
+            warn!("Address does not start with 'https://' - this may allow network interception of passwords!");
         }
     }
 
@@ -309,8 +309,8 @@ impl KanidmClientBuilder {
         let address = match &self.address {
             Some(a) => a.clone(),
             None => {
-                eprintln!("Configuration option 'uri' missing, cannot continue client startup.");
-                unimplemented!();
+                error!("Configuration option 'uri' missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔");
+                std::process::exit(1);
             }
         };
 
