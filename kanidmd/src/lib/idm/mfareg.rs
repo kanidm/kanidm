@@ -12,7 +12,7 @@ use uuid::Uuid;
 use webauthn_rs::proto::Credential as WebauthnCredential;
 use webauthn_rs::proto::{CreationChallengeResponse, RegisterPublicKeyCredential};
 use webauthn_rs::RegistrationState as WebauthnRegistrationState;
-use webauthn_rs::{proto::UserVerificationPolicy, Webauthn};
+use webauthn_rs::Webauthn;
 
 pub(crate) enum MfaRegCred {
     Totp(Totp),
@@ -169,7 +169,7 @@ impl MfaRegSession {
     ) -> Result<(Self, MfaRegNext), OperationError> {
         // Setup the registration.
         let (chal, reg_state) = webauthn
-            .generate_challenge_register(&account.name, Some(UserVerificationPolicy::Discouraged))
+            .generate_challenge_register(&account.name, false)
             .map_err(|e| {
                 ladmin_error!(au, "Unable to generate webauthn challenge -> {:?}", e);
                 OperationError::Webauthn
@@ -204,12 +204,12 @@ impl MfaRegSession {
 
         match nstate {
             MfaRegState::WebauthnInit(label, reg_state) => webauthn
-                .register_credential(chal, reg_state, |_| Ok(false))
+                .register_credential(chal, &reg_state, |_| Ok(false))
                 .map_err(|e| {
                     ladmin_error!(au, "Unable to register webauthn credential -> {:?}", e);
                     OperationError::Webauthn
                 })
-                .map(|cred| (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))),
+                .map(|(cred, _)| (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))),
             _ => Err(OperationError::InvalidRequestState),
         }
     }

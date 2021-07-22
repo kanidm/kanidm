@@ -1,7 +1,7 @@
 use std::{collections::HashSet, time::Duration};
 use url::Url;
 use uuid::Uuid;
-use webauthn_rs::proto::COSEKey;
+use webauthn_rs::proto::{COSEKey, UserVerificationPolicy};
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbCidV1 {
@@ -69,6 +69,8 @@ pub struct DbWebauthnV1 {
     pub counter: u32,
     #[serde(rename = "v")]
     pub verified: bool,
+    #[serde(rename = "p", default)]
+    pub registration_policy: UserVerificationPolicy,
 }
 
 #[derive(Serialize, Deserialize)]
