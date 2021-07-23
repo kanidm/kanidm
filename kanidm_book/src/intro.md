@@ -33,50 +33,50 @@ access or privilege than they require.
 Kanidm acts as a central authority of accounts in your organisation and allows each account to associate
 many devices and credentials with different privileges. An example of how this looks:
 
-                                     ┌──────────────────┐
-                                    ┌┴─────────────────┐│
-                                    │                  ││
-           ┌───────────────────┬───▶│      Kanidm      │◀──────┬─────────────────────────┐
-           │                   │    │                  ├┘      │                         │
-           │                   │    └──────────────────┘       │                       Verify
-      Account Data             │              ▲                │                       Radius
-       References              │              │                │                      Password
-           │                   │              │                │                         │
-           │                   │              │                │                  ┌────────────┐
-           │                   │              │                │                  │            │
-           │                   │              │             Verify                │   RADIUS   │
-     ┌────────────┐            │        Retrieve SSH      Application             │            │
-     │            │            │         Public Keys       Password               └────────────┘
-     │  Database  │            │              │                │                         ▲
-     │            │            │              │                │                         │
-     └────────────┘            │              │                │               ┌─────────┴──────────┐
-            ▲                  │              │                │               │                    │
-            │                  │              │                │               │                    │
-     ┌────────────┐            │       ┌────────────┐   ┌────────────┐  ┌────────────┐       ┌────────────┐
-     │            │            │       │            │   │            │  │            │       │            │
-     │  Web Site  │            │       │    SSH     │   │   Email    │  │    WIFI    │       │    VPN     │
-     │            │            │       │            │   │            │  │            │       │            │
-     └────────────┘            │       └────────────┘   └────────────┘  └────────────┘       └────────────┘
-            ▲                  │              ▲                ▲               ▲                    ▲
-            │                  │              │                │               │                    │
-            │                  │              │                │               │                    │
-            │              Login To           │                │               │                    │
-        SSO/Oauth         Oauth/SSO       SSH Keys        Application        Radius              Radius
-            │                  │              │            Password         Password            Password
-            │                  │              │                │               │                    │
-            │                  │              │                │               │                    │
-            │                  │              │                │               │                    │
-            │                  │        ┌──────────┐           │               │                    │
-            │                  │        │          │           │               │                    │
-            └──────────────────┴────────│  Laptop  │───────────┴───────────────┴────────────────────┘
-                                        │          │
-                                        └──────────┘
-                                              ▲
-                                              │
-                                              │
-                                        ┌──────────┐
-                                        │   You    │
-                                        └──────────┘
+                                ┌──────────────────┐
+                               ┌┴─────────────────┐│
+                               │                  ││
+          ┌───────────────┬───▶│      Kanidm      │◀─────┬─────────────────────────┐
+          │               │    │                  ├┘     │                         │
+          │               │    └──────────────────┘      │                       Verify
+     Account Data         │              ▲               │                       Radius
+      References          │              │               │                      Password
+          │               │              │               │                         │
+          │               │              │               │                  ┌────────────┐
+          │               │              │               │                  │            │
+          │               │              │            Verify                │   RADIUS   │
+    ┌────────────┐        │        Retrieve SSH     Application             │            │
+    │            │        │         Public Keys      Password               └────────────┘
+    │  Database  │        │              │               │                        ▲
+    │            │        │              │               │                        │
+    └────────────┘        │              │               │               ┌────────┴──────┐
+           ▲              │              │               │               │               │
+           │              │              │               │               │               │
+    ┌────────────┐        │       ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────┐
+    │            │        │       │            │  │            │  │            │  │            │
+    │  Web Site  │        │       │    SSH     │  │   Email    │  │    WIFI    │  │    VPN     │
+    │            │        │       │            │  │            │  │            │  │            │
+    └────────────┘        │       └────────────┘  └────────────┘  └────────────┘  └────────────┘
+           ▲              │              ▲               ▲               ▲               ▲
+           │              │              │               │               │               │
+           │              │              │               │               │               │
+           │          Login To           │               │               │               │
+       SSO/Oauth     Oauth/SSO       SSH Keys       Application        Radius         Radius
+           │              │              │           Password         Password       Password
+           │              │              │               │               │               │
+           │              │              │               │               │               │
+           │              │              │               │               │               │
+           │              │        ┌──────────┐          │               │               │
+           │              │        │          │          │               │               │
+           └──────────────┴────────│  Laptop  │──────────┴───────────────┴───────────────┘
+                                   │          │
+                                   └──────────┘
+                                         ▲
+                                         │
+                                         │
+                                   ┌──────────┐
+                                   │   You    │
+                                   └──────────┘
 
 A key design goal is that you authenticate with your device in some manner, and then your device will
 continue to authenticate you in the future. Each of these different types of credential from SSH keys,

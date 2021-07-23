@@ -15,8 +15,10 @@ The unixd resolver is also a high value target as it can be accessed to allow un
 access to a server, to intercept communications to the server, or more. This also must be protected
 carfully.
 
-For this reason the kanidm's components must be protected carefully. Kanidm avoids many classic
+For this reason, Kanidm's components must be protected carefully. Kanidm avoids many classic
 attacks by being developed in a memory safe language, but risks still exist.
+
+## Startup Warnings
 
 At startup Kanidm will warn you if the environment it is running in is suspicious or
 has risks. For example:
@@ -114,4 +116,31 @@ This file should be everyone-readable which is why the bits are defined as such.
 > but it affects the check. We don't believe this is a significant issue though because
 > setting these to 440 and 444 helps to prevent accidental changes by an administrator anyway
 
+## Running as non-root in docker
 
+The commands provided in this book will run kanidmd as "root" in the container to make the onboarding
+smoother. However, this is not recommended in production for security reasons.
+
+You should allocate a uidnumber/gidnumber for the service to run as that is unique on your host
+system. In this example we use `1000:1000`
+
+You will need to adjust the permissions on the `/data` volume to ensure that the process
+can manage the files. Kanidm requires the ability to write to the `/data` directory to create
+the sqlite files. This uid/gidnumber should match the above. You could consider the following
+changes to help isolate these changes:
+
+    docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
+    # mkdir /data/db/
+    # chown 1000:1000 /data/db/
+    # chmod 750 /data/db/
+    # sed -i -e "s/db_path.*/db_path = \"\/data\/db\/kanidm.db\"/g" /data/server.toml
+    # chown root:root /data/server.toml
+    # chmod 644 /data/server.toml
+
+You can then use this with run the kanidm server in docker with a user.
+
+    docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/kanidmd ...
+
+> **HINT**
+> You need to use the uidnumber/gidnumber to the `-u` argument, as the container can't resolve
+> usernames from the host system.

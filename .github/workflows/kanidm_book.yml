@@ -30,6 +30,8 @@ jobs:
         with:
           command: doc
           args: --no-deps
+      - name: Copy developer readme into book
+        run: cp DEVELOPER_README.md ./kanidm_book/src/ && echo '- [Developer Guide](DEVELOPER_README.md)' >> ./kanidm_book/src/SUMMARY.md
 
       - name: Run mdbook
         run: mdbook build kanidm_book

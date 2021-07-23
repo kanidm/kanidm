@@ -1,4 +1,4 @@
-# Legacy Applications -- LDAP
+# Legacy Applications - LDAP
 
 While many applications can support systems like SAML or OAuth, many do not. LDAP
 has been the "lingua franca" of authentication for many years, with almost
