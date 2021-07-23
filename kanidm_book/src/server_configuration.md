@@ -42,16 +42,16 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #
     #   The role of this server. This affects features available and how replication may interact.
     #   Valid roles are:
-    #   - write_replica
+    #   - WriteReplica
     #     This server provides all functionality of Kanidm. It allows authentication, writes, and
     #     the web user interface to be served.
-    #   - write_replica_no_ui
-    #     This server is the same as a write_replica, but does NOT offer the web user interface.
-    #   - read_only_replica
+    #   - WriteReplicaNoUI
+    #     This server is the same as a WriteReplica, but does NOT offer the web user interface.
+    #   - ReadOnlyReplica
     #     This server will not writes initiated by clients. It supports authentication and reads,
     #     and must have a replication agreement as a source of it's data.
-    #   Defaults to "write_replica".
-    # role = "write_replica"
+    #   Defaults to "WriteReplica".
+    # role = "WriteReplica"
 
 An example is located in [examples/server.toml](../../examples/server.toml).
 
