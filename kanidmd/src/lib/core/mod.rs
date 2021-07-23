@@ -6,7 +6,7 @@
 //!
 //! Generally, this is the "entry point" where the server begins to run, and
 //! the entry point for all client traffic which is then directed to the
-//! varius [`actors`].
+//! various `actors`.
 
 mod https;
 mod ldaps;

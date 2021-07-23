@@ -1,0 +1,41 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - docs_clarity_528
+  pull_request:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Setup mdBook
+         uses: peaceiris/actions-mdbook@v1
+         with:
+           mdbook-version: 'latest'
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps
+
+      - name: Run mdbook
+        run: mdbook build kanidm_book
+
+      - name: Move files around
+        run: mkdir -p ./docs/rustdoc/ && mv "./kanidm_book/target/book/*" ./docs/ && mv "./target/doc/*" ./docs/rustdoc/
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/rustdoc/

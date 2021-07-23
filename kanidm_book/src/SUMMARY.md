@@ -1,25 +1,20 @@
 # Summary
 
-[Introduction to Kanidm](./intro.md)
-
-Getting started with Kanidm
-
+- [Introduction to Kanidm](./intro.md)
 - [Installing the Server](./installing_the_server.md)
+- [Client Tools](./client_tools.md)
+  - [Installing client tools](./installing_client_tools.md)
 - [Administrative Tasks](./administrivia.md)
-- [Interacting with the Server](./client_tools.md)
-- [Accounts and Groups](./accounts_and_groups.md)
-
-Additional information
-
+  - [Accounts and Groups](./accounts_and_groups.md)
+  - [Monitoring the platform](./monitoring.md)
+  - [Recycle Bin](./recycle_bin.md)
+  - [SSH Key Distribution](./ssh_key_dist.md)
 - [Legacy Applications - LDAP](./ldap.md)
-- [Monitoring the platform](./monitoring.md)
 - [PAM and nsswitch](./pam_and_nsswitch.md)
 - [Password Quality and Badlisting](./password_quality.md)
 - [POSIX Accounts and Groups](./posix_accounts.md)
 - [RADIUS](./radius.md)
-- [Recycle Bin](./recycle_bin.md)
 - [Security Hardening](./security_hardening.md)
-- [SSH Key Distribution](./ssh_key_dist.md)
 
 -----------
 [Why TLS?](./why_tls.md)
