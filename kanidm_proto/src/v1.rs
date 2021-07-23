@@ -717,7 +717,7 @@ pub struct TotpSecret {
 }
 
 impl TotpSecret {
-    /// https://github.com/google/google-authenticator/wiki/Key-Uri-Format
+    /// <https://github.com/google/google-authenticator/wiki/Key-Uri-Format>
     pub fn to_uri(&self) -> String {
         // label = accountname / issuer (“:” / “%3A”) *”%20” accountname
         // This is already done server side but paranoia is good!
