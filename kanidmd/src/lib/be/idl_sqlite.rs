@@ -26,6 +26,15 @@ pub enum FsType {
     Zfs = 65536,
 }
 
+impl FsType {
+    pub fn checkpoint_pages(&self) -> u32 {
+        match self {
+            FsType::Generic => 2048,
+            FsType::Zfs => 256,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct IdSqliteEntry {
     id: i64,
@@ -1504,12 +1513,20 @@ impl IdlSqlite {
             limmediate_warning!(audit, "NOTICE: db vacuum complete\n");
         };
 
-        let fstype = cfg.fstype as u32;
+        let fs_page_size = cfg.fstype as u32;
+        let checkpoint_pages = cfg.fstype.checkpoint_pages();
 
         let manager = SqliteConnectionManager::file(cfg.path.as_str())
             .with_init(move |c| {
                 c.execute_batch(
-                    format!("PRAGMA page_size={}; PRAGMA journal_mode=WAL; PRAGMA wal_checkpoint(RESTART);", fstype).as_str(),
+                    format!(
+                        "PRAGMA page_size={};
+                             PRAGMA journal_mode=WAL;
+                             PRAGMA wal_autocheckpoint={};
+                             PRAGMA wal_checkpoint(RESTART);",
+                        fs_page_size, checkpoint_pages
+                    )
+                    .as_str(),
                 )
             })
             .with_flags(flags);
