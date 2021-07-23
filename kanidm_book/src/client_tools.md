@@ -4,7 +4,7 @@ To interact with Kanidm as an administrator, you'll need to use our command line
 
 ## Kanidm configuration
 
-You can configure kanidm to help make commands simpler by modifying ~/.config/kanidm OR /etc/kanidm/config
+You can configure `kanidm` to help make commands simpler by modifying `~/.config/kanidm` or `/etc/kanidm/config`.
 
     uri = "https://idm.example.com"
     verify_ca = true|false
@@ -23,7 +23,7 @@ to establish a session token.
     kanidm login --name USERNAME
     kanidm login --name admin
 
-Once complete, you can use kanidm without reauthenticating for a period of time for administration.
+Once complete, you can use `kanidm` without reauthenticating for a period of time for administration.
 
 You can list active sessions with:
 

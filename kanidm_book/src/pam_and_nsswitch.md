@@ -1,22 +1,12 @@
 # PAM and nsswitch
 
-PAM and nsswitch are the core mechanisms used by Linux and BSD clients
-to resolve identities from an IDM service like kanidm into accounts that
-can be used on the machine for various interactive tasks.
+[PAM](http://linux-pam.org) and [nsswitch](https://en.wikipedia.org/wiki/Name_Service_Switch) are the core mechanisms used by Linux and BSD clients to resolve identities from an IDM service like Kanidm into accounts that can be used on the machine for various interactive tasks.
 
-## The unix daemon
+## The UNIX daemon
 
-Kanidm provide a unix daemon that runs on any client that wants to use pam
-and nsswitch integration. This is provided as the daemon can cache the accounts
-for users who have unreliable networks or leave the site where kanidm is. The
-cache is also able to cache missing-entry responses to reduce network traffic
-and main server load.
+Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch integration. This is provided as the daemon can cache the accounts for users who have unreliable networks or leave the site where Kanidm is. The cache is also able to cache missing-entry responses to reduce network traffic and main server load.
 
-Additionally, the daemon means that the pam and nsswitch integration libraries
-can be small, helping to reduce the attack surface of the machine.
-Similarly, a tasks daemon is available that can create home directories on first
-login and supports several features related to aliases and links to these
-home directories.
+Additionally, the daemon means that the PAM and nsswitch integration libraries can be small, helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can create home directories on first login and supports several features related to aliases and links to these home directories.
 
 We recommend you install the client daemon from your system package manager.
 
@@ -33,10 +23,9 @@ You can check the privileged tasks daemon is running with
 
     systemctl status kanidm-unixd-tasks
 
-
-> **NOTE** The `kanidm_unixd_tasks` daemon is not required for pam and nsswitch functionality.
+> **NOTE** The `kanidm_unixd_tasks` daemon is not required for PAM and nsswitch functionality.
 > If disabled, your system will function as usual. It is however recommended due to the features
-> it provides supporting kanidm's capabilities.
+> it provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
 [client_tools](./client_tools.md#kandim-configuration). 
@@ -52,8 +41,8 @@ You can also configure some unixd specific options with the file /etc/kanidm/uni
     gid_attr_map = "spn"
 
 The `pam_allowed_login_groups` defines a set of posix groups where membership of any of these
-groups will be allowed to login via pam. All posix users and groups can be resolved by nss
-regardless of pam login status. This may be a group name, spn or uuid.
+groups will be allowed to login via PAM. All posix users and groups can be resolved by nss
+regardless of PAM login status. This may be a group name, spn or uuid.
 
 `default_shell` is the default shell for users with none defined. Defaults to `/bin/sh`.
 
@@ -69,7 +58,7 @@ to nss calls. It is recommended you choose a "human friendly" attribute here.
 Valid choices are `none`, `uuid`, `name`, `spn`. Defaults to `spn`.
 
 > **NOTICE:**
-> All users in kanidm can change their name (and their spn) at any time. If you change
+> All users in Kanidm can change their name (and their spn) at any time. If you change
 > `home_attr` from `uuid` you *must* have a plan on how to manage these directory renames
 > in your system. We recommend that you have a stable id (like the uuid) and symlinks
 > from the name to the uuid folder. Automatic support is provided for this via the unixd
@@ -122,7 +111,7 @@ You can also do the same for groups.
  
 ## PAM
 
-> **WARNING:** Modifications to pam configuration *may* leave your system in a state
+> **WARNING:** Modifications to PAM configuration *may* leave your system in a state
 > where you are unable to login or authenticate. You should always have a recovery
 > shell open while making changes (ie root), or have access to single-user mode
 > at the machine's console.
@@ -135,7 +124,7 @@ where each module may request or reuse authentication token information.
 ### Before you start
 
 You *should* backup your /etc/pam.d directory from its original state as you *may* change the
-pam config in a way that will cause you to be unable to authenticate to your machine.
+PAM config in a way that will cause you to be unable to authenticate to your machine.
 
     cp -a /etc/pam.d /root/pam.d.backup
 
@@ -148,7 +137,7 @@ To configure PAM on suse you must module four files:
     /etc/pam.d/common-password
     /etc/pam.d/common-session
 
-Each of these controls one of the four stages of pam. The content should look like:
+Each of these controls one of the four stages of PAM. The content should look like:
 
     # /etc/pam.d/common-account-pc
     account    [default=1 ignore=ignore success=ok] pam_localuser.so
@@ -182,7 +171,7 @@ Each of these controls one of the four stages of pam. The content should look li
 
 ### Fedora 33
 
-> **WARNING:** kanidm currently has no support for SELinux policy - this may mean you need to
+> **WARNING:** Kanidm currently has no support for SELinux policy - this may mean you need to
 > run the daemon with permissive mode for the unconfined_service_t daemon type. To do this run:
 > `semanage permissive -a unconfined_service_t`. To undo this run `semanage permissive -d unconfined_service_t`.
 >
@@ -319,7 +308,7 @@ You can clear (wipe) the cache with:
     $ kanidm_cache_clear
 
 There is an important distinction between these two - invalidated cache items may still
-be yielded to a client request if the communication to the main kanidm server is not
+be yielded to a client request if the communication to the main Kanidm server is not
 possible. For example, you may have your laptop in a park without wifi.
 
 Clearing the cache, however, completely wipes all local data about all accounts and groups.

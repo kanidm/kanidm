@@ -1,5 +1,7 @@
 # Installing Client Tools
 
+> **NOTE** As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running the same release version of client/server binaries (eg. 1.1.0-alpha5, released 2021-07-07)
+
 ## From packages
 
 Kanidm currently supports:
@@ -34,13 +36,13 @@ Fedora is still experimentally supported through the development repository. You
 
     cd /etc/yum.repos.d
     # 33
-    wget https://download.opensuse.org/repositories/network:/idm/Fedora_33/network:idm.repo
+    sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_33/network:idm.repo
     # 34
-    wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
+    sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
 
 You can then install with:
 
-    dnf install kanidm-clients
+    sudo dnf install kanidm-clients
 
 ## From source (CLI only, not recommended)
 

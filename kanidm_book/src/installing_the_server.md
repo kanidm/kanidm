@@ -4,8 +4,8 @@
 
 Currently we have docker images for the server components. They can be found at:
 
- - https://hub.docker.com/r/kanidm/server
- - https://hub.docker.com/r/kanidm/radius
+ - <https://hub.docker.com/r/kanidm/server>
+ - <https://hub.docker.com/r/kanidm/radius>
 
 You can fetch these by running the commands:
 
@@ -18,9 +18,14 @@ If you wish to use an x86\_64 cpu-optimised version (See System Requirements CPU
 
 You may need to adjust your example commands throughout this document to suit.
 
+## Development Version
+
+If you are interested in running the latest code from development, you can do this by changing the
+docker tag to `kanidm/server:devel` or `kanidm/server:x86_64_v3_devel` instead.
+
 ## System Requirements
 
-### CPU
+#### CPU
 
 If you are using the x86\_64 cpu-optimised version, you must have a CPU that is from 2013 or newer
 (Haswell, Ryzen). The following instruction flags are used.
@@ -38,12 +43,12 @@ image. These flags will be:
 
     cmov, cx8, fxsr, mmx, sse, sse2
 
-### Memory
+#### Memory
 
 Kanidm extensively uses memory caching, trading memory consumption to improve parallel throughput.
 You should expect to see 64KB of ram per entry in your database, depending on cache tuning and settings.
 
-### Disk
+#### Disk
 
 You should expect to use up to 8KB of disk per entry you plan to store. At an estimate 10,000 entry
 databases will consume 40MB, 100,000 entry will consume 400MB.
@@ -115,11 +120,9 @@ OR for a shell into the volume:
 
     docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
 
-Continue on to [Configuring the Server](server_configuration.md)
 
-# Development Version
 
-If you are interested to run our latest code from development, you can do this by changing the
-docker tag to `kanidm/server:devel` or `kanidm/server:x86_64_v3_devel` instead.
+# Continue on to [Configuring the Server](server_configuration.md)
+
 
 
