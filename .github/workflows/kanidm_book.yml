@@ -35,7 +35,7 @@ jobs:
         run: mdbook build kanidm_book
 
       - name: Move files around
-        run: mv ./kanidm_book/book/ ./docs/ && mkdir -p ./docs/rustdoc/ && mv ./kanidm_book/book/.* ./docs/ &&  mv ./target/doc/* ./docs/rustdoc/
+        run: mv ./kanidm_book/book/ ./docs/ && mkdir -p ./docs/rustdoc/ &&  mv ./target/doc/* ./docs/rustdoc/
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
