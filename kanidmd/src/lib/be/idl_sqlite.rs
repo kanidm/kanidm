@@ -1454,6 +1454,13 @@ impl IdlSqlite {
             })?;
 
             vconn
+                .execute_batch("PRAGMA wal_checkpoint(TRUNCATE);")
+                .map_err(|e| {
+                    ladmin_error!(audit, "rusqlite wal_checkpoint error {:?}", e);
+                    OperationError::SqliteError
+                })?;
+
+            vconn
                 .pragma_update(None, "journal_mode", &"DELETE")
                 .map_err(|e| {
                     ladmin_error!(audit, "rusqlite journal_mode update error {:?}", e);
@@ -1502,7 +1509,7 @@ impl IdlSqlite {
         let manager = SqliteConnectionManager::file(cfg.path.as_str())
             .with_init(move |c| {
                 c.execute_batch(
-                    format!("PRAGMA page_size={}; PRAGMA journal_mode=WAL;", fstype).as_str(),
+                    format!("PRAGMA page_size={}; PRAGMA journal_mode=WAL; PRAGMA wal_checkpoint(RESTART);", fstype).as_str(),
                 )
             })
             .with_flags(flags);
