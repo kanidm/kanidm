@@ -4,7 +4,11 @@ use std::sync::Arc;
 
 use crate::prelude::*;
 
-use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
+use crate::be::BackendTransaction;
+
+use crate::event::{
+    AuthEvent, AuthResult, LiveBackupEvent, SearchEvent, SearchResult, WhoamiResult,
+};
 use crate::idm::event::{
     CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
     UnixUserAuthEvent, UnixUserTokenEvent,
@@ -165,6 +169,32 @@ impl QueryServerReadV1 {
             OperationError::InvalidState
         })?;
         res
+    }
+
+    pub async fn handle_live_backup(&self, msg: LiveBackupEvent) {
+        let mut audit = AuditScope::new("live backup", msg.eventid, self.log_level);
+
+        ltrace!(audit, "Begin live-backup event {:?}", msg.eventid);
+
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<LiveBackupEvent>",
+            || {
+                let res = idms_prox_read
+                    .qs_read
+                    .get_be_txn()
+                    .backup(&mut audit, "/tmp/backup.json");
+
+                ladmin_info!(audit, "live backup result: {:?}", res);
+                #[allow(clippy::expect_used)]
+                res.expect("Live backup failed");
+            }
+        );
+        // At the end of the event we send it for logging.
+        self.log.send(audit).unwrap_or_else(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+        });
     }
 
     pub async fn handle_whoami(
