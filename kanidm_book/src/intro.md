@@ -13,6 +13,10 @@ The intent of the Kanidm project is to:
 > This is a pre-release project. While all effort has been made to ensure no data loss
 > or security flaws, you should still be careful when using this in your environment.
 
+## Library documentation
+
+Looking for the `rustdoc` documentation for the libraries themselves? [Click here!](./rustdoc/kanidm/)
+
 ## Why do I want Kanidm?
 
 Whether you work in a business, a volunteer organisation, or are an enthusiast who manages 
