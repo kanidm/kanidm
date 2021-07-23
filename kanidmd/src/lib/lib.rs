@@ -2,7 +2,7 @@
 //! which is used to process authentication, store identities and enforce access controls.
 
 #![recursion_limit = "512"]
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -47,6 +47,7 @@ mod interval;
 pub(crate) mod ldap;
 mod modify;
 pub mod value;
+pub mod valueset;
 #[macro_use]
 mod plugins;
 mod access;

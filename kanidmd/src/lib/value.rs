@@ -620,10 +620,10 @@ impl PartialValue {
 /// or modification operation where you are applying a set of complete values into an entry.
 #[derive(Clone, Debug)]
 pub struct Value {
-    pv: PartialValue,
+    pub(crate) pv: PartialValue,
     // Later we'll add extra data fields for different v types. They'll have to switch on
     // pv somehow, so probably need optional or union?
-    data: Option<Box<DataValue>>,
+    pub(crate) data: Option<Box<DataValue>>,
 }
 
 // TODO: Impl display
