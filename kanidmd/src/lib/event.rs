@@ -911,6 +911,27 @@ impl PurgeRecycledEvent {
 }
 
 #[derive(Debug)]
+pub struct LiveBackupEvent {
+    pub ident: Identity,
+    pub eventid: Uuid,
+}
+
+impl Default for LiveBackupEvent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl LiveBackupEvent {
+    pub fn new() -> Self {
+        LiveBackupEvent {
+            ident: Identity::from_internal(),
+            eventid: Uuid::new_v4(),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct ReviveRecycledEvent {
     pub ident: Identity,
     // This is the filter, as it will be processed.
