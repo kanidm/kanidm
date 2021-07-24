@@ -1,0 +1,318 @@
+<!DOCTYPE HTML>
+<html lang="en" class="sidebar-visible no-js light">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Accounts and Groups - Kanidm Administration</title>
+                
+
+        <!-- Custom HTML head -->
+        
+
+        <meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff" />
+
+                <link rel="icon" href="favicon.svg">
+                        <link rel="shortcut icon" href="favicon.png">
+                <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+                <link rel="stylesheet" href="css/print.css" media="print">
+        
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+                <link rel="stylesheet" href="fonts/fonts.css">
+        
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        
+            </head>
+    <body>
+        <!-- Provide site root to javascript -->
+        <script type="text/javascript">
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "navy" : "light";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script type="text/javascript">
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script type="text/javascript">
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('no-js')
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add('js');
+        </script>
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script type="text/javascript">
+            var html = document.querySelector('html');
+            var sidebar = 'hidden';
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            }
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installing_the_server.html"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="security_hardening.html"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="accounts_and_groups.html" class="active"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li></ol></li><li class="chapter-item expanded "><a href="ldap.html"><strong aria-hidden="true">6.</strong> LDAP</a></li><li class="chapter-item expanded "><a href="pam_and_nsswitch.html"><strong aria-hidden="true">7.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="radius.html"><strong aria-hidden="true">8.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="why_tls.html"><strong aria-hidden="true">9.</strong> Why TLS?</a></li><li class="chapter-item expanded "><a href="DEVELOPER_README.html"><strong aria-hidden="true">10.</strong> Developer Guide</a></li></ol>            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky bordered">
+                    <div class="left-buttons">
+                        <button id="sidebar-toggle" class="icon-button" type="button" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </button>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light (default)</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                                                <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                                            </div>
+
+                    <h1 class="menu-title">Kanidm Administration</h1>
+
+                    <div class="right-buttons">
+                                                <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                                                                        
+                    </div>
+                </div>
+
+                                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+                
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script type="text/javascript">
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="accounts-and-groups"><a class="header" href="#accounts-and-groups">Accounts and groups</a></h1>
+<p>Accounts and Groups are the primary reason for Kanidm to exist. Kanidm is optimised as a repository
+for these data. As a result, they have many concepts and important details to understand.</p>
+<h2 id="default-accounts-and-groups"><a class="header" href="#default-accounts-and-groups">Default Accounts and Groups</a></h2>
+<p>Kanidm ships with a number of default accounts and groups. This is to give you the best out of
+box experience possible, as well as supplying best practice examples related to modern IDM
+systems.</p>
+<p>The system admin account (the account you recovered in the setup) has limited privileges - only to
+manage high-privilege accounts and services. This is to help separate system administration
+from identity administration actions. An idm_admin is also provided that is only for management
+of accounts and groups.</p>
+<p>Both admin and idm_admin should <em>NOT</em> be used for daily activities - they exist for initial
+system configuration, and for disaster recovery scenarios. You should delegate permissions
+as required to named user accounts instead.</p>
+<p>The majority of the provided content is privilege groups that provide rights over Kanidm
+administrative actions. These include groups for account management, person management (personal
+and sensitive data), group management, and more.</p>
+<h2 id="recovering-the-initial-idm_admin-account"><a class="header" href="#recovering-the-initial-idm_admin-account">Recovering the Initial idm_admin Account</a></h2>
+<p>By default the idm_admin has no password, and can not be accessed. You should recover it with the
+admin (system admin) account. We recommend the use of &quot;reset_credential&quot; as it provides a high
+strength, random, machine only password.</p>
+<pre><code>kanidm account credential reset_credential  --name admin idm_admin
+Generated password for idm_admin: tqoReZfz....
+</code></pre>
+<h2 id="creating-accounts"><a class="header" href="#creating-accounts">Creating Accounts</a></h2>
+<p>We can now use the idm_admin to create initial groups and accounts.</p>
+<pre><code>kanidm group create demo_group --name idm_admin
+kanidm account create demo_user &quot;Demonstration User&quot; --name idm_admin
+kanidm group add_members demo_group demo_user --name idm_admin
+kanidm group list_members demo_group --name idm_admin
+kanidm account get demo_user --name idm_admin
+</code></pre>
+<p>You can also use anonymous to view users and groups - note that you won't see as many fields due
+to the different anonymous access profile limits!</p>
+<pre><code>kanidm account get demo_user --name anonymous
+</code></pre>
+<h2 id="viewing-default-groups"><a class="header" href="#viewing-default-groups">Viewing Default Groups</a></h2>
+<p>You should take some time to inspect the default groups which are related to
+default permissions. These can be viewed with:</p>
+<pre><code>kanidm group list
+kanidm group get &lt;name&gt;
+</code></pre>
+<h2 id="resetting-account-credentials"><a class="header" href="#resetting-account-credentials">Resetting Account Credentials</a></h2>
+<p>Members of the <code>idm_account_manage_priv</code> group have the rights to manage other users
+accounts security and login aspects. This includes resetting account credentials.</p>
+<p>We can perform a password reset on the demo_user for example as idm_admin, who is
+a default member of this group.</p>
+<pre><code>kanidm account credential set_password demo_user --name idm_admin
+kanidm self whoami --name demo_user
+</code></pre>
+<h2 id="nested-groups"><a class="header" href="#nested-groups">Nested Groups</a></h2>
+<p>Kanidm supports groups being members of groups, allowing nested groups. These nesting relationships
+are shown through the &quot;memberof&quot; attribute on groups and accounts.</p>
+<p>Kanidm makes all group-membership determinations by inspecting an entries &quot;memberof&quot; attribute.</p>
+<p>An example can be easily shown with:</p>
+<pre><code>kanidm group create group_1 --name idm_admin
+kanidm group create group_2 --name idm_admin
+kanidm account create nest_example &quot;Nesting Account Example&quot; --name idm_admin
+kanidm group add_members group_1 group_2 --name idm_admin
+kanidm group add_members group2 nest_example --name idm_admin
+kanidm account get nest_example --name anonymous
+</code></pre>
+<h2 id="account-validity"><a class="header" href="#account-validity">Account Validity</a></h2>
+<p>Kanidm supports accounts that are only able to be authenticated between specific datetime
+windows. This takes the form of a &quot;valid from&quot; attribute that defines the earliest start
+date where authentication can succeed, and an expiry date where the account will no longer
+allow authentication.</p>
+<p>This can be displayed with:</p>
+<pre><code>kanidm account validity show demo_user --name idm_admin
+valid after: 2020-09-25T21:22:04+10:00
+expire: 2020-09-25T01:22:04+10:00
+</code></pre>
+<p>These datetimes are stored in the server as UTC, but presented according to your local system time
+to aid correct understanding of when the events will occur.</p>
+<p>To set the values, an account with account management permission is required (for example, idm_admin).
+Again, these values will correctly translated from the entered local timezone to UTC.</p>
+<pre><code># Set the earliest time the account can start authenticating
+kanidm account validity begin_from demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+# Set the expiry or end date of the account
+kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name idm_admin
+</code></pre>
+<p>To unset or remove these values the following can be used:</p>
+<pre><code>kanidm account validity begin_from demo_user any|clear --name idm_admin
+kanidm account validity expire_at demo_user never|clear --name idm_admin
+</code></pre>
+<p>To &quot;lock&quot; an account, you can set the expire_at value to the past or unix epoch. Even in the situation
+where the &quot;valid from&quot; is <em>after</em> the expire_at, the expire_at will be respected.</p>
+<pre><code>kanidm account validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
+</code></pre>
+<p>These validity settings impact all authentication functions of the account (kanidm, ldap, radius).</p>
+<h2 id="why-cant-i-change-admin-with-idm_admin"><a class="header" href="#why-cant-i-change-admin-with-idm_admin">Why Can't I Change admin With idm_admin?</a></h2>
+<p>As a security mechanism there is a distinction between &quot;accounts&quot; and &quot;high permission
+accounts&quot;. This is to help prevent elevation attacks, where say a member of a
+service desk could attempt to reset the password of idm_admin or admin, or even a member of
+HR or System Admin teams to move laterally.</p>
+<p>Generally, membership of a &quot;privilege&quot; group that ships with Kanidm, such as:</p>
+<ul>
+<li>idm_account_manage_priv</li>
+<li>idm_people_read_priv</li>
+<li>idm_schema_manage_priv</li>
+<li>many more ...</li>
+</ul>
+<p>Indirectly grants you membership to &quot;idm_high_privilege&quot;. If you are a member of
+this group, the standard &quot;account&quot; and &quot;people&quot; rights groups are NOT able to
+alter, read or manage these accounts. To manage these accounts higher rights
+are required, such as those held by the admin account are required.</p>
+<p>Further, groups that are considered &quot;idm_high_privilege&quot; can NOT be managed
+by the standard &quot;idm_group_manage_priv&quot; group.</p>
+<p>Management of high privilege accounts and groups is granted through the
+the &quot;hp&quot; variants of all privileges. A non-conclusive list:</p>
+<ul>
+<li>idm_hp_account_read_priv</li>
+<li>idm_hp_account_manage_priv</li>
+<li>idm_hp_account_write_priv</li>
+<li>idm_hp_group_manage_priv</li>
+<li>idm_hp_group_write_priv</li>
+</ul>
+<p>Membership of any of these groups should be considered to be equivalent to
+system administration rights in the directory, and by extension, over all network
+resources that trust Kanidm.</p>
+<p>All groups that are flagged as &quot;idm_high_privilege&quot; should be audited and
+monitored to ensure that they are not altered.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                                                    <a rel="prev" href="installing_client_tools.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+                        
+                                                    <a rel="next" href="administrivia.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+                        
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                                    <a rel="prev" href="installing_client_tools.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+                
+                                    <a rel="next" href="administrivia.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+                            </nav>
+
+        </div>
+
+        
+        
+        
+                <script type="text/javascript">
+            window.playground_copyable = true;
+        </script>
+        
+        
+                <script src="elasticlunr.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="mark.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="searcher.js" type="text/javascript" charset="utf-8"></script>
+        
+        <script src="clipboard.min.js" type="text/javascript" charset="utf-8"></script>
+        <script src="highlight.js" type="text/javascript" charset="utf-8"></script>
+        <script src="book.js" type="text/javascript" charset="utf-8"></script>
+
+        <!-- Custom JS scripts -->
+        
+        
+    </body>
+</html>

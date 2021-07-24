@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["DbScanOpt",""],["KanidmdOpt",""]],"fn":[["main",""],["read_file_metadata",""]],"struct":[["BackupOpt",""],["CommonOpt",""],["DbScanGetId2Entry",""],["DbScanGetIndex",""],["DbScanListIndex",""],["DomainOpt",""],["RecoverAccountOpt",""],["RestoreOpt",""],["ServerConfig",""]]});
