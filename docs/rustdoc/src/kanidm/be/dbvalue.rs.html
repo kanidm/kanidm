@@ -201,11 +201,13 @@
 <span id="198">198</span>
 <span id="199">199</span>
 <span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashSet</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">url::Url</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs::proto::COSEKey</span>;
+<span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{<span class="ident">COSEKey</span>, <span class="ident">UserVerificationPolicy</span>};
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DbCidV1</span> {
@@ -273,6 +275,8 @@
     <span class="kw">pub</span> <span class="ident">counter</span>: <span class="ident">u32</span>,
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">verified</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>, <span class="ident">default</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">registration_policy</span>: <span class="ident">UserVerificationPolicy</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>

@@ -232,7 +232,7 @@
 <span class="kw">use</span> <span class="ident">webauthn_rs::proto::Credential</span> <span class="kw">as</span> <span class="ident">WebauthnCredential</span>;
 <span class="kw">use</span> <span class="ident">webauthn_rs::proto</span>::{<span class="ident">CreationChallengeResponse</span>, <span class="ident">RegisterPublicKeyCredential</span>};
 <span class="kw">use</span> <span class="ident">webauthn_rs::RegistrationState</span> <span class="kw">as</span> <span class="ident">WebauthnRegistrationState</span>;
-<span class="kw">use</span> <span class="ident">webauthn_rs</span>::{<span class="ident">proto::UserVerificationPolicy</span>, <span class="ident">Webauthn</span>};
+<span class="kw">use</span> <span class="ident">webauthn_rs::Webauthn</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">MfaRegCred</span> {
     <span class="ident">Totp</span>(<span class="ident">Totp</span>),
@@ -389,7 +389,7 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Setup the registration.</span>
         <span class="kw">let</span> (<span class="ident">chal</span>, <span class="ident">reg_state</span>) <span class="op">=</span> <span class="ident">webauthn</span>
-            .<span class="ident">generate_challenge_register</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">name</span>, <span class="prelude-val">Some</span>(<span class="ident">UserVerificationPolicy::Discouraged</span>))
+            .<span class="ident">generate_challenge_register</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">name</span>, <span class="bool-val">false</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Unable to generate webauthn challenge -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::Webauthn</span>
@@ -424,12 +424,12 @@
 
         <span class="kw">match</span> <span class="ident">nstate</span> {
             <span class="ident">MfaRegState::WebauthnInit</span>(<span class="ident">label</span>, <span class="ident">reg_state</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">webauthn</span>
-                .<span class="ident">register_credential</span>(<span class="ident">chal</span>, <span class="ident">reg_state</span>, <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>))
+                .<span class="ident">register_credential</span>(<span class="ident">chal</span>, <span class="kw-2">&amp;</span><span class="ident">reg_state</span>, <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>))
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                     <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Unable to register webauthn credential -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::Webauthn</span>
                 })
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> (<span class="ident">MfaRegNext::Success</span>, <span class="prelude-val">Some</span>(<span class="ident">MfaRegCred::Webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>)))),
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">cred</span>, <span class="kw">_</span>)<span class="op">|</span> (<span class="ident">MfaRegNext::Success</span>, <span class="prelude-val">Some</span>(<span class="ident">MfaRegCred::Webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>)))),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
         }
     }
