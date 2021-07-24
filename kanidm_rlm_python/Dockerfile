@@ -1,5 +1,5 @@
 FROM opensuse/leap:latest
-MAINTAINER william@blackhats.net.au
+LABEL org.opencontainers.image.authors="william@blackhats.net.au"
 
 EXPOSE 1812 1813
 
