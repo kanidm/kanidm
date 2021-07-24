@@ -57,7 +57,7 @@ impl TotpAlgo {
     }
 }
 
-/// https://tools.ietf.org/html/rfc6238 which relies on https://tools.ietf.org/html/rfc4226
+/// <https://tools.ietf.org/html/rfc6238> which relies on <https://tools.ietf.org/html/rfc4226>
 #[derive(Debug, Clone)]
 pub struct Totp {
     secret: Vec<u8>,

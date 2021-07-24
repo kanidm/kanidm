@@ -18,7 +18,7 @@ treated as such.
 
 ## Documentation / Getting Started / Install
 
-If you want to deploy kanidm to see what it can do, you should read the [kanidm book]
+If you want to deploy Kanidm to see what it can do, you should read the [kanidm book]
 
 We also publish limited [support guidelines].
 

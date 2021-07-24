@@ -269,29 +269,38 @@ impl CredHandler {
                     pw_mfa.backup_code.as_ref(),
                 ) {
                     (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
-                        webauthn.authenticate_credential(&resp, wan_state.clone())
-                                .map(|(cid, auth_data)| {
-                                    pw_mfa.mfa_state = CredVerifyState::Success;
-                                    // Success. Determine if we need to update the counter
-                                    // async from r.
-                                    if auth_data.counter != 0 {
-                                        // Do async
-                                        if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
-                                            target_uuid: who,
-                                            cid,
-                                            counter: auth_data.counter,
-                                        })) {
-                                            ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
-                                        };
+                        match webauthn.authenticate_credential(&resp, &wan_state) {
+                            Ok((cid, auth_data)) => {
+                                pw_mfa.mfa_state = CredVerifyState::Success;
+                                // Success. Determine if we need to update the counter
+                                // async from r.
+                                if auth_data.counter != 0 {
+                                    // Do async
+                                    if let Err(_e) =
+                                        async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                            WebauthnCounterIncrement {
+                                                target_uuid: who,
+                                                cid: cid.clone(),
+                                                counter: auth_data.counter,
+                                            },
+                                        ))
+                                    {
+                                        ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                                     };
-                                    CredState::Continue(vec![AuthAllowed::Password])
-                                })
-                                .unwrap_or_else(|e| {
-                                    pw_mfa.mfa_state = CredVerifyState::Fail;
-                                    // Denied.
-                                    lsecurity!(au, "Handler::Webauthn -> Result::Denied - webauthn error {:?}", e);
-                                    CredState::Denied(BAD_WEBAUTHN_MSG)
-                                })
+                                };
+                                CredState::Continue(vec![AuthAllowed::Password])
+                            }
+                            Err(e) => {
+                                pw_mfa.mfa_state = CredVerifyState::Fail;
+                                // Denied.
+                                lsecurity!(
+                                    au,
+                                    "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
+                                    e
+                                );
+                                CredState::Denied(BAD_WEBAUTHN_MSG)
+                            }
+                        }
                     }
                     (AuthCredential::Totp(totp_chal), Some(totp), _, _) => {
                         if totp.verify(*totp_chal, ts) {
@@ -425,29 +434,36 @@ impl CredHandler {
         match cred {
             AuthCredential::Webauthn(resp) => {
                 // lets see how we go.
-                webauthn.authenticate_credential(&resp, wan_cred.wan_state.clone())
-                    .map(|(cid, auth_data)| {
+                match webauthn.authenticate_credential(&resp, &wan_cred.wan_state) {
+                    Ok((cid, auth_data)) => {
                         wan_cred.state = CredVerifyState::Success;
                         // Success. Determine if we need to update the counter
                         // async from r.
                         if auth_data.counter != 0 {
                             // Do async
-                            if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(WebauthnCounterIncrement {
-                                target_uuid: who,
-                                cid,
-                                counter: auth_data.counter,
-                            })) {
+                            if let Err(_e) = async_tx.send(DelayedAction::WebauthnCounterIncrement(
+                                WebauthnCounterIncrement {
+                                    target_uuid: who,
+                                    cid: cid.clone(),
+                                    counter: auth_data.counter,
+                                },
+                            )) {
                                 ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                             };
                         };
                         CredState::Success(AuthType::Webauthn)
-                    })
-                    .unwrap_or_else(|e| {
+                    }
+                    Err(e) => {
                         wan_cred.state = CredVerifyState::Fail;
                         // Denied.
-                        lsecurity!(au, "Handler::Webauthn -> Result::Denied - webauthn error {:?}", e);
+                        lsecurity!(
+                            au,
+                            "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
+                            e
+                        );
                         CredState::Denied(BAD_WEBAUTHN_MSG)
-                    })
+                    }
+                }
             }
             _ => {
                 lsecurity!(
@@ -825,7 +841,6 @@ mod tests {
     use crate::utils::{duration_from_epoch_now, readable_password_from_random};
     use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech};
     use std::time::Duration;
-    use webauthn_rs::proto::UserVerificationPolicy;
     use webauthn_rs::Webauthn;
 
     use tokio::sync::mpsc::unbounded_channel as unbounded;
@@ -1395,15 +1410,15 @@ mod tests {
         let mut wa = WebauthnAuthenticator::new(U2FSoft::new());
 
         let (chal, reg_state) = webauthn
-            .generate_challenge_register(name, Some(UserVerificationPolicy::Discouraged))
+            .generate_challenge_register(name, false)
             .expect("Failed to setup webauthn rego challenge");
 
         let r = wa
             .do_registration("https://idm.example.com", chal)
             .expect("Failed to create soft token");
 
-        let wan_cred = webauthn
-            .register_credential(&r, reg_state, |_| Ok(false))
+        let (wan_cred, _) = webauthn
+            .register_credential(&r, &reg_state, |_| Ok(false))
             .expect("Failed to register soft token");
 
         (webauthn, wa, wan_cred)
@@ -1505,18 +1520,15 @@ mod tests {
         {
             let mut inv_wa = WebauthnAuthenticator::new(U2FSoft::new());
             let (chal, reg_state) = webauthn
-                .generate_challenge_register(
-                    &account.name,
-                    Some(UserVerificationPolicy::Discouraged),
-                )
+                .generate_challenge_register(&account.name, false)
                 .expect("Failed to setup webauthn rego challenge");
 
             let r = inv_wa
                 .do_registration("https://idm.example.com", chal)
                 .expect("Failed to create soft token");
 
-            let inv_cred = webauthn
-                .register_credential(&r, reg_state, |_| Ok(false))
+            let (inv_cred, _) = webauthn
+                .register_credential(&r, &reg_state, |_| Ok(false))
                 .expect("Failed to register soft token");
 
             // Discard the auth_state, we only need the invalid challenge.

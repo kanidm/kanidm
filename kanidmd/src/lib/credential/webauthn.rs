@@ -7,15 +7,15 @@ pub struct WebauthnDomainConfig {
 }
 
 impl WebauthnConfig for WebauthnDomainConfig {
-    fn get_relying_party_name(&self) -> String {
-        self.rp_name.clone()
+    fn get_relying_party_name(&self) -> &str {
+        self.rp_name.as_str()
     }
 
     fn get_origin(&self) -> &str {
         self.origin.as_str()
     }
 
-    fn get_relying_party_id(&self) -> String {
-        self.rp_id.clone()
+    fn get_relying_party_id(&self) -> &str {
+        self.rp_id.as_str()
     }
 }

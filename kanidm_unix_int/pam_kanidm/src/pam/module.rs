@@ -68,7 +68,7 @@ pub type PamResult<T> = Result<T, PamResultCode>;
 /// Type-level mapping for safely retrieving values with `get_item`.
 ///
 /// See `pam_get_item` in
-/// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+/// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
 pub trait PamItem {
     /// Maps a Rust type to a pam constant.
     ///
@@ -84,7 +84,7 @@ impl PamHandle {
     /// previously.
     ///
     /// See `pam_get_data` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     pub unsafe fn get_data<'a, T>(&'a self, key: &str) -> PamResult<&'a T> {
         let c_key = CString::new(key).unwrap();
         let mut ptr: *const PamDataT = ptr::null();
@@ -102,7 +102,7 @@ impl PamHandle {
     /// as long as the current pam cycle.
     ///
     /// See `pam_set_data` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     pub fn set_data<T>(&self, key: &str, data: Box<T>) -> PamResult<()> {
         let c_key = CString::new(key).unwrap();
         let res = unsafe {
@@ -121,7 +121,7 @@ impl PamHandle {
     /// particularly useful for getting a `PamConv` reference.
     ///
     /// See `pam_get_item` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     pub fn get_item<'a, T: PamItem>(&self) -> PamResult<&'a T> {
         let mut ptr: *const PamItemT = ptr::null();
         let (res, item) = unsafe {
@@ -143,7 +143,7 @@ impl PamHandle {
     /// Note that all items are strings, except `PAM_CONV` and `PAM_FAIL_DELAY`.
     ///
     /// See `pam_set_item` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     pub fn set_item_str<T: PamItem>(&mut self, item: &str) -> PamResult<()> {
         let c_item = CString::new(item).unwrap();
 
@@ -168,7 +168,7 @@ impl PamHandle {
     /// This is really a specialization of `get_item`.
     ///
     /// See `pam_get_user` in
-    /// http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html
+    /// <http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html>
     pub fn get_user(&self, prompt: Option<&str>) -> PamResult<String> {
         let ptr: *mut c_char = ptr::null_mut();
         let res = match prompt {

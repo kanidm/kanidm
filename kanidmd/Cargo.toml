@@ -79,7 +79,7 @@ idlset = { version = "^0.2" }
 # idlset = { version = "^0.2", path = "../../idlset" }
 
 ldap3_server = "0.1"
-webauthn-rs = "0.3.0-alpha.7"
+webauthn-rs = "0.3.0-alpha.9"
 
 libc = "0.2"
 users = "0.11"
@@ -98,7 +98,7 @@ simd_support = [ "concread/simd_support" ]
 [dev-dependencies]
 criterion = { version = "0.3", features = ["html_reports"] }
 # For testing webauthn
-webauthn-authenticator-rs = "0.3.0-alpha.9"
+webauthn-authenticator-rs = "0.3.0-alpha.10"
 
 [dev-dependencies.cargo-husky]
 version = "1"

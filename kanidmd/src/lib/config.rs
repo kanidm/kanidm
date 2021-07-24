@@ -33,6 +33,16 @@ impl Default for ServerRole {
     }
 }
 
+impl ToString for ServerRole {
+    fn to_string(&self) -> String {
+        match self {
+            ServerRole::WriteReplica => "write replica".to_string(),
+            ServerRole::WriteReplicaNoUI => "write replica (no ui)".to_string(),
+            ServerRole::ReadOnlyReplica => "read only replica".to_string(),
+        }
+    }
+}
+
 impl FromStr for ServerRole {
     type Err = &'static str;
 
@@ -98,6 +108,7 @@ impl fmt::Display for Configuration {
                 Some(i) => write!(f, "with online_backup_interval: {}, ", i),
                 None => write!(f, "with online_backup_interval: None, "),
             })
+            .and_then(|_| write!(f, "role: {}, ", self.role.to_string()))
             .and_then(|_| {
                 write!(
                     f,

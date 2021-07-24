@@ -37,7 +37,7 @@ can still ssh into your machines, even if your network is down, you move away fr
 some other interruption occurs.
 
 The kanidm_ssh_authorizedkeys command is part of the kanidm-unix-clients package, so should be installed
-on the servers. It communicates to kanidm_unixd, so you should have a configured pam/nsswitch
+on the servers. It communicates to kanidm_unixd, so you should have a configured PAM/nsswitch
 setup as well.
 
 You can test this is configured correctly by running:
