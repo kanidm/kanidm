@@ -1,0 +1,47 @@
+name: GitHub Pages
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Install deps
+        run: sudo apt-get update && sudo apt-get install -y clang build-essential librust-openssl-dev libssl-dev libsqlite3-dev libudev-dev libpam0g-dev
+
+      - name: Setup mdBook
+        uses: peaceiris/actions-mdbook@v1
+        with:
+          mdbook-version: 'latest'
+
+      - uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+
+      - uses: actions-rs/cargo@v1
+        with:
+          command: doc
+          args: --no-deps
+      - name: Copy developer readme into book
+        run: cp DEVELOPER_README.md ./kanidm_book/src/ && echo '- [Developer Guide](DEVELOPER_README.md)' >> ./kanidm_book/src/SUMMARY.md
+
+      - name: Run mdbook
+        run: mdbook build kanidm_book
+
+      - name: Move files around
+        run: mv ./kanidm_book/book/ ./docs/ && mkdir -p ./docs/rustdoc/ &&  mv ./target/doc/* ./docs/rustdoc/
+
+      - name: Deploy
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs
+          destination_dir: ./docs

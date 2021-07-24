@@ -124,7 +124,7 @@ accounts". This is to help prevent elevation attacks, where say a member of a
 service desk could attempt to reset the password of idm_admin or admin, or even a member of
 HR or System Admin teams to move laterally.
 
-Generally, membership of a "privilege" group that ships with kanidm, such as:
+Generally, membership of a "privilege" group that ships with Kanidm, such as:
 
 * idm_account_manage_priv
 * idm_people_read_priv

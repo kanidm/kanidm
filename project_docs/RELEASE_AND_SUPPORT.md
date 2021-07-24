@@ -1,6 +1,6 @@
 ## Release Schedule
 
-In the alpha phase, kanidm will be released on a 3 month (quarterly) basis,
+In the alpha phase, Kanidm will be released on a 3 month (quarterly) basis,
 starting on July 1st 2020.
 
 * January 1st

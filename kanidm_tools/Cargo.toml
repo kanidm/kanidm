@@ -17,6 +17,7 @@ path = "src/cli/lib.rs"
 [[bin]]
 name = "kanidm"
 path = "src/cli/main.rs"
+doc = false
 
 [[bin]]
 name = "kanidm_ssh_authorizedkeys_direct"

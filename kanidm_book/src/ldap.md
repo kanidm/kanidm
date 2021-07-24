@@ -1,4 +1,4 @@
-# Legacy Applications -- LDAP
+# LDAP
 
 While many applications can support systems like SAML or OAuth, many do not. LDAP
 has been the "lingua franca" of authentication for many years, with almost
@@ -43,7 +43,7 @@ For this reason, when you search the LDAP interface, Kanidm will make some mappi
 * The '\*' and '+' operators can not be used in conjuction with attribute lists in searches.
 
 These decisions were made to make the path as simple and effective as possible,
-relying more on the kanidm query and filter system than attempting to generate a tree-like
+relying more on the Kanidm query and filter system than attempting to generate a tree-like
 representation of data. As almost all clients can use filters for entry selection
 we don't believe this is a limitation for consuming applications.
 
@@ -81,7 +81,7 @@ By default Kanidm is limited in what attributes are generated or remaped into LD
 the server internally contains a map of extended attribute mappings for application specific requests
 that must be satisfied.
 
-An example is that some applications expect and require a 'CN' value, even though kanidm does not
+An example is that some applications expect and require a 'CN' value, even though Kanidm does not
 provide it. If the application is unable to be configured to accept "name" it may be necessary
 to use Kanidm's mapping feature. Today these are compiled into the server so you may need to open
 an issue with your requirements.
