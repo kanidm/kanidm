@@ -61,6 +61,11 @@ pub struct Configuration {
     pub cookie_key: [u8; 32],
     pub integration_test_config: Option<Box<IntegrationTestConfig>>,
     pub log_level: Option<u32>,
+    // TODO: online backup settings
+    pub online_backup_path: Option<String>,
+    // TOOD: maybe a cron pattern?
+    pub online_backup_interval: Option<u32>,
+    pub online_backup_versions: Option<u32>,
     pub origin: String,
     pub role: ServerRole,
 }
@@ -84,6 +89,14 @@ impl fmt::Display for Configuration {
             .and_then(|_| match self.log_level {
                 Some(u) => write!(f, "with log_level: {:x}, ", u),
                 None => write!(f, "with log_level: default, "),
+            })
+            .and_then(|_| match &self.online_backup_path {
+                Some(p) => write!(f, "with online_backup_path: {}, ", p),
+                None => write!(f, "with online_backup_path: None, "),
+            })
+            .and_then(|_| match self.online_backup_interval {
+                Some(i) => write!(f, "with online_backup_interval: {}, ", i),
+                None => write!(f, "with online_backup_interval: None, "),
             })
             .and_then(|_| {
                 write!(
@@ -113,6 +126,9 @@ impl Configuration {
             cookie_key: [0; 32],
             integration_test_config: None,
             log_level: None,
+            online_backup_path: None,
+            online_backup_interval: None,
+            online_backup_versions: None,
             origin: "https://idm.example.com".to_string(),
             role: ServerRole::WriteReplica,
         };
@@ -125,6 +141,17 @@ impl Configuration {
         self.log_level = log_level;
     }
 
+    pub fn update_online_backup_path(&mut self, online_backup_path: &Option<String>) {
+        self.online_backup_path = online_backup_path.clone();
+    }
+
+    pub fn update_online_backup_interval(&mut self, online_backup_interval: Option<u32>) {
+        self.online_backup_interval = online_backup_interval;
+    }
+
+    pub fn update_online_backup_versions(&mut self, online_backup_versions: Option<u32>) {
+        self.online_backup_versions = online_backup_versions;
+    }
     pub fn update_db_path(&mut self, p: &str) {
         self.db_path = p.to_string();
     }
