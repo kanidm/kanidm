@@ -1765,24 +1765,20 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Assert if an attribute of this name is present, and one of it's values contains
     /// the following substring, if possible to perform the substring comparison.
     pub fn attribute_substring(&self, attr: &str, subvalue: &PartialValue) -> bool {
-        match self.attrs.get(attr) {
-            Some(v_list) => v_list
-                .iter()
-                .fold(false, |acc, v| if acc { acc } else { v.contains(subvalue) }),
-            None => false,
-        }
+        self.attrs
+            .get(attr)
+            .map(|vset| vset.substring(subvalue))
+            .unwrap_or(false)
     }
 
     #[inline(always)]
     /// Assert if an attribute of this name is present, and one of it's values is less than
     /// the following partial value
     pub fn attribute_lessthan(&self, attr: &str, subvalue: &PartialValue) -> bool {
-        match self.attrs.get(attr) {
-            Some(v_list) => v_list
-                .iter()
-                .fold(false, |acc, v| if acc { acc } else { v.lessthan(subvalue) }),
-            None => false,
-        }
+        self.attrs
+            .get(attr)
+            .map(|vset| vset.lessthan(subvalue))
+            .unwrap_or(false)
     }
 
     // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we

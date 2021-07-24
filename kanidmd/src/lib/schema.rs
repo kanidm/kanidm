@@ -224,8 +224,6 @@ impl SchemaAttribute {
     }
 
     pub fn validate_ava(&self, a: &str, ava: &ValueSet) -> Result<(), SchemaError> {
-        unimplemented!();
-        /*
         // ltrace!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
@@ -259,7 +257,6 @@ impl SchemaAttribute {
         } else {
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
-        */
     }
 }
 

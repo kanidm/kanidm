@@ -558,7 +558,7 @@ impl PartialValue {
         }
     }
 
-    pub fn contains(&self, s: &PartialValue) -> bool {
+    pub fn substring(&self, s: &PartialValue) -> bool {
         match (self, s) {
             (PartialValue::Utf8(s1), PartialValue::Utf8(s2)) => s1.contains(s2),
             (PartialValue::Iutf8(s1), PartialValue::Iutf8(s2)) => s1.contains(s2),
@@ -1072,12 +1072,12 @@ impl Value {
         self.pv.is_url()
     }
 
-    pub fn contains(&self, s: &PartialValue) -> bool {
-        self.pv.contains(s)
-    }
-
     pub fn lessthan(&self, s: &PartialValue) -> bool {
         self.pv.lessthan(s)
+    }
+
+    pub fn substring(&self, s: &PartialValue) -> bool {
+        self.pv.substring(s)
     }
 
     // Converters between DBRepr -> MemRepr. It's likely many of these

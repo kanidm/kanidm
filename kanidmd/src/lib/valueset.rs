@@ -3,7 +3,6 @@ use crate::prelude::*;
 use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::iter::FromIterator;
-use std::marker::PhantomData;
 
 pub struct ValueSet {
     inner: BTreeSet<Value>,
@@ -25,12 +24,13 @@ impl ValueSet {
     // insert
     pub fn insert(&mut self, value: Value) -> bool {
         // Return true if the element is new.
-        unimplemented!();
+        self.inner.insert(value)
     }
 
     // set values
-    pub fn set(&mut self, values: impl Iterator<Item = Value>) {
-        unimplemented!();
+    pub fn set(&mut self, iter: impl Iterator<Item = Value>) {
+        self.inner.clear();
+        self.inner.extend(iter);
     }
 
     pub fn get<Q>(&self, value: &Q) -> Option<&Value>
@@ -38,28 +38,36 @@ impl ValueSet {
         Value: Borrow<Q> + Ord,
         Q: Ord + ?Sized,
     {
-        unimplemented!();
+        self.inner.get(value)
     }
 
     // delete a value
-    pub fn remove(&mut self, value: &PartialValue) {
-        unimplemented!();
+    pub fn remove<Q>(&mut self, value: &Q) -> bool
+    where
+        Value: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.inner.remove(value)
     }
 
-    pub fn contains(&self, value: &PartialValue) -> bool {
-        unimplemented!();
+    pub fn contains<Q>(&self, value: &Q) -> bool
+    where
+        Value: Borrow<Q> + Ord,
+        Q: Ord + ?Sized,
+    {
+        self.inner.contains(value)
     }
 
     pub fn substring(&self, value: &PartialValue) -> bool {
-        unimplemented!();
+        self.inner.iter().any(|v| v.substring(value))
     }
 
     pub fn lessthan(&self, value: &PartialValue) -> bool {
-        unimplemented!();
+        self.inner.iter().any(|v| v.lessthan(value))
     }
 
     pub fn len(&self) -> usize {
-        unimplemented!();
+        self.inner.len()
     }
 
     pub fn is_empty(&self) -> bool {
@@ -68,116 +76,135 @@ impl ValueSet {
 
     // We'll need to be able to do partialeq/intersect etc later.
 
-    pub fn iter(&self) -> ValueSetIter {
-        unimplemented!()
+    pub fn iter(&self) -> Iter {
+        (&self).into_iter()
     }
 
     pub fn difference<'a>(&'a self, other: &'a ValueSet) -> Difference<'a> {
-        unimplemented!()
+        Difference {
+            iter: self.inner.difference(&other.inner),
+        }
     }
 
     pub fn symmetric_difference<'a>(&'a self, other: &'a ValueSet) -> SymmetricDifference<'a> {
-        unimplemented!()
+        SymmetricDifference {
+            iter: self.inner.symmetric_difference(&other.inner),
+        }
     }
 }
 
 impl PartialEq for ValueSet {
     fn eq(&self, other: &Self) -> bool {
-        unimplemented!()
+        self.inner.eq(&other.inner)
     }
 }
 
 impl FromIterator<Value> for ValueSet {
-    fn from_iter<T>(iter: T) -> Self {
-        unimplemented!()
+    fn from_iter<T>(iter: T) -> Self
+    where
+        T: IntoIterator<Item = Value>,
+    {
+        ValueSet {
+            inner: BTreeSet::from_iter(iter),
+        }
     }
 }
 
 impl Clone for ValueSet {
     fn clone(&self) -> Self {
-        unimplemented!()
+        ValueSet {
+            inner: self.inner.clone(),
+        }
     }
 }
 
-pub struct ValueSetIter<'a> {
-    phantom: PhantomData<&'a Value>,
+pub struct Iter<'a> {
+    iter: std::collections::btree_set::Iter<'a, Value>,
 }
 
-impl<'a> Iterator for ValueSetIter<'a> {
+impl<'a> Iterator for Iter<'a> {
     type Item = &'a Value;
 
     fn next(&mut self) -> Option<&'a Value> {
-        unimplemented!()
+        self.iter.next()
+    }
+}
+
+impl<'a> IntoIterator for &'a ValueSet {
+    type Item = &'a Value;
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Iter {
+            iter: (&self.inner).into_iter(),
+        }
     }
 }
 
 pub struct Difference<'a> {
-    phantom: PhantomData<&'a Value>,
+    iter: std::collections::btree_set::Difference<'a, Value>,
 }
 
 impl<'a> Iterator for Difference<'a> {
     type Item = &'a Value;
 
     fn next(&mut self) -> Option<&'a Value> {
-        unimplemented!()
+        self.iter.next()
     }
 }
 
 pub struct SymmetricDifference<'a> {
-    phantom: PhantomData<&'a Value>,
+    iter: std::collections::btree_set::SymmetricDifference<'a, Value>,
 }
 
 impl<'a> Iterator for SymmetricDifference<'a> {
     type Item = &'a Value;
 
     fn next(&mut self) -> Option<&'a Value> {
-        unimplemented!()
+        self.iter.next()
     }
 }
 
-impl<'a> IntoIterator for &'a ValueSet {
-    type Item = &'a Value;
-    type IntoIter = ValueSetIter<'a>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        unimplemented!()
-    }
+pub struct IntoIter {
+    iter: std::collections::btree_set::IntoIter<Value>,
 }
 
-pub struct ValueSetIntoIter {}
-
-impl Iterator for ValueSetIntoIter {
+impl Iterator for IntoIter {
     type Item = Value;
 
     fn next(&mut self) -> Option<Value> {
-        unimplemented!()
+        self.iter.next()
     }
 }
 
 impl IntoIterator for ValueSet {
     type Item = Value;
-    type IntoIter = ValueSetIntoIter;
+    type IntoIter = IntoIter;
 
     fn into_iter(self) -> Self::IntoIter {
-        unimplemented!()
+        IntoIter {
+            iter: self.inner.into_iter(),
+        }
     }
 }
 
 impl std::fmt::Debug for ValueSet {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        unimplemented!()
+        f.debug_struct("ValueSet")
+            .field("inner", &self.inner)
+            .finish()
     }
 }
 
 #[cfg(test)]
 mod tests {
-    /*
-    use crate::value::*;
-    */
-    use crate::valueset::*;
+    use crate::value::Value;
+    use crate::valueset::ValueSet;
 
     #[test]
     fn test_valueset_basic() {
-        unimplemented!();
+        let mut vs = ValueSet::new();
+        assert!(vs.insert(Value::new_uint32(0)));
+        assert!(!vs.insert(Value::new_uint32(0)));
     }
 }
