@@ -352,6 +352,7 @@ impl TryFrom<DbCredV1> for Credential {
                                 cred: wc.cred,
                                 counter: wc.counter,
                                 verified: wc.verified,
+                                registration_policy: wc.registration_policy,
                             },
                         )
                     })
@@ -647,6 +648,7 @@ impl Credential {
                             cred: v.cred.clone(),
                             counter: v.counter,
                             verified: v.verified,
+                            registration_policy: v.registration_policy,
                         })
                         .collect(),
                 ),
@@ -666,6 +668,7 @@ impl Credential {
                             cred: v.cred.clone(),
                             counter: v.counter,
                             verified: v.verified,
+                            registration_policy: v.registration_policy,
                         })
                         .collect(),
                 ),
