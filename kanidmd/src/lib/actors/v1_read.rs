@@ -171,11 +171,15 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_online_backup(&self, msg: LiveBackupEvent) {
+    pub async fn handle_online_backup(&self, msg: LiveBackupEvent, outpath: &str) {
         let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
 
         ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
 
+        // TODO: might be something like "backup-timestamp.json"
+        let dest_file = format!("{}/{}", outpath, "backup.json");
+
+        // TODO: handle the max versions to keep here?
         let idms_prox_read = self.idms.proxy_read_async().await;
         lperf_op_segment!(
             &mut audit,
@@ -184,7 +188,7 @@ impl QueryServerReadV1 {
                 let res = idms_prox_read
                     .qs_read
                     .get_be_txn()
-                    .backup(&mut audit, "/tmp/backup.json");
+                    .backup(&mut audit, &dest_file);
 
                 ladmin_info!(audit, "online backup result: {:?}", res);
                 #[allow(clippy::expect_used)]
