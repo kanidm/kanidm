@@ -27,12 +27,12 @@ impl IntervalActor {
         });
     }
 
-    pub fn start_live_backup(server: &'static QueryServerReadV1) {
+    pub fn start_online_backup(server: &'static QueryServerReadV1) {
         tokio::spawn(async move {
             let mut inter = interval(Duration::from_secs(5));
             loop {
                 inter.tick().await;
-                server.handle_live_backup(LiveBackupEvent::new()).await;
+                server.handle_online_backup(LiveBackupEvent::new()).await;
             }
         });
     }

@@ -171,24 +171,24 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_live_backup(&self, msg: LiveBackupEvent) {
-        let mut audit = AuditScope::new("live backup", msg.eventid, self.log_level);
+    pub async fn handle_online_backup(&self, msg: LiveBackupEvent) {
+        let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
 
-        ltrace!(audit, "Begin live-backup event {:?}", msg.eventid);
+        ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
 
         let idms_prox_read = self.idms.proxy_read_async().await;
         lperf_op_segment!(
             &mut audit,
-            "actors::v1_read::handle<LiveBackupEvent>",
+            "actors::v1_read::handle<OnlineBackupEvent>",
             || {
                 let res = idms_prox_read
                     .qs_read
                     .get_be_txn()
                     .backup(&mut audit, "/tmp/backup.json");
 
-                ladmin_info!(audit, "live backup result: {:?}", res);
+                ladmin_info!(audit, "online backup result: {:?}", res);
                 #[allow(clippy::expect_used)]
-                res.expect("Live backup failed");
+                res.expect("Online backup failed");
             }
         );
         // At the end of the event we send it for logging.
