@@ -703,7 +703,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Setup timed events associated to the write thread
     IntervalActor::start(server_write_ref);
     // Setup timed events associated to the read thread
-    IntervalActor::start_live_backup(server_read_ref);
+    IntervalActor::start_online_backup(server_read_ref);
 
     // If we have been requested to init LDAP, configure it now.
     match &config.ldapaddress {
