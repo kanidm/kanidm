@@ -1459,6 +1459,15 @@
 <span id="1456">1456</span>
 <span id="1457">1457</span>
 <span id="1458">1458</span>
+<span id="1459">1459</span>
+<span id="1460">1460</span>
+<span id="1461">1461</span>
+<span id="1462">1462</span>
+<span id="1463">1463</span>
+<span id="1464">1464</span>
+<span id="1465">1465</span>
+<span id="1466">1466</span>
+<span id="1467">1467</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
 
@@ -1622,11 +1631,6 @@
     &lt;head&gt;
         &lt;meta charset=&quot;utf-8&quot;&gt;
         &lt;title&gt;Kanidm&lt;/title&gt;
-        &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/external/bootstrap.min.css&quot; integrity=&quot;sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T&quot;&gt;
-        &lt;script src=&quot;/pkg/external/jquery-3.3.1.slim.min.js&quot; integrity=&quot;sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo&quot;&gt;&lt;/script&gt;
-        &lt;script src=&quot;/pkg/external/popper.min.js&quot; integrity=&quot;sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1&quot;&gt;&lt;/script&gt;
-        &lt;script src=&quot;/pkg/external/bootstrap.min.js&quot; integrity=&quot;sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM&quot;&gt;&lt;/script&gt;
-        &lt;script src=&quot;/pkg/external/confetti.js&quot;&gt;&lt;/script&gt;
         &lt;script src=&quot;/pkg/bundle.js&quot; defer&gt;&lt;/script&gt;
     &lt;/head&gt;
 
@@ -2485,6 +2489,13 @@
     })
 }
 
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_valid</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">state</span>().<span class="ident">qe_r_ref</span>.<span class="ident">handle_auth_valid</span>(<span class="ident">uat</span>, <span class="ident">eventid</span>).<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_set_password</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
     <span class="kw">let</span> <span class="ident">obj</span>: <span class="ident">SingleStringRequest</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
@@ -2672,6 +2683,8 @@ impl&lt;State: Clone + Send + Sync + &#39;static&gt; tide::listener::Listener&lt
         }
 
         <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
+        <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
+        <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/ui/*&quot;</span>).<span class="ident">get</span>(<span class="ident">index_view</span>);
         <span class="ident">tserver</span>
             .<span class="ident">at</span>(<span class="string">&quot;/pkg&quot;</span>)
             .<span class="ident">serve_dir</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>))
@@ -2694,9 +2707,13 @@ impl&lt;State: Clone + Send + Sync + &#39;static&gt; tide::listener::Listener&lt
     <span class="comment">// == oauth endpoints.</span>
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">oauth2_process</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/oauth2&quot;</span>);
-    <span class="ident">oauth2_process</span>.<span class="ident">at</span>(<span class="string">&quot;/authorise&quot;</span>).<span class="ident">get</span>(<span class="ident">oauth2_authorise_get</span>);
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/authorise&quot;</span>)
+        .<span class="ident">post</span>(<span class="ident">oauth2_authorise_post</span>)
+        .<span class="ident">get</span>(<span class="ident">oauth2_authorise_get</span>);
     <span class="ident">oauth2_process</span>
         .<span class="ident">at</span>(<span class="string">&quot;/authorise/permit&quot;</span>)
+        .<span class="ident">post</span>(<span class="ident">oauth2_authorise_permit_post</span>)
         .<span class="ident">get</span>(<span class="ident">oauth2_authorise_permit_get</span>);
     <span class="ident">oauth2_process</span>.<span class="ident">at</span>(<span class="string">&quot;/token&quot;</span>).<span class="ident">post</span>(<span class="ident">oauth2_token_post</span>);
     <span class="comment">/*
@@ -2712,6 +2729,7 @@ impl&lt;State: Clone + Send + Sync + &#39;static&gt; tide::listener::Listener&lt
     <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/search&quot;</span>).<span class="ident">post</span>(<span class="ident">search</span>);
 
     <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/auth&quot;</span>).<span class="ident">post</span>(<span class="ident">auth</span>);
+    <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>).<span class="ident">get</span>(<span class="ident">auth_valid</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">schema_route</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/schema&quot;</span>);
     <span class="ident">schema_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">schema_get</span>);

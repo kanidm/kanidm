@@ -1456,6 +1456,10 @@
 <span id="1453">1453</span>
 <span id="1454">1454</span>
 <span id="1455">1455</span>
+<span id="1456">1456</span>
+<span id="1457">1457</span>
+<span id="1458">1458</span>
+<span id="1459">1459</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClientBuilder</span>, <span class="ident">APPLICATION_JSON</span>, <span class="ident">KOPID</span>, <span class="ident">KSESSIONID</span>};
 <span class="kw">use</span> <span class="ident">reqwest::header::CONTENT_TYPE</span>;
@@ -2178,6 +2182,10 @@
             <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>).<span class="kw">await</span>
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">whoami</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Entry</span>, <span class="ident">UserAuthToken</span>)<span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
