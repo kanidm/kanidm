@@ -1009,6 +1009,36 @@ impl QueryServerReadV1 {
         res
     }
 
+    pub async fn handle_auth_valid(
+        &self,
+        uat: Option<String>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let mut audit =
+            AuditScope::new("auth_valid", eventid, self.log_level);
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+
+        let res = lperf_op_segment!(
+            &mut audit,
+            "actors::v1_read::handle<AuthValid>",
+            || {
+                idms_prox_read
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .map(|_| ())
+                    .map_err(|e| {
+                        ladmin_error!(audit, "Invalid token: {:?}", e);
+                        e
+                    })
+            }
+        );
+        self.log.send(audit).map_err(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+            OperationError::InvalidState
+        })?;
+        res
+    }
+
     pub async fn handle_ldaprequest(
         &self,
         eventid: Uuid,
