@@ -1188,6 +1188,8 @@ pub fn create_https_server(
         bundy_handle,
     });
 
+    tserver.with(driftwood::ApacheCombinedLogger);
+
     // tide::log::with_level(tide::log::LevelFilter::Debug);
 
     // Add middleware?

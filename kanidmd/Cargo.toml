@@ -91,6 +91,8 @@ validator = { version = "0.14" }
 touch = "0.0.1"
 filetime = "0.2.14"
 
+driftwood = "0.0.6"
+
 [features]
 simd_support = [ "concread/simd_support" ]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
