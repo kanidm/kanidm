@@ -1,5 +1,6 @@
 use tokio::sync::mpsc::UnboundedSender as Sender;
 
+use chrono::{DateTime, SecondsFormat, Utc};
 use std::sync::Arc;
 
 use crate::prelude::*;
@@ -177,7 +178,9 @@ impl QueryServerReadV1 {
         ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
 
         // TODO: might be something like "backup-timestamp.json"
-        let dest_file = format!("{}/{}", outpath, "backup.json");
+        let now: DateTime<Utc> = Utc::now();
+        let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
+        let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
         // TODO: handle the max versions to keep here?
         let idms_prox_read = self.idms.proxy_read_async().await;
