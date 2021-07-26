@@ -6,7 +6,7 @@
 ///
 /// You cannot set some of the values on a user or computer object because these values can be set or reset only by the directory service.
 ///
-/// The flags are cumulative. To disable a user's account, set the UserAccountControl attribute to 0x0202 (0x002 + 0x0200). In decimal, this is 514 (2 + 512).
+/// The flags are cumulative. To disable a user's account, set the UserAccountControl attribute to 514 (2 + 512).
 ///
 /// Since User-Account-Control-Attribute is a constructed attribute, it cannot be used in an LDAP search filter.
 #[derive(Default)]
