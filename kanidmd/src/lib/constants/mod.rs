@@ -2,7 +2,7 @@
 
 pub mod acp;
 pub mod entries;
-pub mod ldap_useraccountcontrol;
+pub mod ldap;
 pub mod schema;
 pub mod system_config;
 pub mod uuids;
