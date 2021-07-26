@@ -1,4 +1,6 @@
-//! Values and descriptions come from <https://ldapwiki.com/wiki/User-Account-Control%20Attribute%20Values>
+//! Flags and byte values for the LDAP UserAccountControl Attribute
+//!
+//! Ref: <https://ldapwiki.com/wiki/User-Account-Control%20Attribute%20Values>
 
 /// This attribute value can be zero or a combination of one or more of the following values.
 ///
@@ -7,9 +9,6 @@
 /// The flags are cumulative. To disable a user's account, set the UserAccountControl attribute to 0x0202 (0x002 + 0x0200). In decimal, this is 514 (2 + 512).
 ///
 /// Since User-Account-Control-Attribute is a constructed attribute, it cannot be used in an LDAP search filter.
-
-// use std::fmt;
-
 #[derive(Default)]
 pub struct LdapUac {
     pub value: u32,
