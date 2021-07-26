@@ -20,6 +20,18 @@ impl LdapUac {
         LdapUac { value: 0 }
     }
 
+    pub fn flag_disable(self) -> Self {
+        LdapUac {
+            value: self.value + LdapUacFlag::AccountDisable.to_uint(),
+        }
+    }
+
+    pub fn flag_normal_account(self) -> Self {
+        LdapUac {
+            value: self.value + LdapUacFlag::NormalAccount.to_uint(),
+        }
+    }
+
     pub fn addflag(self, newflag: LdapUacFlag) -> Self {
         LdapUac {
             value: self.value + newflag.to_uint(),
@@ -100,5 +112,13 @@ mod tests {
         use crate::constants::ldap_useraccountcontrol::LdapUacFlag;
         let testuac = LdapUacFlag::UserUseAesKeys;
         assert_eq!(testuac.to_uint(), 2147483648);
+    }
+    #[test]
+    fn test_ldap_uac_normalaccount() {
+        use crate::constants::ldap_useraccountcontrol::LdapUac;
+        let user = LdapUac::new().flag_normal_account();
+        assert_eq!(user.value, 512);
+        let user = LdapUac::new().flag_normal_account().flag_disable();
+        assert_eq!(user.value, 514);
     }
 }
