@@ -509,6 +509,7 @@ pub(crate) fn ldap_all_vattrs() -> Vec<String> {
         "sshpublickey".to_string(),
         "cn".to_string(),
         "uidnumber".to_string(),
+        "useraccountcontrol".to_string(),
     ]
 }
 
@@ -529,6 +530,7 @@ pub(crate) fn ldap_vattr_map(input: &str) -> &str {
         "sshpublickey" => "ssh_publickey",
         "cn" => "name",
         "uidnumber" => "gidnumber",
+        "useraccountcontrol" => "gidnumber",
         a => a,
     }
 }

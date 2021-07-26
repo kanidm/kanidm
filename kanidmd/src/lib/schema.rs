@@ -1121,6 +1121,19 @@ impl<'a> SchemaWriteTransaction<'a> {
                     syntax: SyntaxType::UINT32,
                 },
             );
+            self.attributes.insert(
+                AttrString::from("useraccountcontrol"),
+                SchemaAttribute {
+                    name: AttrString::from("useraccountcontrol"),
+                    uuid: *UUID_SCHEMA_ATTR_USERACCOUNTCONTROL,
+                    description: String::from("An LDAP Compatible useraccountcontrol"),
+                    multivalue: false,
+                    unique: false,
+                    phantom: true,
+                    index: vec![],
+                    syntax: SyntaxType::UINT32,
+                },
+            );
             // end LDAP masking phantoms
 
             self.classes.insert(
