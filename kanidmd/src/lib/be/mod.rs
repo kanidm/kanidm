@@ -135,11 +135,10 @@ impl IdRawEntry {
         self,
         audit: &mut AuditScope,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
-        let db_e = serde_cbor::from_slice(self.data.as_slice())
-            .map_err(|e| {
-                ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
-                OperationError::SerdeCborError
-            })?;
+        let db_e = serde_cbor::from_slice(self.data.as_slice()).map_err(|e| {
+            ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
+            OperationError::SerdeCborError
+        })?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
         Entry::from_dbentry(audit, db_e, self.id)
             .map_err(|_| OperationError::CorruptedEntry(self.id))

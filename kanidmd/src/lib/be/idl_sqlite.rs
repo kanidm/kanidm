@@ -270,11 +270,10 @@ pub trait IdlSqliteTransaction {
                 })?;
 
             let idl = match idl_raw {
-                Some(d) => serde_cbor::from_slice(d.as_slice())
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
-                        OperationError::SerdeCborError
-                    })?,
+                Some(d) => serde_cbor::from_slice(d.as_slice()).map_err(|e| {
+                    ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
+                    OperationError::SerdeCborError
+                })?,
                 // We don't have this value, it must be empty (or we
                 // have a corrupted index .....
                 None => IDLBitRange::new(),
@@ -341,11 +340,10 @@ pub trait IdlSqliteTransaction {
 
             let spn: Option<Value> = match spn_raw {
                 Some(d) => {
-                    let dbv = serde_cbor::from_slice(d.as_slice())
-                        .map_err(|e| {
-                            ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
-                            OperationError::SerdeCborError
-                        })?;
+                    let dbv = serde_cbor::from_slice(d.as_slice()).map_err(|e| {
+                        ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
+                        OperationError::SerdeCborError
+                    })?;
                     let spn = Value::from_db_valuev1(dbv)
                         .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))?;
                     Some(spn)
@@ -406,12 +404,10 @@ pub trait IdlSqliteTransaction {
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
-            Some(d) => Some(
-                serde_cbor::from_slice(d.as_slice()).map_err(|e| {
-                    eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-                    OperationError::SerdeCborError
-                })?,
-            ),
+            Some(d) => Some(serde_cbor::from_slice(d.as_slice()).map_err(|e| {
+                eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                OperationError::SerdeCborError
+            })?),
             None => None,
         })
     }
@@ -433,12 +429,10 @@ pub trait IdlSqliteTransaction {
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
-            Some(d) => Some(
-                serde_cbor::from_slice(d.as_slice()).map_err(|e| {
-                    eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-                    OperationError::SerdeCborError
-                })?,
-            ),
+            Some(d) => Some(serde_cbor::from_slice(d.as_slice()).map_err(|e| {
+                eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                OperationError::SerdeCborError
+            })?),
             None => None,
         })
     }
@@ -506,7 +500,10 @@ pub trait IdlSqliteTransaction {
         let allids = self.get_identry_raw(audit, &IdList::AllIds)?;
         allids
             .into_iter()
-            .map(|data| data.into_dbentry(audit).map(|(id, db_e)| (id, db_e.to_string())))
+            .map(|data| {
+                data.into_dbentry(audit)
+                    .map(|(id, db_e)| (id, db_e.to_string()))
+            })
             .collect()
     }
 
@@ -743,11 +740,10 @@ impl IdlSqliteWriteTransaction {
         entry: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<(), OperationError> {
         let dbe = entry.to_dbentry();
-        let data = serde_cbor::to_vec(&dbe).map_err(|e|
-            {
-                ladmin_error!(au, "Serde CBOR Error -> {:?}", e);
-                OperationError::SerdeCborError
-            })?;
+        let data = serde_cbor::to_vec(&dbe).map_err(|e| {
+            ladmin_error!(au, "Serde CBOR Error -> {:?}", e);
+            OperationError::SerdeCborError
+        })?;
 
         let raw_entries = std::iter::once(IdRawEntry {
             id: entry.get_id(),
@@ -989,11 +985,10 @@ impl IdlSqliteWriteTransaction {
         match k {
             Some(k) => {
                 let dbv1 = k.to_db_valuev1();
-                let data =
-                    serde_cbor::to_vec(&dbv1).map_err(|e| {
-                        ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
-                        OperationError::SerdeCborError
-                    })?;
+                let data = serde_cbor::to_vec(&dbv1).map_err(|e| {
+                    ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
+                    OperationError::SerdeCborError
+                })?;
                 self.conn
                     .prepare("INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)")
                     .and_then(|mut stmt| {
@@ -1284,12 +1279,10 @@ impl IdlSqliteWriteTransaction {
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
-            Some(d) => Some(
-                serde_cbor::from_slice(d.as_slice()).map_err(|e| {
-                    eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-                    OperationError::SerdeCborError
-                })?,
-            ),
+            Some(d) => Some(serde_cbor::from_slice(d.as_slice()).map_err(|e| {
+                eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                OperationError::SerdeCborError
+            })?),
             None => None,
         })
     }
