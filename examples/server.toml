@@ -36,17 +36,16 @@ db_path = "/var/lib/kanidm/kanidm.db"
 # origin = "https://idm.example.com"
 origin = "https://idm.example.com:8443"
 #
-#   TODO
-#   The path to the output folder for online backups
-#   Uncommenting this will enable the online backup.
-# online_backup_path = "/var/lib/kanidm/"
-online_backup_path = "/tmp/kanidm/"
 #
+# [online_backup]
+#   The path to the output folder for online backups
+# path = "/var/lib/kanidm/backups/"
 #   How often the online_backup should run
-#   might be switched to something cron like
-online_backup_interval = 5
+#   every day at 22:00 - see https://crontab.guru/ 
+# schedule = "0 22 * * *" 
 #   Number of backups to keep
-# online_backup_versions = 10
+# versions = 3
+#
 #
 #   The role of this server. This affects features available and how replication may interact.
 #   Valid roles are:

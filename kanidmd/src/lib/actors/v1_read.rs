@@ -8,7 +8,7 @@ use crate::prelude::*;
 use crate::be::BackendTransaction;
 
 use crate::event::{
-    AuthEvent, AuthResult, LiveBackupEvent, SearchEvent, SearchResult, WhoamiResult,
+    AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult,
 };
 use crate::idm::event::{
     CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
@@ -172,17 +172,18 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_online_backup(&self, msg: LiveBackupEvent, outpath: &str) {
+    pub async fn handle_online_backup(&self, msg: OnlineBackupEvent, outpath: &str, versions: u64) {
         let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
 
         ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
 
-        // TODO: might be something like "backup-timestamp.json"
         let now: DateTime<Utc> = Utc::now();
         let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
+        // TODO: check outpath exists
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
         // TODO: handle the max versions to keep here?
+        info!("online backup versions to keep = {}", versions);
         let idms_prox_read = self.idms.proxy_read_async().await;
         lperf_op_segment!(
             &mut audit,

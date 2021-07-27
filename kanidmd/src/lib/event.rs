@@ -911,20 +911,20 @@ impl PurgeRecycledEvent {
 }
 
 #[derive(Debug)]
-pub struct LiveBackupEvent {
+pub struct OnlineBackupEvent {
     pub ident: Identity,
     pub eventid: Uuid,
 }
 
-impl Default for LiveBackupEvent {
+impl Default for OnlineBackupEvent {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl LiveBackupEvent {
+impl OnlineBackupEvent {
     pub fn new() -> Self {
-        LiveBackupEvent {
+        OnlineBackupEvent {
             ident: Identity::from_internal(),
             eventid: Uuid::new_v4(),
         }

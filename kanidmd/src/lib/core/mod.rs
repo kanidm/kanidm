@@ -703,17 +703,9 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Setup timed events associated to the write thread
     IntervalActor::start(server_write_ref);
     // Setup timed events associated to the read thread
-    // TODO: only start this if enable in config.
-    // TODO: maybe we should have better option processing here
-    // and pass it on to `start_online_backup()`
-    match &config.online_backup_path {
-        Some(p) => {
-            // TODO check path exists?
-            let outpath = p;
-            // TODO improve this as well.
-            let itime = config.online_backup_interval.unwrap_or(15);
-            // pass all necessary online backup options
-            IntervalActor::start_online_backup(server_read_ref, outpath, itime.into());
+    match &config.online_backup {
+        Some(cfg) => {
+            IntervalActor::start_online_backup(server_read_ref, &cfg);
         }
         None => {
             debug!("Online backup not requested, skipping");
