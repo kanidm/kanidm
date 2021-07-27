@@ -3058,7 +3058,6 @@
 <span id="3055">3055</span>
 <span id="3056">3056</span>
 <span id="3057">3057</span>
-<span id="3058">3058</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
@@ -3197,11 +3196,10 @@
         <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">db_e</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SerdeCborError</span>
-            })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">db_e</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="ident">OperationError::SerdeCborError</span>
+        })<span class="question-mark">?</span>;
         <span class="comment">// let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;</span>
         <span class="ident">Entry::from_dbentry</span>(<span class="ident">audit</span>, <span class="ident">db_e</span>, <span class="self">self</span>.<span class="ident">id</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::CorruptedEntry</span>(<span class="self">self</span>.<span class="ident">id</span>))

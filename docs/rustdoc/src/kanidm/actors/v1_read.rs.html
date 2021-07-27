@@ -1083,11 +1083,6 @@
 <span id="1080">1080</span>
 <span id="1081">1081</span>
 <span id="1082">1082</span>
-<span id="1083">1083</span>
-<span id="1084">1084</span>
-<span id="1085">1085</span>
-<span id="1086">1086</span>
-<span id="1087">1087</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
 
@@ -2105,24 +2100,19 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">audit</span> <span class="op">=</span>
-            <span class="ident">AuditScope::new</span>(<span class="string">&quot;auth_valid&quot;</span>, <span class="ident">eventid</span>, <span class="self">self</span>.<span class="ident">log_level</span>);
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">audit</span> <span class="op">=</span> <span class="ident">AuditScope::new</span>(<span class="string">&quot;auth_valid&quot;</span>, <span class="ident">eventid</span>, <span class="self">self</span>.<span class="ident">log_level</span>);
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">lperf_op_segment!</span>(
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
-            <span class="string">&quot;actors::v1_read::handle&lt;AuthValid&gt;&quot;</span>,
-            <span class="op">|</span><span class="op">|</span> {
-                <span class="ident">idms_prox_read</span>
-                    .<span class="ident">validate_and_parse_uat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid token: {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">e</span>
-                    })
-            }
-        );
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">lperf_op_segment!</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="string">&quot;actors::v1_read::handle&lt;AuthValid&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+            <span class="ident">idms_prox_read</span>
+                .<span class="ident">validate_and_parse_uat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid token: {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">e</span>
+                })
+        });
         <span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">audit</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;CRITICAL: UNABLE TO COMMIT LOGS&quot;</span>);
             <span class="ident">OperationError::InvalidState</span>

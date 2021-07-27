@@ -1623,13 +1623,6 @@
 <span id="1620">1620</span>
 <span id="1621">1621</span>
 <span id="1622">1622</span>
-<span id="1623">1623</span>
-<span id="1624">1624</span>
-<span id="1625">1625</span>
-<span id="1626">1626</span>
-<span id="1627">1627</span>
-<span id="1628">1628</span>
-<span id="1629">1629</span>
 </pre><div class="example-wrap"><pre class="rust ">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be</span>::{<span class="ident">BackendConfig</span>, <span class="ident">IdList</span>, <span class="ident">IdRawEntry</span>, <span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span>};
@@ -1903,11 +1896,10 @@
                 })<span class="question-mark">?</span>;
 
             <span class="kw">let</span> <span class="ident">idl</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">idl_raw</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>())
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SerdeCborError</span>
-                    })<span class="question-mark">?</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">OperationError::SerdeCborError</span>
+                })<span class="question-mark">?</span>,
                 <span class="comment">// We don&#39;t have this value, it must be empty (or we</span>
                 <span class="comment">// have a corrupted index .....</span>
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">IDLBitRange::new</span>(),
@@ -1974,11 +1966,10 @@
 
             <span class="kw">let</span> <span class="ident">spn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">spn_raw</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">let</span> <span class="ident">dbv</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>())
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="ident">OperationError::SerdeCborError</span>
-                        })<span class="question-mark">?</span>;
+                    <span class="kw">let</span> <span class="ident">dbv</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">OperationError::SerdeCborError</span>
+                    })<span class="question-mark">?</span>;
                     <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">Value::from_db_valuev1</span>(<span class="ident">dbv</span>)
                         .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::CorruptedIndex</span>(<span class="string">&quot;uuid2spn&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
                     <span class="prelude-val">Some</span>(<span class="ident">spn</span>)
@@ -2039,12 +2030,10 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">data</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(
-                <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SerdeCborError</span>
-                })<span class="question-mark">?</span>,
-            ),
+            <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">OperationError::SerdeCborError</span>
+            })<span class="question-mark">?</span>),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         })
     }
@@ -2066,12 +2055,10 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">data</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(
-                <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SerdeCborError</span>
-                })<span class="question-mark">?</span>,
-            ),
+            <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">OperationError::SerdeCborError</span>
+            })<span class="question-mark">?</span>),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         })
     }
@@ -2139,7 +2126,10 @@
         <span class="kw">let</span> <span class="ident">allids</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_identry_raw</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">IdList::AllIds</span>)<span class="question-mark">?</span>;
         <span class="ident">allids</span>
             .<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> <span class="ident">data</span>.<span class="ident">into_dbentry</span>(<span class="ident">audit</span>).<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">db_e</span>)<span class="op">|</span> (<span class="ident">id</span>, <span class="ident">db_e</span>.<span class="ident">to_string</span>())))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> {
+                <span class="ident">data</span>.<span class="ident">into_dbentry</span>(<span class="ident">audit</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">id</span>, <span class="ident">db_e</span>)<span class="op">|</span> (<span class="ident">id</span>, <span class="ident">db_e</span>.<span class="ident">to_string</span>()))
+            })
             .<span class="ident">collect</span>()
     }
 
@@ -2376,11 +2366,10 @@
         <span class="ident">entry</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dbe</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">to_dbentry</span>();
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbe</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span>
-            {
-                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SerdeCborError</span>
-            })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbe</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="ident">OperationError::SerdeCborError</span>
+        })<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">raw_entries</span> <span class="op">=</span> <span class="ident">std::iter::once</span>(<span class="ident">IdRawEntry</span> {
             <span class="ident">id</span>: <span class="ident">entry</span>.<span class="ident">get_id</span>(),
@@ -2622,11 +2611,10 @@
         <span class="kw">match</span> <span class="ident">k</span> {
             <span class="prelude-val">Some</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">dbv1</span> <span class="op">=</span> <span class="ident">k</span>.<span class="ident">to_db_valuev1</span>();
-                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span>
-                    <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbv1</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SerdeCborError</span>
-                    })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbv1</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">OperationError::SerdeCborError</span>
+                })<span class="question-mark">?</span>;
                 <span class="self">self</span>.<span class="ident">conn</span>
                     .<span class="ident">prepare</span>(<span class="string">&quot;INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)&quot;</span>)
                     .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> {
@@ -2917,12 +2905,10 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">data</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(
-                <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SerdeCborError</span>
-                })<span class="question-mark">?</span>,
-            ),
+            <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">OperationError::SerdeCborError</span>
+            })<span class="question-mark">?</span>),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         })
     }
