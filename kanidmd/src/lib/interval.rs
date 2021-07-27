@@ -7,7 +7,10 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::OnlineBackup;
 use crate::constants::PURGE_FREQUENCY;
 use crate::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
-use tokio::time::{interval, Duration};
+use chrono::Utc;
+use saffron::parse::{CronExpr, English};
+use saffron::Cron;
+use tokio::time::{interval, sleep, Duration};
 
 pub struct IntervalActor;
 
@@ -32,12 +35,37 @@ impl IntervalActor {
         let schedule = cfg.schedule.to_owned();
         let versions = cfg.versions;
 
+        // TODO: add some checks arount the provided cron pattern .any() etc.
+        let cron_expr = match schedule.as_str().parse::<CronExpr>() {
+            Ok(ce) => ce,
+            Err(e) => {
+                info!(
+                    "Online backup schedule parse error {}. Pattern set to < 00 22 * * * >",
+                    e
+                );
+                "00 22 * * *".parse::<CronExpr>().unwrap()
+            }
+        };
+
+        info!(
+            "Online backup schedule parsed as: {}",
+            cron_expr.describe(English::default())
+        );
+
         tokio::spawn(async move {
-            // TODO parse the schedule string using saffron and get the next time to run the backup.
-            let _x = schedule.clone();
-            let mut inter = interval(Duration::from_secs(10));
-            loop {
-                inter.tick().await;
+            let ct = Utc::now();
+            let cron = Cron::new(cron_expr.clone());
+
+            let cron_iter = cron.clone().iter_after(ct);
+            for next_time in cron_iter {
+                // +1 to have even times, but we might anyway cut away the seconds from the timestamp.
+                let wait_seconds = 1 + (next_time - Utc::now()).num_seconds() as u64;
+                info!(
+                    "Online backup next run on {}, wait_time = {}s",
+                    next_time, wait_seconds
+                );
+
+                sleep(Duration::from_secs(wait_seconds)).await;
                 server
                     .handle_online_backup(
                         OnlineBackupEvent::new(),

@@ -40,9 +40,11 @@ origin = "https://idm.example.com:8443"
 # [online_backup]
 #   The path to the output folder for online backups
 # path = "/var/lib/kanidm/backups/"
-#   How often the online_backup should run
-#   every day at 22:00 - see https://crontab.guru/ 
-# schedule = "0 22 * * *" 
+#   How often the online_backup should run - see https://crontab.guru/
+#   every day at 22:00
+# schedule = "00 22 * * *"
+#    four times a day at 3 minutes past the hour, every 6th hours
+# schedule = "03 */6 * * *"
 #   Number of backups to keep
 # versions = 3
 #
