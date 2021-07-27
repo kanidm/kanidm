@@ -111,6 +111,8 @@ serde = "1.0"
 serde_derive = "1.0"
 toml = "0.5"
 
+rustc_version = "0.4.0"
+
 [[bench]]
 name = "scaling_10k"
 harness = false

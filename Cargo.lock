@@ -1819,6 +1819,7 @@ dependencies = [
  "regex",
  "rpassword",
  "rusqlite",
+ "rustc_version 0.4.0",
  "serde",
  "serde_cbor",
  "serde_derive",
@@ -3931,7 +3932,9 @@ dependencies = [
 
 [[package]]
 name = "webauthn-rs"
-version = "0.3.0-alpha.9"
+version = "0.3.0-alpha.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "18010e64d5f6286eab221881ed6237a3a1f0aa420e78fb6faa48843c7dd93da1"
 dependencies = [
  "base64 0.13.0",
  "js-sys",
