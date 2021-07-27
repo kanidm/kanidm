@@ -4,9 +4,9 @@
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 
+use crate::config::OnlineBackup;
 use crate::constants::PURGE_FREQUENCY;
-use crate::event::{LiveBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
-
+use crate::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
 use tokio::time::{interval, Duration};
 
 pub struct IntervalActor;
@@ -27,15 +27,23 @@ impl IntervalActor {
         });
     }
 
-    pub fn start_online_backup(server: &'static QueryServerReadV1, outpath: &String, itime: u64) {
-        let outpath = outpath.to_owned();
+    pub fn start_online_backup(server: &'static QueryServerReadV1, cfg: &OnlineBackup) {
+        let outpath = cfg.path.to_owned();
+        let schedule = cfg.schedule.to_owned();
+        let versions = cfg.versions;
 
         tokio::spawn(async move {
-            let mut inter = interval(Duration::from_secs(itime));
+            // TODO parse the schedule string using saffron and get the next time to run the backup.
+            let _x = schedule.clone();
+            let mut inter = interval(Duration::from_secs(10));
             loop {
                 inter.tick().await;
                 server
-                    .handle_online_backup(LiveBackupEvent::new(), outpath.clone().as_str())
+                    .handle_online_backup(
+                        OnlineBackupEvent::new(),
+                        outpath.clone().as_str(),
+                        versions,
+                    )
                     .await;
             }
         });
