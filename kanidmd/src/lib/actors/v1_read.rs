@@ -31,6 +31,9 @@ use kanidm_proto::v1::{
     WhoamiResponse,
 };
 
+use regex::Regex;
+use std::fs;
+use std::path::PathBuf;
 use uuid::Uuid;
 
 use ldap3_server::simple::*;
@@ -204,6 +207,51 @@ impl QueryServerReadV1 {
                 res.expect("Online backup failed");
             }
         );
+
+        // TODO cleanup
+        let mut backup_file_list: Vec<PathBuf> = Vec::new();
+        // pattern to find automatically generated backup files
+        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$").unwrap();
+
+        // get a list of backup files
+        for entry in fs::read_dir(outpath).unwrap() {
+            // get PathBuf
+            let pb = entry.unwrap().path();
+
+            // skip everything that is not a file
+            if !pb.is_file() {
+                continue;
+            }
+
+            // get the /some/dir/<file_name> of the file
+            let file_name = pb.file_name().unwrap().to_str().unwrap();
+            // check for a online backup file
+            if re.is_match(file_name) {
+                backup_file_list.push(pb.clone());
+            }
+        }
+
+        // sort it to have items listed old to new
+        backup_file_list.sort();
+
+        // Versions: OLD 10.9.8.7.6.5.4.3.2.1 NEW
+        //              |----delete----|keep|
+        // 10 items, we want to keep the latest 3
+
+        // if we have more files then we want to keep, me do some cleanup
+        if backup_file_list.len() > versions {
+            let x = backup_file_list.len() - versions;
+            backup_file_list.truncate(x);
+
+            // removing files
+            for file in backup_file_list {
+                debug!("Online backup cleanup: removing {:?}", file);
+                let _ = fs::remove_file(file);
+            }
+        } else {
+            debug!("Online backup cleanup: no files to remove.");
+        };
+
         // At the end of the event we send it for logging.
         self.log.send(audit).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
