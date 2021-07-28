@@ -37,20 +37,32 @@ impl IntervalActor {
 
         // TODO: add some checks arount the provided cron pattern .any() etc.
         let cron_expr = match schedule.as_str().parse::<CronExpr>() {
-            Ok(ce) => ce,
-            Err(e) => {
+            Ok(ce) => {
+                // TODO maybe we remove this info output?
                 info!(
-                    "Online backup schedule parse error {}. Pattern set to < 00 22 * * * >",
-                    e
+                    "Online backup schedule parsed as: {}",
+                    ce.describe(English::default())
                 );
-                "00 22 * * *".parse::<CronExpr>().unwrap()
+
+                if !Cron::new(ce.clone()).any() {
+                    error!(
+                        "Online backup error: Schedule '{}' will not match any date.",
+                        schedule
+                    );
+                    // do not continue!
+                    return;
+                }
+                ce
+            }
+            Err(err) => {
+                error!(
+                    "Online backup error: Schedule '{}' failed to parse. Error: {}.",
+                    schedule, err
+                );
+                // do not continue!
+                return;
             }
         };
-
-        info!(
-            "Online backup schedule parsed as: {}",
-            cron_expr.describe(English::default())
-        );
 
         tokio::spawn(async move {
             let ct = Utc::now();
