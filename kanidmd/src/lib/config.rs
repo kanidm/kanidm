@@ -16,9 +16,24 @@ pub struct IntegrationTestConfig {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OnlineBackup {
+    #[serde(default = "default_online_backup_path")]
     pub path: String,
+    #[serde(default = "default_online_backup_schedule")]
     pub schedule: String,
-    pub versions: u64,
+    #[serde(default = "default_online_backup_versions")]
+    pub versions: usize,
+}
+
+fn default_online_backup_path() -> String {
+    "/var/lib/kanidm/backups/".to_string()
+}
+
+fn default_online_backup_schedule() -> String {
+    "00 22 * * *".to_string()
+}
+
+fn default_online_backup_versions() -> usize {
+    7
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -172,7 +172,12 @@ impl QueryServerReadV1 {
         res
     }
 
-    pub async fn handle_online_backup(&self, msg: OnlineBackupEvent, outpath: &str, versions: u64) {
+    pub async fn handle_online_backup(
+        &self,
+        msg: OnlineBackupEvent,
+        outpath: &str,
+        versions: usize,
+    ) {
         let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
 
         ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
