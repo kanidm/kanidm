@@ -558,7 +558,7 @@ impl PartialValue {
         }
     }
 
-    pub fn contains(&self, s: &PartialValue) -> bool {
+    pub fn substring(&self, s: &PartialValue) -> bool {
         match (self, s) {
             (PartialValue::Utf8(s1), PartialValue::Utf8(s2)) => s1.contains(s2),
             (PartialValue::Iutf8(s1), PartialValue::Iutf8(s2)) => s1.contains(s2),
@@ -620,10 +620,10 @@ impl PartialValue {
 /// or modification operation where you are applying a set of complete values into an entry.
 #[derive(Clone, Debug)]
 pub struct Value {
-    pv: PartialValue,
+    pub(crate) pv: PartialValue,
     // Later we'll add extra data fields for different v types. They'll have to switch on
     // pv somehow, so probably need optional or union?
-    data: Option<Box<DataValue>>,
+    pub(crate) data: Option<Box<DataValue>>,
 }
 
 // TODO: Impl display
@@ -1072,12 +1072,12 @@ impl Value {
         self.pv.is_url()
     }
 
-    pub fn contains(&self, s: &PartialValue) -> bool {
-        self.pv.contains(s)
-    }
-
     pub fn lessthan(&self, s: &PartialValue) -> bool {
         self.pv.lessthan(s)
+    }
+
+    pub fn substring(&self, s: &PartialValue) -> bool {
+        self.pv.substring(s)
     }
 
     // Converters between DBRepr -> MemRepr. It's likely many of these

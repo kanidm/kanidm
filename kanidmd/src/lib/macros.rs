@@ -145,6 +145,7 @@ macro_rules! entry_str_to_account {
         use crate::entry::{Entry, EntryInvalid, EntryNew};
         use crate::idm::account::Account;
         use crate::value::Value;
+        use std::iter::once;
 
         let mut e: Entry<EntryInvalid, EntryNew> =
             unsafe { Entry::unsafe_from_entry_str($entry_str).into_invalid_new() };
@@ -153,7 +154,7 @@ macro_rules! entry_str_to_account {
             .get_ava_single_str("name")
             .map(|s| Value::new_spn_str(s, "example.com"))
             .expect("Failed to munge spn from name!");
-        e.set_ava("spn", btreeset![spn]);
+        e.set_ava("spn", once(spn));
 
         let e = unsafe { e.into_sealed_committed() };
 
@@ -570,6 +571,30 @@ macro_rules! btreeset {
     ($e:expr, $($item:expr),*) => ({
         use std::collections::BTreeSet;
         let mut x: BTreeSet<_> = BTreeSet::new();
+        assert!(x.insert($e));
+        $(assert!(x.insert($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! valueset {
+    () => (
+        compile_error!("ValueSet needs at least 1 element")
+    );
+    ($e:expr) => ({
+        use crate::valueset::ValueSet;
+        let mut x: ValueSet = ValueSet::new();
+        assert!(x.insert($e));
+        x
+    });
+    ($e:expr,) => ({
+        valueset!($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        use crate::valueset::ValueSet;
+        let mut x: ValueSet = ValueSet::new();
         assert!(x.insert($e));
         $(assert!(x.insert($item));)*
         x

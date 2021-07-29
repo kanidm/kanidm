@@ -19,11 +19,12 @@
 use crate::audit::AuditScope;
 use crate::be::IdxKey;
 use crate::prelude::*;
+use crate::valueset::ValueSet;
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
 
 use hashbrown::{HashMap, HashSet};
 use std::borrow::Borrow;
-use std::collections::BTreeSet;
+// use std::collections::BTreeSet;
 use uuid::Uuid;
 
 // use concread::cowcell::asynch::*;
@@ -222,7 +223,7 @@ impl SchemaAttribute {
         }
     }
 
-    pub fn validate_ava(&self, a: &str, ava: &BTreeSet<Value>) -> Result<(), SchemaError> {
+    pub fn validate_ava(&self, a: &str, ava: &ValueSet) -> Result<(), SchemaError> {
         // ltrace!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
@@ -1737,12 +1738,12 @@ mod tests {
         };
 
         let r1 =
-            single_value_string.validate_ava("single_value", &btreeset![Value::new_iutf8("test")]);
+            single_value_string.validate_ava("single_value", &valueset![Value::new_iutf8("test")]);
         assert_eq!(r1, Ok(()));
 
         let r2 = single_value_string.validate_ava(
             "single_value",
-            &btreeset![Value::new_iutf8("test1"), Value::new_iutf8("test2")],
+            &valueset![Value::new_iutf8("test1"), Value::new_iutf8("test2")],
         );
         assert_eq!(
             r2,
@@ -1767,7 +1768,7 @@ mod tests {
 
         let r5 = multi_value_string.validate_ava(
             "mv_string",
-            &btreeset![Value::new_utf8s("test1"), Value::new_utf8s("test2")],
+            &valueset![Value::new_utf8s("test1"), Value::new_utf8s("test2")],
         );
         assert_eq!(r5, Ok(()));
 
@@ -1785,7 +1786,7 @@ mod tests {
 
         let r3 = multi_value_boolean.validate_ava(
             "mv_bool",
-            &btreeset![
+            &valueset![
                 Value::new_bool(true),
                 Value::new_iutf8("test1"),
                 Value::new_iutf8("test2")
@@ -1798,7 +1799,7 @@ mod tests {
 
         let r4 = multi_value_boolean.validate_ava(
             "mv_bool",
-            &btreeset![Value::new_bool(true), Value::new_bool(false)],
+            &valueset![Value::new_bool(true), Value::new_bool(false)],
         );
         assert_eq!(r4, Ok(()));
 
@@ -1817,12 +1818,12 @@ mod tests {
 
         let r6 = single_value_syntax.validate_ava(
             "sv_syntax",
-            &btreeset![Value::new_syntaxs("UTF8STRING").unwrap()],
+            &valueset![Value::new_syntaxs("UTF8STRING").unwrap()],
         );
         assert_eq!(r6, Ok(()));
 
         let r7 = single_value_syntax
-            .validate_ava("sv_syntax", &btreeset![Value::new_utf8s("thaeountaheu")]);
+            .validate_ava("sv_syntax", &valueset![Value::new_utf8s("thaeountaheu")]);
         assert_eq!(
             r7,
             Err(SchemaError::InvalidAttributeSyntax("sv_syntax".to_string()))
@@ -1842,12 +1843,12 @@ mod tests {
         //
         let r8 = single_value_index.validate_ava(
             "sv_index",
-            &btreeset![Value::new_indexs("EQUALITY").unwrap()],
+            &valueset![Value::new_indexs("EQUALITY").unwrap()],
         );
         assert_eq!(r8, Ok(()));
 
         let r9 = single_value_index
-            .validate_ava("sv_index", &btreeset![Value::new_utf8s("thaeountaheu")]);
+            .validate_ava("sv_index", &valueset![Value::new_utf8s("thaeountaheu")]);
         assert_eq!(
             r9,
             Err(SchemaError::InvalidAttributeSyntax("sv_index".to_string()))
