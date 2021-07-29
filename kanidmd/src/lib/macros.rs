@@ -590,10 +590,7 @@ macro_rules! valueset {
         x
     });
     ($e:expr,) => ({
-        use crate::valueset::ValueSet;
-        let mut x: ValueSet = ValueSet::new();
-        assert!(x.insert($e));
-        x
+        valueset!($e)
     });
     ($e:expr, $($item:expr),*) => ({
         use crate::valueset::ValueSet;
