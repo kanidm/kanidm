@@ -1,0 +1,3 @@
+(function() {var implementors = {};
+implementors["kanidm"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.54.0/core/iter/traits/collect/trait.FromIterator.html\" title=\"trait core::iter::traits::collect::FromIterator\">FromIterator</a>&lt;<a class=\"struct\" href=\"kanidm/value/struct.Value.html\" title=\"struct kanidm::value::Value\">Value</a>&gt; for <a class=\"struct\" href=\"kanidm/valueset/struct.ValueSet.html\" title=\"struct kanidm::valueset::ValueSet\">ValueSet</a>","synthetic":false,"types":["kanidm::valueset::ValueSet"]}];
+if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

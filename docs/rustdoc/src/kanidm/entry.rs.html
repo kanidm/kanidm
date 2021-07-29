@@ -1,7 +1,6 @@
 <!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/src/lib/entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg">
 <link rel="alternate icon" type="image/png" href="../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" class="help-button">?</button>
-                <a id="settings-menu" href="../../settings.html"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><pre class="line-numbers"><span id="1">   1</span>
+<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -2569,7 +2568,17 @@
 <span id="2566">2566</span>
 <span id="2567">2567</span>
 <span id="2568">2568</span>
-</pre><div class="example-wrap"><pre class="rust ">
+<span id="2569">2569</span>
+<span id="2570">2570</span>
+<span id="2571">2571</span>
+<span id="2572">2572</span>
+<span id="2573">2573</span>
+<span id="2574">2574</span>
+<span id="2575">2575</span>
+<span id="2576">2576</span>
+<span id="2577">2577</span>
+<span id="2578">2578</span>
+</pre><pre class="rust">
 <span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
 <span class="doccomment">//!</span>
@@ -2605,6 +2614,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::schema</span>::{<span class="ident">SchemaAttribute</span>, <span class="ident">SchemaClass</span>, <span class="ident">SchemaTransaction</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::value</span>::{<span class="ident">IndexType</span>, <span class="ident">SyntaxType</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::value</span>::{<span class="ident">PartialValue</span>, <span class="ident">Value</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::valueset::ValueSet</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">SchemaError</span>};
@@ -2723,7 +2733,7 @@
     <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">compare_attrs</span>(<span class="ident">left</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">right</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="kw">fn</span> <span class="ident">compare_attrs</span>(<span class="ident">left</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>, <span class="ident">right</span>: <span class="kw-2">&amp;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
     <span class="comment">// We can&#39;t shortcut based on len because cid mod may not be present.</span>
     <span class="comment">// Build the set of all keys between both.</span>
     <span class="kw">let</span> <span class="ident">allkeys</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">left</span>
@@ -2770,7 +2780,7 @@
     <span class="ident">valid</span>: <span class="ident">VALID</span>,
     <span class="ident">state</span>: <span class="ident">STATE</span>,
     <span class="comment">// We may need to change this to Set to allow borrow of Value -&gt; PartialValue for lookups.</span>
-    <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span>
@@ -2842,12 +2852,12 @@
 
         <span class="comment">// Somehow we need to take the tree of e attrs, and convert</span>
         <span class="comment">// all ref types to our types ...</span>
-        <span class="kw">let</span> <span class="ident">map2</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">e</span>
+        <span class="kw">let</span> <span class="ident">map2</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">e</span>
             .<span class="ident">attrs</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">nk</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>().<span class="ident">normalise_attr_name</span>(<span class="ident">k</span>);
-                <span class="kw">let</span> <span class="ident">nv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
+                <span class="kw">let</span> <span class="ident">nv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
                     <span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">vr</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">nk</span>, <span class="ident">vr</span>)).<span class="ident">collect</span>();
                 <span class="kw">match</span> <span class="ident">nv</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">nvi</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">nk</span>, <span class="ident">nvi</span>)),
@@ -2897,10 +2907,10 @@
         <span class="comment">// str -&gt; proto entry</span>
         <span class="kw">let</span> <span class="ident">pe</span>: <span class="ident">ProtoEntry</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>(<span class="ident">es</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid Proto Entry&quot;</span>);
         <span class="comment">// use a const map to convert str -&gt; ava</span>
-        <span class="kw">let</span> <span class="ident">x</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pe</span>.<span class="ident">attrs</span>.<span class="ident">into_iter</span>()
+        <span class="kw">let</span> <span class="ident">x</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pe</span>.<span class="ident">attrs</span>.<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="ident">AttrString::from</span>(<span class="ident">k</span>.<span class="ident">to_lowercase</span>());
-                <span class="kw">let</span> <span class="ident">vv</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">attr</span>.<span class="ident">as_str</span>() {
+                <span class="kw">let</span> <span class="ident">vv</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">attr</span>.<span class="ident">as_str</span>() {
                     <span class="string">&quot;attributename&quot;</span> <span class="op">|</span> <span class="string">&quot;classname&quot;</span> <span class="op">|</span> <span class="string">&quot;domain&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iutf8</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>()
                     }
@@ -3072,8 +3082,12 @@
     }
 
     <span class="doccomment">/// Replace the existing content of an attribute set of this Entry, with a new set of Values.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">values</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">values</span>)
+    <span class="comment">// pub fn set_ava(&amp;mut self, attr: &amp;str, values: Set&lt;Value&gt;) {</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
+    <span class="kw">where</span>
+        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
+    {
+        <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">iter</span>)
     }
 }
 
@@ -3862,12 +3876,12 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbentry</span>(<span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">db_e</span>: <span class="ident">DbEntry</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="comment">// Convert attrs from db format to value</span>
-        <span class="kw">let</span> <span class="ident">r_attrs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">db_e</span>.<span class="ident">ent</span> {
+        <span class="kw">let</span> <span class="ident">r_attrs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">db_e</span>.<span class="ident">ent</span> {
             <span class="ident">DbEntryVers::V1</span>(<span class="ident">v1</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v1</span>
                 .<span class="ident">attrs</span>
                 .<span class="ident">into_iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">vv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="kw">let</span> <span class="ident">vv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, ()<span class="op">&gt;</span> <span class="op">=</span>
                         <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Value::from_db_valuev1</span>).<span class="ident">collect</span>();
                     <span class="kw">match</span> <span class="ident">vv</span> {
                         <span class="prelude-val">Ok</span>(<span class="ident">vv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">k</span>, <span class="ident">vv</span>)),
@@ -3949,14 +3963,14 @@
     <span class="doccomment">/// Convert this recycled entry, into a tombstone ready for reaping.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_tombstone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cid</span>: <span class="ident">Cid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span> {
         <span class="comment">// Duplicate this to a tombstone entry</span>
-        <span class="kw">let</span> <span class="ident">class_ava</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>), <span class="ident">Value::new_class</span>(<span class="string">&quot;tombstone&quot;</span>)];
-        <span class="kw">let</span> <span class="ident">last_mod_ava</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">class_ava</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>), <span class="ident">Value::new_class</span>(<span class="string">&quot;tombstone&quot;</span>)];
+        <span class="kw">let</span> <span class="ident">last_mod_ava</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>.<span class="ident">clone</span>())];
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs_new</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs_new</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
 
         <span class="ident">attrs_new</span>.<span class="ident">insert</span>(
             <span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>),
-            <span class="macro">btreeset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_uuid</span>())],
+            <span class="macro">valueset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_uuid</span>())],
         );
         <span class="ident">attrs_new</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>), <span class="ident">class_ava</span>);
         <span class="ident">attrs_new</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;last_modified_cid&quot;</span>), <span class="ident">last_mod_ava</span>);
@@ -4147,21 +4161,26 @@
         <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">attrs</span>
             .<span class="ident">entry</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>))
-            .<span class="ident">or_insert_with</span>(<span class="ident">Set::new</span>);
+            .<span class="ident">or_insert_with</span>(<span class="ident">ValueSet::new</span>);
         <span class="comment">// Here we need to actually do a check/binary search ...</span>
         <span class="ident">v</span>.<span class="ident">insert</span>(<span class="ident">value</span>);
         <span class="comment">// Doesn&#39;t matter if it already exists, equality will replace.</span>
     }
 
     <span class="doccomment">/// Overwrite the current set of values for an attribute, with this new set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava_int</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">values</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>) {
+    <span class="comment">// pub fn set_ava_int(&amp;mut self, attr: &amp;str, values: Set&lt;Value&gt;) {</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava_int</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
+    <span class="kw">where</span>
+        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
+    {
         <span class="comment">// Overwrite the existing value, build a tree from the list.</span>
+        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">values</span>);
     }
 
     <span class="doccomment">/// Update the last_changed flag of this entry to the given change identifier.</span>
     <span class="kw">fn</span> <span class="ident">set_last_changed</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="ident">Cid</span>) {
-        <span class="kw">let</span> <span class="ident">cv</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>)];
+        <span class="kw">let</span> <span class="ident">cv</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>)];
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;last_modified_cid&quot;</span>), <span class="ident">cv</span>);
     }
 
@@ -4180,7 +4199,7 @@
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a reference to the current set of values that are associated to this attribute.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>)
     }
 
@@ -4327,24 +4346,20 @@
     <span class="doccomment">/// Assert if an attribute of this name is present, and one of it&#39;s values contains</span>
     <span class="doccomment">/// the following substring, if possible to perform the substring comparison.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">attribute_substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">subvalue</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">v_list</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v_list</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">v</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">acc</span> { <span class="ident">acc</span> } <span class="kw">else</span> { <span class="ident">v</span>.<span class="ident">contains</span>(<span class="ident">subvalue</span>) }),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
-        }
+        <span class="self">self</span>.<span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="ident">attr</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">vset</span><span class="op">|</span> <span class="ident">vset</span>.<span class="ident">substring</span>(<span class="ident">subvalue</span>))
+            .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Assert if an attribute of this name is present, and one of it&#39;s values is less than</span>
     <span class="doccomment">/// the following partial value</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">attribute_lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">subvalue</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">v_list</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v_list</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">v</span><span class="op">|</span> <span class="kw">if</span> <span class="ident">acc</span> { <span class="ident">acc</span> } <span class="kw">else</span> { <span class="ident">v</span>.<span class="ident">lessthan</span>(<span class="ident">subvalue</span>) }),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
-        }
+        <span class="self">self</span>.<span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="ident">attr</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">vset</span><span class="op">|</span> <span class="ident">vset</span>.<span class="ident">lessthan</span>(<span class="ident">subvalue</span>))
+            .<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>)
     }
 
     <span class="comment">// Since EntryValid/Invalid is just about class adherenece, not Value correctness, we</span>
@@ -4518,13 +4533,17 @@
     }
 
     <span class="doccomment">/// Remove all values of this attribute from the entry, and return their content.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>)
     }
 
     <span class="doccomment">/// Replace the content of this attribute with a new value set.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">values</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>) {
-        <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">values</span>)
+    <span class="comment">// pub fn set_ava(&amp;mut self, attr: &amp;str, values: Set&lt;Value&gt;) {</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
+    <span class="kw">where</span>
+        <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
+    {
+        <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">iter</span>)
     }
 
     <span class="comment">/*
@@ -4571,21 +4590,21 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Convert an Attribute to an entry ... make it good!</span>
-        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>)];
+        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>)];
 
-        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())];
-        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())];
+        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>())];
 
-        <span class="kw">let</span> <span class="ident">multivalue_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">multivalue</span>)];
-        <span class="kw">let</span> <span class="ident">unique_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">unique</span>)];
+        <span class="kw">let</span> <span class="ident">multivalue_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">multivalue</span>)];
+        <span class="kw">let</span> <span class="ident">unique_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">unique</span>)];
 
-        <span class="kw">let</span> <span class="ident">index_v</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">index</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">Value::from</span>(<span class="ident">i</span>.<span class="ident">clone</span>())).<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">index_v</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">index</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Value::from</span>).<span class="ident">collect</span>();
 
-        <span class="kw">let</span> <span class="ident">syntax_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">syntax</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">syntax_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">syntax</span>.<span class="ident">clone</span>())];
 
         <span class="comment">// Build the Map of the attributes relevant</span>
         <span class="comment">// let mut attrs: Map&lt;AttrString, Set&lt;Value&gt;&gt; = Map::with_capacity(8);</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;attributename&quot;</span>), <span class="ident">name_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;description&quot;</span>), <span class="ident">desc_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>), <span class="ident">uuid_v</span>);
@@ -4595,7 +4614,7 @@
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;syntax&quot;</span>), <span class="ident">syntax_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(
             <span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>),
-            <span class="macro">btreeset!</span>[
+            <span class="macro">valueset!</span>[
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;system&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;attributetype&quot;</span>)
@@ -4614,19 +4633,19 @@
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SchemaClass</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaClass</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>)];
+        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>)];
 
-        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())];
-        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="macro">btreeset!</span>[<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())];
+        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>())];
 
         <span class="comment">// let mut attrs: Map&lt;AttrString, Set&lt;Value&gt;&gt; = Map::with_capacity(8);</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">Set</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;classname&quot;</span>), <span class="ident">name_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;description&quot;</span>), <span class="ident">desc_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>), <span class="ident">uuid_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(
             <span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>),
-            <span class="macro">btreeset!</span>[
+            <span class="macro">valueset!</span>[
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;system&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;classtype&quot;</span>)
@@ -5139,5 +5158,4 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
-    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
