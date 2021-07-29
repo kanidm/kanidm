@@ -2017,7 +2017,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         let multivalue_v = valueset![Value::from(s.multivalue)];
         let unique_v = valueset![Value::from(s.unique)];
 
-        let index_v: ValueSet = s.index.iter().map(|i| Value::from(i.clone())).collect();
+        let index_v: ValueSet = s.index.iter().cloned().map(Value::from).collect();
 
         let syntax_v = valueset![Value::from(s.syntax.clone())];
 
