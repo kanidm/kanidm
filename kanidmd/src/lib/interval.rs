@@ -7,9 +7,13 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::OnlineBackup;
 use crate::constants::PURGE_FREQUENCY;
 use crate::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
+use crate::utils::file_permissions_readonly;
+
 use chrono::Utc;
 use saffron::parse::{CronExpr, English};
 use saffron::Cron;
+use std::fs;
+use std::path::Path;
 use tokio::time::{interval, sleep, Duration};
 
 pub struct IntervalActor;
@@ -30,39 +34,61 @@ impl IntervalActor {
         });
     }
 
-    pub fn start_online_backup(server: &'static QueryServerReadV1, cfg: &OnlineBackup) {
+    pub fn start_online_backup(
+        server: &'static QueryServerReadV1,
+        cfg: &OnlineBackup,
+    ) -> Result<(), ()> {
         let outpath = cfg.path.to_owned();
         let schedule = cfg.schedule.to_owned();
         let versions = cfg.versions;
 
-        // TODO: add some checks arount the provided cron pattern .any() etc.
-        let cron_expr = match schedule.as_str().parse::<CronExpr>() {
-            Ok(ce) => {
-                // TODO maybe we remove this info output?
-                info!(
-                    "Online backup schedule parsed as: {}",
-                    ce.describe(English::default())
-                );
+        // Cron expression handling
+        let cron_expr = schedule.as_str().parse::<CronExpr>().map_err(|e| {
+            error!("Online backup schedule parse error: {}", e);
+        })?;
 
-                if !Cron::new(ce.clone()).any() {
-                    error!(
-                        "Online backup error: Schedule '{}' will not match any date.",
-                        schedule
-                    );
-                    // do not continue!
-                    return;
-                }
-                ce
-            }
-            Err(err) => {
+        info!(
+            "Online backup schedule parsed as: {}",
+            cron_expr.describe(English::default())
+        );
+
+        if !Cron::new(cron_expr.clone()).any() {
+            error!(
+                "Online backup schedule error: '{}' will not match any date.",
+                schedule
+            );
+            return Err(());
+        }
+
+        // Output path handling
+        let op = Path::new(&outpath);
+
+        // does the path exist and is a directory?
+        if !op.exists() {
+            info!(
+                "Online backup output folder '{}' does not exist, trying to create it.",
+                outpath
+            );
+            fs::create_dir_all(&outpath).map_err(|e| {
                 error!(
-                    "Online backup error: Schedule '{}' failed to parse. Error: {}.",
-                    schedule, err
-                );
-                // do not continue!
-                return;
-            }
-        };
+                    "Online backup failed to create output directory '{}': {}",
+                    outpath.clone(),
+                    e
+                )
+            })?;
+        }
+
+        if !op.is_dir() {
+            error!("Online backup output '{}' is not a directory or we are missing permissions to access it.", outpath);
+            return Err(());
+        }
+
+        // checking permissions (not sure about this)
+        // TODO: we still might have a folder that we can read but not write in it.
+        let meta = op.metadata().unwrap();
+        if !file_permissions_readonly(&meta) {
+            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", outpath);
+        }
 
         tokio::spawn(async move {
             let ct = Utc::now();
@@ -88,5 +114,7 @@ impl IntervalActor {
                     .await;
             }
         });
+
+        Ok(())
     }
 }

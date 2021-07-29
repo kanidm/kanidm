@@ -705,7 +705,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Setup timed events associated to the read thread
     match &config.online_backup {
         Some(cfg) => {
-            IntervalActor::start_online_backup(server_read_ref, &cfg);
+            IntervalActor::start_online_backup(server_read_ref, &cfg)?;
         }
         None => {
             debug!("Online backup not requested, skipping");
