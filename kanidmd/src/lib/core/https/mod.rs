@@ -32,6 +32,10 @@ use async_std::task;
 // use std::net;
 // use std::str::FromStr;
 
+use crate::tracing_tree::{KanidmEventTag, TreeMiddleware, TreeProcessor, TreeSubscriber};
+use tokio::sync::mpsc::unbounded_channel as unbounded;
+use tracing::{debug, error, info};
+
 #[derive(Clone)]
 pub struct AppState {
     pub status_ref: &'static StatusActor,
@@ -1173,6 +1177,13 @@ pub fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
+    let (log_tx, log_rx) = unbounded::<TreeProcessor<KanidmEventTag>>();
+    tracing::subscriber::set_global_default(TreeSubscriber::pretty(log_tx))
+        .expect("Global subscriber already set, this is a bug");
+    let middleware = TreeMiddleware::with_stdout();
+
+    tokio::spawn(crate::async_log::run_tracing_tree(log_rx));
+
     info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
 
     let bundy_handle = bundy::hs512::HS512::from_str(bundy_key).map_err(|e| {
@@ -1191,8 +1202,10 @@ pub fn create_https_server(
     // tide::log::with_level(tide::log::LevelFilter::Debug);
 
     // Add middleware?
-    tserver.with(tide::log::LogMiddleware::new()).with(
-        // We do not force a session ttl, because we validate this elsewhere in usage.
+    tserver.with(middleware);
+    // tserver.with(tide::log::LogMiddleware::new());
+    // We do not force a session ttl, because we validate this elsewhere in usage.
+    tserver.with(
         tide::sessions::SessionMiddleware::new(tide::sessions::MemoryStore::new(), cookie_key)
             .with_cookie_name("kanidm-session")
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
