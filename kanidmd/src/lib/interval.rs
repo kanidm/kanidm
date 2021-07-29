@@ -70,7 +70,8 @@ impl IntervalActor {
 
             let cron_iter = cron.clone().iter_after(ct);
             for next_time in cron_iter {
-                // +1 to have even times, but we might anyway cut away the seconds from the timestamp.
+                // We add 1 second to the `wait_time` in order to get "even" timestampes
+                // for example: 1 + 17:05:59Z --> 17:06:00Z
                 let wait_seconds = 1 + (next_time - Utc::now()).num_seconds() as u64;
                 info!(
                     "Online backup next run on {}, wait_time = {}s",
