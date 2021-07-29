@@ -33,7 +33,7 @@ use kanidm_proto::v1::{
 
 use regex::Regex;
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 use ldap3_server::simple::*;
@@ -187,47 +187,69 @@ impl QueryServerReadV1 {
 
         let now: DateTime<Utc> = Utc::now();
         let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
-        // TODO: check outpath exists
         let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
 
-        // TODO: handle the max versions to keep here?
-        info!("online backup versions to keep = {}", versions);
-        let idms_prox_read = self.idms.proxy_read_async().await;
-        lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<OnlineBackupEvent>",
-            || {
-                let res = idms_prox_read
-                    .qs_read
-                    .get_be_txn()
-                    .backup(&mut audit, &dest_file);
-
-                ladmin_info!(audit, "online backup result: {:?}", res);
-                #[allow(clippy::expect_used)]
-                res.expect("Online backup failed");
+        match Path::new(&dest_file).exists() {
+            true => {
+                error!(
+                    "Online backup file {} already exists, will not owerwrite it.",
+                    dest_file
+                );
             }
-        );
+            false => {
+                let idms_prox_read = self.idms.proxy_read_async().await;
+                lperf_op_segment!(
+                    &mut audit,
+                    "actors::v1_read::handle<OnlineBackupEvent>",
+                    || {
+                        let res = idms_prox_read
+                            .qs_read
+                            .get_be_txn()
+                            .backup(&mut audit, &dest_file);
 
-        // TODO cleanup
+                        match &res {
+                            Ok(()) => {
+                                info!("Online backup created {} successfully", dest_file);
+                            }
+                            Err(e) => {
+                                error!("Online backup failed to create {}: {:?}", dest_file, e);
+                            }
+                        }
+
+                        ladmin_info!(audit, "online backup result: {:?}", res);
+                    }
+                );
+            }
+        }
+
+        // cleanup of maximum backup versions to keep
         let mut backup_file_list: Vec<PathBuf> = Vec::new();
         // pattern to find automatically generated backup files
-        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$").unwrap();
+        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$")
+            .expect("Failed to parse regexp for online backup files.");
 
         // get a list of backup files
-        for entry in fs::read_dir(outpath).unwrap() {
-            // get PathBuf
-            let pb = entry.unwrap().path();
+        match fs::read_dir(outpath) {
+            Ok(rd) => {
+                for entry in rd {
+                    // get PathBuf
+                    let pb = entry.unwrap().path();
 
-            // skip everything that is not a file
-            if !pb.is_file() {
-                continue;
+                    // skip everything that is not a file
+                    if !pb.is_file() {
+                        continue;
+                    }
+
+                    // get the /some/dir/<file_name> of the file
+                    let file_name = pb.file_name().unwrap().to_str().unwrap();
+                    // check for a online backup file
+                    if re.is_match(file_name) {
+                        backup_file_list.push(pb.clone());
+                    }
+                }
             }
-
-            // get the /some/dir/<file_name> of the file
-            let file_name = pb.file_name().unwrap().to_str().unwrap();
-            // check for a online backup file
-            if re.is_match(file_name) {
-                backup_file_list.push(pb.clone());
+            Err(e) => {
+                error!("Online backup cleanup error read dir {}: {}", outpath, e);
             }
         }
 
@@ -241,15 +263,29 @@ impl QueryServerReadV1 {
         // if we have more files then we want to keep, me do some cleanup
         if backup_file_list.len() > versions {
             let x = backup_file_list.len() - versions;
+            info!(
+                "Online backup cleanup found {} versions, should keep {}, will remove {}",
+                backup_file_list.len(),
+                versions,
+                x
+            );
             backup_file_list.truncate(x);
 
             // removing files
             for file in backup_file_list {
-                debug!("Online backup cleanup: removing {:?}", file);
-                let _ = fs::remove_file(file);
+                debug!("Online backup cleanup: removing {:?}", &file);
+                match fs::remove_file(&file) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!(
+                            "Online backup cleanup failed to remove file {:?}: {:?}",
+                            file, e
+                        )
+                    }
+                };
             }
         } else {
-            debug!("Online backup cleanup: no files to remove.");
+            debug!("Online backup cleanup had no files to remove");
         };
 
         // At the end of the event we send it for logging.
