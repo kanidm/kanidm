@@ -160,11 +160,6 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     <head>
         <meta charset="utf-8">
         <title>Kanidm</title>
-        <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T">
-        <script src="/pkg/external/jquery-3.3.1.slim.min.js" integrity="sha384-q8i/X+965DzO0rT7abK41JStQIAqVgRVzpbzo5smXKp4YfRvH+8abtTE1Pi6jizo"></script>
-        <script src="/pkg/external/popper.min.js" integrity="sha384-UO2eT0CpHqdSJQ6hJty5KVphtPhzWj9WO1clHTMGa3JDZwrnQq4sF86dIHNDz0W1"></script>
-        <script src="/pkg/external/bootstrap.min.js" integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"></script>
-        <script src="/pkg/external/confetti.js"></script>
         <script src="/pkg/bundle.js" defer></script>
     </head>
 
@@ -1023,6 +1018,13 @@ pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     })
 }
 
+pub async fn auth_valid(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req.state().qe_r_ref.handle_auth_valid(uat, eventid).await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let obj: SingleStringRequest = req.body_json().await?;
@@ -1210,6 +1212,8 @@ pub fn create_https_server(
         }
 
         tserver.at("/").get(index_view);
+        tserver.at("/ui/").get(index_view);
+        tserver.at("/ui/*").get(index_view);
         tserver
             .at("/pkg")
             .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
@@ -1232,9 +1236,13 @@ pub fn create_https_server(
     // == oauth endpoints.
 
     let mut oauth2_process = tserver.at("/oauth2");
-    oauth2_process.at("/authorise").get(oauth2_authorise_get);
+    oauth2_process
+        .at("/authorise")
+        .post(oauth2_authorise_post)
+        .get(oauth2_authorise_get);
     oauth2_process
         .at("/authorise/permit")
+        .post(oauth2_authorise_permit_post)
         .get(oauth2_authorise_permit_get);
     oauth2_process.at("/token").post(oauth2_token_post);
     /*
@@ -1250,6 +1258,7 @@ pub fn create_https_server(
     raw_route.at("/search").post(search);
 
     tserver.at("/v1/auth").post(auth);
+    tserver.at("/v1/auth/valid").get(auth_valid);
 
     let mut schema_route = tserver.at("/v1/schema");
     schema_route.at("/").get(schema_get);

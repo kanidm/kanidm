@@ -476,6 +476,10 @@ impl KanidmClient {
         tokio_block_on(self.asclient.auth_webauthn_begin(ident))
     }
 
+    pub fn auth_valid(&self) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.auth_valid())
+    }
+
     pub fn auth_webauthn_complete(&self, pkc: PublicKeyCredential) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.auth_webauthn_complete(pkc))
     }

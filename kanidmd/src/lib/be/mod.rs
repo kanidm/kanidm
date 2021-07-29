@@ -122,9 +122,12 @@ pub struct BackendWriteTransaction<'a> {
 }
 
 impl IdRawEntry {
-    fn into_dbentry(self) -> Result<(u64, DbEntry), OperationError> {
+    fn into_dbentry(self, audit: &mut AuditScope) -> Result<(u64, DbEntry), OperationError> {
         serde_cbor::from_slice(self.data.as_slice())
-            .map_err(|_| OperationError::SerdeCborError)
+            .map_err(|e| {
+                ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
+                OperationError::SerdeCborError
+            })
             .map(|dbe| (self.id, dbe))
     }
 
@@ -132,8 +135,10 @@ impl IdRawEntry {
         self,
         audit: &mut AuditScope,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
-        let db_e = serde_cbor::from_slice(self.data.as_slice())
-            .map_err(|_| OperationError::SerdeCborError)?;
+        let db_e = serde_cbor::from_slice(self.data.as_slice()).map_err(|e| {
+            ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
+            OperationError::SerdeCborError
+        })?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
         Entry::from_dbentry(audit, db_e, self.id)
             .map_err(|_| OperationError::CorruptedEntry(self.id))

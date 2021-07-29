@@ -1,10 +1,14 @@
 use anyhow::Error;
 use wasm_bindgen::prelude::*;
+use wasm_bindgen::JsCast;
 use wasm_bindgen_futures::{spawn_local, JsFuture};
 use yew::format::Json;
 use yew::prelude::*;
-use yew::services::fetch::{FetchService, FetchTask, Request, Response};
-use yew::services::{ConsoleService, StorageService};
+use yew_services::fetch::{FetchService, FetchTask, Request, Response};
+use yew_services::ConsoleService;
+
+use crate::manager::Route;
+use crate::models;
 
 use kanidm_proto::v1::{
     AuthAllowed, AuthCredential, AuthRequest, AuthResponse, AuthState, AuthStep,
@@ -20,7 +24,6 @@ extern "C" {
 pub struct LoginApp {
     link: ComponentLink<Self>,
     inputvalue: String,
-    lstorage: StorageService,
     ft: Option<FetchTask>,
     session_id: String,
     state: LoginState,
@@ -35,9 +38,6 @@ enum TotpState {
 
 enum LoginState {
     Init(bool),
-
-    // MechChoice
-    // CredChoice
     Password(bool),
     BackupCode(bool),
     Totp(TotpState),
@@ -126,6 +126,7 @@ impl LoginApp {
     }
 
     fn view_state(&self) -> Html {
+        let inputvalue = self.inputvalue.clone();
         match &self.state {
             LoginState::Init(enable) => {
                 html! {
@@ -136,10 +137,23 @@ impl LoginApp {
                         </p>
                     </div>
                     <div class="container">
-                        <div>
-                            <input id="username" type="text" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
-                            <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::Begin) disabled=!enable >{" Begin "}</button>
-                        </div>
+                        <form
+                            onsubmit=self.link.callback(|_| LoginAppMsg::Begin)
+                            action="javascript:void(0);"
+                        >
+                            <input id="autofocus"
+                                type="text"
+                                class="form-control"
+                                value=inputvalue
+                                disabled=!enable
+                                oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value))
+                            />
+                            <button
+                                type="submit"
+                                class="btn btn-dark"
+                                disabled=!enable
+                            >{" Begin "}</button>
+                        </form>
                     </div>
                     </>
                 }
@@ -153,10 +167,13 @@ impl LoginApp {
                         </p>
                     </div>
                     <div class="container">
-                        <div>
-                            <input id="password" type="password" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
-                            <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::PasswordSubmit) disabled=!enable >{" Submit "}</button>
-                        </div>
+                        <form
+                            onsubmit=self.link.callback(|_| LoginAppMsg::PasswordSubmit)
+                            action="javascript:void(0);"
+                        >
+                            <input id="autofocus" type="password" class="form-control" value=inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
+                            <button type="submit" class="btn btn-dark" disabled=!enable >{" Submit "}</button>
+                        </form>
                     </div>
                     </>
                 }
@@ -170,10 +187,13 @@ impl LoginApp {
                         </p>
                     </div>
                     <div class="container">
-                        <div>
-                            <input id="backupcode" type="text" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
-                            <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::BackupCodeSubmit) disabled=!enable >{" Submit "}</button>
-                        </div>
+                        <form
+                            onsubmit=self.link.callback(|_| LoginAppMsg::BackupCodeSubmit)
+                            action="javascript:void(0);"
+                        >
+                            <input id="autofocus" type="text" class="form-control" value=inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=!enable />
+                            <button type="submit" class="btn btn-dark" disabled=!enable >{" Submit "}</button>
+                        </form>
                     </div>
                     </>
                 }
@@ -188,10 +208,13 @@ impl LoginApp {
                         </p>
                     </div>
                     <div class="container">
-                        <div>
-                            <input id="totp" type="text" class="form-control" value=self.inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=state==&TotpState::Disabled />
-                            <button type="button" class="btn btn-dark" onclick=self.link.callback(|_| LoginAppMsg::TotpSubmit) disabled=state==&TotpState::Disabled >{" Submit "}</button>
-                        </div>
+                        <form
+                            onsubmit=self.link.callback(|_| LoginAppMsg::TotpSubmit)
+                            action="javascript:void(0);"
+                        >
+                            <input id="autofocus" type="text" class="form-control" value=inputvalue oninput=self.link.callback(|e: InputData| LoginAppMsg::Input(e.value)) disabled=state==&TotpState::Disabled />
+                            <button type="submit" class="btn btn-dark" disabled=state==&TotpState::Disabled >{" Submit "}</button>
+                        </form>
                     </div>
                     </>
                 }
@@ -236,6 +259,9 @@ impl LoginApp {
                 }
             }
             LoginState::Authenticated => {
+                let loc: Route = models::pop_return_location().into();
+                // redirect
+                yew_router::push_route(loc);
                 html! {
                     <div class="container">
                         <p>
@@ -283,23 +309,32 @@ impl Component for LoginApp {
     fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
         ConsoleService::log("create");
 
-        // First we need to work out what state we are in.
-        let lstorage = StorageService::new(yew::services::storage::Area::Local).unwrap();
+        // Assume we are here for a good reason.
+        models::clear_bearer_token();
+        let state = LoginState::Init(true);
 
+        /*
         // Get any previous sessions?
-        let prev_session: Result<String, _> = lstorage.restore("kanidm_bearer_token");
+        let state = if let Some(prev_session) = models::get_bearer_token() {
+            // Are they still valid?
 
-        ConsoleService::log(format!("prev_session -> {:?}", prev_session).as_str());
+            // If so set loginState to LoginState::Authenticated, and pop
+            // our return location (if possible).
+            LoginState::Authenticated
+        } else {
+            // Init a new login session.
+            LoginState::Init(true)
+        };
+        */
 
-        // Are they still valid?
+        // startConfetti();
 
         LoginApp {
             link,
             inputvalue: "".to_string(),
-            lstorage,
             ft: None,
             session_id: "".to_string(),
-            state: LoginState::Init(true),
+            state,
         }
     }
 
@@ -355,7 +390,7 @@ impl Component for LoginApp {
             LoginAppMsg::TotpSubmit => {
                 ConsoleService::log("totp");
                 // Disable the button?
-                match u32::from_str_radix(&self.inputvalue, 10) {
+                match self.inputvalue.parse::<u32>() {
                     Ok(totp) => {
                         self.state = LoginState::Totp(TotpState::Disabled);
                         let authreq = AuthRequest {
@@ -464,9 +499,8 @@ impl Component for LoginApp {
                     }
                     AuthState::Success(bearer_token) => {
                         // Store the bearer here!
-                        self.lstorage.store("kanidm_bearer_token", Ok(bearer_token));
+                        models::set_bearer_token(bearer_token);
                         self.state = LoginState::Authenticated;
-                        startConfetti();
                         true
                     }
                 }
@@ -483,6 +517,7 @@ impl Component for LoginApp {
 
     fn view(&self) -> Html {
         // How do we add a top level theme?
+        /*
         let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
             let w = win.inner_width().unwrap();
             let h = win.inner_height().unwrap();
@@ -493,25 +528,33 @@ impl Component for LoginApp {
             ConsoleService::log("Unable to access document window");
             (0, 0)
         };
+        let (width, height) = (width.to_string(), height.to_string());
+        */
 
+        // <canvas id="confetti-canvas" style="position:absolute" width=width height=height></canvas>
         html! {
-            <div>
-                <canvas id="confetti-canvas" style="position:absolute" width=width height=height></canvas>
-                <div id="content" class="container">
-                    <div class="row d-flex justify-content-center align-items-center" style="min-height: 100vh;">
-                        <div class="col">
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="container">
-                                <h2>{ "Kanidm Alpha 🦀 " }</h2>
-                            </div>
-                            { self.view_state() }
-                        </div>
-                        <div class="col">
-                        </div>
+            <body class="html-body form-body">
+                <main class="form-signin">
+                    <div class="container">
+                        <h2>{ "Kanidm Alpha 🦀 " }</h2>
                     </div>
-                </div>
-            </div>
+                    { self.view_state() }
+                </main>
+            </body>
         }
+    }
+
+    fn rendered(&mut self, _first_render: bool) {
+        // Once rendered if an element with id autofocus exists, focus it.
+        let doc = yew::utils::document();
+        if let Some(element) = doc.get_element_by_id("autofocus") {
+            if let Ok(htmlelement) = element.dyn_into::<web_sys::HtmlElement>() {
+                if htmlelement.focus().is_err() {
+                    ConsoleService::log("unable to autofocus.");
+                }
+            }
+        }
+
+        ConsoleService::log("login::rendered");
     }
 }

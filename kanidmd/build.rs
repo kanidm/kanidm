@@ -3,12 +3,14 @@ extern crate serde_derive;
 
 use std::env;
 
-use std::fs::File;
+use std::fs::{read_to_string, File};
 use std::io::Read;
 
 use std::path::PathBuf;
 use structopt::clap::Shell;
 use structopt::StructOpt;
+
+use rustc_version::{version, Version};
 
 include!("src/lib/audit_loglevel.rs");
 include!("src/server/opt.rs");
@@ -20,6 +22,18 @@ fn main() {
         None => return,
         Some(outdir) => outdir,
     };
+
+    // check to see if the rust version matches the rust minimum version we require for this build
+    let rust_minver = match read_to_string("../RUST_MSRV") {
+        Ok(value) => value,
+        Err(error) => panic!("Couldn't load RUST_MSRV: {:?}", error),
+    };
+    let required_rust_ver = Version::parse(&rust_minver.replace("\n", "")).unwrap();
+    println!("Rust version:     {}", version().unwrap());
+    println!("Required version: {}", required_rust_ver);
+    if version().unwrap() <= required_rust_ver {
+        panic!("This crate requires rustc >= {}, quitting.", rust_minver);
+    }
 
     KanidmdOpt::clap().gen_completions("kanidmd", Shell::Bash, outdir.clone());
     KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, outdir);
@@ -41,10 +55,10 @@ fn main() {
 
     let mut contents = String::new();
     f.read_to_string(&mut contents)
-        .expect(format!("Failed to read {:?}", profile_path).as_str());
+        .unwrap_or_else(|_| panic!("Failed to read {:?}", profile_path));
 
     let profile_cfg: ProfileConfig = toml::from_str(contents.as_str())
-        .expect(format!("Failed to parse {:?}", profile_path).as_str());
+        .unwrap_or_else(|_| panic!("Failed to parse {:?}", profile_path));
 
     /*
      *  x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2
