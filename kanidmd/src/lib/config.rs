@@ -120,8 +120,8 @@ impl fmt::Display for Configuration {
             })
             .and_then(|_| match &self.online_backup {
                 // TODO improve output
-                Some(_) => write!(f, "with online_backup: {}, ", "ok"),
-                None => write!(f, "with online_backup: None, "),
+                Some(_) => write!(f, "with online_backup: enabled, "),
+                None => write!(f, "with online_backup: disabled, "),
             })
             .and_then(|_| write!(f, "role: {}, ", self.role.to_string()))
             .and_then(|_| {
