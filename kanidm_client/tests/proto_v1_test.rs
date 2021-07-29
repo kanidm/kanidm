@@ -84,6 +84,11 @@ fn test_server_whoami_anonymous() {
         };
         debug!("{}", uat);
         assert!(uat.spn == "anonymous@example.com");
+
+        // Do a check of the auth/valid endpoint, tells us if our token
+        // is okay.
+        let res = rsclient.auth_valid();
+        assert!(res.is_ok());
     });
 }
 

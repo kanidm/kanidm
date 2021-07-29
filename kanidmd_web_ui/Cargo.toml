@@ -13,14 +13,22 @@ repository = "https://github.com/kanidm/kanidm/"
 crate-type = ["cdylib", "rlib"]
 
 [dependencies]
+
+serde = "1.0"
+serde_derive = "1.0"
+
 wasm-bindgen = { version = "0.2", features = ["serde-serialize"] }
 wasm-bindgen-futures = { version = "0.4" }
-yew = "0.17"
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 anyhow = "1"
 
 webauthn-rs = { version = "0.3.0-alpha.9", default-features = false, features = ["wasm"] }
+
+# Waiting on 0.19 to be released for the router rewrite. :)
+# yewdux = "^0.6"
+yew-router = { git = "https://github.com/yewstack/yew", rev = "1280dfd8315b893e96727b5ca5ad852919563823" }
+yew = {git = "https://github.com/yewstack/yew", rev = "1280dfd8315b893e96727b5ca5ad852919563823"}
+yew-services = {git = "https://github.com/yewstack/yew", rev = "1280dfd8315b893e96727b5ca5ad852919563823"}
+
 web-sys = { version = "0.3", features = ["PublicKeyCredentialUserEntity", "CredentialCreationOptions", "Navigator", "Window", "CredentialsContainer", "PublicKeyCredentialRpEntity", "PublicKeyCredentialCreationOptions", "PublicKeyCredential", "AuthenticatorResponse", "AuthenticationExtensionsClientOutputs", "CredentialRequestOptions"] }
 js-sys = "0.3"
-
-
