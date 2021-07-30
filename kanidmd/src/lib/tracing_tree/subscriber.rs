@@ -170,9 +170,11 @@ impl<E: EventTagSet> TreeLayer<E> {
     }
 
     fn alarm(event: &TreeEvent<E>, maybe_scope: Option<ScopeFromRoot<Registry>>) -> fmt::Result {
-        // This is an emergency and should be sent to the admin immediately
-        // Hence why we are formatting in the working thread
-        let mut writer = event.timestamp.to_rfc3339();
+        // This is an emergency and should be sent to the admin immediately.
+        // Hence why we are formatting in the working thread.
+
+        // `DateTime::to_rfc3339` returns a `String`, we'll use this as our writer.
+        let mut writer: String = event.timestamp.to_rfc3339();
         write!(writer, " 🚨 [ALARM]")?;
 
         if let Some(scope) = maybe_scope {
