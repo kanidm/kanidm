@@ -4,11 +4,11 @@ You will also need a config file in the volume named `server.toml` (Within the c
 
     #   The webserver bind address. Will use HTTPS if tls_* is provided.
     #   Defaults to "127.0.0.1:8443"
-    bindaddress = "127.0.0.1:8443"
+    bindaddress = "[::]:8443"
     #
     #   The read-only ldap server bind address. The server will use LDAPS if tls_* is provided.
     #   Defaults to "" (disabled)
-    # ldapbindaddress = "127.0.0.1:3636"
+    # ldapbindaddress = "[::]:3636"
     #
     #   The path to the kanidm database.
     db_path = "/data/kanidm.db"
