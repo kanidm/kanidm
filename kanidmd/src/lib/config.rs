@@ -114,7 +114,6 @@ impl fmt::Display for Configuration {
                 None => write!(f, "with log_level: default, "),
             })
             .and_then(|_| match &self.online_backup {
-                // TODO improve output
                 Some(_) => write!(f, "with online_backup: enabled, "),
                 None => write!(f, "with online_backup: disabled, "),
             })
