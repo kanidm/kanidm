@@ -7,7 +7,6 @@ use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::OnlineBackup;
 use crate::constants::PURGE_FREQUENCY;
 use crate::event::{OnlineBackupEvent, PurgeRecycledEvent, PurgeTombstoneEvent};
-use crate::utils::file_permissions_readonly;
 
 use chrono::Utc;
 use saffron::parse::{CronExpr, English};
@@ -81,13 +80,6 @@ impl IntervalActor {
         if !op.is_dir() {
             error!("Online backup output '{}' is not a directory or we are missing permissions to access it.", outpath);
             return Err(());
-        }
-
-        // checking permissions (not sure about this)
-        // TODO: we still might have a folder that we can read but not write in it.
-        let meta = op.metadata().unwrap();
-        if !file_permissions_readonly(&meta) {
-            eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", outpath);
         }
 
         tokio::spawn(async move {
