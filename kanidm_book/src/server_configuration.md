@@ -40,6 +40,19 @@ You will also need a config file in the volume named `server.toml` (Within the c
     # origin = "https://idm.example.com"
     origin = "https://idm.example.com:8443"
     #
+    #
+    # [online_backup]
+    #   The path to the output folder for online backups
+    # path = "/var/lib/kanidm/backups/"
+    #   The schedule to run online backups - see https://crontab.guru/
+    #   every day at 22:00 UTC (default)
+    # schedule = "00 22 * * *"
+    #    four times a day at 3 minutes past the hour, every 6th hours
+    # schedule = "03 */6 * * *"
+    #   Number of backups to keep (default 7)
+    # versions = 7
+    #
+    #
     #   The role of this server. This affects features available and how replication may interact.
     #   Valid roles are:
     #   - WriteReplica
@@ -60,7 +73,7 @@ Then you can setup the initial admin account and initialise the database into yo
     docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
 
 You then want to set your domain name so that security principal names (spn's) are generated correctly.
-This domain name *must* match the url/origin of the server that you plan to use to interact with
+This domain name _must_ match the url/origin of the server that you plan to use to interact with
 so that other features work correctly. It is possible to change this domain name later.
 
     docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml -n idm.example.com
