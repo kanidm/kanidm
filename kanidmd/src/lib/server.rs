@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Semaphore, SemaphorePermit};
+use tracing::trace_span;
 
 use crate::access::{
     AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
@@ -18,7 +19,7 @@ use crate::access::{
     AccessControlsWriteTransaction,
 };
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
-use crate::prelude::*;
+use crate::{admin_error, admin_info, prelude::*, request_error, security_info};
 // We use so many, we just import them all ...
 use crate::event::{
     CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
@@ -168,11 +169,15 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        let _entered = trace_span!("server::search").entered();
         lperf_segment!(audit, "server::search", || {
             if se.ident.is_internal() {
+                trace!("search: internal filter -> {:?}", se.filter);
                 ltrace!(audit, "search: internal filter -> {:?}", se.filter);
             } else {
+                security_info!("search initiator: -> {}", se.ident);
                 lsecurity!(audit, "search initiator: -> {}", se.ident);
+                admin_info!("search: external filter -> {:?}", se.filter);
                 ladmin_info!(audit, "search: external filter -> {:?}", se.filter);
             }
 
@@ -191,10 +196,12 @@ pub trait QueryServerTransaction<'a> {
             let idxmeta = be_txn.get_idxmeta_ref();
             // Now resolve all references and indexes.
             let vfr = lperf_trace_segment!(audit, "server::search<filter_resolve>", || {
+                let _entered = trace_span!("server::search<filter_resolve>").entered();
                 se.filter
                     .resolve(&se.ident, Some(idxmeta), Some(resolve_filter_cache))
             })
             .map_err(|e| {
+                admin_error!("search filter resolve failure {:?}", e);
                 ladmin_error!(audit, "search filter resolve failure {:?}", e);
                 e
             })?;
@@ -206,6 +213,7 @@ pub trait QueryServerTransaction<'a> {
             // plugis, because all data transforms should be in the write path.
 
             let res = self.get_be_txn().search(audit, lims, &vfr).map_err(|e| {
+                admin_error!("backend failure -> {:?}", e);
                 ladmin_error!(audit, "backend failure -> {:?}", e);
                 OperationError::Backend
             })?;
@@ -319,6 +327,7 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        let _entered = trace_span!("server::internal_search").entered();
         lperf_segment!(audit, "server::internal_search", || {
             let f_valid = filter
                 .validate(self.get_schema())
@@ -395,6 +404,8 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+        let _entered = trace_span!("server::internal_search_uuid").entered();
+        // The `_entered` span parallels this `lperf_segment`.
         lperf_segment!(audit, "server::internal_search_uuid", || {
             let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
             let f_valid = lperf_trace_segment!(
@@ -692,6 +703,7 @@ pub trait QueryServerTransaction<'a> {
     // This is a prebaked helper to get the domain name for related modules.
     // in the future we could make this cache the value to avoid entry lookups.
     fn get_domain_name(&self, audit: &mut AuditScope) -> Result<String, OperationError> {
+        let _entered = trace_span!("server::get_domain_name").entered();
         self.internal_search_uuid(audit, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_str("domain_name")
@@ -699,6 +711,7 @@ pub trait QueryServerTransaction<'a> {
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
+                admin_error!("Error getting domain name -> {:?}", e);
                 ladmin_error!(audit, "Error getting domain name -> {:?}", e);
                 e
             })
@@ -709,6 +722,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
     ) -> Result<HashSet<String>, OperationError> {
+        let _entered = trace_span!("server::get_password_badlist").entered();
         self.internal_search_uuid(audit, &UUID_SYSTEM_CONFIG)
             .and_then(|e| match e.get_ava_set("badlist_password") {
                 Some(badlist_entry) => {
@@ -725,6 +739,7 @@ pub trait QueryServerTransaction<'a> {
                 None => Err(OperationError::InvalidEntryState),
             })
             .map_err(|e| {
+                admin_error!("Failed to retrieve system configuration {:?}", e);
                 ladmin_error!(audit, "Failed to retrieve system configuration {:?}", e);
                 e
             })
@@ -734,6 +749,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
     ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
+        let _entered = trace_span!("server::get_oauth2rs_set").entered();
         self.internal_search(
             audit,
             filter!(f_eq(
@@ -1523,11 +1539,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         me: &'x ModifyEvent,
     ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
+        let _entered = trace_span!("server::modify_pre_apply").entered();
         lperf_segment!(audit, "server::modify_pre_apply", || {
             // Get the candidates.
             // Modify applies a modlist to a filter, so we need to internal search
             // then apply.
             if !me.ident.is_internal() {
+                security_info!("modify initiator: -> {}", me.ident);
                 lsecurity!(audit, "modify initiator: -> {}", me.ident);
             }
 
@@ -1535,6 +1553,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             // Is the modlist non zero?
             if me.modlist.len() == 0 {
+                request_error!("modify: empty modify request");
                 lrequest_error!(audit, "modify: empty modify request");
                 return Err(OperationError::EmptyRequest);
             }
@@ -1554,6 +1573,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             ) {
                 Ok(results) => results,
                 Err(e) => {
+                    admin_error!("modify: error in pre-candidate selection {:?}", e);
                     ladmin_error!(audit, "modify: error in pre-candidate selection {:?}", e);
                     return Err(e);
                 }
@@ -1561,6 +1581,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             if pre_candidates.is_empty() {
                 if me.ident.is_internal() {
+                    trace!(
+                        "modify: no candidates match filter ... continuing {:?}",
+                        me.filter
+                    );
                     ltrace!(
                         audit,
                         "modify: no candidates match filter ... continuing {:?}",
@@ -1568,6 +1592,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     );
                     return Ok(None);
                 } else {
+                    request_error!(
+                        "modify: no candidates match filter, failure {:?}",
+                        me.filter
+                    );
                     lrequest_error!(
                         audit,
                         "modify: no candidates match filter, failure {:?}",
@@ -1583,6 +1611,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let op_allow = access
                 .modify_allow_operation(audit, me, &pre_candidates)
                 .map_err(|e| {
+                    admin_error!("Unable to check modify access {:?}", e);
                     ladmin_error!(audit, "Unable to check modify access {:?}", e);
                     e
                 })?;
@@ -1602,11 +1631,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .iter_mut()
                 .for_each(|er| er.apply_modlist(&me.modlist));
 
+            trace!("modify: candidates -> {:?}", candidates);
             ltrace!(audit, "modify: candidates -> {:?}", candidates);
 
             // Pre mod plugins
             // We should probably supply the pre-post cands here.
             Plugins::run_pre_modify(audit, self, &mut candidates, me).map_err(|e| {
+                admin_error!("Modify operation failed (plugin), {:?}", e);
                 ladmin_error!(audit, "Modify operation failed (plugin), {:?}", e);
                 e
             })?;
@@ -1623,10 +1654,11 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|e| {
                     e.validate(&self.schema)
                         .map_err(|e| {
+                            admin_error!("Schema Violation {:?}", e);
                             ladmin_error!(audit, "Schema Violation {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
-                        .map(|e| e.seal())
+                        .map(Entry::seal)
                 })
                 .collect();
 
@@ -1728,6 +1760,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[allow(clippy::cognitive_complexity)]
     pub fn modify(&self, audit: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
+        let _entered = trace_span!("server::modify").entered();
         lperf_segment!(audit, "server::modify", || {
             let mp = unsafe { self.modify_pre_apply(audit, me)? };
             if let Some(mp) = mp {
@@ -1975,6 +2008,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         filter: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
+        let _entered = trace_span!("server::intenal_modify").entered();
         lperf_segment!(audit, "server::internal_modify", || {
             let f_valid = filter
                 .validate(self.get_schema())

@@ -11,6 +11,7 @@ use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
 use std::cell::UnsafeCell;
 use std::sync::Arc;
+use tracing::trace_span;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
@@ -531,6 +532,7 @@ pub trait BackendTransaction {
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        let _entered = trace_span!("be::search").entered();
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
         lperf_trace_segment!(au, "be::search", || {

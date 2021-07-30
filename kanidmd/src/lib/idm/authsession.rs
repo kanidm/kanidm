@@ -6,10 +6,11 @@ use crate::credential::BackupCodes;
 use crate::idm::account::Account;
 use crate::idm::delayed::BackupCodeRemoval;
 use crate::idm::AuthState;
-use crate::prelude::*;
+use crate::{admin_error, prelude::*, security_info};
 use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType};
+use tracing::trace_span;
 
 use crate::credential::{totp::Totp, Credential, CredentialType, Password};
 
@@ -183,10 +184,14 @@ impl CredHandler {
         match cred {
             AuthCredential::Anonymous => {
                 // For anonymous, no claims will ever be issued.
+                security_info!("Handler::Anonymous -> Result::Success");
                 lsecurity!(au, "Handler::Anonymous -> Result::Success");
                 CredState::Success(AuthType::Anonymous)
             }
             _ => {
+                security_info!(
+                    "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
+                );
                 lsecurity!(
                     au,
                     "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
@@ -206,6 +211,7 @@ impl CredHandler {
         async_tx: &Sender<DelayedAction>,
         pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
+        let _entered = trace_span!("validate_password").entered();
         match cred {
             AuthCredential::Password(cleartext) => {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
@@ -487,6 +493,7 @@ impl CredHandler {
         webauthn: &Webauthn<WebauthnDomainConfig>,
         pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
+        let _entered = trace_span!("authsession::validate").entered();
         match self {
             CredHandler::Anonymous => Self::validate_anonymous(au, cred),
             CredHandler::Password(ref mut pw, generated) => {
@@ -733,6 +740,7 @@ impl AuthSession {
         pw_badlist_set: Option<&HashSet<String>>,
         uat_bundy_hmac: &HS512,
     ) -> Result<AuthState, OperationError> {
+        let _entered = trace_span!("authsession::validate_creds").entered();
         let (next_state, response) = match &mut self.state {
             AuthSessionState::Init(_) | AuthSessionState::Success | AuthSessionState::Denied(_) => {
                 return Err(OperationError::InvalidAuthState(
@@ -750,6 +758,7 @@ impl AuthSession {
                     pw_badlist_set,
                 ) {
                     CredState::Success(auth_type) => {
+                        security_info!("Successful cred handling");
                         lsecurity!(au, "Successful cred handling");
                         let uat = self
                             .account
@@ -758,6 +767,7 @@ impl AuthSession {
 
                         // Now encrypt and prepare the token for return to the client.
                         let token = uat_bundy_hmac.sign(&uat).map_err(|e| {
+                            admin_error!("Failed to sign UserAuthToken - {:?}", e);
                             ladmin_error!(au, "Failed to sign UserAuthToken - {:?}", e);
                             OperationError::InvalidState
                         })?;
@@ -768,10 +778,12 @@ impl AuthSession {
                         )
                     }
                     CredState::Continue(allowed) => {
+                        security_info!("Request credential continuation: {:?}", allowed);
                         lsecurity!(au, "Request credential continuation: {:?}", allowed);
                         (None, Ok(AuthState::Continue(allowed)))
                     }
                     CredState::Denied(reason) => {
+                        security_info!("Credentials denied: {}", reason);
                         lsecurity!(au, "Credentials denied: {}", reason);
                         (
                             Some(AuthSessionState::Denied(reason)),

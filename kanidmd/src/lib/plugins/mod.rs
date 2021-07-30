@@ -7,6 +7,7 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::prelude::*;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use tracing::trace_span;
 
 mod attrunique;
 mod base;
@@ -413,6 +414,7 @@ impl Plugins {
         au: &mut AuditScope,
         qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
+        let _entered = trace_span!("plugins::run_verify").entered();
         lperf_segment!(au, "plugins::run_verify", || {
             let mut results = Vec::new();
             run_verify_plugin!(au, qs, &mut results, base::Base);

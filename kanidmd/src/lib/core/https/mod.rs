@@ -1179,8 +1179,8 @@ pub fn create_https_server(
 ) -> Result<(), ()> {
     let (log_tx, log_rx) = unbounded::<TreeProcessor<KanidmEventTag>>();
     tracing::subscriber::set_global_default(TreeSubscriber::pretty(log_tx))
-        .expect("Global subscriber already set, this is a bug");
-    let middleware = TreeMiddleware::with_stdout();
+        .expect("🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨");
+    let tree_middleware = TreeMiddleware::with_stdout();
 
     tokio::spawn(crate::async_log::run_tracing_tree(log_rx));
 
@@ -1202,7 +1202,7 @@ pub fn create_https_server(
     // tide::log::with_level(tide::log::LevelFilter::Debug);
 
     // Add middleware?
-    tserver.with(middleware);
+    tserver.with(tree_middleware);
     // tserver.with(tide::log::LogMiddleware::new());
     // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(

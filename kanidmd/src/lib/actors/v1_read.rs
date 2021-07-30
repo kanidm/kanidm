@@ -1,8 +1,9 @@
 use tokio::sync::mpsc::UnboundedSender as Sender;
+use tracing::instrument;
 
 use std::sync::Arc;
 
-use crate::prelude::*;
+use crate::{admin_error, prelude::*, security_info};
 
 use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
@@ -118,6 +119,11 @@ impl QueryServerReadV1 {
         res
     }
 
+    #[instrument(
+        name = "v1_read::handle_auth",
+        level = "trace",
+        skip(self, sessionid, req, eventid)
+    )]
     pub async fn handle_auth(
         &self,
         sessionid: Option<Uuid>,
@@ -132,12 +138,14 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth_async().await;
         // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
+        security_info!("Begin auth event: {:?} {:?}", sessionid, req);
         lsecurity!(audit, "Begin auth event {:?} {:?}", sessionid, req);
 
         // Destructure it.
         // Convert the AuthRequest to an AuthEvent that the idm server
         // can use.
         let ae = AuthEvent::from_message(sessionid, req).map_err(|e| {
+            admin_error!("Failed to parse AuthEvent -> {:?}", e);
             ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
             e
         })?;
@@ -154,6 +162,7 @@ impl QueryServerReadV1 {
             .await
             .and_then(|r| idm_auth.commit(&mut audit).map(|_| r));
 
+        security_info!("Sending auth result -> {{why is this thing so large}}" /*, res*/);
         lsecurity!(audit, "Sending auth result -> {:?}", res);
         // Build the result.
         // r.map(|r| r.response())
