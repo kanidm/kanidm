@@ -33,6 +33,7 @@ use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
+use crate::valueset::ValueSet;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
@@ -151,7 +152,7 @@ pub struct EntryReduced {
     uuid: Uuid,
 }
 
-fn compare_attrs(left: &Map<AttrString, Set<Value>>, right: &Map<AttrString, Set<Value>>) -> bool {
+fn compare_attrs(left: &Map<AttrString, ValueSet>, right: &Map<AttrString, ValueSet>) -> bool {
     // We can't shortcut based on len because cid mod may not be present.
     // Build the set of all keys between both.
     let allkeys: Set<&str> = left
@@ -198,7 +199,7 @@ pub struct Entry<VALID, STATE> {
     valid: VALID,
     state: STATE,
     // We may need to change this to Set to allow borrow of Value -> PartialValue for lookups.
-    attrs: Map<AttrString, Set<Value>>,
+    attrs: Map<AttrString, ValueSet>,
 }
 
 impl<VALID, STATE> std::fmt::Debug for Entry<VALID, STATE>
@@ -270,12 +271,12 @@ impl Entry<EntryInit, EntryNew> {
 
         // Somehow we need to take the tree of e attrs, and convert
         // all ref types to our types ...
-        let map2: Result<Map<AttrString, Set<Value>>, OperationError> = e
+        let map2: Result<Map<AttrString, ValueSet>, OperationError> = e
             .attrs
             .iter()
             .map(|(k, v)| {
                 let nk = qs.get_schema().normalise_attr_name(k);
-                let nv: Result<Set<Value>, _> =
+                let nv: Result<ValueSet, _> =
                     v.iter().map(|vr| qs.clone_value(audit, &nk, vr)).collect();
                 match nv {
                     Ok(nvi) => Ok((nk, nvi)),
@@ -325,10 +326,10 @@ impl Entry<EntryInit, EntryNew> {
         // str -> proto entry
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
-        let x: Map<AttrString, Set<Value>> = pe.attrs.into_iter()
+        let x: Map<AttrString, ValueSet> = pe.attrs.into_iter()
             .map(|(k, vs)| {
                 let attr = AttrString::from(k.to_lowercase());
-                let vv: Set<Value> = match attr.as_str() {
+                let vv: ValueSet = match attr.as_str() {
                     "attributename" | "classname" | "domain" => {
                         vs.into_iter().map(|v| Value::new_iutf8(&v)).collect()
                     }
@@ -500,8 +501,12 @@ impl Entry<EntryInit, EntryNew> {
     }
 
     /// Replace the existing content of an attribute set of this Entry, with a new set of Values.
-    pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
-        self.set_ava_int(attr, values)
+    // pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
+    pub fn set_ava<T>(&mut self, attr: &str, iter: T)
+    where
+        T: IntoIterator<Item = Value>,
+    {
+        self.set_ava_int(attr, iter)
     }
 }
 
@@ -1290,12 +1295,12 @@ impl Entry<EntrySealed, EntryCommitted> {
 
     pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
-        let r_attrs: Result<Map<AttrString, Set<Value>>, ()> = match db_e.ent {
+        let r_attrs: Result<Map<AttrString, ValueSet>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
                 .attrs
                 .into_iter()
                 .map(|(k, vs)| {
-                    let vv: Result<Set<Value>, ()> =
+                    let vv: Result<ValueSet, ()> =
                         vs.into_iter().map(Value::from_db_valuev1).collect();
                     match vv {
                         Ok(vv) => Ok((k, vv)),
@@ -1377,14 +1382,14 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Convert this recycled entry, into a tombstone ready for reaping.
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
         // Duplicate this to a tombstone entry
-        let class_ava = btreeset![Value::new_class("object"), Value::new_class("tombstone")];
-        let last_mod_ava = btreeset![Value::new_cid(cid.clone())];
+        let class_ava = valueset![Value::new_class("object"), Value::new_class("tombstone")];
+        let last_mod_ava = valueset![Value::new_cid(cid.clone())];
 
-        let mut attrs_new: Map<AttrString, Set<Value>> = Map::new();
+        let mut attrs_new: Map<AttrString, ValueSet> = Map::new();
 
         attrs_new.insert(
             AttrString::from("uuid"),
-            btreeset![Value::new_uuidr(&self.get_uuid())],
+            valueset![Value::new_uuidr(&self.get_uuid())],
         );
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
@@ -1575,21 +1580,26 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         let v = self
             .attrs
             .entry(AttrString::from(attr))
-            .or_insert_with(Set::new);
+            .or_insert_with(ValueSet::new);
         // Here we need to actually do a check/binary search ...
         v.insert(value);
         // Doesn't matter if it already exists, equality will replace.
     }
 
     /// Overwrite the current set of values for an attribute, with this new set.
-    pub fn set_ava_int(&mut self, attr: &str, values: Set<Value>) {
+    // pub fn set_ava_int(&mut self, attr: &str, values: Set<Value>) {
+    pub fn set_ava_int<T>(&mut self, attr: &str, iter: T)
+    where
+        T: IntoIterator<Item = Value>,
+    {
         // Overwrite the existing value, build a tree from the list.
+        let values = iter.into_iter().collect();
         let _ = self.attrs.insert(AttrString::from(attr), values);
     }
 
     /// Update the last_changed flag of this entry to the given change identifier.
     fn set_last_changed(&mut self, cid: Cid) {
-        let cv = btreeset![Value::new_cid(cid)];
+        let cv = valueset![Value::new_cid(cid)];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
     }
 
@@ -1608,7 +1618,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     #[inline(always)]
     /// Return a reference to the current set of values that are associated to this attribute.
-    pub fn get_ava_set(&self, attr: &str) -> Option<&Set<Value>> {
+    pub fn get_ava_set(&self, attr: &str) -> Option<&ValueSet> {
         self.attrs.get(attr)
     }
 
@@ -1755,24 +1765,20 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// Assert if an attribute of this name is present, and one of it's values contains
     /// the following substring, if possible to perform the substring comparison.
     pub fn attribute_substring(&self, attr: &str, subvalue: &PartialValue) -> bool {
-        match self.attrs.get(attr) {
-            Some(v_list) => v_list
-                .iter()
-                .fold(false, |acc, v| if acc { acc } else { v.contains(subvalue) }),
-            None => false,
-        }
+        self.attrs
+            .get(attr)
+            .map(|vset| vset.substring(subvalue))
+            .unwrap_or(false)
     }
 
     #[inline(always)]
     /// Assert if an attribute of this name is present, and one of it's values is less than
     /// the following partial value
     pub fn attribute_lessthan(&self, attr: &str, subvalue: &PartialValue) -> bool {
-        match self.attrs.get(attr) {
-            Some(v_list) => v_list
-                .iter()
-                .fold(false, |acc, v| if acc { acc } else { v.lessthan(subvalue) }),
-            None => false,
-        }
+        self.attrs
+            .get(attr)
+            .map(|vset| vset.lessthan(subvalue))
+            .unwrap_or(false)
     }
 
     // Since EntryValid/Invalid is just about class adherenece, not Value correctness, we
@@ -1946,13 +1952,17 @@ where
     }
 
     /// Remove all values of this attribute from the entry, and return their content.
-    pub fn pop_ava(&mut self, attr: &str) -> Option<Set<Value>> {
+    pub fn pop_ava(&mut self, attr: &str) -> Option<ValueSet> {
         self.attrs.remove(attr)
     }
 
     /// Replace the content of this attribute with a new value set.
-    pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
-        self.set_ava_int(attr, values)
+    // pub fn set_ava(&mut self, attr: &str, values: Set<Value>) {
+    pub fn set_ava<T>(&mut self, attr: &str, iter: T)
+    where
+        T: IntoIterator<Item = Value>,
+    {
+        self.set_ava_int(attr, iter)
     }
 
     /*
@@ -1999,21 +2009,21 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid_v = btreeset![Value::new_uuidr(&s.uuid)];
+        let uuid_v = valueset![Value::new_uuidr(&s.uuid)];
 
-        let name_v = btreeset![Value::new_iutf8(s.name.as_str())];
-        let desc_v = btreeset![Value::new_utf8(s.description.clone())];
+        let name_v = valueset![Value::new_iutf8(s.name.as_str())];
+        let desc_v = valueset![Value::new_utf8(s.description.clone())];
 
-        let multivalue_v = btreeset![Value::from(s.multivalue)];
-        let unique_v = btreeset![Value::from(s.unique)];
+        let multivalue_v = valueset![Value::from(s.multivalue)];
+        let unique_v = valueset![Value::from(s.unique)];
 
-        let index_v: Set<_> = s.index.iter().map(|i| Value::from(i.clone())).collect();
+        let index_v: ValueSet = s.index.iter().cloned().map(Value::from).collect();
 
-        let syntax_v = btreeset![Value::from(s.syntax.clone())];
+        let syntax_v = valueset![Value::from(s.syntax.clone())];
 
         // Build the Map of the attributes relevant
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
-        let mut attrs: Map<AttrString, Set<Value>> = Map::new();
+        let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("attributename"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
@@ -2023,7 +2033,7 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(AttrString::from("syntax"), syntax_v);
         attrs.insert(
             AttrString::from("class"),
-            btreeset![
+            valueset![
                 Value::new_class("object"),
                 Value::new_class("system"),
                 Value::new_class("attributetype")
@@ -2042,19 +2052,19 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
 
 impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid_v = btreeset![Value::new_uuidr(&s.uuid)];
+        let uuid_v = valueset![Value::new_uuidr(&s.uuid)];
 
-        let name_v = btreeset![Value::new_iutf8(s.name.as_str())];
-        let desc_v = btreeset![Value::new_utf8(s.description.clone())];
+        let name_v = valueset![Value::new_iutf8(s.name.as_str())];
+        let desc_v = valueset![Value::new_utf8(s.description.clone())];
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
-        let mut attrs: Map<AttrString, Set<Value>> = Map::new();
+        let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(
             AttrString::from("class"),
-            btreeset![
+            valueset![
                 Value::new_class("object"),
                 Value::new_class("system"),
                 Value::new_class("classtype")
