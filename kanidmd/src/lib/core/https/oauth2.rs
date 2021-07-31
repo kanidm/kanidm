@@ -1,6 +1,5 @@
-use super::{
-    json_rest_event_get, json_rest_event_post, to_tide_response, AppState, RequestExtensions,
-};
+use super::v1::{json_rest_event_get, json_rest_event_post};
+use super::{to_tide_response, AppState, RequestExtensions};
 use crate::idm::oauth2::{
     AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess, ErrorResponse, Oauth2Error,
 };
@@ -214,8 +213,6 @@ async fn oauth2_authorise(
         }
     }
     .map(|mut res| {
-        res.insert_header("Cache-Control", "no-store");
-        res.insert_header("Pragma", "no-cache");
         res.insert_header("X-KANIDM-OPID", hvalue);
         res
     })
@@ -290,8 +287,6 @@ async fn oauth2_authorise_permit(
             tide::Response::new(500)
         }
     };
-    res.insert_header("Cache-Control", "no-store");
-    res.insert_header("Pragma", "no-cache");
     res.insert_header("X-KANIDM-OPID", hvalue);
     Ok(res)
 }
@@ -359,11 +354,17 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         }
     }
     .map(|mut res| {
-        res.insert_header("Cache-Control", "no-store");
-        res.insert_header("Pragma", "no-cache");
         res.insert_header("X-KANIDM-OPID", hvalue);
         res
     })
+}
+
+// For future openid integration
+pub async fn get_openid_configuration(_req: tide::Request<AppState>) -> tide::Result {
+    let mut res = tide::Response::new(200);
+    res.set_content_type("text/html;charset=utf-8");
+    res.set_body("");
+    Ok(res)
 }
 
 /*
