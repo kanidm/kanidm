@@ -744,6 +744,15 @@
 <span id="742">742</span>
 <span id="743">743</span>
 <span id="744">744</span>
+<span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
+<span id="748">748</span>
+<span id="749">749</span>
+<span id="750">750</span>
+<span id="751">751</span>
+<span id="752">752</span>
+<span id="753">753</span>
 </pre><pre class="rust">
 <span class="doccomment">//! These contain the server &quot;cores&quot;. These are able to startup the server</span>
 <span class="doccomment">//! (bootstrap) to a running state and then execute tasks. This is where modules</span>
@@ -1449,6 +1458,15 @@ pub fn reset_sid_core(config: Configuration) {
 
     <span class="comment">// Setup timed events associated to the write thread</span>
     <span class="ident">IntervalActor::start</span>(<span class="ident">server_write_ref</span>);
+    <span class="comment">// Setup timed events associated to the read thread</span>
+    <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">online_backup</span> {
+        <span class="prelude-val">Some</span>(<span class="ident">cfg</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">IntervalActor::start_online_backup</span>(<span class="ident">server_read_ref</span>, <span class="kw-2">&amp;</span><span class="ident">cfg</span>)<span class="question-mark">?</span>;
+        }
+        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="macro">debug!</span>(<span class="string">&quot;Online backup not requested, skipping&quot;</span>);
+        }
+    };
 
     <span class="comment">// If we have been requested to init LDAP, configure it now.</span>
     <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">ldapaddress</span> {

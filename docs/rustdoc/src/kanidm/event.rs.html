@@ -948,6 +948,27 @@
 <span id="946">946</span>
 <span id="947">947</span>
 <span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
+<span id="962">962</span>
+<span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
+<span id="966">966</span>
+<span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
 </pre><pre class="rust">
 <span class="doccomment">//! An `event` is a self contained module of data, that contains all of the</span>
 <span class="doccomment">//! required information for any operation to proceed. While there are many</span>
@@ -1855,6 +1876,27 @@ impl AuthResult {
 <span class="kw">impl</span> <span class="ident">PurgeRecycledEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">PurgeRecycledEvent</span> {
+            <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
+            <span class="ident">eventid</span>: <span class="ident">Uuid::new_v4</span>(),
+        }
+    }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OnlineBackupEvent</span> {
+    <span class="kw">pub</span> <span class="ident">ident</span>: <span class="ident">Identity</span>,
+    <span class="kw">pub</span> <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">Default</span> <span class="kw">for</span> <span class="ident">OnlineBackupEvent</span> {
+    <span class="kw">fn</span> <span class="ident">default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span><span class="ident">::new</span>()
+    }
+}
+
+<span class="kw">impl</span> <span class="ident">OnlineBackupEvent</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">OnlineBackupEvent</span> {
             <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
             <span class="ident">eventid</span>: <span class="ident">Uuid::new_v4</span>(),
         }

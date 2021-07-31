@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["ServerRole",""]],"struct":[["Configuration",""],["IntegrationTestConfig",""],["TlsConfiguration",""]]});
+initSidebarItems({"enum":[["ServerRole",""]],"struct":[["Configuration",""],["IntegrationTestConfig",""],["OnlineBackup",""],["TlsConfiguration",""]]});
