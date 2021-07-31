@@ -26,7 +26,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 
 use kanidm::audit::LogLevel;
-use kanidm::config::{Configuration, ServerRole};
+use kanidm::config::{Configuration, OnlineBackup, ServerRole};
 use kanidm::core::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
@@ -50,6 +50,7 @@ struct ServerConfig {
     pub tls_chain: Option<String>,
     pub tls_key: Option<String>,
     pub log_level: Option<String>,
+    pub online_backup: Option<OnlineBackup>,
     pub origin: String,
     #[serde(default)]
     pub role: ServerRole,
@@ -223,6 +224,7 @@ async fn main() {
             config.update_tls(&sconfig.tls_chain, &sconfig.tls_key);
             config.update_bind(&sconfig.bindaddress);
             config.update_ldapbind(&sconfig.ldapbindaddress);
+            config.update_online_backup(&sconfig.online_backup);
 
             if let Some(i_str) = &(sconfig.tls_chain) {
                 let i_path = PathBuf::from(i_str.as_str());

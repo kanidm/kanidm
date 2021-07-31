@@ -36,15 +36,28 @@ db_path = "/var/lib/kanidm/kanidm.db"
 # origin = "https://idm.example.com"
 origin = "https://idm.example.com:8443"
 #
+#
+# [online_backup]
+#   The path to the output folder for online backups
+# path = "/var/lib/kanidm/backups/"
+#   The schedule to run online backups - see https://crontab.guru/
+#   every day at 22:00 UTC (default)
+# schedule = "00 22 * * *"
+#    four times a day at 3 minutes past the hour, every 6th hours
+# schedule = "03 */6 * * *"
+#   Number of backups to keep (default 7)
+# versions = 7
+#
+#
 #   The role of this server. This affects features available and how replication may interact.
 #   Valid roles are:
-#   - write_replica
+#   - WriteReplica
 #     This server provides all functionality of Kanidm. It allows authentication, writes, and
 #     the web user interface to be served.
-#   - write_replica_no_ui
+#   - WriteReplicaNoUI
 #     This server is the same as a write_replica, but does NOT offer the web user interface.
-#   - read_only_replica
+#   - ReadOnlyReplica
 #     This server will not writes initiated by clients. It supports authentication and reads,
 #     and must have a replication agreement as a source of it's data.
-#   Defaults to "write_replica".
-# role = "write_replica"
+#   Defaults to "WriteReplica".
+# role = "WriteReplica"

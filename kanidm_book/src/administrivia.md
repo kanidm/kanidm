@@ -41,6 +41,13 @@ This is a simple backup of the data volume.
     # Backup your docker's volume folder
     docker start <container name>
 
+## Method 3
+
+Automatic backups can be generated online by a `kanidmd server` instance
+by including the `[online_backup]` section in the `server.toml`.
+This allows you to run regular backups, defined by a cron schedule, and maintain
+the number of backup versions to keep. An example is located in [examples/server.toml](../../examples/server.toml).
+
 # Rename the domain
 
 There are some cases where you may need to rename the domain. You should have configured
@@ -65,7 +72,6 @@ you can then rename the domain with the commands as follows:
         kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml \
         -n idm.new.domain.name
     docker start <container name>
-
 
 # Reindexing after schema extension
 
@@ -96,12 +102,12 @@ Generally, reindexing is a rare action and should not normally be required.
 
 # Vacuum
 
-[Vacuuming](https://www.sqlite.org/lang_vacuum.html) is the process of reclaiming un-used pages 
-from the sqlite freelists, as well as performing some data reordering tasks that may make some 
-queries more efficient . It is recommended that you vacuum after a reindex is performed or 
+[Vacuuming](https://www.sqlite.org/lang_vacuum.html) is the process of reclaiming un-used pages
+from the sqlite freelists, as well as performing some data reordering tasks that may make some
+queries more efficient . It is recommended that you vacuum after a reindex is performed or
 when you wish to reclaim space in the database file.
 
-Vacuum is also able to change the pagesize of the database. After changing db\_fs\_type (which affects 
+Vacuum is also able to change the pagesize of the database. After changing `db_fs_type` (which affects
 pagesize) in server.toml, you must run a vacuum for this to take effect.
 
     docker stop <container name>
@@ -114,7 +120,7 @@ pagesize) in server.toml, you must run a vacuum for this to take effect.
 The server ships with a number of verification utilities to ensure that data is consistent such
 as referential integrity or memberof.
 
-Note that verification really is a last resort - the server does *a lot* to prevent and self-heal
+Note that verification really is a last resort - the server does _a lot_ to prevent and self-heal
 from errors at run time, so you should rarely if ever require this utility. This utility was
 developed to guarantee consistency during development!
 

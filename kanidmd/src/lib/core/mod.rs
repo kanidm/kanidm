@@ -702,6 +702,15 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
 
     // Setup timed events associated to the write thread
     IntervalActor::start(server_write_ref);
+    // Setup timed events associated to the read thread
+    match &config.online_backup {
+        Some(cfg) => {
+            IntervalActor::start_online_backup(server_read_ref, &cfg)?;
+        }
+        None => {
+            debug!("Online backup not requested, skipping");
+        }
+    };
 
     // If we have been requested to init LDAP, configure it now.
     match &config.ldapaddress {
