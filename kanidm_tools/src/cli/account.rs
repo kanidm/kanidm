@@ -235,7 +235,6 @@ impl AccountOpt {
                                 let mut confirm_input = String::new();
                                 if let Err(e) = io::stdin().read_line(&mut confirm_input) {
                                     eprintln!("Failed to read from stdin -> {:?}", e);
-                                    // break;
                                 };
 
                                 if confirm_input.to_lowercase().trim() == "i am sure" {
@@ -250,10 +249,8 @@ impl AccountOpt {
                                             eprintln!("Error Completing -> {:?}", e);
                                         }
                                     };
-                                    // break;
                                 } else {
                                     eprintln!("Cancelling TOTP registration");
-                                    // break;
                                 }
                                 break;
                             }
