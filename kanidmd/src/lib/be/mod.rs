@@ -304,7 +304,6 @@ pub trait BackendTransaction {
 
                 // Setup the query plan tracker
                 let mut plan = vec![fp];
-                // plan.push(fp);
 
                 match &cand_idl {
                     IdList::Indexed(idl) | IdList::Partial(idl) | IdList::PartialThreshold(idl) => {
