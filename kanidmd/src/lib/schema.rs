@@ -1126,7 +1126,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 SchemaAttribute {
                     name: AttrString::from("useraccountcontrol"),
                     uuid: *UUID_SCHEMA_ATTR_USERACCOUNTCONTROL,
-                    description: String::from("An LDAP Compatible useraccountcontrol"),
+                    description: String::from("An LDAP Compatible UserAccountControl"),
                     multivalue: false,
                     unique: false,
                     phantom: true,
