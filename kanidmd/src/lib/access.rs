@@ -585,7 +585,11 @@ pub trait AccessControlsTransaction<'a> {
                             // false -> the entry is not allowed to be searched by this entity, so is
                             //          excluded.
                             let decision = requested_attrs.is_subset(&allowed_attrs);
-                            lsecurity_access!(audit, "search attr decision --> {:?}", decision);
+                            if decision {
+                                lsecurity_access!(audit, "search attr decision --> {:?} (all requested attributes are allowed)", decision);
+                            } else {
+                                lsecurity_access!(audit, "search attr decision --> {:?} (all requested attributes are not allowed)", decision);
+                            }
                             decision
                         })
                         .collect()
@@ -593,7 +597,7 @@ pub trait AccessControlsTransaction<'a> {
             );
 
             if allowed_entries.is_empty() {
-                lsecurity_access!(audit, "denied ❌");
+                lsecurity_access!(audit, "denied ❌ as allowed entries is empty");
             } else {
                 lsecurity_access!(audit, "allowed {} entries ✅", allowed_entries.len());
             }

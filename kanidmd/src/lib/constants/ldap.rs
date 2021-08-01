@@ -6,11 +6,12 @@ use std::ops::BitAnd;
 /// Flags and byte values for the LDAP UserAccountControl Attribute.
 /// This attribute value can be zero or a combination of one or more of the following values.
 ///
-/// The flags are cumulative. To disable a user's account, set the attribute to [LdapUacFlag::AccountDisable] + [LdapUacFlag::NormalAccount]  (2 + 512).
+/// The flags are cumulative. To disable a user's account, set the attribute to [LdapUacFlag::AccountDisable] & [LdapUacFlag::NormalAccount]  (2 + 512).
 ///
 /// Since User-Account-Control-Attribute is a constructed attribute, it cannot be used in an LDAP search filter.
 ///
-/// Ref: <https://ldapwiki.com/wiki/User-Account-Control%20Attribute%20Values>
+/// - Field Ref: <https://ldapwiki.com/wiki/User-Account-Control%20Attribute>
+/// - Values Ref: <https://ldapwiki.com/wiki/User-Account-Control%20Attribute%20Values>
 
 #[derive(Debug)]
 /// Flag values for UserAccountControl. AND (&) them together to get a flag value to return in LDAP responses
@@ -112,10 +113,12 @@ impl BitAnd for LdapUacFlag {
     /// let testval: u32 = LdapUacFlag::Lockout & LdapUacFlag::PasswdNotRequired;
     /// assert_eq!(testval, 48);
     /// ```
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn bitand(self, rhs: Self) -> u32 {
+        // rhs is the "right-hand side" of the expression `a & b`
         let lhs: u32 = self.into();
         let rhs: u32 = rhs.into();
-        lhs & rhs
+        lhs + rhs
     }
 }
 
@@ -129,11 +132,12 @@ impl BitAnd<u32> for LdapUacFlag {
     /// let testval: u32 = LdapUacFlag::Lockout & LdapUacFlag::PasswdNotRequired;
     /// assert_eq!(testval, 48);
     /// ```
+    #[allow(clippy::suspicious_arithmetic_impl)]
     fn bitand(self, rhs: u32) -> u32 {
         // rhs is the "right-hand side" of the expression `a & b`
         let lhs: u32 = self.into();
         let rhs: u32 = rhs;
-        lhs & rhs
+        lhs + rhs
     }
 }
 
