@@ -60,15 +60,15 @@ fn main() {
 
     println!("cargo:rerun-if-changed={}", profile_path.to_str().unwrap());
 
-    let mut f =
-        File::open(&profile_path).expect(format!("Failed to open {:?}", profile_path).as_str());
+    let mut f = File::open(&profile_path)
+        .unwrap_or_else(|_| panic!("Failed to open build profile {:?}", profile_path));
 
     let mut contents = String::new();
     f.read_to_string(&mut contents)
-        .expect(format!("Failed to read {:?}", profile_path).as_str());
+        .unwrap_or_else(|_| panic!("Failed to read build profile {:?}", profile_path));
 
     let profile_cfg: ProfileConfig = toml::from_str(contents.as_str())
-        .expect(format!("Failed to parse {:?}", profile_path).as_str());
+        .unwrap_or_else(|_| panic!("Failed to parse build profile {:?}", profile_path));
 
     match profile_cfg.cpu_flags {
         CpuOptLevel::none => {}

@@ -22,7 +22,7 @@ impl Cid {
         } else {
             *max_ts + Duration::from_nanos(1)
         };
-        Cid { d_uuid, s_uuid, ts }
+        Cid { ts, d_uuid, s_uuid }
     }
 
     #[cfg(test)]

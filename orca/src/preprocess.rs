@@ -69,8 +69,8 @@ fn parse_rtime(s: &str) -> Result<Duration, ()> {
         return Err(());
     }
 
-    let hh = u32::from_str_radix(v[0], 10).map_err(|_| ())?;
-    let mm = u32::from_str_radix(v[1], 10).map_err(|_| ())?;
+    let hh = v[0].parse::<u32>().map_err(|_| ())?;
+    let mm = v[1].parse::<u32>().map_err(|_| ())?;
     let ss = f64::from_str(v[2]).map_err(|_| ())?;
 
     let ext_secs = ((mm * 60) + (hh * 3600)) as f64;
@@ -161,7 +161,7 @@ impl TryFrom<RawRecord> for Record {
             op_type,
         } = value;
 
-        let conn = i32::from_str_radix(&conn, 10).map_err(|_| ())?;
+        let conn = conn.parse::<i32>().map_err(|_| ())?;
         let etime = f64::from_str(&etime)
             .map(Duration::from_secs_f64)
             .map_err(|_| ())?;

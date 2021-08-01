@@ -200,14 +200,14 @@ impl AccountOpt {
                         let mut totp_input = String::new();
                         let input_result = io::stdin().read_line(&mut totp_input);
                         // Finish the line?
-                        eprintln!("");
+                        eprintln!();
                         if let Err(e) = input_result {
                             eprintln!("Failed to read from stdin -> {:?}", e);
                             break;
                         };
 
                         // Convert to a u32.
-                        let totp = match u32::from_str_radix(totp_input.trim(), 10) {
+                        let totp = match totp_input.trim().parse::<u32>() {
                             Ok(v) => v,
                             Err(e) => {
                                 eprintln!("Invalid TOTP -> {:?}", e);
@@ -227,17 +227,15 @@ impl AccountOpt {
                             }
                             Err(ClientError::TotpInvalidSha1(session)) => {
                                 eprintln!("⚠️  WARNING - It appears your authenticator app may be broken ⚠️  ");
-                                eprintln!(" The TOTP authenticator you are using is forcing the use of SHA1");
-                                eprintln!("");
+                                eprintln!(" The TOTP authenticator you are using is forcing the use of SHA1\n");
                                 eprintln!(" -- If you accept this risk, and wish to proceed, type 'I am sure' ");
-                                eprintln!(" -- Otherwise press ENTER to cancel this operation");
-                                eprintln!("");
+                                eprintln!(" -- Otherwise press ENTER to cancel this operation\n");
                                 eprint!("Are you sure: ");
 
                                 let mut confirm_input = String::new();
                                 if let Err(e) = io::stdin().read_line(&mut confirm_input) {
                                     eprintln!("Failed to read from stdin -> {:?}", e);
-                                    break;
+                                    // break;
                                 };
 
                                 if confirm_input.to_lowercase().trim() == "i am sure" {
@@ -252,11 +250,12 @@ impl AccountOpt {
                                             eprintln!("Error Completing -> {:?}", e);
                                         }
                                     };
-                                    break;
+                                    // break;
                                 } else {
                                     eprintln!("Cancelling TOTP registration");
-                                    break;
+                                    // break;
                                 }
+                                break;
                             }
                             Err(ClientError::TotpVerifyFailed(_, _)) => {
                                 eprintln!("Incorrect TOTP code - try again");
