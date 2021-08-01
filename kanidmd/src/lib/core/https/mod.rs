@@ -161,6 +161,8 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
         <meta charset="utf-8">
         <title>Kanidm</title>
         <script src="/pkg/bundle.js" defer></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>">
+
     </head>
 
     <body>
