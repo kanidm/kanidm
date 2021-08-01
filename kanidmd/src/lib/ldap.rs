@@ -530,6 +530,7 @@ pub(crate) fn ldap_vattr_map(input: &str) -> &str {
         "sshpublickey" => "ssh_publickey",
         "cn" => "name",
         "uidnumber" => "gidnumber",
+        // TODO: temporary hack to make it work until the [kanidm::constants::ldap::LdapUacFlag] enum can be turned into a filter
         "useraccountcontrol" => "gidnumber",
         a => a,
     }
