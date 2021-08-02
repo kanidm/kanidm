@@ -91,7 +91,7 @@ impl TryFrom<&str> for Password {
             let hash = django_pbkdf[3];
             match algo {
                 "pbkdf2_sha256" => {
-                    let c = usize::from_str_radix(cost, 10).map_err(|_| ())?;
+                    let c = cost.parse::<usize>().map_err(|_| ())?;
                     let s: Vec<_> = salt.as_bytes().to_vec();
                     let h = base64::decode(hash).map_err(|_| ())?;
                     if h.len() < PBKDF2_IMPORT_MIN_LEN {
