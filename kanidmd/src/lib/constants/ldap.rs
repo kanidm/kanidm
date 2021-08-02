@@ -12,58 +12,65 @@ use std::ops::BitAnd;
 ///
 /// - Field Ref: <https://ldapwiki.com/wiki/User-Account-Control%20Attribute>
 /// - Values Ref: <https://ldapwiki.com/wiki/User-Account-Control%20Attribute%20Values>
+///
+/// ```
+/// use kanidm::constants::ldap::LdapUacFlag;
+/// let testval: u32 = LdapUacFlag::Lockout & LdapUacFlag::PasswdNotRequired;
+/// assert_eq!(testval, 48);
+/// ```
 
-#[derive(Debug)]
+#[derive(PartialEq, Debug, Eq, Hash, Copy, Clone)]
+#[repr(u32)]
 /// Flag values for UserAccountControl. AND (&) them together to get a flag value to return in LDAP responses
 pub enum LdapUacFlag {
     /// If you provide it a wrong value, you get back InvalidFlag which equates to 0;
-    InvalidFlag,
+    InvalidFlag = 0,
     /// The logon script is executed.
-    Script,
+    Script = 1,
     /// The user account is disabled.
-    AccountDisable,
+    AccountDisable = 2,
     /// The home directory is required.
-    HomedirRequired,
+    HomedirRequired = 8,
     /// The account is currently locked from Intruder Detection. This value can be cleared to unlock a previously locked account.
-    Lockout,
+    Lockout = 16,
     ///  No password is required.
-    PasswdNotRequired,
+    PasswdNotRequired = 32,
     ///  The user cannot change the password. Note: You cannot assign the permission settings of PasswordCantChange by directly modifying the UserAccountControl attribute. For more information and a code example that shows how to prevent a user from changing the password, see User Cannot Change Password.
-    PasswordCantChange,
+    PasswordCantChange = 64,
     ///  The user can send an encrypted password.
-    EncryptedTextPasswordAllowed,
+    EncryptedTextPasswordAllowed = 128,
     ///  This is an account for users whose primary account is in another AD DOMAIN. This account provides user access to this AD DOMAIN, but not to any AD DOMAIN that trusts this AD DOMAIN. Also known as a local user account.
-    TemplDuplicateAccount,
+    TemplDuplicateAccount = 256,
     /// This is a default account type that represents a typical user.
-    NormalAccount,
+    NormalAccount = 512,
     ///  This is a permit to trust account for a system AD DOMAIN that trusts other AD DOMAIN.
-    InterDomainTrustAccount,
+    InterDomainTrustAccount = 2048,
     ///  This is a computer account for a computer that is a member of this AD DOMAIN.
-    WorkstationTrustAccount,
+    WorkstationTrustAccount = 4096,
     ///  This is a computer account for a system backup Domain Controller that is a member of this AD DOMAIN.
-    ServerTrustAccount,
+    ServerTrustAccount = 8192,
     ///  The password for this account will never expire.
-    DontExpirePassword,
+    DontExpirePassword = 65536,
     ///  This is an MNS logon account.
-    MnsLogonAccount,
+    MnsLogonAccount = 131072,
     ///  The user must log on using a Smart Card.
-    SmartcardRequired,
+    SmartcardRequired = 262144,
     ///  The service account (user or computer account), under which a service runs, is trusted for Kerberos delegation. Any such service can impersonate a client requesting the service.
-    TrustedForDelegation,
+    TrustedForDelegation = 524288,
     ///  The security context of the user will NOT be delegated to a service even if the service account is set as trusted for Kerberos delegation.
-    NotDelgated,
+    NotDelgated = 1048576,
     ///  Restrict this UserPrincipalName to use only Data Encryption Standard (DES) encryption types for keys.
-    UseDesKeyOnly,
+    UseDesKeyOnly = 2097152,
     ///  This account does not require Kerberos Pre-Authentication for logon.
-    DontRequirePreAuth,
+    DontRequirePreAuth = 4194304,
     ///  The user password has expired. This flag is created by the system using data from the Pwd-Last-Set attribute and the AD DOMAIN policy.
-    ErrorPasswordExpired,
+    ErrorPasswordExpired = 8388608,
     ///  The account is enabled for delegation. This is a security-sensitive setting; accounts with this option enabled SHOULD be strictly controlled. This setting enables a service running under the account to assume a client identity and authenticate as that user to other remote servers on the network.
-    TrustedToAuthnForDelegation,
+    TrustedToAuthnForDelegation = 16777216,
     ///  (Windows Server 2008/Windows Server 2008 R2) The account is a Read-Only Domain Controller (RODC). This is a security-sensitive setting. Removing this setting from an RODC compromises security on that server.
-    PartialSecretsAccount,
+    PartialSecretsAccount = 67108864,
     ///  Restrict this UserPrincipalName to use only Advanced Encryption Standard (AES) encryption types for keys. This bit is ignored by Windows Client and Windows Servers.
-    UserUseAesKeys,
+    UserUseAesKeys = 2147483648,
 }
 
 impl From<LdapUacFlag> for u32 {
@@ -145,48 +152,5 @@ impl From<&LdapUacFlag> for u32 {
     fn from(flag: &LdapUacFlag) -> u32 {
         let result: u32 = flag.into();
         result
-    }
-}
-
-impl From<u32> for LdapUacFlag {
-    /// Returns a LdapUacFlag if you give it a u32
-    ///
-    /// ```
-    /// use kanidm::constants::ldap::LdapUacFlag;
-    /// let lhs: u32 = LdapUacFlag::NotDelgated.into();
-    /// let rhs: u32 = LdapUacFlag::from(1048576).into();
-    ///
-    /// assert_eq!(lhs, rhs);
-    /// ```
-    fn from(number: u32) -> Self {
-        match number {
-            1 => LdapUacFlag::Script,
-            2 => LdapUacFlag::AccountDisable,
-            8 => LdapUacFlag::HomedirRequired,
-            16 => LdapUacFlag::Lockout,
-            32 => LdapUacFlag::PasswdNotRequired,
-            64 => LdapUacFlag::PasswordCantChange,
-            128 => LdapUacFlag::EncryptedTextPasswordAllowed,
-            256 => LdapUacFlag::TemplDuplicateAccount,
-            512 => LdapUacFlag::NormalAccount,
-            2048 => LdapUacFlag::InterDomainTrustAccount,
-            4096 => LdapUacFlag::WorkstationTrustAccount,
-            8192 => LdapUacFlag::ServerTrustAccount,
-            65536 => LdapUacFlag::DontExpirePassword,
-            131072 => LdapUacFlag::MnsLogonAccount,
-            262144 => LdapUacFlag::SmartcardRequired,
-            524288 => LdapUacFlag::TrustedForDelegation,
-            1048576 => LdapUacFlag::NotDelgated,
-            2097152 => LdapUacFlag::UseDesKeyOnly,
-            4194304 => LdapUacFlag::DontRequirePreAuth,
-            8388608 => LdapUacFlag::ErrorPasswordExpired,
-            16777216 => LdapUacFlag::TrustedToAuthnForDelegation,
-            67108864 => LdapUacFlag::PartialSecretsAccount,
-            2147483648 => LdapUacFlag::UserUseAesKeys,
-            _ => {
-                eprintln!("Invalid flag int provided, returning InvalidFlag");
-                LdapUacFlag::InvalidFlag
-            }
-        }
     }
 }
