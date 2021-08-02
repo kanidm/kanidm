@@ -82,32 +82,7 @@ impl From<LdapUacFlag> for u32 {
     /// assert_eq!(testuac, 2147483648);
     /// ```
     fn from(flag: LdapUacFlag) -> u32 {
-        match flag {
-            LdapUacFlag::InvalidFlag => 0,
-            LdapUacFlag::Script => 1,
-            LdapUacFlag::AccountDisable => 2,
-            LdapUacFlag::HomedirRequired => 8,
-            LdapUacFlag::Lockout => 16,
-            LdapUacFlag::PasswdNotRequired => 32,
-            LdapUacFlag::PasswordCantChange => 64,
-            LdapUacFlag::EncryptedTextPasswordAllowed => 128,
-            LdapUacFlag::TemplDuplicateAccount => 256,
-            LdapUacFlag::NormalAccount => 512,
-            LdapUacFlag::InterDomainTrustAccount => 2048,
-            LdapUacFlag::WorkstationTrustAccount => 4096,
-            LdapUacFlag::ServerTrustAccount => 8192,
-            LdapUacFlag::DontExpirePassword => 65536,
-            LdapUacFlag::MnsLogonAccount => 131072,
-            LdapUacFlag::SmartcardRequired => 262144,
-            LdapUacFlag::TrustedForDelegation => 524288,
-            LdapUacFlag::NotDelgated => 1048576,
-            LdapUacFlag::UseDesKeyOnly => 2097152,
-            LdapUacFlag::DontRequirePreAuth => 4194304,
-            LdapUacFlag::ErrorPasswordExpired => 8388608,
-            LdapUacFlag::TrustedToAuthnForDelegation => 16777216,
-            LdapUacFlag::PartialSecretsAccount => 67108864,
-            LdapUacFlag::UserUseAesKeys => 2147483648,
-        }
+        flag as u32
     }
 }
 
@@ -123,8 +98,8 @@ impl BitAnd for LdapUacFlag {
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn bitand(self, rhs: Self) -> u32 {
         // rhs is the "right-hand side" of the expression `a & b`
-        let lhs: u32 = self.into();
-        let rhs: u32 = rhs.into();
+        let lhs = self as u32;
+        let rhs = rhs as u32;
         lhs + rhs
     }
 }
@@ -142,15 +117,14 @@ impl BitAnd<u32> for LdapUacFlag {
     #[allow(clippy::suspicious_arithmetic_impl)]
     fn bitand(self, rhs: u32) -> u32 {
         // rhs is the "right-hand side" of the expression `a & b`
-        let lhs: u32 = self.into();
-        let rhs: u32 = rhs;
+        let lhs = self as u32;
+        let rhs = rhs as u32;
         lhs + rhs
     }
 }
 
 impl From<&LdapUacFlag> for u32 {
     fn from(flag: &LdapUacFlag) -> u32 {
-        let result: u32 = flag.into();
-        result
+        flag.to_owned() as u32
     }
 }
