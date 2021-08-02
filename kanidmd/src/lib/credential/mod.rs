@@ -91,7 +91,7 @@ impl TryFrom<&str> for Password {
             let hash = django_pbkdf[3];
             match algo {
                 "pbkdf2_sha256" => {
-                    let c = usize::from_str_radix(cost, 10).map_err(|_| ())?;
+                    let c = cost.parse::<usize>().map_err(|_| ())?;
                     let s: Vec<_> = salt.as_bytes().to_vec();
                     let h = base64::decode(hash).map_err(|_| ())?;
                     if h.len() < PBKDF2_IMPORT_MIN_LEN {
@@ -808,12 +808,7 @@ impl Credential {
                     Some(mut backup_codes) => {
                         backup_codes.remove(&code_to_remove);
                         Ok(Credential {
-                            type_: CredentialType::PasswordMfa(
-                                pw.clone(),
-                                totp.clone(),
-                                wan.clone(),
-                                Some(backup_codes),
-                            ),
+                            type_: CredentialType::PasswordMfa(pw, totp, wan, Some(backup_codes)),
                             claims: self.claims.clone(),
                             uuid: self.uuid,
                         })
@@ -846,9 +841,9 @@ impl Credential {
         match &self.type_ {
             CredentialType::PasswordMfa(_, _, _, opt_bc) => opt_bc
                 .as_ref()
-                .ok_or(OperationError::InvalidAccountState(
-                    "No backup codes are available for this account".to_string(),
-                ))
+                .ok_or(OperationError::InvalidAccountState(String::from(
+                    "No backup codes are available for this account",
+                )))
                 .and_then(|bc| {
                     Ok(BackupCodesView {
                         backup_codes: bc.code_set.clone().into_iter().collect(),

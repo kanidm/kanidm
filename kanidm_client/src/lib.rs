@@ -165,6 +165,7 @@ impl KanidmClientBuilder {
         })
     }
 
+    #[allow(clippy::result_unit_err)]
     pub fn read_options_from_optional_config<P: AsRef<Path> + std::fmt::Debug>(
         self,
         config_path: P,
@@ -268,6 +269,7 @@ impl KanidmClientBuilder {
         }
     }
 
+    #[allow(clippy::result_unit_err)]
     pub fn add_root_certificate_filepath(self, ca_path: &str) -> Result<Self, ()> {
         //Okay we have a ca to add. Let's read it in and setup.
         let ca = Self::parse_certificate(ca_path)?;

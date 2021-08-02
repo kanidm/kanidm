@@ -80,8 +80,8 @@ impl Group {
 
         Group {
             name,
-            members,
             uuid,
+            members,
         }
     }
 }

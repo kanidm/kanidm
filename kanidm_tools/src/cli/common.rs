@@ -84,12 +84,18 @@ impl CommonOpt {
                     for option in tokens.iter() {
                         options.push(String::from(option.0));
                     }
-                    let selection = Select::with_theme(&ColorfulTheme::default())
+                    let user_select = Select::with_theme(&ColorfulTheme::default())
                         .with_prompt("Multiple authentication tokens exist. Please select one")
                         .default(0)
                         .items(&options)
-                        .interact()
-                        .unwrap();
+                        .interact();
+                    let selection = match user_select {
+                        Err(error) => {
+                            eprintln!("Failed to handle user input: {:?}", error);
+                            std::process::exit(1);
+                        }
+                        Ok(value) => value,
+                    };
                     debug!("Index of the chosen menu item: {:?}", selection);
 
                     let (f_uname, f_token) =

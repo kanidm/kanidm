@@ -90,7 +90,7 @@ pub fn f_id(id: &str) -> FC<'static> {
     let nf = FC::Eq("name", PartialValue::new_iname(id));
     let f: Vec<_> = iter::once(uf)
         .chain(iter::once(spnf))
-        .filter_map(|v| v)
+        .flatten()
         .chain(iter::once(nf))
         .collect();
     FC::Or(f)
@@ -100,10 +100,7 @@ pub fn f_id(id: &str) -> FC<'static> {
 pub fn f_spn_name(id: &str) -> FC<'static> {
     let spnf = PartialValue::new_spn_s(id).map(|spn| FC::Eq("spn", spn));
     let nf = FC::Eq("name", PartialValue::new_iname(id));
-    let f: Vec<_> = iter::once(spnf)
-        .filter_map(|v| v)
-        .chain(iter::once(nf))
-        .collect();
+    let f: Vec<_> = iter::once(spnf).flatten().chain(iter::once(nf)).collect();
     FC::Or(f)
 }
 

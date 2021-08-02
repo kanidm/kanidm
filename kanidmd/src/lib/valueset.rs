@@ -136,7 +136,7 @@ impl<'a> IntoIterator for &'a ValueSet {
 
     fn into_iter(self) -> Self::IntoIter {
         Iter {
-            iter: (&self.inner).into_iter(),
+            iter: (&self.inner).iter(),
         }
     }
 }

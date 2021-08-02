@@ -13,6 +13,7 @@ use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, Webaut
 static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
 
+#[allow(clippy::result_unit_err)]
 pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
     let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
     if !token_path.exists() {
@@ -59,6 +60,7 @@ pub fn read_tokens() -> Result<BTreeMap<String, String>, ()> {
     })
 }
 
+#[allow(clippy::result_unit_err)]
 pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
     let token_dir = PathBuf::from(shellexpand::tilde(TOKEN_DIR).into_owned());
     let token_path = PathBuf::from(shellexpand::tilde(TOKEN_PATH).into_owned());
@@ -116,7 +118,7 @@ fn get_index_choice(len: usize) -> Result<u8, ClientError> {
             return Err(ClientError::SystemError);
         };
         let response = buffer.trim();
-        match u8::from_str_radix(response, 10) {
+        match response.parse::<u8>() {
             Ok(i) => {
                 if (i as usize) < len {
                     return Ok(i);
@@ -145,6 +147,7 @@ impl LoginOpt {
     fn do_backup_code(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         print!("Enter Backup Code: ");
         // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
+        #[allow(clippy::unwrap_used)]
         io::stdout().flush().unwrap();
         let mut backup_code = String::new();
         loop {
@@ -152,7 +155,7 @@ impl LoginOpt {
                 eprintln!("Failed to read from stdin -> {:?}", e);
                 return Err(ClientError::SystemError);
             };
-            if backup_code.trim().len() > 0 {
+            if !backup_code.trim().is_empty() {
                 break;
             };
         }
@@ -171,7 +174,7 @@ impl LoginOpt {
             };
 
             let response = buffer.trim();
-            match u32::from_str_radix(response, 10) {
+            match response.parse::<u32>() {
                 Ok(i) => break i,
                 Err(_) => eprintln!("Invalid Number"),
             };

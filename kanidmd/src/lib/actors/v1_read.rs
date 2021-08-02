@@ -225,8 +225,16 @@ impl QueryServerReadV1 {
         // cleanup of maximum backup versions to keep
         let mut backup_file_list: Vec<PathBuf> = Vec::new();
         // pattern to find automatically generated backup files
-        let re = Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$")
-            .expect("Failed to parse regexp for online backup files.");
+        let re = match Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$") {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!(
+                    "Failed to parse regexp for online backup files: {:?}",
+                    error
+                );
+                return;
+            }
+        };
 
         // get a list of backup files
         match fs::read_dir(outpath) {

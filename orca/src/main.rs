@@ -54,6 +54,7 @@ pub enum TargetServerBuilder {
 }
 
 impl TargetServerBuilder {
+    #[allow(clippy::result_unit_err)]
     pub fn build(self) -> Result<TargetServer, ()> {
         match self {
             TargetServerBuilder::Kanidm(a, b) => KaniHttpServer::build(a, b),

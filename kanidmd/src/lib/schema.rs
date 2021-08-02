@@ -347,8 +347,8 @@ impl SchemaClass {
             uuid,
             description,
             systemmay,
-            systemmust,
             may,
+            systemmust,
             must,
         })
     }
