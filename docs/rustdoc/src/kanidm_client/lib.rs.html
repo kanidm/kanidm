@@ -924,6 +924,8 @@
 <span id="922">922</span>
 <span id="923">923</span>
 <span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
 </pre><pre class="rust">
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
@@ -1092,6 +1094,7 @@
         })
     }
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_options_from_optional_config</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">std::fmt::Debug</span><span class="op">&gt;</span>(
         <span class="self">self</span>,
         <span class="ident">config_path</span>: <span class="ident">P</span>,
@@ -1195,6 +1198,7 @@
         }
     }
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_root_certificate_filepath</span>(<span class="self">self</span>, <span class="ident">ca_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="comment">//Okay we have a ca to add. Let&#39;s read it in and setup.</span>
         <span class="kw">let</span> <span class="ident">ca</span> <span class="op">=</span> <span class="self">Self</span><span class="ident">::parse_certificate</span>(<span class="ident">ca_path</span>)<span class="question-mark">?</span>;

@@ -160,7 +160,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">config</span>(
     <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">TargetOpt</span>,
-    <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">PathBuf</span>,
+    <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">TestData</span>, <span class="ident">Profile</span>, <span class="ident">TargetServer</span>), ()<span class="op">&gt;</span> {
     <span class="comment">// read the profile that we are going to be using/testing</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">profile_path</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -239,7 +239,7 @@
     <span class="prelude-val">Ok</span>((<span class="ident">data</span>, <span class="ident">profile</span>, <span class="ident">server</span>))
 }
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">doit</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">TargetOpt</span>, <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">PathBuf</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">doit</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">TargetOpt</span>, <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     <span class="macro">info!</span>(
         <span class="string">&quot;Performing setup of {:?} from {}&quot;</span>,
         <span class="ident">target</span>,

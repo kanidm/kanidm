@@ -3056,7 +3056,6 @@
 <span id="3054">3054</span>
 <span id="3055">3055</span>
 <span id="3056">3056</span>
-<span id="3057">3057</span>
 </pre><pre class="rust">
 <span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
@@ -3363,8 +3362,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f_rem_count</span> <span class="op">=</span> <span class="ident">f_rem</span>.<span class="ident">len</span>() <span class="op">+</span> <span class="ident">f_andnot</span>.<span class="ident">len</span>() <span class="op">-</span> <span class="number">1</span>;
 
                 <span class="comment">// Setup the query plan tracker</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plan</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
-                <span class="ident">plan</span>.<span class="ident">push</span>(<span class="ident">fp</span>);
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">plan</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">fp</span>];
 
                 <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">cand_idl</span> {
                     <span class="ident">IdList::Indexed</span>(<span class="ident">idl</span>) <span class="op">|</span> <span class="ident">IdList::Partial</span>(<span class="ident">idl</span>) <span class="op">|</span> <span class="ident">IdList::PartialThreshold</span>(<span class="ident">idl</span>) <span class="op">=</span><span class="op">&gt;</span> {

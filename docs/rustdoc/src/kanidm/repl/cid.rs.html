@@ -154,7 +154,7 @@
         } <span class="kw">else</span> {
             <span class="kw-2">*</span><span class="ident">max_ts</span> <span class="op">+</span> <span class="ident">Duration::from_nanos</span>(<span class="number">1</span>)
         };
-        <span class="ident">Cid</span> { <span class="ident">d_uuid</span>, <span class="ident">s_uuid</span>, <span class="ident">ts</span> }
+        <span class="ident">Cid</span> { <span class="ident">ts</span>, <span class="ident">d_uuid</span>, <span class="ident">s_uuid</span> }
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

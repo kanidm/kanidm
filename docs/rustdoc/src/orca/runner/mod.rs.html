@@ -41,14 +41,14 @@
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::setup::config</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TargetOpt</span>, <span class="ident">TestTypeOpt</span>};
-<span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
+<span class="kw">use</span> <span class="ident">std::path</span>::{<span class="ident">Path</span>, <span class="ident">PathBuf</span>};
 
 <span class="kw">mod</span> <span class="ident">search</span>;
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">doit</span>(
     <span class="ident">testtype</span>: <span class="kw-2">&amp;</span><span class="ident">TestTypeOpt</span>,
     <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">TargetOpt</span>,
-    <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">PathBuf</span>,
+    <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     <span class="macro">info!</span>(
         <span class="string">&quot;Performing test {} against {:?} from {}&quot;</span>,

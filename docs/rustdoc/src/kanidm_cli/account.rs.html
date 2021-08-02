@@ -568,10 +568,6 @@
 <span id="566">566</span>
 <span id="567">567</span>
 <span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::password_prompt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
@@ -775,14 +771,14 @@
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">totp_input</span> <span class="op">=</span> <span class="ident">String::new</span>();
                         <span class="kw">let</span> <span class="ident">input_result</span> <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">totp_input</span>);
                         <span class="comment">// Finish the line?</span>
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;&quot;</span>);
+                        <span class="macro">eprintln!</span>();
                         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">input_result</span> {
                             <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                             <span class="kw">break</span>;
                         };
 
                         <span class="comment">// Convert to a u32.</span>
-                        <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">u32::from_str_radix</span>(<span class="ident">totp_input</span>.<span class="ident">trim</span>(), <span class="number">10</span>) {
+                        <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">totp_input</span>.<span class="ident">trim</span>().<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>() {
                             <span class="prelude-val">Ok</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>,
                             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="macro">eprintln!</span>(<span class="string">&quot;Invalid TOTP -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
@@ -802,17 +798,14 @@
                             }
                             <span class="prelude-val">Err</span>(<span class="ident">ClientError::TotpInvalidSha1</span>(<span class="ident">session</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="macro">eprintln!</span>(<span class="string">&quot;⚠️  WARNING - It appears your authenticator app may be broken ⚠️  &quot;</span>);
-                                <span class="macro">eprintln!</span>(<span class="string">&quot; The TOTP authenticator you are using is forcing the use of SHA1&quot;</span>);
-                                <span class="macro">eprintln!</span>(<span class="string">&quot;&quot;</span>);
+                                <span class="macro">eprintln!</span>(<span class="string">&quot; The TOTP authenticator you are using is forcing the use of SHA1\n&quot;</span>);
                                 <span class="macro">eprintln!</span>(<span class="string">&quot; -- If you accept this risk, and wish to proceed, type &#39;I am sure&#39; &quot;</span>);
-                                <span class="macro">eprintln!</span>(<span class="string">&quot; -- Otherwise press ENTER to cancel this operation&quot;</span>);
-                                <span class="macro">eprintln!</span>(<span class="string">&quot;&quot;</span>);
+                                <span class="macro">eprintln!</span>(<span class="string">&quot; -- Otherwise press ENTER to cancel this operation\n&quot;</span>);
                                 <span class="macro">eprint!</span>(<span class="string">&quot;Are you sure: &quot;</span>);
 
                                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">confirm_input</span> <span class="op">=</span> <span class="ident">String::new</span>();
                                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">confirm_input</span>) {
                                     <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                                    <span class="kw">break</span>;
                                 };
 
                                 <span class="kw">if</span> <span class="ident">confirm_input</span>.<span class="ident">to_lowercase</span>().<span class="ident">trim</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;i am sure&quot;</span> {
@@ -827,11 +820,10 @@
                                             <span class="macro">eprintln!</span>(<span class="string">&quot;Error Completing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                                         }
                                     };
-                                    <span class="kw">break</span>;
                                 } <span class="kw">else</span> {
                                     <span class="macro">eprintln!</span>(<span class="string">&quot;Cancelling TOTP registration&quot;</span>);
-                                    <span class="kw">break</span>;
                                 }
+                                <span class="kw">break</span>;
                             }
                             <span class="prelude-val">Err</span>(<span class="ident">ClientError::TotpVerifyFailed</span>(<span class="kw">_</span>, <span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="macro">eprintln!</span>(<span class="string">&quot;Incorrect TOTP code - try again&quot;</span>);

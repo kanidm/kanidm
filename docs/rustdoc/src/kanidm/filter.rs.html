@@ -1939,9 +1939,6 @@
 <span id="1937">1937</span>
 <span id="1938">1938</span>
 <span id="1939">1939</span>
-<span id="1940">1940</span>
-<span id="1941">1941</span>
-<span id="1942">1942</span>
 </pre><pre class="rust">
 <span class="doccomment">//! [`Filter`]s are one of the three foundational concepts of the design in kanidm.</span>
 <span class="doccomment">//! They are used in nearly every aspect of the server to provide searching of</span>
@@ -2035,7 +2032,7 @@
     <span class="kw">let</span> <span class="ident">nf</span> <span class="op">=</span> <span class="ident">FC::Eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="ident">id</span>));
     <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter::once</span>(<span class="ident">uf</span>)
         .<span class="ident">chain</span>(<span class="ident">iter::once</span>(<span class="ident">spnf</span>))
-        .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>)
+        .<span class="ident">flatten</span>()
         .<span class="ident">chain</span>(<span class="ident">iter::once</span>(<span class="ident">nf</span>))
         .<span class="ident">collect</span>();
     <span class="ident">FC::Or</span>(<span class="ident">f</span>)
@@ -2045,10 +2042,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">f_spn_name</span>(<span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">FC</span><span class="op">&lt;</span><span class="lifetime">&#39;static</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">spnf</span> <span class="op">=</span> <span class="ident">PartialValue::new_spn_s</span>(<span class="ident">id</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">spn</span><span class="op">|</span> <span class="ident">FC::Eq</span>(<span class="string">&quot;spn&quot;</span>, <span class="ident">spn</span>));
     <span class="kw">let</span> <span class="ident">nf</span> <span class="op">=</span> <span class="ident">FC::Eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="ident">id</span>));
-    <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter::once</span>(<span class="ident">spnf</span>)
-        .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>)
-        .<span class="ident">chain</span>(<span class="ident">iter::once</span>(<span class="ident">nf</span>))
-        .<span class="ident">collect</span>();
+    <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter::once</span>(<span class="ident">spnf</span>).<span class="ident">flatten</span>().<span class="ident">chain</span>(<span class="ident">iter::once</span>(<span class="ident">nf</span>)).<span class="ident">collect</span>();
     <span class="ident">FC::Or</span>(<span class="ident">f</span>)
 }
 
