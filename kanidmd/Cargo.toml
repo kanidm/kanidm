@@ -30,7 +30,7 @@ async-h1 = "2.0"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 bundy = "^0.1.1"
 
-async-std = "1.6"
+async-std = { version = "1.6", features = ["tokio1"] }
 
 log = "0.4"
 env_logger = "0.8"
