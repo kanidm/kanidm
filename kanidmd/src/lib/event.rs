@@ -700,13 +700,7 @@ impl AuthEventStep {
     fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
         match aus {
             AuthStep::Init(name) => {
-                if sid.is_some() {
-                    Err(OperationError::InvalidAuthState(
-                        "session id present in init".to_string(),
-                    ))
-                } else {
-                    Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
-                }
+                Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
             }
             AuthStep::Begin(mech) => match sid {
                 Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
