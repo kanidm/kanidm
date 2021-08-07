@@ -284,8 +284,14 @@ pub struct LoginOpt {
 
 #[derive(Debug, StructOpt)]
 pub struct LogoutOpt {
-    #[structopt(flatten)]
-    pub copt: CommonOpt,
+    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
+    pub debug: bool,
+    #[structopt(short = "H", long = "url", env = "KANIDM_URL")]
+    pub addr: Option<String>,
+    #[structopt(parse(from_os_str), short = "C", long = "ca", env = "KANIDM_CA_PATH")]
+    pub ca_path: Option<PathBuf>,
+    #[structopt()]
+    pub username: Option<String>,
 }
 
 #[derive(Debug, StructOpt)]
