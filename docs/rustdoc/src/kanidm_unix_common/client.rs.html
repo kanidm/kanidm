@@ -70,6 +70,7 @@
 <span id="68">68</span>
 <span id="69">69</span>
 <span id="70">70</span>
+<span id="71">71</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">bytes</span>::{<span class="ident">BufMut</span>, <span class="ident">BytesMut</span>};
 <span class="kw">use</span> <span class="ident">futures::SinkExt</span>;
@@ -122,6 +123,7 @@
     }
 }
 
+<span class="doccomment">/// Makes a call to kanidm_unixd via a unix socket at `path`</span>
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">call_daemon</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">req</span>: <span class="ident">ClientRequest</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ClientResponse</span>, <span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">stream</span> <span class="op">=</span> <span class="ident">UnixStream::connect</span>(<span class="ident">path</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -136,7 +138,7 @@
             <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
         }
         <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Error&quot;</span>);
+            <span class="macro">error!</span>(<span class="string">&quot;Error making request to kanidm_unixd&quot;</span>);
             <span class="prelude-val">Err</span>(<span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;oh no!&quot;</span>)))
         }
     }
