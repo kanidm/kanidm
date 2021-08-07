@@ -1897,6 +1897,7 @@ dependencies = [
  "log",
  "qrcode",
  "rayon",
+ "reqwest",
  "rpassword",
  "serde",
  "serde_json",
