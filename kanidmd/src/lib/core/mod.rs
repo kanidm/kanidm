@@ -139,7 +139,7 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
         uuid::Uuid::new_v4(),
         config.log_level,
     );
-    let be = dbscan_setup_be!(audit, &config);
+    let be = dbscan_setup_be!(audit, config);
     let be_rotxn = be.read();
 
     match be_rotxn.list_indexes(&mut audit) {
@@ -162,7 +162,7 @@ pub fn dbscan_list_id2entry_core(config: &Configuration) {
         uuid::Uuid::new_v4(),
         config.log_level,
     );
-    let be = dbscan_setup_be!(audit, &config);
+    let be = dbscan_setup_be!(audit, config);
     let be_rotxn = be.read();
 
     match be_rotxn.list_id2entry(&mut audit) {
@@ -186,13 +186,13 @@ pub fn dbscan_list_index_analysis_core(config: &Configuration) {
         config.log_level,
     );
 
-    let _be = dbscan_setup_be!(audit, &config);
+    let _be = dbscan_setup_be!(audit, config);
     // TBD in after slopes merge.
 }
 
 pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
     let mut audit = AuditScope::new("dbscan_list_index", uuid::Uuid::new_v4(), config.log_level);
-    let be = dbscan_setup_be!(audit, &config);
+    let be = dbscan_setup_be!(audit, config);
     let be_rotxn = be.read();
 
     match be_rotxn.list_index_content(&mut audit, index_name) {
@@ -215,7 +215,7 @@ pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
         uuid::Uuid::new_v4(),
         config.log_level,
     );
-    let be = dbscan_setup_be!(audit, &config);
+    let be = dbscan_setup_be!(audit, config);
     let be_rotxn = be.read();
 
     match be_rotxn.get_id2entry(&mut audit, id) {
@@ -238,7 +238,7 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let be = match setup_backend(&config, &schema) {
+    let be = match setup_backend(config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -261,7 +261,7 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
 
 pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4(), config.log_level);
-    touch_file_or_quit(&config.db_path.as_str());
+    touch_file_or_quit(config.db_path.as_str());
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
     let schema = match Schema::new(&mut audit) {
@@ -273,7 +273,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
         }
     };
 
-    let be = match setup_backend(&config, &schema) {
+    let be = match setup_backend(config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup backend: {:?}", e);
@@ -295,7 +295,7 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -336,7 +336,7 @@ pub fn reindex_server_core(config: &Configuration) {
         }
     };
 
-    let be = match setup_backend(&config, &schema) {
+    let be = match setup_backend(config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -363,7 +363,7 @@ pub fn reindex_server_core(config: &Configuration) {
 
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -407,7 +407,7 @@ pub fn vacuum_server_core(config: &Configuration) {
 
     // The schema doesn't matter here. Vacuum is run as part of db open to avoid
     // locking.
-    let r = setup_backend_vacuum(&config, &schema, true);
+    let r = setup_backend_vacuum(config, &schema, true);
 
     audit.write_log();
 
@@ -432,7 +432,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
     };
 
     // Start the backend.
-    let be = match setup_backend(&config, &schema) {
+    let be = match setup_backend(config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -440,7 +440,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -491,7 +491,7 @@ pub fn verify_server_core(config: &Configuration) {
         }
     };
     // Setup the be
-    let be = match setup_backend(&config, &schema_mem) {
+    let be = match setup_backend(config, &schema_mem) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -530,7 +530,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
     };
 
     // Start the backend.
-    let be = match setup_backend(&config, &schema) {
+    let be = match setup_backend(config, &schema) {
         Ok(be) => be,
         Err(e) => {
             error!("Failed to setup BE: {:?}", e);
@@ -538,7 +538,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
+    let (_qs, idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
         Ok(t) => t,
         Err(e) => {
             audit.write_log();
@@ -549,7 +549,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
 
     // Run the password change.
     let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
-    match idms_prox_write.recover_account(&mut audit, &name, None) {
+    match idms_prox_write.recover_account(&mut audit, name, None) {
         Ok(new_pw) => match idms_prox_write.commit(&mut audit) {
             Ok(()) => {
                 audit.write_log();
@@ -705,7 +705,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Setup timed events associated to the read thread
     match &config.online_backup {
         Some(cfg) => {
-            IntervalActor::start_online_backup(server_read_ref, &cfg)?;
+            IntervalActor::start_online_backup(server_read_ref, cfg)?;
         }
         None => {
             debug!("Online backup not requested, skipping");

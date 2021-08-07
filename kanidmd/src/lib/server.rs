@@ -240,7 +240,7 @@ pub trait QueryServerTransaction<'a> {
 
             let lims = ee.get_limits();
 
-            self.get_be_txn().exists(audit, &lims, &vfr).map_err(|e| {
+            self.get_be_txn().exists(audit, lims, &vfr).map_err(|e| {
                 ladmin_error!(audit, "backend failure -> {:?}", e);
                 OperationError::Backend
             })

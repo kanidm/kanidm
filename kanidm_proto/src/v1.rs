@@ -182,12 +182,15 @@ pub enum AuthType {
 pub struct UserAuthToken {
     pub session_id: Uuid,
     pub auth_type: AuthType,
+    // What time we issued this authentication token.
+    pub issued_at: time::OffsetDateTime,
     // When this token should be considered expired. Interpretation
     // may depend on the client application.
     pub expiry: time::OffsetDateTime,
     pub uuid: Uuid,
     // pub name: String,
     pub spn: String,
+    pub displayname: String,
     // pub groups: Vec<Group>,
     // pub claims: Vec<Claim>,
     // Should we just retrieve these inside the server instead of in the uat?

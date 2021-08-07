@@ -605,7 +605,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 .map(|s| {
                     // This should NOT fail - if it does, it means our schema is
                     // in an invalid state!
-                    Ok(schema_attributes.get(s).ok_or(SchemaError::Corrupted)?)
+                    schema_attributes.get(s).ok_or(SchemaError::Corrupted)
                 })
                 .collect();
 
@@ -1241,7 +1241,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                             (Some(pre_vs), Some(post_vs)) => {
                                 // it exists in both, we need to work out the differents within the attr.
                                 pre_vs
-                                    .difference(&post_vs)
+                                    .difference(post_vs)
                                     .map(|pre_v| {
                                         // Was in pre, now not in post
                                         match ikey.itype {
@@ -1262,7 +1262,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                             IndexType::SubString => Vec::new(),
                                         }
                                     })
-                                    .chain(post_vs.difference(&pre_vs).map(|post_v| {
+                                    .chain(post_vs.difference(pre_vs).map(|post_v| {
                                         // is in post, but not in pre (add)
                                         match ikey.itype {
                                             IndexType::Equality => {
@@ -1389,7 +1389,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         attrs_new.insert(
             AttrString::from("uuid"),
-            valueset![Value::new_uuidr(&self.get_uuid())],
+            valueset![Value::new_uuidr(self.get_uuid())],
         );
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);

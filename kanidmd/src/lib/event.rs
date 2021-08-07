@@ -284,7 +284,7 @@ impl SearchEvent {
         attrs: Option<BTreeSet<AttrString>>,
     ) -> Result<Self, OperationError> {
         // Kanidm Filter from LdapFilter
-        let f = Filter::from_ldap_ro(audit, &ident, &lf, qs)?;
+        let f = Filter::from_ldap_ro(audit, &ident, lf, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -538,7 +538,7 @@ impl ModifyEvent {
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
-        let m = ModifyList::from(audit, &proto_ml, qs)?;
+        let m = ModifyList::from(audit, proto_ml, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;

@@ -2,7 +2,10 @@ mod common;
 use crate::common::{run_test, ADMIN_TEST_PASSWORD};
 use kanidm_client::KanidmClient;
 
-use kanidm_proto::oauth2::{AccessTokenRequest, AccessTokenResponse, ConsentRequest};
+use kanidm_proto::oauth2::{
+    AccessTokenRequest, AccessTokenResponse, ConsentRequest, IntrospectionRequest,
+    IntrospectionResponse,
+};
 use oauth2_ext::PkceCodeChallenge;
 use std::collections::HashMap;
 use url::Url;
@@ -153,7 +156,7 @@ fn test_oauth2_basic_flow() {
 
             let response = client
                 .post(format!("{}/oauth2/token", url))
-                .basic_auth("test_integration", Some(client_secret))
+                .basic_auth("test_integration", Some(client_secret.clone()))
                 .form(&form_req)
                 .send()
                 .await
@@ -164,12 +167,34 @@ fn test_oauth2_basic_flow() {
 
             // The body is a json AccessTokenResponse
 
-            let _atr = response
+            let atr = response
                 .json::<AccessTokenResponse>()
                 .await
                 .expect("Unable to decode AccessTokenResponse");
 
             // Step 4 - inspect the granted token.
+
+            let inspect_req = IntrospectionRequest {
+                token: atr.access_token.clone(),
+                token_type_hint: Some("access_token".to_string()),
+            };
+
+            let response = client
+                .post(format!("{}/oauth2/token/introspect", url))
+                .basic_auth("test_integration", Some(client_secret))
+                .form(&inspect_req)
+                .send()
+                .await
+                .expect("Failed to send token introspection request.");
+
+            assert!(response.status() == reqwest::StatusCode::OK);
+
+            let tir = response
+                .json::<IntrospectionResponse>()
+                .await
+                .expect("Unable to decode IntrospectionResponse");
+
+            eprintln!("{:?}", tir);
         })
     })
 }

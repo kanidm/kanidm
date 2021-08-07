@@ -1001,7 +1001,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         let slopes: HashMap<_, _> = data
             .into_iter()
             .filter_map(|(k, lens)| {
-                let slope_factor = Self::calculate_sd_slope(lens);
+                let slope_factor = Self::calculate_sd_slope(&lens);
                 if slope_factor == 0 || slope_factor == IdxSlope::MAX {
                     None
                 } else {
@@ -1014,7 +1014,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.store_idx_slope_analysis(audit, &slopes)
     }
 
-    fn calculate_sd_slope(data: Vec<f64>) -> IdxSlope {
+    fn calculate_sd_slope(data: &[f64]) -> IdxSlope {
         let (n_keys, sd_1) = if data.len() >= 2 {
             // We can only do SD on sets greater than 2
             let l: u32 = data.len().try_into().unwrap_or(u32::MAX);

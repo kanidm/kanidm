@@ -269,7 +269,7 @@ impl CredHandler {
                     pw_mfa.backup_code.as_ref(),
                 ) {
                     (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
-                        match webauthn.authenticate_credential(&resp, &wan_state) {
+                        match webauthn.authenticate_credential(resp, wan_state) {
                             Ok((cid, auth_data)) => {
                                 pw_mfa.mfa_state = CredVerifyState::Success;
                                 // Success. Determine if we need to update the counter
@@ -320,7 +320,7 @@ impl CredHandler {
                         }
                     }
                     (AuthCredential::BackupCode(code_chal), _, _, Some(backup_codes)) => {
-                        if backup_codes.verify(&code_chal) {
+                        if backup_codes.verify(code_chal) {
                             if let Err(_e) =
                                 async_tx.send(DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
                                     target_uuid: who,
@@ -434,7 +434,7 @@ impl CredHandler {
         match cred {
             AuthCredential::Webauthn(resp) => {
                 // lets see how we go.
-                match webauthn.authenticate_credential(&resp, &wan_cred.wan_state) {
+                match webauthn.authenticate_credential(resp, &wan_cred.wan_state) {
                     Ok((cid, auth_data)) => {
                         wan_cred.state = CredVerifyState::Success;
                         // Success. Determine if we need to update the counter
