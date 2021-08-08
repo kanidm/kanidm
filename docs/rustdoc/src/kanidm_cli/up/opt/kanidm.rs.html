@@ -413,6 +413,12 @@
 <span id="411">411</span>
 <span id="412">412</span>
 <span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
 </pre><pre class="rust">
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
@@ -700,8 +706,14 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LogoutOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;H&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;C&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
+    <span class="kw">pub</span> <span class="ident">username</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
