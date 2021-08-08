@@ -388,9 +388,7 @@ impl PerfProcessed {
     }
 }
 
-// This structure tracks and event lifecycle, and is eventually
-// sent to the logging system where it's structured and written
-// out to the current logging BE.
+/// This structure tracks and event lifecycle, and is eventually sent to the logging system where it's structured and written out to the current logging BE.
 #[derive(Serialize)]
 pub struct AuditScope {
     // vec of start/end points of various parts of the event?

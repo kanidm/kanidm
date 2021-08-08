@@ -81,32 +81,29 @@ pub struct IdmServer {
     // Do we need a softlock ticket?
     softlock_ticket: Semaphore,
     softlocks: HashMap<Uuid, CredSoftLock>,
-    // Keep a set of inprogress mfa registrations
+    /// A set of inprogress mfa registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
-    // Need a reference to the query server.
+    /// Reference to the query server.
     qs: QueryServer,
-    // The configured crypto policy for the IDM server. Later this could be transactional
-    // and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
+    /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
-    // Our webauthn verifier/config
+    /// [WebAuthn] verifier/config
     webauthn: Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
     uat_bundy_hmac: Arc<CowCell<HS512>>,
 }
 
+/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication
 pub struct IdmServerAuthTransaction<'a> {
-    // Contains methods that require writes, but in the context of writing to
-    // the idm in memory structures (maybe the query server too). This is
-    // things like authentication
     session_ticket: &'a Semaphore,
     sessions: &'a BptreeMap<Uuid, AuthSession>,
 
     softlock_ticket: &'a Semaphore,
     softlocks: &'a HashMap<Uuid, CredSoftLock>,
     pub qs_read: QueryServerReadTransaction<'a>,
-    // thread/server id
+    /// Thread/Server ID
     sid: Sid,
     // For flagging eventual actions.
     async_tx: Sender<DelayedAction>,
@@ -115,9 +112,8 @@ pub struct IdmServerAuthTransaction<'a> {
     uat_bundy_hmac: CowCellReadTxn<HS512>,
 }
 
+/// This contains read-only methods, like getting users, groups and other structured content.
 pub struct IdmServerProxyReadTransaction<'a> {
-    // This contains read-only methods, like getting users, groups
-    // and other structured content.
     pub qs_read: QueryServerReadTransaction<'a>,
     uat_bundy_hmac: CowCellReadTxn<HS512>,
     oauth2rs: Oauth2ResourceServersReadTransaction,
@@ -127,7 +123,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     // This does NOT take any read to the memory content, allowing safe
     // qs operations to occur through this interface.
     pub qs_write: QueryServerWriteTransaction<'a>,
-    // Associate to an event origin ID, which has a TS and a UUID instead
+    /// Associate to an event origin ID, which has a TS and a UUID instead
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
     sid: Sid,
     crypto_policy: &'a CryptoPolicy,
