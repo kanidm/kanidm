@@ -81,7 +81,7 @@ pub struct IdmServer {
     // Do we need a softlock ticket?
     softlock_ticket: Semaphore,
     softlocks: HashMap<Uuid, CredSoftLock>,
-    /// A set of inprogress mfa registrations
+    /// A set of in progress MFA registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
     /// Reference to the query server.
     qs: QueryServer,
@@ -95,7 +95,7 @@ pub struct IdmServer {
     uat_bundy_hmac: Arc<CowCell<HS512>>,
 }
 
-/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication
+/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
 pub struct IdmServerAuthTransaction<'a> {
     session_ticket: &'a Semaphore,
     sessions: &'a BptreeMap<Uuid, AuthSession>,
@@ -3812,8 +3812,7 @@ mod tests {
                 .target_to_account(audit, &UUID_ADMIN)
                 .expect("account must exist");
 
-            // create some fake uats
-            // process them and see what claims fall out :D
+            // Create some fake UATs, then process them and see what claims fall out 🥳
             let session_id = uuid::Uuid::new_v4();
 
             // For the different auth types, check that we get the correct claims:
