@@ -43,8 +43,6 @@ time = { version = "0.2", features = ["serde", "std"] }
 qrcode = { version = "0.12", default-features = false }
 bundy = "0.1"
 
-reqwest = { version = "0.11" }
-
 zxcvbn = "2.0"
 
 dialoguer =  "0.5.1"
