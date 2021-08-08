@@ -38,6 +38,7 @@ enum TotpState {
 
 enum LoginState {
     Init(bool),
+    Continue(Vec<AuthAllowed>),
     Password(bool),
     BackupCode(bool),
     Totp(TotpState),
@@ -57,6 +58,7 @@ pub enum LoginAppMsg {
     WebauthnSubmit(PublicKeyCredential),
     Start(String, AuthResponse),
     Next(AuthResponse),
+    Continue(usize),
     // DoNothing,
     Error(String, Option<String>),
 }
@@ -125,6 +127,18 @@ impl LoginApp {
             .unwrap_or_else(|_e| None);
     }
 
+    fn render_auth_allowed(&self, idx: usize, allow: &AuthAllowed) -> Html {
+        html! {
+            <li>
+                <button
+                    type="button"
+                    class="btn btn-dark"
+                    onclick=self.link.callback(move |_| LoginAppMsg::Continue(idx))
+                >{ allow.to_string() }</button>
+            </li>
+        }
+    }
+
     fn view_state(&self) -> Html {
         let inputvalue = self.inputvalue.clone();
         match &self.state {
@@ -154,6 +168,24 @@ impl LoginApp {
                                 disabled=!enable
                             >{" Begin "}</button>
                         </form>
+                    </div>
+                    </>
+                }
+            }
+            LoginState::Continue(allowed) => {
+                html! {
+                    <>
+                    <div class="container">
+                        <p>
+                        {" Choose how to proceed: "}
+                        </p>
+                    </div>
+                    <div class="container">
+                        <ul style="list-style-type: none;">
+                            { for allowed.iter()
+                                .enumerate()
+                                .map(|(idx, allow)| self.render_auth_allowed(idx, allow)) }
+                        </ul>
                     </div>
                     </>
                 }
@@ -311,6 +343,18 @@ impl Component for LoginApp {
 
         // Assume we are here for a good reason.
         models::clear_bearer_token();
+        // Clean any cookies.
+        let document = yew::utils::document();
+        let html_document = document
+            .dyn_into::<web_sys::HtmlDocument>()
+            .expect("failed to dyn cast to htmldocument");
+        let cookie = html_document
+            .cookie()
+            .expect("failed to access page cookies");
+
+        ConsoleService::log("cookies");
+        ConsoleService::log(cookie.as_str());
+
         let state = LoginState::Init(true);
 
         /*
@@ -489,6 +533,8 @@ impl Component for LoginApp {
                             }
                         } else {
                             // Else, present the options in a choice.
+                            ConsoleService::log("multiple choices exist");
+                            self.state = LoginState::Continue(allowed);
                         }
                         true
                     }
@@ -504,6 +550,43 @@ impl Component for LoginApp {
                         true
                     }
                 }
+            }
+            LoginAppMsg::Continue(idx) => {
+                // Are we in the correct internal state?
+                ConsoleService::log(format!("chose -> {:?}", idx).as_str());
+                match &self.state {
+                    LoginState::Continue(allowed) => {
+                        match allowed.get(idx) {
+                            Some(AuthAllowed::Anonymous) => {
+                                // Just submit this.
+                            }
+                            Some(AuthAllowed::Password) => {
+                                // Go to the password view.
+                                self.state = LoginState::Password(true);
+                            }
+                            Some(AuthAllowed::BackupCode) => {
+                                self.state = LoginState::BackupCode(true);
+                            }
+                            Some(AuthAllowed::Totp) => {
+                                self.state = LoginState::Totp(TotpState::Enabled);
+                            }
+                            Some(AuthAllowed::Webauthn(challenge)) => {
+                                self.state = LoginState::Webauthn(challenge.clone().into())
+                            }
+                            None => {
+                                ConsoleService::log("invalid allowed mech idx");
+                                self.state =
+                                    LoginState::Error("Invalid Continue Index".to_string(), None);
+                            }
+                        }
+                    }
+                    _ => {
+                        ConsoleService::log("invalid state transition");
+                        self.state =
+                            LoginState::Error("Invalid UI State Transition".to_string(), None);
+                    }
+                }
+                true
             }
             LoginAppMsg::Error(msg, opid) => {
                 // Clear any leftover input

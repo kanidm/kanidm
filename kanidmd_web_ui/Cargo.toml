@@ -30,5 +30,5 @@ yew-router = { git = "https://github.com/yewstack/yew", rev = "1280dfd8315b893e9
 yew = {git = "https://github.com/yewstack/yew", rev = "1280dfd8315b893e96727b5ca5ad852919563823"}
 yew-services = {git = "https://github.com/yewstack/yew", rev = "1280dfd8315b893e96727b5ca5ad852919563823"}
 
-web-sys = { version = "0.3", features = ["PublicKeyCredentialUserEntity", "CredentialCreationOptions", "Navigator", "Window", "CredentialsContainer", "PublicKeyCredentialRpEntity", "PublicKeyCredentialCreationOptions", "PublicKeyCredential", "AuthenticatorResponse", "AuthenticationExtensionsClientOutputs", "CredentialRequestOptions"] }
+web-sys = { version = "0.3", features = ["PublicKeyCredentialUserEntity", "CredentialCreationOptions", "Navigator", "Window", "CredentialsContainer", "PublicKeyCredentialRpEntity", "PublicKeyCredentialCreationOptions", "PublicKeyCredential", "AuthenticatorResponse", "AuthenticationExtensionsClientOutputs", "CredentialRequestOptions", "HtmlDocument"] }
 js-sys = "0.3"
