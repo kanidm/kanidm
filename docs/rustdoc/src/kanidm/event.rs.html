@@ -963,12 +963,6 @@
 <span id="961">961</span>
 <span id="962">962</span>
 <span id="963">963</span>
-<span id="964">964</span>
-<span id="965">965</span>
-<span id="966">966</span>
-<span id="967">967</span>
-<span id="968">968</span>
-<span id="969">969</span>
 </pre><pre class="rust">
 <span class="doccomment">//! An `event` is a self contained module of data, that contains all of the</span>
 <span class="doccomment">//! required information for any operation to proceed. While there are many</span>
@@ -1672,13 +1666,7 @@
     <span class="kw">fn</span> <span class="ident">from_authstep</span>(<span class="ident">aus</span>: <span class="ident">AuthStep</span>, <span class="ident">sid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">aus</span> {
             <span class="ident">AuthStep::Init</span>(<span class="ident">name</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">sid</span>.<span class="ident">is_some</span>() {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAuthState</span>(
-                        <span class="string">&quot;session id present in init&quot;</span>.<span class="ident">to_string</span>(),
-                    ))
-                } <span class="kw">else</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> { <span class="ident">name</span>, <span class="ident">appid</span>: <span class="prelude-val">None</span> }))
-                }
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Init</span>(<span class="ident">AuthEventStepInit</span> { <span class="ident">name</span>, <span class="ident">appid</span>: <span class="prelude-val">None</span> }))
             }
             <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">sid</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">ssid</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">AuthEventStep::Begin</span>(<span class="ident">AuthEventStepMech</span> {
