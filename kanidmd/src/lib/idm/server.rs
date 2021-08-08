@@ -88,7 +88,7 @@ pub struct IdmServer {
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
     crypto_policy: CryptoPolicy,
     async_tx: Sender<DelayedAction>,
-    /// [WebAuthn] verifier/config
+    /// [Webauthn] verifier/config
     webauthn: Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,

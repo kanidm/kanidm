@@ -97,6 +97,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
     }
 }
 
+/// TLS LDAP Listener, hands off to [client_process]
 async fn tls_acceptor(
     listener: TcpListener,
     tls_parms: SslAcceptor,
@@ -112,12 +113,12 @@ async fn tls_acceptor(
                 {
                     Ok(ta) => ta,
                     Err(e) => {
-                        error!("tls setup error, continuing -> {:?}", e);
+                        error!("LDAP TLS setup error, continuing -> {:?}", e);
                         continue;
                     }
                 };
                 if let Err(e) = SslStream::accept(Pin::new(&mut tlsstream)).await {
-                    error!("tls accept error, continuing -> {:?}", e);
+                    error!("LDAP TLS accept error, continuing -> {:?}", e);
                     continue;
                 };
                 let (r, w) = tokio::io::split(tlsstream);
@@ -126,12 +127,13 @@ async fn tls_acceptor(
                 tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
             }
             Err(e) => {
-                error!("acceptor error, continuing -> {:?}", e);
+                error!("LDAP acceptor error, continuing -> {:?}", e);
             }
         }
     }
 }
 
+/// Plain TCP LDAP Listener, hands off to [client_process]
 async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
     loop {
         match listener.accept().await {
@@ -144,7 +146,7 @@ async fn acceptor(listener: TcpListener, qe_r_ref: &'static QueryServerReadV1) {
                 tokio::spawn(client_process(r, w, client_socket_addr, qe_r_ref));
             }
             Err(e) => {
-                error!("acceptor error, continuing -> {:?}", e);
+                error!("LDAP acceptor error, continuing -> {:?}", e);
             }
         }
     }
