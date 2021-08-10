@@ -557,8 +557,6 @@
 <span id="555">555</span>
 <span id="556">556</span>
 <span id="557">557</span>
-<span id="558">558</span>
-<span id="559">559</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="comment">// use std::ptr;</span>
@@ -950,9 +948,7 @@ macro_rules! try_audit {
     }
 }
 
-<span class="comment">// This structure tracks and event lifecycle, and is eventually</span>
-<span class="comment">// sent to the logging system where it&#39;s structured and written</span>
-<span class="comment">// out to the current logging BE.</span>
+<span class="doccomment">/// This structure tracks and event lifecycle, and is eventually sent to the logging system where it&#39;s structured and written out to the current logging BE.</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuditScope</span> {
     <span class="comment">// vec of start/end points of various parts of the event?</span>

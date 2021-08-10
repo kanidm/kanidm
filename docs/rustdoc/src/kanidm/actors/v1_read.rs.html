@@ -1216,7 +1216,6 @@
 <span id="1214">1214</span>
 <span id="1215">1215</span>
 <span id="1216">1216</span>
-<span id="1217">1217</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
 
@@ -1263,7 +1262,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueryServerReadV1</span> {
     <span class="ident">log</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">AuditScope</span><span class="op">&gt;</span>,
-    <span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="ident">idms</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">IdmServer</span><span class="op">&gt;</span>,
     <span class="ident">ldap</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">LdapServer</span><span class="op">&gt;</span>,
 }
@@ -2392,11 +2391,10 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_ldaprequest</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+        <span class="kw-2">mut</span> <span class="ident">audit</span>: <span class="ident">AuditScope</span>,
         <span class="ident">protomsg</span>: <span class="ident">LdapMsg</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">audit</span> <span class="op">=</span> <span class="ident">AuditScope::new</span>(<span class="string">&quot;ldap_request_message&quot;</span>, <span class="ident">eventid</span>, <span class="self">self</span>.<span class="ident">log_level</span>);
-
         <span class="comment">/*
         let res = lperf_op_segment!(
             &amp;mut audit,

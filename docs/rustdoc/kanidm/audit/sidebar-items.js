@@ -1,1 +1,1 @@
-initSidebarItems({"constant":[["AUDIT_LINE_SIZE",""]],"enum":[["LogLevel",""],["LogTag",""]],"struct":[["AuditScope",""],["PerfEvent",""],["PerfProcessed",""]]});
+initSidebarItems({"constant":[["AUDIT_LINE_SIZE",""]],"enum":[["LogLevel",""],["LogTag",""]],"struct":[["AuditScope","This structure tracks and event lifecycle, and is eventually sent to the logging system where it’s structured and written out to the current logging BE."],["PerfEvent",""],["PerfProcessed",""]]});

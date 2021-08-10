@@ -3905,11 +3905,6 @@
 <span id="3903">3903</span>
 <span id="3904">3904</span>
 <span id="3905">3905</span>
-<span id="3906">3906</span>
-<span id="3907">3907</span>
-<span id="3908">3908</span>
-<span id="3909">3909</span>
-<span id="3910">3910</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::softlock::CredSoftLock</span>;
@@ -3994,32 +3989,29 @@
     <span class="comment">// Do we need a softlock ticket?</span>
     <span class="ident">softlock_ticket</span>: <span class="ident">Semaphore</span>,
     <span class="ident">softlocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLock</span><span class="op">&gt;</span>,
-    <span class="comment">// Keep a set of inprogress mfa registrations</span>
+    <span class="doccomment">/// A set of in progress MFA registrations</span>
     <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">MfaRegSession</span><span class="op">&gt;</span>,
-    <span class="comment">// Need a reference to the query server.</span>
+    <span class="doccomment">/// Reference to the query server.</span>
     <span class="ident">qs</span>: <span class="ident">QueryServer</span>,
-    <span class="comment">// The configured crypto policy for the IDM server. Later this could be transactional</span>
-    <span class="comment">// and loaded from the db similar to access. But today it&#39;s just to allow dynamic pbkdf2rounds</span>
+    <span class="doccomment">/// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it&#39;s just to allow dynamic pbkdf2rounds</span>
     <span class="ident">crypto_policy</span>: <span class="ident">CryptoPolicy</span>,
     <span class="ident">async_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
-    <span class="comment">// Our webauthn verifier/config</span>
+    <span class="doccomment">/// [Webauthn] verifier/config</span>
     <span class="ident">webauthn</span>: <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Oauth2ResourceServers</span><span class="op">&gt;</span>,
     <span class="ident">uat_bundy_hmac</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">HS512</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServerAuthTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="comment">// Contains methods that require writes, but in the context of writing to</span>
-    <span class="comment">// the idm in memory structures (maybe the query server too). This is</span>
-    <span class="comment">// things like authentication</span>
     <span class="ident">session_ticket</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Semaphore</span>,
     <span class="ident">sessions</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">AuthSession</span><span class="op">&gt;</span>,
 
     <span class="ident">softlock_ticket</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Semaphore</span>,
     <span class="ident">softlocks</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLock</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    <span class="comment">// thread/server id</span>
+    <span class="doccomment">/// Thread/Server ID</span>
     <span class="ident">sid</span>: <span class="ident">Sid</span>,
     <span class="comment">// For flagging eventual actions.</span>
     <span class="ident">async_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
@@ -4028,9 +4020,8 @@
     <span class="ident">uat_bundy_hmac</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HS512</span><span class="op">&gt;</span>,
 }
 
+<span class="doccomment">/// This contains read-only methods, like getting users, groups and other structured content.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="comment">// This contains read-only methods, like getting users, groups</span>
-    <span class="comment">// and other structured content.</span>
     <span class="kw">pub</span> <span class="ident">qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">uat_bundy_hmac</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HS512</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Oauth2ResourceServersReadTransaction</span>,
@@ -4040,7 +4031,7 @@
     <span class="comment">// This does NOT take any read to the memory content, allowing safe</span>
     <span class="comment">// qs operations to occur through this interface.</span>
     <span class="kw">pub</span> <span class="ident">qs_write</span>: <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    <span class="comment">// Associate to an event origin ID, which has a TS and a UUID instead</span>
+    <span class="doccomment">/// Associate to an event origin ID, which has a TS and a UUID instead</span>
     <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMapWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Uuid</span>, <span class="ident">MfaRegSession</span><span class="op">&gt;</span>,
     <span class="ident">sid</span>: <span class="ident">Sid</span>,
     <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CryptoPolicy</span>,
@@ -7729,8 +7720,7 @@
                 .<span class="ident">target_to_account</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;account must exist&quot;</span>);
 
-            <span class="comment">// create some fake uats</span>
-            <span class="comment">// process them and see what claims fall out :D</span>
+            <span class="comment">// Create some fake UATs, then process them and see what claims fall out 🥳</span>
             <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">uuid::Uuid::new_v4</span>();
 
             <span class="comment">// For the different auth types, check that we get the correct claims:</span>
