@@ -43,7 +43,7 @@ use std::convert::TryFrom;
 
 pub struct QueryServerReadV1 {
     log: Sender<AuditScope>,
-    log_level: Option<u32>,
+    pub log_level: Option<u32>,
     idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
@@ -1172,11 +1172,10 @@ impl QueryServerReadV1 {
     pub async fn handle_ldaprequest(
         &self,
         eventid: Uuid,
+        mut audit: AuditScope,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
     ) -> Option<LdapResponseState> {
-        let mut audit = AuditScope::new("ldap_request_message", eventid, self.log_level);
-
         /*
         let res = lperf_op_segment!(
             &mut audit,
