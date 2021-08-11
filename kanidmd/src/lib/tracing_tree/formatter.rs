@@ -1,9 +1,10 @@
 use super::subscriber::{EventTagSet, TreeEvent, TreeProcessed, TreeSpanProcessed};
 use serde::{ser::SerializeStruct, Serialize};
-use std::fmt;
+use std::fmt::{self, Write as _};
 use std::io::{self, Write as _};
-use tracing::Level;
 use tracing_serde::AsSerde;
+use tracing_subscriber::registry::ScopeFromRoot;
+use tracing_subscriber::Registry;
 
 #[derive(Clone, Copy, Debug)]
 pub enum LogFmt {
@@ -149,37 +150,19 @@ fn format_pretty<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
 
                 let timestamp_fmt = event.timestamp.to_rfc3339();
 
-                // level, emoji, tag
-
-                let emoji = event
-                    .tag
-                    .map(B::emoji)
-                    .unwrap_or_else(|| match event.level {
-                        Level::ERROR => "🚨",
-                        Level::WARN => "🚧",
-                        Level::INFO => "💬",
-                        Level::DEBUG => "🐛",
-                        Level::TRACE => "📍",
-                    });
-
-                let tag_fmt = event
-                    .tag
-                    .map(B::pretty)
-                    .unwrap_or_else(|| match event.level {
-                        Level::ERROR => "error",
-                        Level::WARN => "warn",
-                        Level::INFO => "info",
-                        Level::DEBUG => "debug",
-                        Level::TRACE => "trace",
-                    });
-
                 write!(writer, "{} {} {:<8} ", uuid, timestamp_fmt, event.level)?;
 
                 for fill in indent.iter() {
                     write!(writer, "{}", fill)?;
                 }
 
-                write!(writer, "{} [{}]: {}", emoji, tag_fmt, event.message)?;
+                write!(
+                    writer,
+                    "{} [{}]: {}",
+                    event.emoji(),
+                    event.tag(),
+                    event.message
+                )?;
 
                 for (field, value) in event.values.iter() {
                     write!(writer, " | {}: {}", field, value)?;
@@ -282,4 +265,33 @@ fn format_pretty<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
     let mut indent = vec![];
     fmt_rec(&processed_logs, &mut indent, None, None, &mut writer).expect("Write failed");
     writer
+}
+
+pub(super) fn format_immediate_event<E: EventTagSet>(
+    event: &TreeEvent<E>,
+    maybe_scope: Option<ScopeFromRoot<Registry>>,
+) -> Result<String, fmt::Error> {
+    let mut writer = String::new();
+
+    write!(
+        writer,
+        "{} {em} [{}] {em}",
+        event.timestamp.to_rfc3339(),
+        event.level,
+        em = event.emoji()
+    )?;
+
+    if let Some(scope) = maybe_scope {
+        for span in scope {
+            write!(writer, "🔹{}", span.name())?;
+        }
+    }
+
+    write!(writer, ": {}", event.message)?;
+
+    for (key, value) in event.values.iter() {
+        write!(writer, " | {}: {}", key, value)?;
+    }
+
+    Ok(writer)
 }

@@ -1,5 +1,5 @@
 use std::convert::TryFrom;
-use std::fmt::{self, Write as _};
+use std::fmt;
 use std::fs::OpenOptions;
 use std::io::{self, Write as _};
 use std::path::PathBuf;
@@ -11,7 +11,7 @@ use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Record};
 use tracing::{Event, Id, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layered, SubscriberExt};
-use tracing_subscriber::registry::{Registry, Scope, ScopeFromRoot, SpanRef};
+use tracing_subscriber::registry::{Registry, Scope, SpanRef};
 use tracing_subscriber::Layer;
 use uuid::Uuid;
 
@@ -168,30 +168,6 @@ impl<E: EventTagSet> TreeLayer<E> {
                 .expect("Processing channel has been closed, cannot log events."),
         }
     }
-
-    fn alarm(event: &TreeEvent<E>, maybe_scope: Option<ScopeFromRoot<Registry>>) -> fmt::Result {
-        // This is an emergency and should be sent to the admin immediately.
-        // Hence why we are formatting in the working thread.
-
-        // `DateTime::to_rfc3339` returns a `String`, we'll use this as our writer.
-        let mut writer: String = event.timestamp.to_rfc3339();
-        write!(writer, " 🚨 [ALARM]")?;
-
-        if let Some(scope) = maybe_scope {
-            for span in scope {
-                write!(writer, "🔹{}", span.name())?;
-            }
-        }
-
-        write!(writer, ": {}", event.message)?;
-
-        for (key, value) in event.values.iter() {
-            write!(writer, " | {}={}", key, value)?;
-        }
-
-        eprintln!("{}", writer);
-        Ok(())
-    }
 }
 
 impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
@@ -199,44 +175,24 @@ impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
         let span = ctx.span(id).expect("Span not found, this is a bug");
 
         let name = attrs.metadata().name();
+        let mut uuid = None;
+        let mut out = TreeIo::Stderr;
 
-        struct Visitor<'a> {
-            ctx: &'a Context<'a, Registry>,
-            uuid: Option<String>,
-            out: TreeIo,
-        }
-
-        impl<'a> Visit for Visitor<'a> {
-            fn record_str(&mut self, field: &Field, value: &str) {
-                if self.ctx.lookup_current().is_none() && field.name() == "output" {
-                    self.out = match value {
+        attrs.record(
+            &mut |field: &Field, value: &dyn fmt::Debug| match field.name() {
+                "uuid" => {
+                    uuid = Some(format!("{:?}", value));
+                }
+                "output" if ctx.lookup_current().is_none() => {
+                    out = match format!("{:?}", value).as_str() {
                         "console stdout" => TreeIo::Stdout,
                         "console stderr" => TreeIo::Stderr,
-                        _ => TreeIo::File(PathBuf::from(value)),
-                    }
-                } else {
-                    self.record_debug(field, &value);
+                        path => TreeIo::File(PathBuf::from(path)),
+                    };
                 }
-            }
-
-            fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
-                if field.name() == "uuid" {
-                    let mut buf = String::with_capacity(36);
-                    write!(&mut buf, "{:?}", value).expect("Write failed");
-                    self.uuid = Some(buf);
-                }
-            }
-        }
-
-        let mut v = Visitor {
-            ctx: &ctx,
-            uuid: None,
-            out: TreeIo::Stderr,
-        };
-
-        attrs.record(&mut v);
-
-        let Visitor { uuid, out, .. } = v;
+                _ => {}
+            },
+        );
 
         // Take provided ID, or make a fresh one if there's no parent span.
         let uuid = uuid.or_else(|| {
@@ -252,11 +208,14 @@ impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
     }
 
     fn on_event(&self, event: &Event, ctx: Context<Registry>) {
-        let (tree_event, alarm) = TreeEvent::parse(event);
+        let (tree_event, immediate) = TreeEvent::parse(event);
 
-        if alarm {
+        if immediate {
+            use super::formatter::format_immediate_event;
             let maybe_scope = ctx.event_scope(event).map(Scope::from_root);
-            TreeLayer::alarm(&tree_event, maybe_scope).expect("Alarm failed");
+            let formatted_event = format_immediate_event(&tree_event, maybe_scope)
+                .expect("Formatting immediate event failed");
+            eprintln!("{}", formatted_event);
         }
 
         self.log_to_parent(Tree::Event(tree_event), ctx.event_span(event));
@@ -309,14 +268,15 @@ impl<E: EventTagSet> TreeEvent<E> {
             message: String,
             tag: Option<TagSet>,
             values: Vec<(&'static str, String)>,
-            alarm: bool,
+            immediate: bool,
         }
 
         impl<TagSet: EventTagSet> Visit for Visitor<TagSet> {
             fn record_u64(&mut self, field: &Field, value: u64) {
                 if field.name() == "event_tag" {
-                    let tag = TagSet::try_from(value)
-                        .unwrap_or_else(|_| panic!("Invalid `event_tag`: {}", value));
+                    let tag = TagSet::try_from(value).unwrap_or_else(|_| {
+                        panic!("Invalid `event_tag`: {}, this is a bug", value)
+                    });
                     self.tag = Some(tag);
                 } else {
                     self.record_debug(field, &value)
@@ -324,8 +284,8 @@ impl<E: EventTagSet> TreeEvent<E> {
             }
 
             fn record_bool(&mut self, field: &Field, value: bool) {
-                if field.name() == "alarm" {
-                    self.alarm = value;
+                if field.name() == "immediate" {
+                    self.immediate = value;
                 } else {
                     self.record_debug(field, &value)
                 }
@@ -345,7 +305,7 @@ impl<E: EventTagSet> TreeEvent<E> {
             message: String::new(),
             tag: None,
             values: vec![],
-            alarm: false,
+            immediate: false,
         };
 
         event.record(&mut v);
@@ -354,7 +314,7 @@ impl<E: EventTagSet> TreeEvent<E> {
             message,
             tag,
             values,
-            alarm,
+            immediate,
         } = v;
 
         (
@@ -365,8 +325,28 @@ impl<E: EventTagSet> TreeEvent<E> {
                 tag,
                 values,
             },
-            alarm,
+            immediate,
         )
+    }
+
+    pub(super) fn emoji(&self) -> &'static str {
+        self.tag.map(E::emoji).unwrap_or_else(|| match self.level {
+            Level::ERROR => "🚨",
+            Level::WARN => "🚧",
+            Level::INFO => "💬",
+            Level::DEBUG => "🐛",
+            Level::TRACE => "📍",
+        })
+    }
+
+    pub(super) fn tag(&self) -> &'static str {
+        self.tag.map(E::pretty).unwrap_or_else(|| match self.level {
+            Level::ERROR => "error",
+            Level::WARN => "warn",
+            Level::INFO => "info",
+            Level::DEBUG => "debug",
+            Level::TRACE => "trace",
+        })
     }
 }
 
