@@ -15,13 +15,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-// Temporary
 use tide_rustls::TlsListener;
-// use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
-// use tokio::net::TcpListener;
-// use async_std::io;
-// use std::net;
-// use std::str::FromStr;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -164,105 +158,6 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
 
     Ok(res)
 }
-
-/*
-// For openssl
-struct TlsListener {
-    address: String,
-    tls_params: &'static SslAcceptor,
-}
-
-impl TlsListener {
-    fn new(address: String, tls_params: &'static SslAcceptor) -> Self {
-        Self {
-            address,
-            tls_params,
-        }
-    }
-}
-
-impl std::fmt::Debug for TlsListener {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TlsListener {{}}")
-    }
-}
-
-impl std::fmt::Display for TlsListener {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TlsListener {{}}")
-    }
-}
-
-impl<State: Clone + Send + Sync + 'static> tide::listener::ToListener<State> for TlsListener {
-    type Listener = TlsListener;
-
-    fn to_listener(self) -> std::io::Result<Self::Listener> {
-        Ok(self)
-    }
-}
-
-fn handle_client<State: Clone + Send + Sync + 'static>(
-    _app: tide::Server<State>,
-    _stream: tokio_openssl::SslStream<tokio::net::TcpStream>,
-    _local_addr: std::net::SocketAddr,
-    _peer_addr: std::net::SocketAddr,
-) {
-    tokio::spawn(async move {
-        let fut = async_h1::accept(stream, |mut req| async {
-            req.set_local_addr(Some(local_addr));
-            req.set_peer_addr(Some(peer_addr));
-            app.respond(req).await
-        });
-
-        if let Err(error) = fut.await {
-            // Do nothing
-            // log::error!("async-h1 error", { error: error.to_string() });
-        }
-    });
-}
-
-#[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for TlsListener {
-    async fn listen(&mut self, app: tide::Server<State>) -> io::Result<()> {
-        let addr = net::SocketAddr::from_str(&self.address).map_err(|e| {
-            eprintln!(
-                "Could not parse https server address {} -> {:?}",
-                self.address, e
-            );
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Could not parse https server address",
-            )
-        })?;
-
-        let mut listener = TcpListener::bind(&addr).await?;
-
-        let tls_params = self.tls_params;
-
-        loop {
-            match listener.accept().await {
-                Ok((tcpstream, paddr)) => {
-                    let iapp = app.clone();
-                    tokio::spawn(async move {
-                        let res = tokio_openssl::accept(tls_params, tcpstream).await;
-                        match res {
-                            Ok(tlsstream) => {
-                                handle_client(iapp, tlsstream, addr, paddr);
-                            }
-                            Err(e) => {
-                                error!("tcp handshake error, continuing -> {:?}", e);
-                            }
-                        };
-                    });
-                }
-                Err(e) => {
-                    error!("acceptor error, continuing -> {:?}", e);
-                }
-            }
-        }
-    }
-}
-*/
 
 struct NoCacheMiddleware;
 
