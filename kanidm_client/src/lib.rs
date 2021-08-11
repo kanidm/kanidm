@@ -301,11 +301,19 @@ impl KanidmClientBuilder {
         }
     }
 
-    // Consume self and return a client.
+    /// Generates a useragent header based on the package name and version
+    pub fn user_agent() -> &'static str {
+        static APP_USER_AGENT: &str =
+            concat!(env!("CARGO_PKG_NAME"), "/", env!("CARGO_PKG_VERSION"),);
+        APP_USER_AGENT
+    }
+
+    /// Consume self and return an async client.
     pub fn build(self) -> Result<KanidmClient, reqwest::Error> {
         self.build_async().map(|asclient| KanidmClient { asclient })
     }
 
+    /// Async client
     pub fn build_async(self) -> Result<KanidmAsyncClient, reqwest::Error> {
         // Errghh, how to handle this cleaner.
         let address = match &self.address {
@@ -319,6 +327,7 @@ impl KanidmClientBuilder {
         self.display_warnings(address.as_str());
 
         let client_builder = reqwest::Client::builder()
+            .user_agent(KanidmClientBuilder::user_agent())
             .danger_accept_invalid_hostnames(!self.verify_hostnames)
             .danger_accept_invalid_certs(!self.verify_ca);
 
