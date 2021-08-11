@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use super::subscriber::TreeIo;
 use crate::{request_error, request_info, request_warn};
 use tide::{self, Middleware, Next, Request};
-use tracing::{self, trace_span, warn, Instrument};
+use tracing::{self, instrument};
 
 // Modeled after:
 // https://docs.rs/tide/0.16.0/src/tide/log/middleware.rs.html#23-96
@@ -28,17 +28,18 @@ impl TreeMiddleware {
     }
 
     #[allow(dead_code)]
-    pub fn with_file<'a>(path: &'a str) -> Self {
+    pub fn with_file(path: &str) -> Self {
         TreeMiddleware {
             output: TreeIo::File(PathBuf::from(path)),
         }
     }
 
-    // This method is only called when `instrument`ed.
+    #[instrument(name = "tide-request", skip(self, req, next, output), fields(%output))]
     async fn log<'a, State: Clone + Send + Sync + 'static>(
         &'a self,
         mut req: Request<State>,
         next: Next<'a, State>,
+        output: &str,
     ) -> tide::Result {
         struct TreeMiddlewareFinished;
 
@@ -104,16 +105,15 @@ impl<State: Clone + Send + Sync + 'static> Middleware<State> for TreeMiddleware 
             TreeIo::Stdout => "console stdout",
             TreeIo::Stderr => "console stderr",
             TreeIo::File(ref path) => path.to_str().unwrap_or_else(|| {
-                warn!(
-                    "File path isn't UTF-8, logging to stderr instead: {:#?}",
-                    path
-                );
-                "console stderr"
+                panic!("File path isn't UTF-8, cannot write to file: {:#?}", path)
+                // warn!(
+                //     "File path isn't UTF-8, logging to stderr instead: {:#?}",
+                //     path
+                // );
+                // "console stderr"
             }),
         };
 
-        self.log(req, next)
-            .instrument(trace_span!("tide-request", output))
-            .await
+        self.log(req, next, output).await
     }
 }
