@@ -368,23 +368,16 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictReq
         request: tide::Request<State>,
         next: tide::Next<'_, State>,
     ) -> tide::Result {
-        let proceed = {
-            match request.header("sec-fetch-site") {
-                None => true,
-                Some(hv) => {
-                    let hvs = hv.as_str();
-                    if hvs == "same-origin" || hvs == "same-site" || hvs == "none" {
-                        true
-                    } else {
-                        request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
-                            && request.method() == tide::http::Method::Get
-                            && request.header("sec-fetch-dest").map(|v| v.as_str())
-                                != Some("object")
-                            && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed")
-                    }
-                }
-            }
-        };
+        let proceed = request
+            .header("sec-fetch-site")
+            .map(|hv| {
+                matches!(hv.as_str(), "same-origin" | "same-site" | "none")
+                    || (request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
+                        && request.method() == tide::http::Method::Get
+                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("object")
+                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed"))
+            })
+            .unwrap_or(true);
 
         if proceed {
             Ok(next.run(request).await)
