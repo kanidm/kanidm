@@ -28,11 +28,11 @@ use crate::credential::Credential;
 use crate::filter::{Filter, FilterInvalid, FilterResolved, FilterValidResolved};
 use crate::ldap::ldap_vattr_map;
 use crate::modify::{Modify, ModifyInvalid, ModifyList, ModifyValid};
-use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{PartialValue, Value};
+use crate::{admin_error, prelude::*};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
@@ -1288,6 +1288,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    // ! TRACING INTEGRATED
+    // Why is this returning a `Result<Self, ()>` when we could just do `Option<Self>`
+    // How did this even pass clippy?
     pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
         let r_attrs: Result<Map<AttrString, Set<Value>>, ()> = match db_e.ent {
@@ -1300,6 +1303,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                     match vv {
                         Ok(vv) => Ok((k, vv)),
                         Err(()) => {
+                            admin_error!(value = ?k, "from_dbentry failed");
                             ladmin_error!(au, "from_dbentry failed on value {:?}", k);
                             Err(())
                         }

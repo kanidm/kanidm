@@ -34,7 +34,7 @@ use async_std::task;
 
 use crate::tracing_tree::{KanidmEventTag, TreeMiddleware, TreeProcessor, TreeSubscriber};
 use tokio::sync::mpsc::unbounded_channel as unbounded;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, instrument};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -909,6 +909,7 @@ pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
     Ok(res)
 }
 
+#[instrument(level = "trace", name = "https::auth", skip(req))]
 pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
     // First, deal with some state management.
     // Do anything here first that's needed like getting the session details
@@ -1180,14 +1181,14 @@ pub fn create_https_server(
     let (log_tx, log_rx) = unbounded::<TreeProcessor<KanidmEventTag>>();
     tracing::subscriber::set_global_default(TreeSubscriber::pretty(log_tx))
         .expect("🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨");
-    let tree_middleware = TreeMiddleware::with_stdout();
+    let tree_middleware = TreeMiddleware::with_file("server.log");
 
     tokio::spawn(crate::async_log::run_tracing_tree(log_rx));
 
     info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
 
     let bundy_handle = bundy::hs512::HS512::from_str(bundy_key).map_err(|e| {
-        error!("Failed to generate bundy handle - {:?}", e);
+        error!(?e, "Failed to generate bundy handle");
     })?;
 
     let bundy_handle = std::sync::Arc::new(bundy_handle);

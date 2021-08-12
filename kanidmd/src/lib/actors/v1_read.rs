@@ -1,5 +1,5 @@
 use tokio::sync::mpsc::UnboundedSender as Sender;
-use tracing::instrument;
+use tracing::{error, info, instrument, trace, trace_span};
 
 use std::sync::Arc;
 
@@ -74,6 +74,17 @@ impl QueryServerReadV1 {
     // required complete. We still need to do certain validation steps, but
     // at this point our just is just to route to do_<action>
 
+    #[instrument(
+        level = "trace",
+        name = "v1_read::handle_search",
+        skip(self, uat, req, eventid),
+        fields(uuid = eventid.to_hyphenated().to_string().as_str())
+        // ! For uuid, we should deprecate `RequestExtensions::new_eventid` and just manually call
+        // ! `Uuid::new_v4().to_hyphenated().to_string()` instead of keeping a `Uuid` around.
+        // ! Ideally, this function takes &self, uat, req, and then a `uuid` argument that is a `&str` of the hyphenated uuid.
+        // ! Then we just don't skip uuid, and we don't have to do the custom `fields(..)` stuff in this macro call.
+    )]
+    // TODO (Quinn): tracing
     pub async fn handle_search(
         &self,
         uat: Option<String>,
@@ -84,32 +95,41 @@ impl QueryServerReadV1 {
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
-            let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                .map_err(|e| {
-                    ladmin_error!(audit, "Invalid identity: {:?}", e);
-                    e
-                })?;
+        let res = trace_span!("actors::v1_read::handle<SearchMessage>").in_scope(|| {
+            lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
+                let ident = idms_prox_read
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                    .map_err(|e| {
+                        admin_error!(?e, "Invalid identity");
+                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        e
+                    })?;
 
-            // Make an event from the request
-            let srch =
-                match SearchEvent::from_message(&mut audit, ident, &req, &idms_prox_read.qs_read) {
+                // Make an event from the request
+                let search = match SearchEvent::from_message(
+                    &mut audit,
+                    ident,
+                    &req,
+                    &idms_prox_read.qs_read,
+                ) {
                     Ok(s) => s,
                     Err(e) => {
+                        admin_error!(?e, "Failed to begin search");
                         ladmin_error!(audit, "Failed to begin search: {:?}", e);
                         return Err(e);
                     }
                 };
 
-            ltrace!(audit, "Begin event {:?}", srch);
+                trace!(?search, "Begin event");
+                ltrace!(audit, "Begin event {:?}", search);
 
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
-                    .map(|ok_sr| ok_sr.response()),
-                Err(e) => Err(e),
-            }
+                match idms_prox_read.qs_read.search_ext(&mut audit, &search) {
+                    Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
+                        .map(SearchResult::response),
+                    Err(e) => Err(e),
+                }
+            })
         });
         // At the end of the event we send it for logging.
         self.log.send(audit).map_err(|_| {
@@ -120,8 +140,8 @@ impl QueryServerReadV1 {
     }
 
     #[instrument(
-        name = "v1_read::handle_auth",
         level = "trace",
+        name = "v1_read::handle_auth",
         skip(self, sessionid, req, eventid)
     )]
     pub async fn handle_auth(
@@ -138,14 +158,14 @@ impl QueryServerReadV1 {
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth_async().await;
         // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
-        security_info!("Begin auth event: {:?} {:?}", sessionid, req);
+        security_info!(?sessionid, ?req, "Begin auth event");
         lsecurity!(audit, "Begin auth event {:?} {:?}", sessionid, req);
 
         // Destructure it.
         // Convert the AuthRequest to an AuthEvent that the idm server
         // can use.
         let ae = AuthEvent::from_message(sessionid, req).map_err(|e| {
-            admin_error!("Failed to parse AuthEvent -> {:?}", e);
+            admin_error!(err = ?e, "Failed to parse AuthEvent");
             ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
             e
         })?;
@@ -162,7 +182,7 @@ impl QueryServerReadV1 {
             .await
             .and_then(|r| idm_auth.commit(&mut audit).map(|_| r));
 
-        security_info!("Sending auth result -> {{why is this thing so large}}" /*, res*/);
+        security_info!(?res, "Sending auth result");
         lsecurity!(audit, "Sending auth result -> {:?}", res);
         // Build the result.
         // r.map(|r| r.response())
@@ -176,6 +196,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_whoami(
         &self,
         uat: Option<String>,
@@ -235,6 +256,13 @@ impl QueryServerReadV1 {
                         // Somehow we matched multiple, which should be impossible.
                         _ => Err(OperationError::InvalidState),
                     }
+                    /*
+                    We can be more idiomatic and avoid the `expect` with this:
+                    entries.pop() {
+                        Some(e) if entries.is_empty() => // whoami stuff...
+                        _ => Err(OperationError::InvalidState),
+                    }
+                    */
                 }
                 // Something else went wrong ...
                 Err(e) => Err(e),
@@ -249,6 +277,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalsearch(
         &self,
         uat: Option<String>,
@@ -301,6 +330,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalsearchrecycled(
         &self,
         uat: Option<String>,
@@ -354,6 +384,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalradiusread(
         &self,
         uat: Option<String>,
@@ -423,6 +454,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalradiustokenread(
         &self,
         uat: Option<String>,
@@ -483,6 +515,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalunixusertokenread(
         &self,
         uat: Option<String>,
@@ -540,6 +573,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalunixgrouptokenread(
         &self,
         uat: Option<String>,
@@ -599,6 +633,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalsshkeyread(
         &self,
         uat: Option<String>,
@@ -670,6 +705,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_internalsshkeytagread(
         &self,
         uat: Option<String>,
@@ -749,6 +785,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_idmaccountunixauth(
         &self,
         uat: Option<String>,
@@ -802,6 +839,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_idmcredentialstatus(
         &self,
         uat: Option<String>,
@@ -857,6 +895,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_idmbackupcodeview(
         &self,
         uat: Option<String>,
@@ -912,6 +951,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_oauth2_authorise(
         &self,
         uat: Option<String>,
@@ -948,6 +988,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_oauth2_authorise_permit(
         &self,
         uat: Option<String>,
@@ -989,6 +1030,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_oauth2_token_exchange(
         &self,
         client_authz: String,
@@ -1018,6 +1060,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_auth_valid(
         &self,
         uat: Option<String>,
@@ -1043,6 +1086,7 @@ impl QueryServerReadV1 {
         res
     }
 
+    // TODO (Quinn): instrument
     pub async fn handle_ldaprequest(
         &self,
         eventid: Uuid,

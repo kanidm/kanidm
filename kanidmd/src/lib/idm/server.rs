@@ -72,6 +72,8 @@ use webauthn_rs::Webauthn;
 use super::delayed::BackupCodeRemoval;
 use super::event::{GenerateBackupCodeEvent, ReadBackupCodeEvent, RemoveBackupCodeEvent};
 
+use tracing::trace;
+
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -371,12 +373,14 @@ pub trait IdmServerTransaction<'a> {
                 .ok_or(OperationError::NotAuthenticated)
                 .and_then(|token| {
                     bref.verify(&token).map_err(|e| {
+                        security_info!(?e, "Unable to verify token");
                         lsecurity!(audit, "Unable to verify token - {:?}", e);
                         OperationError::NotAuthenticated
                     })
                 })?;
 
         if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
+            security_info!("Session expired");
             lsecurity!(audit, "Session expired");
             Err(OperationError::SessionExpired)
         } else {
@@ -384,6 +388,7 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
+    // TODO (Quinn): tracing
     fn process_uat_to_identity(
         &self,
         audit: &mut AuditScope,
@@ -396,7 +401,7 @@ pub trait IdmServerTransaction<'a> {
             .get_qs_txn()
             .internal_search_uuid(audit, &uat.uuid)
             .map_err(|e| {
-                admin_error!("from_ro_uat failed {:?}", e);
+                admin_error!(?e, "from_ro_uat failed");
                 ladmin_error!(audit, "from_ro_uat failed {:?}", e);
                 e
             })?;
@@ -489,13 +494,14 @@ impl<'a> IdmServerAuthTransaction<'a> {
         session_write.commit();
     }
 
-    #[instrument(name = "server::auth", level = "trace", skip(self, au, ae, ct))]
+    #[instrument(level = "trace", name = "server::auth", skip(self, au, ae, ct))]
     pub async fn auth(
         &mut self,
         au: &mut AuditScope,
         ae: &AuthEvent,
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
+        trace!(?ae, "Recieved");
         ltrace!(au, "Received -> {:?}", ae);
         // Match on the auth event, to see what we need to do.
 
@@ -520,15 +526,15 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 //
                 // Check anything needed? Get the current auth-session-id from request
                 // because it associates to the nonce's etc which were all cached.
-                let euuid = self.qs_read.name_to_uuid(au, init.name.as_str())?;
+                let euuid = self.qs_read.name_to_uuid(au, init.name.as_str())?; // I CAN'T TRACE WHERE AUDITSCOPE GOES :(((
 
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(au, &euuid)?;
 
                 security_info!(
-                    "Initiating Authentication Session for ... {:?}: {:?}",
-                    euuid,
-                    entry
+                    ?entry,
+                    uuid = %euuid,
+                    "Initiating Authentication Session",
                 );
                 lsecurity!(
                     au,
@@ -752,7 +758,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
     }
 
-    #[instrument(name = "server::auth_unix", level = "trace", skip(self, au, uae, ct))]
+    #[instrument(level = "trace", skip(self, au, uae, ct))]
     pub async fn auth_unix(
         &mut self,
         au: &mut AuditScope,
