@@ -43,3 +43,6 @@ pub const PW_MIN_LENGTH: usize = 10;
 
 // Default
 pub const AUTH_SESSION_EXPIRY: u64 = 3600;
+
+/// Default max request post size, 100MB
+pub const MAX_BODY_SIZE: usize = 104857600;

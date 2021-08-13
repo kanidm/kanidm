@@ -23,8 +23,9 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-// Temporary
+use tide::Request;
 use tide_rustls::TlsListener;
+
 // use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
 // use tokio::net::TcpListener;
 // use async_std::io;
@@ -1163,6 +1164,42 @@ impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for T
 }
 */
 
+/// Custom tide middleware for handling a request limiter
+///
+/// TODO: work out how to do it based on the *actual* size of the request, currently trusts the Content-Length header.
+#[derive(Debug, Copy, Clone)]
+struct RequestLimiter {
+    pub max_size: usize,
+}
+
+impl RequestLimiter {
+    fn from_size(max_size: usize) -> Self {
+        RequestLimiter { max_size }
+    }
+}
+
+#[tide::utils::async_trait]
+impl<T: Clone + Send + Sync + 'static> tide::Middleware<T> for RequestLimiter {
+    async fn handle(&self, req: Request<T>, next: tide::Next<'_, T>) -> tide::Result {
+        if let Some(value) = req.len() {
+            if value > self.max_size {
+                eprintln!(
+                    "Request body is too large ({:?} > {:?})!",
+                    value,
+                    crate::constants::MAX_BODY_SIZE
+                );
+                // Throws a 400 error if it's too big
+                let res = tide::Response::builder(400).build();
+                return Ok(res);
+            }
+        };
+        // let the rest of the request continue
+        let response = next.run(req).await;
+
+        Ok(response)
+    }
+}
+
 // TODO: Add request limits.
 pub fn create_https_server(
     address: String,
@@ -1190,8 +1227,6 @@ pub fn create_https_server(
         bundy_handle,
     });
 
-    // tide::log::with_level(tide::log::LevelFilter::Debug);
-
     // Add middleware?
     tserver.with(tide::log::LogMiddleware::new()).with(
         // We do not force a session ttl, because we validate this elsewhere in usage.
@@ -1199,6 +1234,8 @@ pub fn create_https_server(
             .with_cookie_name("kanidm-session")
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
+
+    tserver.with(RequestLimiter::from_size(crate::constants::MAX_BODY_SIZE));
 
     // Add routes
 
