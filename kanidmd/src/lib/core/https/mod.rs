@@ -1164,9 +1164,10 @@ impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for T
 }
 */
 
-/// Custom tide middleware for handling a request limiter
+/// Custom tide middleware for handling a request limiter; trusts the Content-Length header as that's what's available at this point.
 ///
-/// TODO: work out how to do it based on the *actual* size of the request, currently trusts the Content-Length header.
+/// <https://github.com/http-rs/tide/issues/448> seems to indicate that it's not possible to do this further in flight without major changes to how tide handles requests, but that lower-level libraries handle "you said you'd sent 100 bytes and you sent 80".
+///
 /// TODO: work out how to test this, tl;dr send a request less than 100MB you should get a good response. over 100MB you should get a 400 error
 #[derive(Debug, Copy, Clone)]
 pub struct RequestLimiter {
