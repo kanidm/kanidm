@@ -1167,13 +1167,14 @@ impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for T
 /// Custom tide middleware for handling a request limiter
 ///
 /// TODO: work out how to do it based on the *actual* size of the request, currently trusts the Content-Length header.
+/// TODO: work out how to test this, tl;dr send a request less than 100MB you should get a good response. over 100MB you should get a 400 error
 #[derive(Debug, Copy, Clone)]
-struct RequestLimiter {
+pub struct RequestLimiter {
     pub max_size: usize,
 }
 
 impl RequestLimiter {
-    fn from_size(max_size: usize) -> Self {
+    pub fn from_size(max_size: usize) -> Self {
         RequestLimiter { max_size }
     }
 }
@@ -1185,10 +1186,9 @@ impl<T: Clone + Send + Sync + 'static> tide::Middleware<T> for RequestLimiter {
             if value > self.max_size {
                 eprintln!(
                     "Request body is too large ({:?} > {:?})!",
-                    value,
-                    crate::constants::MAX_BODY_SIZE
+                    value, self.max_size
                 );
-                // Throws a 400 error if it's too big
+                // Throw a 400 error if it's too big
                 let res = tide::Response::builder(400).build();
                 return Ok(res);
             }
