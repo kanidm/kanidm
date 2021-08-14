@@ -7,4 +7,4 @@ mod timings;
 
 pub use event_tag::KanidmEventTag;
 pub use middleware::TreeMiddleware;
-pub use subscriber::{EventTagSet, TreeProcessor, TreeSubscriber};
+pub use subscriber::{operation_id, EventTagSet, TreeProcessor, TreeSubscriber};

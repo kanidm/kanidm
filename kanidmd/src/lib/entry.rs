@@ -1476,6 +1476,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
+    // ! TRACING INTEGRATED
     pub fn to_pe(
         &self,
         audit: &mut AuditScope,

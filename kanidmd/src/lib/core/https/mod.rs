@@ -1181,7 +1181,9 @@ pub fn create_https_server(
     let (log_tx, log_rx) = unbounded::<TreeProcessor<KanidmEventTag>>();
     tracing::subscriber::set_global_default(TreeSubscriber::pretty(log_tx))
         .expect("🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨");
-    let tree_middleware = TreeMiddleware::with_file("server.log");
+
+    let tree_middleware = TreeMiddleware::with_stdout();
+    // let tree_middleware = TreeMiddleware::with_file("server.log");
 
     tokio::spawn(crate::async_log::run_tracing_tree(log_rx));
 

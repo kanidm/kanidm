@@ -27,7 +27,7 @@ use crate::utils::{
     backup_code_from_random, password_from_random, readable_password_from_random,
     uuid_from_duration, Sid,
 };
-use crate::{admin_error, prelude::*, security_info};
+use crate::{admin_error, prelude::*, security_info, spanned};
 
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{
@@ -40,7 +40,6 @@ use kanidm_proto::v1::{
     UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 use std::str::FromStr;
-use tracing::{instrument, trace_span};
 
 use bundy::hs512::HS512;
 
@@ -152,7 +151,6 @@ impl IdmServer {
         origin: String,
         // ct: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
-        let _entered = trace_span!("IdmServer::new").entered();
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op
         //      we can then spend up to ~0.001s hashing
@@ -359,6 +357,7 @@ pub trait IdmServerTransaction<'a> {
 
     fn get_uat_bundy_txn(&self) -> &HS512;
 
+    // ! TRACING INTEGRATED
     fn validate_and_parse_uat(
         &self,
         audit: &mut AuditScope,
@@ -388,14 +387,13 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    // TODO (Quinn): tracing
+    // ! TRACING INTEGRATED
     fn process_uat_to_identity(
         &self,
         audit: &mut AuditScope,
         uat: &UserAuthToken,
         ct: Duration,
     ) -> Result<Identity, OperationError> {
-        let _entered = trace_span!("process_uat_to_identity").entered();
         // From a UAT, get the current identity and associated information.
         let entry = self
             .get_qs_txn()
@@ -452,7 +450,7 @@ pub trait IdmServerTransaction<'a> {
         };
         */
 
-        trace!("Applied claims -> {:?}", entry.get_ava_set("claim"));
+        trace!(claims = ?entry.get_ava_set("claim"), "Applied claims");
         ltrace!(audit, "Applied claims -> {:?}", entry.get_ava_set("claim"));
 
         let limits = Limits::from_uat(uat);
@@ -494,7 +492,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         session_write.commit();
     }
 
-    #[instrument(level = "trace", name = "server::auth", skip(self, au, ae, ct))]
+    // ! TRACING INTEGRATED
     pub async fn auth(
         &mut self,
         au: &mut AuditScope,
@@ -587,17 +585,19 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         // Now acquire the session tree for writing.
                         let _session_ticket = self.session_ticket.acquire().await;
                         let mut session_write = self.sessions.write();
-                        lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
-                            if session_write.contains_key(&sessionid) {
-                                Err(OperationError::InvalidSessionState)
-                            } else {
-                                session_write.insert(sessionid, auth_session);
-                                // Debugging: ensure we really inserted ...
-                                debug_assert!(session_write.get(&sessionid).is_some());
-                                Ok(())
-                            }
-                        })?;
-                        session_write.commit();
+                        spanned!("idm::server::auth<Init> -> sessions", {
+                            lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
+                                if session_write.contains_key(&sessionid) {
+                                    Err(OperationError::InvalidSessionState)
+                                } else {
+                                    session_write.insert(sessionid, auth_session);
+                                    // Debugging: ensure we really inserted ...
+                                    debug_assert!(session_write.get(&sessionid).is_some());
+                                    Ok(())
+                                }
+                            })?;
+                            session_write.commit();
+                        })
                     }
                     None => {
                         security_info!("Authentication Session Unable to begin");
@@ -758,7 +758,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
     }
 
-    #[instrument(level = "trace", skip(self, au, uae, ct))]
+    // ! TRACING INTEGRATED
     pub async fn auth_unix(
         &mut self,
         au: &mut AuditScope,
@@ -837,6 +837,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         res
     }
 
+    // TODO: tracing
     pub async fn auth_ldap(
         &mut self,
         au: &mut AuditScope,
@@ -982,6 +983,7 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
+    // TODO: tracing
     pub fn get_radiusauthtoken(
         &mut self,
         au: &mut AuditScope,
@@ -1002,6 +1004,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_radiusauthtoken(ct)
     }
 
+    // TODO: tracing
     pub fn get_unixusertoken(
         &mut self,
         au: &mut AuditScope,
@@ -1022,6 +1025,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_unixusertoken(ct)
     }
 
+    // TODO: tracing
     pub fn get_unixgrouptoken(
         &mut self,
         au: &mut AuditScope,
@@ -1038,6 +1042,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         group.to_unixgrouptoken()
     }
 
+    // TODO: tracing
     pub fn get_credentialstatus(
         &mut self,
         au: &mut AuditScope,
@@ -1057,6 +1062,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_credentialstatus()
     }
 
+    // TODO: tracing
     pub fn get_backup_codes(
         &mut self,
         au: &mut AuditScope,
@@ -1076,6 +1082,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_backupcodesview()
     }
 
+    // TODO: tracing
     pub fn check_oauth2_authorisation(
         &self,
         audit: &mut AuditScope,
@@ -1088,6 +1095,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .check_oauth2_authorisation(audit, ident, uat, auth_req, ct)
     }
 
+    // TODO: tracing
     pub fn check_oauth2_authorise_permit(
         &self,
         audit: &mut AuditScope,
@@ -1100,6 +1108,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .check_oauth2_authorise_permit(audit, ident, uat, consent_req, ct)
     }
 
+    // TODO: tracing
     pub fn check_oauth2_token_exchange(
         &self,
         audit: &mut AuditScope,
@@ -1134,6 +1143,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // expired will now be dropped, and can't be used by future sessions.
     }
 
+    // TODO: tracing
     fn check_password_quality(
         &mut self,
         au: &mut AuditScope,
@@ -1188,6 +1198,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    // TODO: tracing
     pub(crate) fn target_to_account(
         &mut self,
         au: &mut AuditScope,
@@ -1214,6 +1225,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    // TODO: tracing
     pub fn set_account_password(
         &mut self,
         au: &mut AuditScope,
@@ -1294,6 +1306,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    // TODO: tracing
     pub fn set_unix_account_password(
         &mut self,
         au: &mut AuditScope,
@@ -1383,6 +1396,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
+    // TODO: tracing
     pub fn recover_account(
         &mut self,
         au: &mut AuditScope,
@@ -1424,6 +1438,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(cleartext)
     }
 
+    // TODO: tracing
     pub fn generate_account_password(
         &mut self,
         au: &mut AuditScope,
@@ -1468,6 +1483,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
     }
 
+    // TODO: tracing
     /// Generate a new set of backup code and remove the old ones.
     pub fn generate_backup_code(
         &mut self,
@@ -1508,6 +1524,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
     }
 
+    // TODO: tracing
     pub fn remove_backup_code(
         &mut self,
         au: &mut AuditScope,
@@ -1538,6 +1555,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| SetCredentialResponse::Success)
     }
 
+    // TODO: tracing
     pub fn regenerate_radius_secret(
         &mut self,
         au: &mut AuditScope,
@@ -1577,6 +1595,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
     }
 
+    // TODO: tracing
     pub fn reg_account_webauthn_init(
         &mut self,
         au: &mut AuditScope,
@@ -1600,6 +1619,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    // TODO: tracing
     pub fn reg_account_webauthn_complete(
         &mut self,
         au: &mut AuditScope,
@@ -1654,6 +1674,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    // TODO: tracing
     pub fn remove_account_webauthn(
         &mut self,
         au: &mut AuditScope,
@@ -1691,6 +1712,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| SetCredentialResponse::Success)
     }
 
+    // TODO: tracing
     pub fn generate_account_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1714,6 +1736,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    // TODO: tracing
     pub fn verify_account_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1772,6 +1795,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    // TODO: tracing
     pub fn accept_account_sha1_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1828,6 +1852,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
+    // TODO: tracing
     pub fn remove_account_totp(
         &mut self,
         au: &mut AuditScope,
@@ -1858,13 +1883,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| SetCredentialResponse::Success)
     }
 
+    // TODO: tracing
     // -- delayed action processing --
     fn process_pwupgrade(
         &mut self,
         au: &mut AuditScope,
         pwu: &PasswordUpgrade,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("server::process_pwupgrade").entered();
         // get the account
         let account = self.target_to_account(au, &pwu.target_uuid)?;
 
@@ -1892,6 +1917,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    // TODO: tracing
     fn process_unixpwupgrade(
         &mut self,
         au: &mut AuditScope,
@@ -1928,6 +1954,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    // TODO: tracing
     pub(crate) fn process_webauthncounterinc(
         &mut self,
         au: &mut AuditScope,
@@ -1956,6 +1983,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    // TODO: tracing
     pub(crate) fn process_backupcoderemoval(
         &mut self,
         au: &mut AuditScope,
@@ -1977,12 +2005,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    // TODO: tracing
     pub(crate) fn process_delayedaction(
         &mut self,
         au: &mut AuditScope,
         da: DelayedAction,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("server::process_delayedaction").entered();
         match da {
             DelayedAction::PwUpgrade(pwu) => self.process_pwupgrade(au, &pwu),
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(au, &upwu),
@@ -1993,6 +2021,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
+    // TODO: tracing
     pub fn commit(mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         lperf_trace_segment!(
             au,
@@ -2019,6 +2048,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    // TODO: tracing
     fn reload_password_badlist(&mut self, au: &mut AuditScope) -> Result<(), OperationError> {
         match self.qs_write.get_password_badlist(au) {
             Ok(badlist_entry) => {

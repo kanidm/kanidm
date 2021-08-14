@@ -1,6 +1,6 @@
 use crate::credential::BackupCodes;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
-use crate::prelude::*;
+use crate::{prelude::*, spanned};
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
@@ -115,36 +115,45 @@ pub(crate) struct Account {
 }
 
 impl Account {
+    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(au, "idm::account::try_from_entry_ro", || {
-            let groups = Group::try_from_account_entry_ro(au, value, qs)?;
-            try_from_entry!(value, groups)
+        spanned!("idm::account::try_from_entry_ro", {
+            lperf_trace_segment!(au, "idm::account::try_from_entry_ro", || {
+                let groups = Group::try_from_account_entry_ro(au, value, qs)?;
+                try_from_entry!(value, groups)
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_rw(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(au, "idm::account::try_from_entry_rw", || {
-            let groups = Group::try_from_account_entry_rw(au, value, qs)?;
-            try_from_entry!(value, groups)
+        spanned!("idm::account::try_from_entry_rw", {
+            lperf_trace_segment!(au, "idm::account::try_from_entry_rw", || {
+                let groups = Group::try_from_account_entry_rw(au, value, qs)?;
+                try_from_entry!(value, groups)
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_reduced(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(au, "idm::account::try_from_entry_reduced", || {
-            let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
-            try_from_entry!(value, groups)
+        spanned!("idm::account::try_from_entry_reduced", {
+            lperf_trace_segment!(au, "idm::account::try_from_entry_reduced", || {
+                let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
+                try_from_entry!(value, groups)
+            })
         })
     }
 

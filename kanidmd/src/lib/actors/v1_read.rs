@@ -1,9 +1,9 @@
 use tokio::sync::mpsc::UnboundedSender as Sender;
-use tracing::{error, info, instrument, trace, trace_span};
+use tracing::{error, info, instrument, trace};
 
 use std::sync::Arc;
 
-use crate::{admin_error, prelude::*, security_info};
+use crate::{admin_error, prelude::*, security_info, spanned};
 
 use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
 use crate::idm::event::{
@@ -74,17 +74,17 @@ impl QueryServerReadV1 {
     // required complete. We still need to do certain validation steps, but
     // at this point our just is just to route to do_<action>
 
+    // ! TRACING INTEGRATED
+    // ! For uuid, we should deprecate `RequestExtensions::new_eventid` and just manually call
+    // ! `Uuid::new_v4().to_hyphenated().to_string()` instead of keeping a `Uuid` around.
+    // ! Ideally, this function takes &self, uat, req, and then a `uuid` argument that is a `&str` of the hyphenated uuid.
+    // ! Then we just don't skip uuid, and we don't have to do the custom `fields(..)` stuff in this macro call.
     #[instrument(
         level = "trace",
-        name = "v1_read::handle_search",
-        skip(self, uat, req, eventid),
-        fields(uuid = eventid.to_hyphenated().to_string().as_str())
-        // ! For uuid, we should deprecate `RequestExtensions::new_eventid` and just manually call
-        // ! `Uuid::new_v4().to_hyphenated().to_string()` instead of keeping a `Uuid` around.
-        // ! Ideally, this function takes &self, uat, req, and then a `uuid` argument that is a `&str` of the hyphenated uuid.
-        // ! Then we just don't skip uuid, and we don't have to do the custom `fields(..)` stuff in this macro call.
+        name = "search",
+        skip(self, uat, req, eventid)
+        fields(uuid = ?eventid)
     )]
-    // TODO (Quinn): tracing
     pub async fn handle_search(
         &self,
         uat: Option<String>,
@@ -95,7 +95,14 @@ impl QueryServerReadV1 {
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = trace_span!("actors::v1_read::handle<SearchMessage>").in_scope(|| {
+        // ! NOTICE: The inner function contains a short-circuiting `return`, which is only exits the closure.
+        // ! If we removed the `lperf_op_segment` and kept the inside, this would short circuit before logging `audit`.
+        // ! However, since we immediately return `res` after logging `audit`, and we should be removing the lperf stuff
+        // ! and the logging of `audit` at the same time, it is ok if the inner code short circuits the whole function because
+        // ! there is no work to be done afterwards.
+        // ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block
+        // ! in order to not short-circuit the entire function.
+        let res = spanned!("actors::v1_read::handle<SearchMessage>", {
             lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
                 let ident = idms_prox_read
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
@@ -107,6 +114,7 @@ impl QueryServerReadV1 {
                     })?;
 
                 // Make an event from the request
+                // TODO: Refactor this in another PR to use `map_err` and `?`
                 let search = match SearchEvent::from_message(
                     &mut audit,
                     ident,
@@ -124,6 +132,7 @@ impl QueryServerReadV1 {
                 trace!(?search, "Begin event");
                 ltrace!(audit, "Begin event {:?}", search);
 
+                // TODO: Refactor this in another PR to use `?`
                 match idms_prox_read.qs_read.search_ext(&mut audit, &search) {
                     Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
                         .map(SearchResult::response),
@@ -139,10 +148,12 @@ impl QueryServerReadV1 {
         res
     }
 
+    // ! TRACING INTEGRATED
     #[instrument(
         level = "trace",
-        name = "v1_read::handle_auth",
+        name = "auth",
         skip(self, sessionid, req, eventid)
+        fields(uuid = ?eventid)
     )]
     pub async fn handle_auth(
         &self,
@@ -196,7 +207,12 @@ impl QueryServerReadV1 {
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "whoami",
+        skip(self, uat, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_whoami(
         &self,
         uat: Option<String>,
@@ -207,66 +223,79 @@ impl QueryServerReadV1 {
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
-            // Make an event from the whoami request. This will process the event and
-            // generate a selfuuid search.
-            //
-            // This current handles the unauthenticated check, and will
-            // trigger the failure, but if we can manage to work out async
-            // then move this to core.rs, and don't allow Option<UAT> to get
-            // this far.
-            let (uat, ident) = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| {
-                    idms_prox_read
-                        .process_uat_to_identity(&mut audit, &uat, ct)
-                        .map(|i| (uat, i))
-                })
-                .map_err(|e| {
-                    ladmin_error!(audit, "Invalid identity: {:?}", e);
-                    e
-                })?;
+        // ! NOTICE: The inner function contains a short-circuiting `return`, which is only exits the closure.
+        // ! If we removed the `lperf_op_segment` and kept the inside, this would short circuit before logging `audit`.
+        // ! However, since we immediately return `res` after logging `audit`, and we should be removing the lperf stuff
+        // ! and the logging of `audit` at the same time, it is ok if the inner code short circuits the whole function because
+        // ! there is no work to be done afterwards.
+        // ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block
+        // ! in order to not short-circuit the entire function.
+        let res = spanned!("actors::v1_read::handle<WhoamiMessage>", {
+            lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
+                // Make an event from the whoami request. This will process the event and
+                // generate a selfuuid search.
+                //
+                // This current handles the unauthenticated check, and will
+                // trigger the failure, but if we can manage to work out async
+                // then move this to core.rs, and don't allow Option<UAT> to get
+                // this far.
+                let (uat, ident) = idms_prox_read
+                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                    .and_then(|uat| {
+                        idms_prox_read
+                            .process_uat_to_identity(&mut audit, &uat, ct)
+                            .map(|i| (uat, i))
+                    })
+                    .map_err(|e| {
+                        admin_error!(?e, "Invalid identity");
+                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        e
+                    })?;
 
-            let srch = match SearchEvent::from_whoami_request(
-                &mut audit,
-                ident,
-                &idms_prox_read.qs_read,
-            ) {
-                Ok(s) => s,
-                Err(e) => {
-                    ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
-                    return Err(e);
-                }
-            };
+                // TODO: Refactor this in another PR to use `?`
+                let srch = match SearchEvent::from_whoami_request(
+                    &mut audit,
+                    ident,
+                    &idms_prox_read.qs_read,
+                ) {
+                    Ok(s) => s,
+                    Err(e) => {
+                        admin_error!(?e, "Failed to begin whoami");
+                        ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
+                        return Err(e);
+                    }
+                };
 
-            ltrace!(audit, "Begin event {:?}", srch);
+                trace!(search = ?srch, "Begin event");
+                ltrace!(audit, "Begin event {:?}", srch);
 
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                Ok(mut entries) => {
-                    // assert there is only one ...
-                    match entries.len() {
-                        0 => Err(OperationError::NoMatchingEntries),
-                        1 => {
-                            #[allow(clippy::expect_used)]
-                            let e = entries.pop().expect("Entry length mismatch!!!");
-                            // Now convert to a response, and return
-                            WhoamiResult::new(&mut audit, &idms_prox_read.qs_read, &e, uat)
-                                .map(|ok_wr| ok_wr.response())
+                // TODO: Refactor this in another PR to use `?`
+                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
+                    Ok(mut entries) => {
+                        // assert there is only one ...
+                        match entries.len() {
+                            0 => Err(OperationError::NoMatchingEntries),
+                            1 => {
+                                #[allow(clippy::expect_used)]
+                                let e = entries.pop().expect("Entry length mismatch!!!");
+                                // Now convert to a response, and return
+                                WhoamiResult::new(&mut audit, &idms_prox_read.qs_read, &e, uat)
+                                    .map(|ok_wr| ok_wr.response())
+                            }
+                            // Somehow we matched multiple, which should be impossible.
+                            _ => Err(OperationError::InvalidState),
                         }
-                        // Somehow we matched multiple, which should be impossible.
-                        _ => Err(OperationError::InvalidState),
+                        // TODO: Refactor this in another PR use use the following
+                        // entries.pop() {
+                        //     Some(e) if entries.is_empty() => // whoami stuff...
+                        //     Some(_) => Err(OperationError::InvalidState) // matched multiple
+                        //     _ => Err(OperationError::NoMatchingEntries),
+                        // }
                     }
-                    /*
-                    We can be more idiomatic and avoid the `expect` with this:
-                    entries.pop() {
-                        Some(e) if entries.is_empty() => // whoami stuff...
-                        _ => Err(OperationError::InvalidState),
-                    }
-                    */
+                    // Something else went wrong ...
+                    Err(e) => Err(e),
                 }
-                // Something else went wrong ...
-                Err(e) => Err(e),
-            }
+            })
         });
         // Should we log the final result?
         // At the end of the event we send it for logging.

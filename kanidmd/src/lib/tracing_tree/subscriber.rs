@@ -1,3 +1,4 @@
+use std::any::TypeId;
 use std::convert::TryFrom;
 use std::fmt;
 use std::fs::OpenOptions;
@@ -11,7 +12,7 @@ use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Record};
 use tracing::{Event, Id, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layered, SubscriberExt};
-use tracing_subscriber::registry::{Registry, Scope, SpanRef};
+use tracing_subscriber::registry::{LookupSpan, Registry, Scope, SpanRef};
 use tracing_subscriber::Layer;
 use uuid::Uuid;
 
@@ -96,14 +97,37 @@ impl<E: EventTagSet> TreeSubscriber<E> {
     }
 
     // These are the preferred constructors.
-
     #[allow(dead_code)]
     pub fn json(log_tx: UnboundedSender<TreeProcessor<E>>) -> Self {
         TreeSubscriber::new(LogFmt::Json, log_tx)
     }
 
+    #[allow(dead_code)]
     pub fn pretty(log_tx: UnboundedSender<TreeProcessor<E>>) -> Self {
         TreeSubscriber::new(LogFmt::Pretty, log_tx)
+    }
+
+    #[allow(dead_code)]
+    pub fn thread_operation_id(&self) -> Option<Uuid> {
+        let current = self.inner.current_span();
+        // If there's no current span, we short-circuit.
+        let id = current.id()?;
+        let span = self
+            .inner
+            .span(id)
+            .expect("The subscriber doesn't have data for an existing span, this is a bug");
+
+        span.scope().into_iter().find_map(|span| {
+            let extensions = span.extensions();
+            // If `uuid` is `None`, then we keep searching.
+            let uuid = extensions
+                .get::<TreeSpan<E>>()
+                .expect("Span buffer not found, this is a bug")
+                .uuid
+                .as_ref()?;
+            // TODO: make spans store UUID's as a u128 or 2 u64's
+            Some(Uuid::parse_str(uuid.as_str()).expect("Unable to parse UUID, this is a bug"))
+        })
     }
 }
 
@@ -146,6 +170,15 @@ impl<E: EventTagSet> Subscriber for TreeSubscriber<E> {
 
     fn try_close(&self, id: Id) -> bool {
         self.inner.try_close(id)
+    }
+
+    unsafe fn downcast_raw(&self, id: TypeId) -> Option<*const ()> {
+        // Allows us to access this or nested subscribers from dispatch
+        if id == TypeId::of::<Self>() {
+            Some(self as *const Self as *const ())
+        } else {
+            self.inner.downcast_raw(id)
+        }
     }
 }
 
@@ -433,4 +466,14 @@ impl<E: EventTagSet> TreeProcessed<E> {
             TreeProcessed::Span(TreeSpanProcessed { out, .. }) => out,
         }
     }
+}
+
+// Returns the UUID of the threads current span operation, or None if not in any spans.
+pub fn operation_id() -> Option<Uuid> {
+    tracing::dispatcher::get_default(|dispatch| {
+        dispatch
+            .downcast_ref::<TreeSubscriber<super::KanidmEventTag>>()
+            .expect("operation_id only works for `TreeSubscriber`'s!")
+            .thread_operation_id()
+    })
 }

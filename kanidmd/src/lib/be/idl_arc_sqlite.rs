@@ -22,8 +22,8 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use uuid::Uuid;
 
-use crate::{admin_error, admin_warn, filter_info};
-use tracing::{self, trace, trace_span};
+use crate::{admin_error, admin_warn, filter_info, spanned};
+use tracing::trace;
 
 // use std::borrow::Borrow;
 
@@ -84,57 +84,58 @@ macro_rules! get_identry {
         $idl:expr,
         $is_read_op:expr
     ) => {{
-        let _entered = trace_span!("be::idl_arc_sqlite::get_identry").entered();
-        let mut result: Vec<Entry<_, _>> = Vec::new();
-        match $idl {
-            IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
-                let mut nidl = IDLBitRange::new();
+        spanned!("be::idl_arc_sqlite::get_identry", {
+            let mut result: Vec<Entry<_, _>> = Vec::new();
+            match $idl {
+                IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
+                    let mut nidl = IDLBitRange::new();
 
-                idli.into_iter().for_each(|i| {
-                    // For all the id's in idl.
-                    // is it in the cache?
-                    match $self.entry_cache.get(&i) {
-                        Some(eref) => result.push(eref.as_ref().clone()),
-                        None => unsafe { nidl.push_id(i) },
-                    }
-                });
-
-                if !nidl.is_empty() {
-                    // Now, get anything from nidl that is needed.
-                    let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
-                    // Clone everything from db_result into the cache.
-                    if $is_read_op {
-                        db_result.iter().for_each(|e| {
-                            $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
-                        });
-                    }
-                    // Merge the two vecs
-                    result.append(&mut db_result);
-                }
-            }
-            IdList::AllIds => {
-                // VERY similar to above, but we skip adding the entries to the cache
-                // on miss to prevent scan/invalidation attacks.
-                let idli = (*$self.allids).clone();
-                let mut nidl = IDLBitRange::new();
-
-                (&idli)
-                    .into_iter()
-                    .for_each(|i| match $self.entry_cache.get(&i) {
-                        Some(eref) => result.push(eref.as_ref().clone()),
-                        None => unsafe { nidl.push_id(i) },
+                    idli.into_iter().for_each(|i| {
+                        // For all the id's in idl.
+                        // is it in the cache?
+                        match $self.entry_cache.get(&i) {
+                            Some(eref) => result.push(eref.as_ref().clone()),
+                            None => unsafe { nidl.push_id(i) },
+                        }
                     });
 
-                if !nidl.is_empty() {
-                    // Now, get anything from nidl that is needed.
-                    let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
-                    // Merge the two vecs
-                    result.append(&mut db_result);
+                    if !nidl.is_empty() {
+                        // Now, get anything from nidl that is needed.
+                        let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
+                        // Clone everything from db_result into the cache.
+                        if $is_read_op {
+                            db_result.iter().for_each(|e| {
+                                $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
+                            });
+                        }
+                        // Merge the two vecs
+                        result.append(&mut db_result);
+                    }
                 }
-            }
-        };
-        // Return
-        Ok(result)
+                IdList::AllIds => {
+                    // VERY similar to above, but we skip adding the entries to the cache
+                    // on miss to prevent scan/invalidation attacks.
+                    let idli = (*$self.allids).clone();
+                    let mut nidl = IDLBitRange::new();
+
+                    (&idli)
+                        .into_iter()
+                        .for_each(|i| match $self.entry_cache.get(&i) {
+                            Some(eref) => result.push(eref.as_ref().clone()),
+                            None => unsafe { nidl.push_id(i) },
+                        });
+
+                    if !nidl.is_empty() {
+                        // Now, get anything from nidl that is needed.
+                        let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
+                        // Merge the two vecs
+                        result.append(&mut db_result);
+                    }
+                }
+            };
+            // Return
+            Ok(result)
+        })
     }};
 }
 
@@ -172,55 +173,56 @@ macro_rules! get_idl {
         $itype:expr,
         $idx_key:expr
     ) => {{
-        let _entered = trace_span!("be::idl_arc_sqlite::get_idl").entered();
-        lperf_trace_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
-            // SEE ALSO #259: Find a way to implement borrow for this properly.
-            // I don't think this is possible. When we make this dyn, the arc
-            // needs the dyn trait to be sized so that it *could* claim a clone
-            // for hit tracking reasons. That also means that we need From and
-            // some other traits that just seem incompatible. And in the end,
-            // we clone a few times in arc, and if we miss we need to insert anyway
-            //
-            // So the best path could be to replace IdlCacheKey with a compressed
-            // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
-            // are allocated to reduce some allocs? Probably over thinking it at
-            // this point.
-            //
-            // First attempt to get from this cache.
-            let cache_key = IdlCacheKeyRef {
-                a: $attr,
-                i: $itype,
-                k: $idx_key,
-            };
-            let cache_r = $self.idl_cache.get(&cache_key as &dyn IdlCacheKeyToRef);
-            // If hit, continue.
-            if let Some(ref data) = cache_r {
-                trace!(
-                    %data,
-                    "Got cached idl for index {:?} {:?}",
-                    $itype,
-                    $attr,
-                );
-                ltrace!(
-                    $audit,
-                    "Got cached idl for index {:?} {:?} -> {}",
-                    $itype,
-                    $attr,
-                    data
-                );
-                return Ok(Some(data.as_ref().clone()));
-            }
-            // If miss, get from db *and* insert to the cache.
-            let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
-            if let Some(ref idl) = db_r {
-                let ncache_key = IdlCacheKey {
-                    a: $attr.into(),
-                    i: $itype.clone(),
-                    k: $idx_key.into(),
+        spanned!("be::idl_arc_sqlite::get_idl", {
+            lperf_trace_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
+                // SEE ALSO #259: Find a way to implement borrow for this properly.
+                // I don't think this is possible. When we make this dyn, the arc
+                // needs the dyn trait to be sized so that it *could* claim a clone
+                // for hit tracking reasons. That also means that we need From and
+                // some other traits that just seem incompatible. And in the end,
+                // we clone a few times in arc, and if we miss we need to insert anyway
+                //
+                // So the best path could be to replace IdlCacheKey with a compressed
+                // or smaller type. Perhaps even a small cache of the IdlCacheKeys that
+                // are allocated to reduce some allocs? Probably over thinking it at
+                // this point.
+                //
+                // First attempt to get from this cache.
+                let cache_key = IdlCacheKeyRef {
+                    a: $attr,
+                    i: $itype,
+                    k: $idx_key,
                 };
-                $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
-            }
-            Ok(db_r)
+                let cache_r = $self.idl_cache.get(&cache_key as &dyn IdlCacheKeyToRef);
+                // If hit, continue.
+                if let Some(ref data) = cache_r {
+                    trace!(
+                        %data,
+                        "Got cached idl for index {:?} {:?}",
+                        $itype,
+                        $attr,
+                    );
+                    ltrace!(
+                        $audit,
+                        "Got cached idl for index {:?} {:?} -> {}",
+                        $itype,
+                        $attr,
+                        data
+                    );
+                    return Ok(Some(data.as_ref().clone()));
+                }
+                // If miss, get from db *and* insert to the cache.
+                let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
+                if let Some(ref idl) = db_r {
+                    let ncache_key = IdlCacheKey {
+                        a: $attr.into(),
+                        i: $itype.clone(),
+                        k: $idx_key.into(),
+                    };
+                    $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
+                }
+                Ok(db_r)
+            })
         })
     }};
 }
@@ -232,23 +234,24 @@ macro_rules! name2uuid {
         $audit:expr,
         $name:expr
     ) => {{
-        let _entered = trace_span!("be::idl_arc_sqlite::name2uuid").entered();
-        lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
-            let cache_key = NameCacheKey::Name2Uuid($name.to_string());
-            let cache_r = $self.name_cache.get(&cache_key);
-            if let Some(NameCacheValue::U(uuid)) = cache_r {
-                trace!("Got cached uuid for name2uuid");
-                ltrace!($audit, "Got cached uuid for name2uuid");
-                return Ok(Some(uuid.clone()));
-            }
+        spanned!("be::idl_arc_sqlite::name2uuid", {
+            lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+                let cache_key = NameCacheKey::Name2Uuid($name.to_string());
+                let cache_r = $self.name_cache.get(&cache_key);
+                if let Some(NameCacheValue::U(uuid)) = cache_r {
+                    trace!("Got cached uuid for name2uuid");
+                    ltrace!($audit, "Got cached uuid for name2uuid");
+                    return Ok(Some(uuid.clone()));
+                }
 
-            let db_r = $self.db.name2uuid($audit, $name)?;
-            if let Some(uuid) = db_r {
-                $self
-                    .name_cache
-                    .insert(cache_key, NameCacheValue::U(uuid.clone()))
-            }
-            Ok(db_r)
+                let db_r = $self.db.name2uuid($audit, $name)?;
+                if let Some(uuid) = db_r {
+                    $self
+                        .name_cache
+                        .insert(cache_key, NameCacheValue::U(uuid.clone()))
+                }
+                Ok(db_r)
+            })
         })
     }};
 }
@@ -260,23 +263,24 @@ macro_rules! uuid2spn {
         $audit:expr,
         $uuid:expr
     ) => {{
-        let _entered = trace_span!("be::idl_arc_sqlite::uuid2spn").entered();
-        lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
-            let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
-            let cache_r = $self.name_cache.get(&cache_key);
-            if let Some(NameCacheValue::S(ref spn)) = cache_r {
-                trace!("Got cached spn for uuid2spn");
-                ltrace!($audit, "Got cached spn for uuid2spn");
-                return Ok(Some(spn.as_ref().clone()));
-            }
+        spanned!("be::idl_arc_sqlite::uuid2spn", {
+            lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+                let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
+                let cache_r = $self.name_cache.get(&cache_key);
+                if let Some(NameCacheValue::S(ref spn)) = cache_r {
+                    trace!("Got cached spn for uuid2spn");
+                    ltrace!($audit, "Got cached spn for uuid2spn");
+                    return Ok(Some(spn.as_ref().clone()));
+                }
 
-            let db_r = $self.db.uuid2spn($audit, $uuid)?;
-            if let Some(ref data) = db_r {
-                $self
-                    .name_cache
-                    .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
-            }
-            Ok(db_r)
+                let db_r = $self.db.uuid2spn($audit, $uuid)?;
+                if let Some(ref data) = db_r {
+                    $self
+                        .name_cache
+                        .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
+                }
+                Ok(db_r)
+            })
         })
     }};
 }
@@ -288,23 +292,24 @@ macro_rules! uuid2rdn {
         $audit:expr,
         $uuid:expr
     ) => {{
-        let _entered = trace_span!("be::idl_arc_sqlite::uuid2rdn").entered();
-        lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
-            let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
-            let cache_r = $self.name_cache.get(&cache_key);
-            if let Some(NameCacheValue::R(ref rdn)) = cache_r {
-                trace!("Got cached rdn for uuid2rdn");
-                ltrace!($audit, "Got cached rdn for uuid2rdn");
-                return Ok(Some(rdn.clone()));
-            }
+        spanned!("be::idl_arc_sqlite::uuid2rdn", {
+            lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
+                let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
+                let cache_r = $self.name_cache.get(&cache_key);
+                if let Some(NameCacheValue::R(ref rdn)) = cache_r {
+                    trace!("Got cached rdn for uuid2rdn");
+                    ltrace!($audit, "Got cached rdn for uuid2rdn");
+                    return Ok(Some(rdn.clone()));
+                }
 
-            let db_r = $self.db.uuid2rdn($audit, $uuid)?;
-            if let Some(ref data) = db_r {
-                $self
-                    .name_cache
-                    .insert(cache_key, NameCacheValue::R(data.clone()))
-            }
-            Ok(db_r)
+                let db_r = $self.db.uuid2rdn($audit, $uuid)?;
+                if let Some(ref data) = db_r {
+                    $self
+                        .name_cache
+                        .insert(cache_key, NameCacheValue::R(data.clone()))
+                }
+                Ok(db_r)
+            })
         })
     }};
 }
@@ -678,21 +683,20 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
     // ! TRACING INTEGRATED
     pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_arc_sqlite::commit").entered();
-        lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit", || {
-            let IdlArcSqliteWriteTransaction {
-                db,
-                mut entry_cache,
-                mut idl_cache,
-                mut name_cache,
-                op_ts_max,
-                allids,
-                maxid,
-            } = self;
+        spanned!("be::idl_arc_sqlite::commit", {
+            lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit", || {
+                let IdlArcSqliteWriteTransaction {
+                    db,
+                    mut entry_cache,
+                    mut idl_cache,
+                    mut name_cache,
+                    op_ts_max,
+                    allids,
+                    maxid,
+                } = self;
 
-            // Write any dirty items to the disk.
-            trace_span!("be::idl_arc_sqlite::commit<entry>")
-                .in_scope(|| {
+                // Write any dirty items to the disk.
+                spanned!("be::idl_arc_sqlite::commit<entry>", {
                     lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit<entry>", || {
                         entry_cache
                             .iter_mut_mark_clean()
@@ -708,8 +712,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     e
                 })?;
 
-            trace_span!("be::idl_arc_sqlite::commit<idl>")
-                .in_scope(|| {
+                spanned!("be::idl_arc_sqlite::commit<idl>", {
                     lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit<idl>", || {
                         idl_cache.iter_mut_mark_clean().try_for_each(|(k, v)| {
                             match v {
@@ -736,8 +739,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     e
                 })?;
 
-            trace_span!("be::idl_arc_sqlite::commit<names>")
-                .in_scope(|| {
+                spanned!("be::idl_arc_sqlite::commit<names>", {
                     lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit<names>", || {
                         name_cache
                             .iter_mut_mark_clean()
@@ -771,14 +773,15 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     e
                 })?;
 
-            // Undo the caches in the reverse order.
-            db.commit(audit).map(|()| {
-                op_ts_max.commit();
-                name_cache.commit();
-                idl_cache.commit();
-                entry_cache.commit();
-                allids.commit();
-                maxid.commit();
+                // Undo the caches in the reverse order.
+                db.commit(audit).map(|()| {
+                    op_ts_max.commit();
+                    name_cache.commit();
+                    idl_cache.commit();
+                    entry_cache.commit();
+                    allids.commit();
+                    maxid.commit();
+                })
             })
         })
     }
@@ -801,19 +804,20 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
-        let _entered = trace_span!("be::idl_arc_sqlite::write_identries").entered();
-        lperf_trace_segment!(au, "be::idl_arc_sqlite::write_identries", || {
-            entries.try_for_each(|e| {
-                trace!("Inserting {:?} to cache", e.get_id());
-                ltrace!(au, "Inserting {:?} to cache", e.get_id());
-                if e.get_id() == 0 {
-                    Err(OperationError::InvalidEntryId)
-                } else {
-                    (*self.allids).insert_id(e.get_id());
-                    self.entry_cache
-                        .insert_dirty(e.get_id(), Box::new(e.clone()));
-                    Ok(())
-                }
+        spanned!("be::idl_arc_sqlite::write_identries", {
+            lperf_trace_segment!(au, "be::idl_arc_sqlite::write_identries", || {
+                entries.try_for_each(|e| {
+                    trace!("Inserting {:?} to cache", e.get_id());
+                    ltrace!(au, "Inserting {:?} to cache", e.get_id());
+                    if e.get_id() == 0 {
+                        Err(OperationError::InvalidEntryId)
+                    } else {
+                        (*self.allids).insert_id(e.get_id());
+                        self.entry_cache
+                            .insert_dirty(e.get_id(), Box::new(e.clone()));
+                        Ok(())
+                    }
+                })
             })
         })
     }
@@ -848,18 +852,19 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     where
         I: Iterator<Item = u64>,
     {
-        let _entered = trace_span!("be::idl_arc_sqlite::delete_identry").entered();
-        lperf_trace_segment!(au, "be::idl_arc_sqlite::delete_identry", || {
-            idl.try_for_each(|i| {
-                trace!("Removing {:?} from cache", i);
-                ltrace!(au, "Removing {:?} from cache", i);
-                if i == 0 {
-                    Err(OperationError::InvalidEntryId)
-                } else {
-                    (*self.allids).remove_id(i);
-                    self.entry_cache.remove_dirty(i);
-                    Ok(())
-                }
+        spanned!("be::idl_arc_sqlite::delete_identry", {
+            lperf_trace_segment!(au, "be::idl_arc_sqlite::delete_identry", || {
+                idl.try_for_each(|i| {
+                    trace!("Removing {:?} from cache", i);
+                    ltrace!(au, "Removing {:?} from cache", i);
+                    if i == 0 {
+                        Err(OperationError::InvalidEntryId)
+                    } else {
+                        (*self.allids).remove_id(i);
+                        self.entry_cache.remove_dirty(i);
+                        Ok(())
+                    }
+                })
             })
         })
     }
@@ -873,25 +878,26 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_arc_sqlite::write_idl").entered();
-        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
-            let cache_key = IdlCacheKey {
-                a: attr.into(),
-                i: itype.clone(),
-                k: idx_key.into(),
-            };
-            // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
-            // but we can cache this as a new empty IdList instead, so that we can avoid the
-            // db lookup on this idl.
-            if idl.is_empty() {
-                self.idl_cache
-                    .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
-            } else {
-                self.idl_cache
-                    .insert_dirty(cache_key, Box::new(idl.clone()));
-            }
-            // self.db.write_idl(audit, attr, itype, idx_key, idl)
-            Ok(())
+        spanned!("be::idl_arc_sqlite::write_idl", {
+            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
+                let cache_key = IdlCacheKey {
+                    a: attr.into(),
+                    i: itype.clone(),
+                    k: idx_key.into(),
+                };
+                // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
+                // but we can cache this as a new empty IdList instead, so that we can avoid the
+                // db lookup on this idl.
+                if idl.is_empty() {
+                    self.idl_cache
+                        .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
+                } else {
+                    self.idl_cache
+                        .insert_dirty(cache_key, Box::new(idl.clone()));
+                }
+                // self.db.write_idl(audit, attr, itype, idx_key, idl)
+                Ok(())
+            })
         })
     }
 
@@ -1179,24 +1185,25 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
         add: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_arc_sqlite::write_name2uuid_add").entered();
-        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
-            /*
-            self.db
-                .write_name2uuid_add(audit, uuid, &add)
-                .and_then(|_| {
-            */
+        spanned!("be::idl_arc_sqlite::write_name2uuid_add", {
+            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
+                /*
+                self.db
+                    .write_name2uuid_add(audit, uuid, &add)
+                    .and_then(|_| {
+                */
 
-            // why not just a for loop here...
-            add.into_iter().for_each(|k| {
-                let cache_key = NameCacheKey::Name2Uuid(k);
-                let cache_value = NameCacheValue::U(*uuid);
-                self.name_cache.insert_dirty(cache_key, cache_value)
-            });
-            Ok(())
-            /*
-                })
-            */
+                // why not just a for loop here...
+                add.into_iter().for_each(|k| {
+                    let cache_key = NameCacheKey::Name2Uuid(k);
+                    let cache_value = NameCacheValue::U(*uuid);
+                    self.name_cache.insert_dirty(cache_key, cache_value)
+                });
+                Ok(())
+                /*
+                    })
+                */
+            })
         })
     }
 
@@ -1206,16 +1213,17 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         audit: &mut AuditScope,
         rem: BTreeSet<String>,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_arc_sqlite::write_name2uuid_rem").entered();
-        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
-            // self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
-            rem.into_iter().for_each(|k| {
-                // why not just a for loop here...
-                let cache_key = NameCacheKey::Name2Uuid(k);
-                self.name_cache.remove_dirty(cache_key)
-            });
-            Ok(())
-            // })
+        spanned!("be::idl_arc_sqlite::write_name2uuid_rem", {
+            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
+                // self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
+                rem.into_iter().for_each(|k| {
+                    // why not just a for loop here...
+                    let cache_key = NameCacheKey::Name2Uuid(k);
+                    self.name_cache.remove_dirty(cache_key)
+                });
+                Ok(())
+                // })
+            })
         })
     }
 
@@ -1231,24 +1239,25 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
         k: Option<Value>,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_arc_sqlite::write_uuid2spn").entered();
-        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2spn", || {
-            /*
-            self.db
-                .write_uuid2spn(audit, uuid, k.as_ref())
-                .and_then(|_| {
-            */
-            let cache_key = NameCacheKey::Uuid2Spn(*uuid);
-            match k {
-                Some(v) => self
-                    .name_cache
-                    .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
-                None => self.name_cache.remove_dirty(cache_key),
-            }
-            Ok(())
-            /*
-                })
-            */
+        spanned!("be::idl_arc_sqlite::write_uuid2spn", {
+            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2spn", || {
+                /*
+                self.db
+                    .write_uuid2spn(audit, uuid, k.as_ref())
+                    .and_then(|_| {
+                */
+                let cache_key = NameCacheKey::Uuid2Spn(*uuid);
+                match k {
+                    Some(v) => self
+                        .name_cache
+                        .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
+                    None => self.name_cache.remove_dirty(cache_key),
+                }
+                Ok(())
+                /*
+                    })
+                */
+            })
         })
     }
 
@@ -1264,24 +1273,25 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         uuid: &Uuid,
         k: Option<String>,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_arc_sqlite::write_uuid2rdn").entered();
-        lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2rdn", || {
-            /*
-            self.db
-                .write_uuid2rdn(audit, uuid, k.as_ref())
-                .and_then(|_| {
-            */
-            let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
-            match k {
-                Some(s) => self
-                    .name_cache
-                    .insert_dirty(cache_key, NameCacheValue::R(s)),
-                None => self.name_cache.remove_dirty(cache_key),
-            }
-            Ok(())
-            /*
-                })
-            */
+        spanned!("be::idl_arc_sqlite::write_uuid2rdn", {
+            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2rdn", || {
+                /*
+                self.db
+                    .write_uuid2rdn(audit, uuid, k.as_ref())
+                    .and_then(|_| {
+                */
+                let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
+                match k {
+                    Some(s) => self
+                        .name_cache
+                        .insert_dirty(cache_key, NameCacheValue::R(s)),
+                    None => self.name_cache.remove_dirty(cache_key),
+                }
+                Ok(())
+                /*
+                    })
+                */
+            })
         })
     }
 

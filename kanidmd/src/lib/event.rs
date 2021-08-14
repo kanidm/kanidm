@@ -42,6 +42,7 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
+    // ! TRACING INTEGRATED
     pub fn new(
         audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
@@ -83,6 +84,7 @@ pub struct SearchEvent {
 }
 
 impl SearchEvent {
+    // ! TRACING INTEGRATED
     pub fn from_message(
         audit: &mut AuditScope,
         ident: Identity,

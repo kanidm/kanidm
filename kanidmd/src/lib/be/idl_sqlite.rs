@@ -2,7 +2,7 @@ use crate::audit::AuditScope;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::{IndexType, Value};
-use crate::{admin_error, admin_info, admin_warn, filter_error};
+use crate::{admin_error, admin_info, admin_warn, filter_error, spanned};
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -13,7 +13,7 @@ use rusqlite::OpenFlags;
 use rusqlite::OptionalExtension;
 use std::convert::{TryFrom, TryInto};
 use std::time::Duration;
-use tracing::{trace, trace_span};
+use tracing::trace;
 use uuid::Uuid;
 
 // use uuid::Uuid;
@@ -117,12 +117,13 @@ pub trait IdlSqliteTransaction {
         au: &mut AuditScope,
         idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::get_identry").entered();
-        lperf_trace_segment!(au, "be::idl_sqlite::get_identry", || {
-            self.get_identry_raw(au, idl)?
-                .into_iter()
-                .map(|ide| ide.into_entry(au))
-                .collect()
+        spanned!("be::idl_sqlite::get_identry", {
+            lperf_trace_segment!(au, "be::idl_sqlite::get_identry", || {
+                self.get_identry_raw(au, idl)?
+                    .into_iter()
+                    .map(|ide| ide.into_entry(au))
+                    .collect()
+            })
         })
     }
 
@@ -235,40 +236,41 @@ pub trait IdlSqliteTransaction {
         itype: &IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::get_idl").entered();
-        lperf_trace_segment!(audit, "be::idl_sqlite::get_idl", || {
-            if !(self.exists_idx(audit, attr, itype)?) {
-                filter_error!("Index {:?} {:?} not found", itype, attr);
-                lfilter_error!(audit, "Index {:?} {:?} not found", itype, attr);
-                return Ok(None);
-            }
-            // The table exists - lets now get the actual index itself.
+        spanned!("be::idl_sqlite::get_idl", {
+            lperf_trace_segment!(audit, "be::idl_sqlite::get_idl", || {
+                if !(self.exists_idx(audit, attr, itype)?) {
+                    filter_error!("Index {:?} {:?} not found", itype, attr);
+                    lfilter_error!(audit, "Index {:?} {:?} not found", itype, attr);
+                    return Ok(None);
+                }
+                // The table exists - lets now get the actual index itself.
 
-            let query = format!(
-                "SELECT idl FROM idx_{}_{} WHERE key = :idx_key",
-                itype.as_idx_str(),
-                attr
-            );
-            let mut stmt = self
-                .get_conn()
-                .prepare(query.as_str())
-                .map_err(sqlite_error)?;
-            let idl_raw: Option<Vec<u8>> = stmt
-                .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+                let query = format!(
+                    "SELECT idl FROM idx_{}_{} WHERE key = :idx_key",
+                    itype.as_idx_str(),
+                    attr
+                );
+                let mut stmt = self
+                    .get_conn()
+                    .prepare(query.as_str())
+                    .map_err(sqlite_error)?;
+                let idl_raw: Option<Vec<u8>> = stmt
+                    .query_row(&[(":idx_key", &idx_key)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional()
+                    .map_err(sqlite_error)?;
 
-            let idl = match idl_raw {
-                Some(d) => serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?,
-                // We don't have this value, it must be empty (or we
-                // have a corrupted index .....
-                None => IDLBitRange::new(),
-            };
-            trace!(%idl, "Got idl for index {:?} {:?}", itype, attr);
-            ltrace!(audit, "Got idl for index {:?} {:?} -> {}", itype, attr, idl);
+                let idl = match idl_raw {
+                    Some(d) => serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?,
+                    // We don't have this value, it must be empty (or we
+                    // have a corrupted index .....
+                    None => IDLBitRange::new(),
+                };
+                trace!(%idl, "Got idl for index {:?} {:?}", itype, attr);
+                ltrace!(audit, "Got idl for index {:?} {:?} -> {}", itype, attr, idl);
 
-            Ok(Some(idl))
+                Ok(Some(idl))
+            })
         })
     }
 
@@ -278,24 +280,25 @@ pub trait IdlSqliteTransaction {
         audit: &mut AuditScope,
         name: &str,
     ) -> Result<Option<Uuid>, OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::name2uuid").entered();
-        lperf_trace_segment!(audit, "be::idl_sqlite::name2uuid", || {
-            // The table exists - lets now get the actual index itself.
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name")
-                .map_err(sqlite_error)?;
-            let uuid_raw: Option<String> = stmt
-                .query_row(&[(":name", &name)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+        spanned!("be::idl_sqlite::name2uuid", {
+            lperf_trace_segment!(audit, "be::idl_sqlite::name2uuid", || {
+                // The table exists - lets now get the actual index itself.
+                let mut stmt = self
+                    .get_conn()
+                    .prepare("SELECT uuid FROM idx_name2uuid WHERE name = :name")
+                    .map_err(sqlite_error)?;
+                let uuid_raw: Option<String> = stmt
+                    .query_row(&[(":name", &name)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional()
+                    .map_err(sqlite_error)?;
 
-            let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
-            trace!(%name, ?uuid, "Got uuid for index");
-            ltrace!(audit, "Got uuid for index name {} -> {:?}", name, uuid);
+                let uuid = uuid_raw.as_ref().and_then(|u| Uuid::parse_str(u).ok());
+                trace!(%name, ?uuid, "Got uuid for index");
+                ltrace!(audit, "Got uuid for index name {} -> {:?}", name, uuid);
 
-            Ok(uuid)
+                Ok(uuid)
+            })
         })
     }
 
@@ -305,34 +308,35 @@ pub trait IdlSqliteTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::uuid2spn").entered();
-        lperf_trace_segment!(audit, "be::idl_sqlite::uuid2spn", || {
-            let uuids = uuid.to_hyphenated_ref().to_string();
-            // The table exists - lets now get the actual index itself.
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
-                .map_err(sqlite_error)?;
-            let spn_raw: Option<Vec<u8>> = stmt
-                .query_row(&[(":uuid", &uuids)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+        spanned!("be::idl_sqlite::uuid2spn", {
+            lperf_trace_segment!(audit, "be::idl_sqlite::uuid2spn", || {
+                let uuids = uuid.to_hyphenated_ref().to_string();
+                // The table exists - lets now get the actual index itself.
+                let mut stmt = self
+                    .get_conn()
+                    .prepare("SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid")
+                    .map_err(sqlite_error)?;
+                let spn_raw: Option<Vec<u8>> = stmt
+                    .query_row(&[(":uuid", &uuids)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional()
+                    .map_err(sqlite_error)?;
 
-            let spn: Option<Value> = match spn_raw {
-                Some(d) => {
-                    let dbv = serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?;
-                    let spn = Value::from_db_valuev1(dbv)
-                        .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))?;
-                    Some(spn)
-                }
-                None => None,
-            };
+                let spn: Option<Value> = match spn_raw {
+                    Some(d) => {
+                        let dbv = serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?;
+                        let spn = Value::from_db_valuev1(dbv)
+                            .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))?;
+                        Some(spn)
+                    }
+                    None => None,
+                };
 
-            trace!(?uuid, ?spn, "Got spn for uuid");
-            ltrace!(audit, "Got spn for uuid {:?} -> {:?}", uuid, spn);
+                trace!(?uuid, ?spn, "Got spn for uuid");
+                ltrace!(audit, "Got spn for uuid {:?} -> {:?}", uuid, spn);
 
-            Ok(spn)
+                Ok(spn)
+            })
         })
     }
 
@@ -342,24 +346,25 @@ pub trait IdlSqliteTransaction {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::uuid2rdn").entered();
-        lperf_trace_segment!(audit, "be::idl_sqlite::uuid2rdn", || {
-            let uuids = uuid.to_hyphenated_ref().to_string();
-            // The table exists - lets now get the actual index itself.
-            let mut stmt = self
-                .get_conn()
-                .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
-                .map_err(sqlite_error)?;
-            let rdn: Option<String> = stmt
-                .query_row(&[(":uuid", &uuids)], |row| row.get(0))
-                // We don't mind if it doesn't exist
-                .optional()
-                .map_err(sqlite_error)?;
+        spanned!("be::idl_sqlite::uuid2rdn", {
+            lperf_trace_segment!(audit, "be::idl_sqlite::uuid2rdn", || {
+                let uuids = uuid.to_hyphenated_ref().to_string();
+                // The table exists - lets now get the actual index itself.
+                let mut stmt = self
+                    .get_conn()
+                    .prepare("SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid")
+                    .map_err(sqlite_error)?;
+                let rdn: Option<String> = stmt
+                    .query_row(&[(":uuid", &uuids)], |row| row.get(0))
+                    // We don't mind if it doesn't exist
+                    .optional()
+                    .map_err(sqlite_error)?;
 
-            trace!(?uuid, ?rdn, "Got rdn for uuid");
-            ltrace!(audit, "Got rdn for uuid {:?} -> {:?}", uuid, rdn);
+                trace!(?uuid, ?rdn, "Got rdn for uuid");
+                ltrace!(audit, "Got rdn for uuid {:?} -> {:?}", uuid, rdn);
 
-            Ok(rdn)
+                Ok(rdn)
+            })
         })
     }
 
@@ -618,20 +623,21 @@ impl IdlSqliteWriteTransaction {
 
     // ! TRACING INTEGRATED
     pub fn commit(mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::commit").entered();
-        lperf_trace_segment!(audit, "be::idl_sqlite::commit", || {
-            // ltrace!(audit, "Commiting BE WR txn");
-            assert!(!self.committed);
-            self.committed = true;
+        spanned!("be::idl_sqlite::commit", {
+            lperf_trace_segment!(audit, "be::idl_sqlite::commit", || {
+                // ltrace!(audit, "Commiting BE WR txn");
+                assert!(!self.committed);
+                self.committed = true;
 
-            self.conn
-                .execute("COMMIT TRANSACTION", [])
-                .map(|_| ())
-                .map_err(|e| {
-                    admin_error!(?e, "CRITICAL: failed to commit sqlite txn");
-                    ladmin_error!(audit, "CRITICAL: failed to commit sqlite txn -> {:?}", e);
-                    OperationError::BackendEngine
-                })
+                self.conn
+                    .execute("COMMIT TRANSACTION", [])
+                    .map(|_| ())
+                    .map_err(|e| {
+                        admin_error!(?e, "CRITICAL: failed to commit sqlite txn");
+                        ladmin_error!(audit, "CRITICAL: failed to commit sqlite txn -> {:?}", e);
+                        OperationError::BackendEngine
+                    })
+            })
         })
     }
 
@@ -798,48 +804,49 @@ impl IdlSqliteWriteTransaction {
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("be::idl_sqlite::write_idl").entered();
-        lperf_trace_segment!(audit, "be::idl_sqlite::write_idl", || {
-            if idl.is_empty() {
-                trace!(?idl, "purging idl");
-                ltrace!(audit, "purging idl -> {:?}", idl);
-                // delete it
-                // Delete this idx_key from the table.
-                let query = format!(
-                    "DELETE FROM idx_{}_{} WHERE key = :key",
-                    itype.as_idx_str(),
-                    attr
-                );
+        spanned!("be::idl_sqlite::write_idl", {
+            lperf_trace_segment!(audit, "be::idl_sqlite::write_idl", || {
+                if idl.is_empty() {
+                    trace!(?idl, "purging idl");
+                    ltrace!(audit, "purging idl -> {:?}", idl);
+                    // delete it
+                    // Delete this idx_key from the table.
+                    let query = format!(
+                        "DELETE FROM idx_{}_{} WHERE key = :key",
+                        itype.as_idx_str(),
+                        attr
+                    );
 
-                self.conn
-                    .prepare(query.as_str())
-                    .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
-                    .map_err(sqlite_error)
-            } else {
-                trace!(?idl, "writing idl");
-                ltrace!(audit, "writing idl -> {}", idl);
-                // Serialise the IdList to Vec<u8>
-                let idl_raw = serde_cbor::to_vec(idl).map_err(serde_cbor_error)?;
+                    self.conn
+                        .prepare(query.as_str())
+                        .and_then(|mut stmt| stmt.execute(&[(":key", &idx_key)]))
+                        .map_err(sqlite_error)
+                } else {
+                    trace!(?idl, "writing idl");
+                    ltrace!(audit, "writing idl -> {}", idl);
+                    // Serialise the IdList to Vec<u8>
+                    let idl_raw = serde_cbor::to_vec(idl).map_err(serde_cbor_error)?;
 
-                // update or create it.
-                let query = format!(
-                    "INSERT OR REPLACE INTO idx_{}_{} (key, idl) VALUES(:key, :idl)",
-                    itype.as_idx_str(),
-                    attr
-                );
+                    // update or create it.
+                    let query = format!(
+                        "INSERT OR REPLACE INTO idx_{}_{} (key, idl) VALUES(:key, :idl)",
+                        itype.as_idx_str(),
+                        attr
+                    );
 
-                self.conn
-                    .prepare(query.as_str())
-                    .and_then(|mut stmt| {
-                        stmt.execute(named_params! {
-                            ":key": &idx_key,
-                            ":idl": &idl_raw
+                    self.conn
+                        .prepare(query.as_str())
+                        .and_then(|mut stmt| {
+                            stmt.execute(named_params! {
+                                ":key": &idx_key,
+                                ":idl": &idl_raw
+                            })
                         })
-                    })
-                    .map_err(sqlite_error)
-            }
-            // Get rid of the sqlite rows usize
-            .map(|_| ())
+                        .map_err(sqlite_error)
+                }
+                // Get rid of the sqlite rows usize
+                .map(|_| ())
+            })
         })
     }
 

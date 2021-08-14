@@ -11,7 +11,7 @@ use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Semaphore, SemaphorePermit};
-use tracing::trace_span;
+use tracing::trace;
 
 use crate::access::{
     AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlSearch,
@@ -19,7 +19,7 @@ use crate::access::{
     AccessControlsWriteTransaction,
 };
 use crate::be::{Backend, BackendReadTransaction, BackendTransaction, BackendWriteTransaction};
-use crate::{admin_error, admin_info, prelude::*, request_error, security_info};
+use crate::{admin_error, admin_info, prelude::*, request_error, security_info, spanned};
 // We use so many, we just import them all ...
 use crate::event::{
     CreateEvent, DeleteEvent, ExistsEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent,
@@ -130,6 +130,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
+    // ! TRACING INTEGRATED
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
     /// a `SearchEvent` for the internal user, this query will fail. It is invalid for
@@ -144,117 +145,130 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
-        lperf_segment!(audit, "server::search_ext", || {
-            /*
-             * This just wraps search, but it's for the external interface
-             * so as a result it also reduces the entry set's attributes at
-             * the end.
-             */
-            let entries = self.search(audit, se)?;
+        spanned!("server::search_ext", {
+            lperf_segment!(audit, "server::search_ext", || {
+                /*
+                 * This just wraps search, but it's for the external interface
+                 * so as a result it also reduces the entry set's attributes at
+                 * the end.
+                 */
+                let entries = self.search(audit, se)?;
 
-            let access = self.get_accesscontrols();
-            access
-                .search_filter_entry_attributes(audit, se, entries)
-                .map_err(|e| {
-                    // Log and fail if something went wrong.
-                    ladmin_error!(audit, "Failed to filter entry attributes {:?}", e);
-                    e
-                })
-            // This now returns the reduced vec.
+                let access = self.get_accesscontrols();
+                access
+                    .search_filter_entry_attributes(audit, se, entries)
+                    .map_err(|e| {
+                        // Log and fail if something went wrong.
+                        admin_error!(?e, "Failed to filter entry attributes");
+                        ladmin_error!(audit, "Failed to filter entry attributes {:?}", e);
+                        e
+                    })
+                // This now returns the reduced vec.
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     fn search(
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        let _entered = trace_span!("server::search").entered();
-        lperf_segment!(audit, "server::search", || {
-            if se.ident.is_internal() {
-                trace!("search: internal filter -> {:?}", se.filter);
-                ltrace!(audit, "search: internal filter -> {:?}", se.filter);
-            } else {
-                security_info!("search initiator: -> {}", se.ident);
-                lsecurity!(audit, "search initiator: -> {}", se.ident);
-                admin_info!("search: external filter -> {:?}", se.filter);
-                ladmin_info!(audit, "search: external filter -> {:?}", se.filter);
-            }
+        spanned!("server::search", {
+            lperf_segment!(audit, "server::search", || {
+                if se.ident.is_internal() {
+                    trace!(internal_filter = ?se.filter, "search");
+                    ltrace!(audit, "search: internal filter -> {:?}", se.filter);
+                } else {
+                    security_info!(initiator = %se.ident, "search");
+                    lsecurity!(audit, "search initiator: -> {}", se.ident);
+                    admin_info!(external_filter = ?se.filter, "search");
+                    ladmin_info!(audit, "search: external filter -> {:?}", se.filter);
+                }
 
-            // This is an important security step because it prevents us from
-            // performing un-indexed searches on attr's that don't exist in the
-            // server. This is why ExtensibleObject can only take schema that
-            // exists in the server, not arbitrary attr names.
-            //
-            // This normalises and validates in a single step.
-            //
-            // NOTE: Filters are validated in event conversion.
+                // This is an important security step because it prevents us from
+                // performing un-indexed searches on attr's that don't exist in the
+                // server. This is why ExtensibleObject can only take schema that
+                // exists in the server, not arbitrary attr names.
+                //
+                // This normalises and validates in a single step.
+                //
+                // NOTE: Filters are validated in event conversion.
 
-            let resolve_filter_cache = self.get_resolve_filter_cache();
+                let resolve_filter_cache = self.get_resolve_filter_cache();
 
-            let be_txn = self.get_be_txn();
-            let idxmeta = be_txn.get_idxmeta_ref();
-            // Now resolve all references and indexes.
-            let vfr = lperf_trace_segment!(audit, "server::search<filter_resolve>", || {
-                let _entered = trace_span!("server::search<filter_resolve>").entered();
-                se.filter
-                    .resolve(&se.ident, Some(idxmeta), Some(resolve_filter_cache))
-            })
-            .map_err(|e| {
-                admin_error!("search filter resolve failure {:?}", e);
-                ladmin_error!(audit, "search filter resolve failure {:?}", e);
-                e
-            })?;
-
-            let lims = se.get_limits();
-
-            // NOTE: We currently can't build search plugins due to the inability to hand
-            // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
-            // plugis, because all data transforms should be in the write path.
-
-            let res = self.get_be_txn().search(audit, lims, &vfr).map_err(|e| {
-                admin_error!("backend failure -> {:?}", e);
-                ladmin_error!(audit, "backend failure -> {:?}", e);
-                OperationError::Backend
-            })?;
-
-            // Apply ACP before we let the plugins "have at it".
-            // WARNING; for external searches this is NOT the only
-            // ACP application. There is a second application to reduce the
-            // attribute set on the entries!
-            //
-            let access = self.get_accesscontrols();
-            access.search_filter_entries(audit, se, res).map_err(|e| {
-                ladmin_error!(audit, "Unable to access filter entries {:?}", e);
-                e
-            })
-        })
-    }
-
-    fn exists(&self, audit: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
-        lperf_segment!(audit, "server::exists", || {
-            let be_txn = self.get_be_txn();
-            let idxmeta = be_txn.get_idxmeta_ref();
-
-            let resolve_filter_cache = self.get_resolve_filter_cache();
-
-            let vfr = ee
-                .filter
-                .resolve(&ee.ident, Some(idxmeta), Some(resolve_filter_cache))
+                let be_txn = self.get_be_txn();
+                let idxmeta = be_txn.get_idxmeta_ref();
+                // Now resolve all references and indexes.
+                let vfr = spanned!("server::search<filter_resolve>", {
+                    lperf_trace_segment!(audit, "server::search<filter_resolve>", || {
+                        se.filter
+                            .resolve(&se.ident, Some(idxmeta), Some(resolve_filter_cache))
+                    })
+                })
                 .map_err(|e| {
-                    ladmin_error!(audit, "Failed to resolve filter {:?}", e);
+                    admin_error!(?e, "search filter resolve failure");
+                    ladmin_error!(audit, "search filter resolve failure {:?}", e);
                     e
                 })?;
 
-            let lims = ee.get_limits();
+                let lims = se.get_limits();
 
-            self.get_be_txn().exists(audit, &lims, &vfr).map_err(|e| {
-                ladmin_error!(audit, "backend failure -> {:?}", e);
-                OperationError::Backend
+                // NOTE: We currently can't build search plugins due to the inability to hand
+                // the QS wr/ro to the plugin trait. However, there shouldn't be a need for search
+                // plugis, because all data transforms should be in the write path.
+
+                let res = self.get_be_txn().search(audit, lims, &vfr).map_err(|e| {
+                    admin_error!(?e, "backend failure");
+                    ladmin_error!(audit, "backend failure -> {:?}", e);
+                    OperationError::Backend
+                })?;
+
+                // Apply ACP before we let the plugins "have at it".
+                // WARNING; for external searches this is NOT the only
+                // ACP application. There is a second application to reduce the
+                // attribute set on the entries!
+                //
+                let access = self.get_accesscontrols();
+                access.search_filter_entries(audit, se, res).map_err(|e| {
+                    admin_error!(?e, "Unable to access filter entries");
+                    ladmin_error!(audit, "Unable to access filter entries {:?}", e);
+                    e
+                })
             })
         })
     }
 
+    // ! TRACING INTEGRATED
+    fn exists(&self, audit: &mut AuditScope, ee: &ExistsEvent) -> Result<bool, OperationError> {
+        spanned!("server::exists", {
+            lperf_segment!(audit, "server::exists", || {
+                let be_txn = self.get_be_txn();
+                let idxmeta = be_txn.get_idxmeta_ref();
+
+                let resolve_filter_cache = self.get_resolve_filter_cache();
+
+                let vfr = ee
+                    .filter
+                    .resolve(&ee.ident, Some(idxmeta), Some(resolve_filter_cache))
+                    .map_err(|e| {
+                        admin_error!(?e, "Failed to resolve filter");
+                        ladmin_error!(audit, "Failed to resolve filter {:?}", e);
+                        e
+                    })?;
+
+                let lims = ee.get_limits();
+
+                self.get_be_txn().exists(audit, &lims, &vfr).map_err(|e| {
+                    admin_error!(?e, "backend failure");
+                    ladmin_error!(audit, "backend failure -> {:?}", e);
+                    OperationError::Backend
+                })
+            })
+        })
+    }
+
+    // ! TRACING INTEGRATED
     // Should this actually be names_to_uuids and we do batches?
     //  In the initial design "no", we can always write a batched
     //  interface later.
@@ -271,16 +285,18 @@ pub trait QueryServerTransaction<'a> {
     //
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
+    // ! TRACING INTEGRATED
     fn name_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
             let lname = name.to_lowercase();
             self.get_be_txn()
                 .name2uuid(audit, lname.as_str())?
-                .ok_or(OperationError::NoMatchingEntries)
+                .ok_or(OperationError::NoMatchingEntries) // should we log this?
         })
     }
 
+    // ! TRACING INTEGRATED
     fn uuid_to_spn(
         &self,
         audit: &mut AuditScope,
@@ -288,15 +304,16 @@ pub trait QueryServerTransaction<'a> {
     ) -> Result<Option<Value>, OperationError> {
         let r = self.get_be_txn().uuid2spn(audit, uuid)?;
 
-        match &r {
-            Some(n) => {
-                debug_assert!(n.is_spn() || n.is_iname());
-            }
-            None => {}
+        if let Some(ref n) = r {
+            // Shouldn't we be doing more graceful error handling here?
+            // Or, if we know it will always be true, we should remove this.
+            debug_assert!(n.is_spn() || n.is_iname());
         }
+
         Ok(r)
     }
 
+    // ! TRACING INTEGRATED
     fn uuid_to_rdn(&self, audit: &mut AuditScope, uuid: &Uuid) -> Result<String, OperationError> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
@@ -304,39 +321,45 @@ pub trait QueryServerTransaction<'a> {
             .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.to_hyphenated_ref())))
     }
 
+    // ! TRACING INTEGRATED
     // From internal, generate an exists event and dispatch
     fn internal_exists(
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<bool, OperationError> {
-        lperf_segment!(audit, "server::internal_exists", || {
-            // Check the filter
-            let f_valid = filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            // Build an exists event
-            let ee = ExistsEvent::new_internal(f_valid);
-            // Submit it
-            self.exists(audit, &ee)
+        spanned!("server::internal_exists", {
+            lperf_segment!(audit, "server::internal_exists", || {
+                // Check the filter
+                let f_valid = filter
+                    .validate(self.get_schema())
+                    .map_err(OperationError::SchemaViolation)?;
+                // Build an exists event
+                let ee = ExistsEvent::new_internal(f_valid);
+                // Submit it
+                self.exists(audit, &ee)
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     fn internal_search(
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        let _entered = trace_span!("server::internal_search").entered();
-        lperf_segment!(audit, "server::internal_search", || {
-            let f_valid = filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            let se = SearchEvent::new_internal(f_valid);
-            self.search(audit, &se)
+        spanned!("server::internal_search", {
+            lperf_segment!(audit, "server::internal_search", || {
+                let f_valid = filter
+                    .validate(self.get_schema())
+                    .map_err(OperationError::SchemaViolation)?;
+                let se = SearchEvent::new_internal(f_valid);
+                self.search(audit, &se)
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     fn impersonate_search_valid(
         &self,
         audit: &mut AuditScope,
@@ -344,12 +367,15 @@ pub trait QueryServerTransaction<'a> {
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        lperf_segment!(audit, "server::internal_search_valid", || {
-            let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
-            self.search(audit, &se)
+        spanned!("server::internal_search_valid", {
+            lperf_segment!(audit, "server::internal_search_valid", || {
+                let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
+                self.search(audit, &se)
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     // this applys ACP to filter result entries.
     fn impersonate_search_ext_valid(
         &self,
@@ -362,6 +388,7 @@ pub trait QueryServerTransaction<'a> {
         self.search_ext(audit, &se)
     }
 
+    // ! TRACING INTEGRATED
     // Who they are will go here
     fn impersonate_search(
         &self,
@@ -379,6 +406,7 @@ pub trait QueryServerTransaction<'a> {
         self.impersonate_search_valid(audit, f_valid, f_intent_valid, event)
     }
 
+    // ! TRACING INTEGRATED
     fn impersonate_search_ext(
         &self,
         audit: &mut AuditScope,
@@ -386,17 +414,20 @@ pub trait QueryServerTransaction<'a> {
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
-        lperf_segment!(audit, "server::internal_search_ext_valid", || {
-            let f_valid = filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            let f_intent_valid = filter_intent
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            self.impersonate_search_ext_valid(audit, f_valid, f_intent_valid, event)
+        spanned!("server::internal_search_ext_valid", {
+            lperf_segment!(audit, "server::internal_search_ext_valid", || {
+                let f_valid = filter
+                    .validate(self.get_schema())
+                    .map_err(OperationError::SchemaViolation)?;
+                let f_intent_valid = filter_intent
+                    .validate(self.get_schema())
+                    .map_err(OperationError::SchemaViolation)?;
+                self.impersonate_search_ext_valid(audit, f_valid, f_intent_valid, event)
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     // Get a single entry by it's UUID. This is heavily relied on for internal
     // server operations, especially in login and acp checks for acp.
     fn internal_search_uuid(
@@ -404,83 +435,111 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
-        let _entered = trace_span!("server::internal_search_uuid").entered();
-        // The `_entered` span parallels this `lperf_segment`.
-        lperf_segment!(audit, "server::internal_search_uuid", || {
-            let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let f_valid = lperf_trace_segment!(
-                audit,
-                "server::internal_search_uuid<filter_validate>",
-                || {
-                    filter
-                        .validate(self.get_schema())
-                        .map_err(OperationError::SchemaViolation)
-                }
-            )?;
-            let se = SearchEvent::new_internal(f_valid);
-            let res = self.search(audit, &se);
-            match res {
-                Ok(vs) => {
-                    if vs.len() > 1 {
-                        return Err(OperationError::NoMatchingEntries);
+        spanned!("server::internal_search_uuid", {
+            lperf_segment!(audit, "server::internal_search_uuid", || {
+                let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+                let f_valid = spanned!("server::internal_search_uuid<filter_validate>", {
+                    lperf_trace_segment!(
+                        audit,
+                        "server::internal_search_uuid<filter_validate>",
+                        || {
+                            filter
+                                .validate(self.get_schema())
+                                .map_err(OperationError::SchemaViolation) // I feel like we should log this...
+                        }
+                    )
+                })?;
+                let se = SearchEvent::new_internal(f_valid);
+
+                // TODO: Refactor to use this
+                // let mut vs = self.search(audit, &se)?;
+                // match vs.pop() {
+                //     Some(entry) if vs.is_empty() => Ok(entry),
+                //     _ => Err(OperationError::NoMatchingEntries),
+                // }
+                let res = self.search(audit, &se);
+                match res {
+                    Ok(vs) => {
+                        if vs.len() > 1 {
+                            return Err(OperationError::NoMatchingEntries);
+                        }
+                        vs.into_iter()
+                            .next()
+                            .ok_or(OperationError::NoMatchingEntries)
                     }
-                    vs.into_iter()
-                        .next()
-                        .ok_or(OperationError::NoMatchingEntries)
+                    Err(e) => Err(e),
                 }
-                Err(e) => Err(e),
-            }
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     fn impersonate_search_ext_uuid(
         &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         event: &Identity,
     ) -> Result<Entry<EntryReduced, EntryCommitted>, OperationError> {
-        lperf_segment!(audit, "server::internal_search_ext_uuid", || {
-            let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
-            match res {
-                Ok(vs) => {
-                    if vs.len() > 1 {
-                        return Err(OperationError::NoMatchingEntries);
+        spanned!("server::internal_search_ext_uuid", {
+            lperf_segment!(audit, "server::internal_search_ext_uuid", || {
+                let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+                let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+                let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
+                // TODO: Refactor to use this
+                // let mut vs = self.impersonate_search_ext(audit, filter, filter_intent, event)?;
+                // match vs.pop() {
+                //     Some(entry) if vs.is_empty() => Ok(entry),
+                //     _ => Err(OperationError::NoMatchingEntries),
+                // }
+                match res {
+                    Ok(vs) => {
+                        if vs.len() > 1 {
+                            return Err(OperationError::NoMatchingEntries);
+                        }
+                        vs.into_iter()
+                            .next()
+                            .ok_or(OperationError::NoMatchingEntries)
                     }
-                    vs.into_iter()
-                        .next()
-                        .ok_or(OperationError::NoMatchingEntries)
+                    Err(e) => Err(e),
                 }
-                Err(e) => Err(e),
-            }
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     fn impersonate_search_uuid(
         &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
         event: &Identity,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
-        lperf_segment!(audit, "server::internal_search_uuid", || {
-            let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-            let res = self.impersonate_search(audit, filter, filter_intent, event);
-            match res {
-                Ok(vs) => {
-                    if vs.len() > 1 {
-                        return Err(OperationError::NoMatchingEntries);
+        spanned!("server::internal_search_uuid", {
+            lperf_segment!(audit, "server::internal_search_uuid", || {
+                let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+                let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
+                let res = self.impersonate_search(audit, filter, filter_intent, event);
+                // TODO: Refactor to use this
+                // let mut vs = self.impersonate_search(audit, filter, filter_intent, event)?;
+                // match vs.pop() {
+                //     Some(entry) if vs.is_empty() => Ok(entry),
+                //     _ => Err(OperationError::NoMatchingEntries),
+                // }
+                match res {
+                    Ok(vs) => {
+                        if vs.len() > 1 {
+                            return Err(OperationError::NoMatchingEntries);
+                        }
+                        vs.into_iter()
+                            .next()
+                            .ok_or(OperationError::NoMatchingEntries)
                     }
-                    vs.into_iter()
-                        .next()
-                        .ok_or(OperationError::NoMatchingEntries)
+                    Err(e) => Err(e),
                 }
-                Err(e) => Err(e),
-            }
+            })
         })
     }
 
+    // ! TRACING INTEGRATED
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
     fn clone_value(
@@ -563,6 +622,7 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    // ! TRACING INTEGRATED
     fn clone_partialvalue(
         &self,
         audit: &mut AuditScope,
@@ -603,6 +663,18 @@ pub trait QueryServerTransaction<'a> {
                             .ok_or_else(|| {
                                 OperationError::InvalidAttribute("Invalid UUID syntax".to_string())
                             })
+                        // This avoids having unreachable code:
+                        // Ok(PartialValue::new_uuids(value)
+                        //     .unwrap_or_else(|| {
+                        //         // it's not a uuid, try to resolve it.
+                        //         // if the value is NOT found, we map to "does not exist" to allow
+                        //         // the value to continue being evaluated, which of course, will fail
+                        //         // all subsequent filter tests because it ... well, doesn't exist.
+                        //         let un = self
+                        //             .name_to_uuid(audit, value)
+                        //             .unwrap_or(*UUID_DOES_NOT_EXIST);
+                        //         PartialValue::new_uuid(un)
+                        //     }))
                     }
                     SyntaxType::REFERENCE_UUID => {
                         // See comments above.
@@ -614,6 +686,7 @@ pub trait QueryServerTransaction<'a> {
                                 Some(PartialValue::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
+                            // See above case for how to avoid having unreachable code
                             .ok_or_else(|| {
                                 OperationError::InvalidAttribute(
                                     "Invalid Reference syntax".to_string(),
@@ -662,6 +735,7 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // In the opposite direction, we can resolve values for presentation
+    // ! TRACING INTEGRATED
     fn resolve_value(
         &self,
         audit: &mut AuditScope,
@@ -680,6 +754,7 @@ pub trait QueryServerTransaction<'a> {
         Ok(value.to_proto_string_clone())
     }
 
+    // ! TRACING INTEGRATED
     fn resolve_value_ldap(
         &self,
         audit: &mut AuditScope,
@@ -692,7 +767,7 @@ pub trait QueryServerTransaction<'a> {
         } else if value.is_sshkey() {
             value
                 .get_sshkey()
-                .map(|s| s.to_string())
+                .map(|s| s.to_string()) // TODO: Refactor in another PR
                 .ok_or(OperationError::InvalidValueState)
         } else {
             // Not? Okay, do the to string.
@@ -700,36 +775,36 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
+    // ! TRACING INTEGRATED
     // This is a prebaked helper to get the domain name for related modules.
     // in the future we could make this cache the value to avoid entry lookups.
     fn get_domain_name(&self, audit: &mut AuditScope) -> Result<String, OperationError> {
-        let _entered = trace_span!("server::get_domain_name").entered();
         self.internal_search_uuid(audit, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_str("domain_name")
-                    .map(|s| s.to_string())
+                    .map(|s| s.to_string()) // TODO: Refactor in another PR
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
-                admin_error!("Error getting domain name -> {:?}", e);
+                admin_error!(?e, "Error getting domain name");
                 ladmin_error!(audit, "Error getting domain name -> {:?}", e);
                 e
             })
     }
 
+    // ! TRACING INTEGRATED
     // This is a helper to get password badlist.
     fn get_password_badlist(
         &self,
         audit: &mut AuditScope,
     ) -> Result<HashSet<String>, OperationError> {
-        let _entered = trace_span!("server::get_password_badlist").entered();
         self.internal_search_uuid(audit, &UUID_SYSTEM_CONFIG)
             .and_then(|e| match e.get_ava_set("badlist_password") {
                 Some(badlist_entry) => {
                     let mut badlist_hashset = HashSet::with_capacity(badlist_entry.len());
                     badlist_entry
                         .iter()
-                        .filter_map(|e| e.as_string())
+                        .filter_map(|e| e.as_string()) // TODO: Refactor in another PR
                         .cloned()
                         .for_each(|s| {
                             badlist_hashset.insert(s);
@@ -739,17 +814,17 @@ pub trait QueryServerTransaction<'a> {
                 None => Err(OperationError::InvalidEntryState),
             })
             .map_err(|e| {
-                admin_error!("Failed to retrieve system configuration {:?}", e);
+                admin_error!(?e, "Failed to retrieve system configuration");
                 ladmin_error!(audit, "Failed to retrieve system configuration {:?}", e);
                 e
             })
     }
 
+    // ! TRACING INTEGRATED
     fn get_oauth2rs_set(
         &self,
         audit: &mut AuditScope,
     ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
-        let _entered = trace_span!("server::get_oauth2rs_set").entered();
         self.internal_search(
             audit,
             filter!(f_eq(
@@ -1539,136 +1614,138 @@ impl<'a> QueryServerWriteTransaction<'a> {
         audit: &mut AuditScope,
         me: &'x ModifyEvent,
     ) -> Result<Option<ModifyPartial<'x>>, OperationError> {
-        let _entered = trace_span!("server::modify_pre_apply").entered();
-        lperf_segment!(audit, "server::modify_pre_apply", || {
-            // Get the candidates.
-            // Modify applies a modlist to a filter, so we need to internal search
-            // then apply.
-            if !me.ident.is_internal() {
-                security_info!("modify initiator: -> {}", me.ident);
-                lsecurity!(audit, "modify initiator: -> {}", me.ident);
-            }
-
-            // Validate input.
-
-            // Is the modlist non zero?
-            if me.modlist.len() == 0 {
-                request_error!("modify: empty modify request");
-                lrequest_error!(audit, "modify: empty modify request");
-                return Err(OperationError::EmptyRequest);
-            }
-
-            // Is the modlist valid?
-            // This is now done in the event transform
-
-            // Is the filter invalid to schema?
-            // This is now done in the event transform
-
-            // This also checks access controls due to use of the impersonation.
-            let pre_candidates = match self.impersonate_search_valid(
-                audit,
-                me.filter.clone(),
-                me.filter_orig.clone(),
-                &me.ident,
-            ) {
-                Ok(results) => results,
-                Err(e) => {
-                    admin_error!("modify: error in pre-candidate selection {:?}", e);
-                    ladmin_error!(audit, "modify: error in pre-candidate selection {:?}", e);
-                    return Err(e);
+        spanned!("server::modify_pre_apply", {
+            lperf_segment!(audit, "server::modify_pre_apply", || {
+                // Get the candidates.
+                // Modify applies a modlist to a filter, so we need to internal search
+                // then apply.
+                if !me.ident.is_internal() {
+                    security_info!(name = %me.ident, "modify initiator");
+                    lsecurity!(audit, "modify initiator: -> {}", me.ident);
                 }
-            };
 
-            if pre_candidates.is_empty() {
-                if me.ident.is_internal() {
-                    trace!(
-                        "modify: no candidates match filter ... continuing {:?}",
-                        me.filter
-                    );
-                    ltrace!(
-                        audit,
-                        "modify: no candidates match filter ... continuing {:?}",
-                        me.filter
-                    );
-                    return Ok(None);
-                } else {
-                    request_error!(
-                        "modify: no candidates match filter, failure {:?}",
-                        me.filter
-                    );
-                    lrequest_error!(
-                        audit,
-                        "modify: no candidates match filter, failure {:?}",
-                        me.filter
-                    );
-                    return Err(OperationError::NoMatchingEntries);
+                // Validate input.
+
+                // Is the modlist non zero?
+                if me.modlist.len() == 0 {
+                    request_error!("modify: empty modify request");
+                    lrequest_error!(audit, "modify: empty modify request");
+                    return Err(OperationError::EmptyRequest);
                 }
-            };
 
-            // Are we allowed to make the changes we want to?
-            // modify_allow_operation
-            let access = self.get_accesscontrols();
-            let op_allow = access
-                .modify_allow_operation(audit, me, &pre_candidates)
-                .map_err(|e| {
-                    admin_error!("Unable to check modify access {:?}", e);
-                    ladmin_error!(audit, "Unable to check modify access {:?}", e);
+                // Is the modlist valid?
+                // This is now done in the event transform
+
+                // Is the filter invalid to schema?
+                // This is now done in the event transform
+
+                // This also checks access controls due to use of the impersonation.
+                let pre_candidates = match self.impersonate_search_valid(
+                    audit,
+                    me.filter.clone(),
+                    me.filter_orig.clone(),
+                    &me.ident,
+                ) {
+                    Ok(results) => results,
+                    Err(e) => {
+                        admin_error!("modify: error in pre-candidate selection {:?}", e);
+                        ladmin_error!(audit, "modify: error in pre-candidate selection {:?}", e);
+                        return Err(e);
+                    }
+                };
+
+                if pre_candidates.is_empty() {
+                    if me.ident.is_internal() {
+                        trace!(
+                            "modify: no candidates match filter ... continuing {:?}",
+                            me.filter
+                        );
+                        ltrace!(
+                            audit,
+                            "modify: no candidates match filter ... continuing {:?}",
+                            me.filter
+                        );
+                        return Ok(None);
+                    } else {
+                        request_error!(
+                            "modify: no candidates match filter, failure {:?}",
+                            me.filter
+                        );
+                        lrequest_error!(
+                            audit,
+                            "modify: no candidates match filter, failure {:?}",
+                            me.filter
+                        );
+                        return Err(OperationError::NoMatchingEntries);
+                    }
+                };
+
+                // Are we allowed to make the changes we want to?
+                // modify_allow_operation
+                let access = self.get_accesscontrols();
+                let op_allow = access
+                    .modify_allow_operation(audit, me, &pre_candidates)
+                    .map_err(|e| {
+                        admin_error!("Unable to check modify access {:?}", e);
+                        ladmin_error!(audit, "Unable to check modify access {:?}", e);
+                        e
+                    })?;
+                if !op_allow {
+                    return Err(OperationError::AccessDenied);
+                }
+
+                // Clone a set of writeables.
+                // Apply the modlist -> Remember, we have a set of origs
+                // and the new modified ents.
+                let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
+                    .iter()
+                    .map(|er| er.clone().invalidate(self.cid.clone()))
+                    .collect();
+
+                candidates
+                    .iter_mut()
+                    .for_each(|er| er.apply_modlist(&me.modlist));
+
+                trace!("modify: candidates -> {:?}", candidates);
+                ltrace!(audit, "modify: candidates -> {:?}", candidates);
+
+                // Pre mod plugins
+                // We should probably supply the pre-post cands here.
+                Plugins::run_pre_modify(audit, self, &mut candidates, me).map_err(|e| {
+                    admin_error!("Modify operation failed (plugin), {:?}", e);
+                    ladmin_error!(audit, "Modify operation failed (plugin), {:?}", e);
                     e
                 })?;
-            if !op_allow {
-                return Err(OperationError::AccessDenied);
-            }
 
-            // Clone a set of writeables.
-            // Apply the modlist -> Remember, we have a set of origs
-            // and the new modified ents.
-            let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
-                .iter()
-                .map(|er| er.clone().invalidate(self.cid.clone()))
-                .collect();
+                // NOTE: There is a potential optimisation here, where if
+                // candidates == pre-candidates, then we don't need to store anything
+                // because we effectively just did an assert. However, like all
+                // optimisations, this could be premature - so we for now, just
+                // do the CORRECT thing and recommit as we may find later we always
+                // want to add CSN's or other.
 
-            candidates
-                .iter_mut()
-                .for_each(|er| er.apply_modlist(&me.modlist));
-
-            trace!("modify: candidates -> {:?}", candidates);
-            ltrace!(audit, "modify: candidates -> {:?}", candidates);
-
-            // Pre mod plugins
-            // We should probably supply the pre-post cands here.
-            Plugins::run_pre_modify(audit, self, &mut candidates, me).map_err(|e| {
-                admin_error!("Modify operation failed (plugin), {:?}", e);
-                ladmin_error!(audit, "Modify operation failed (plugin), {:?}", e);
-                e
-            })?;
-
-            // NOTE: There is a potential optimisation here, where if
-            // candidates == pre-candidates, then we don't need to store anything
-            // because we effectively just did an assert. However, like all
-            // optimisations, this could be premature - so we for now, just
-            // do the CORRECT thing and recommit as we may find later we always
-            // want to add CSN's or other.
-
-            let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> = candidates
-                .into_iter()
-                .map(|e| {
-                    e.validate(&self.schema)
-                        .map_err(|e| {
-                            admin_error!("Schema Violation {:?}", e);
-                            ladmin_error!(audit, "Schema Violation {:?}", e);
-                            OperationError::SchemaViolation(e)
+                let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> =
+                    candidates
+                        .into_iter()
+                        .map(|e| {
+                            e.validate(&self.schema)
+                                .map_err(|e| {
+                                    admin_error!("Schema Violation {:?}", e);
+                                    ladmin_error!(audit, "Schema Violation {:?}", e);
+                                    OperationError::SchemaViolation(e)
+                                })
+                                .map(Entry::seal)
                         })
-                        .map(Entry::seal)
-                })
-                .collect();
+                        .collect();
 
-            let norm_cand: Vec<Entry<_, _>> = res?;
+                let norm_cand: Vec<Entry<_, _>> = res?;
 
-            Ok(Some(ModifyPartial {
-                norm_cand,
-                pre_candidates,
-                me,
-            }))
+                Ok(Some(ModifyPartial {
+                    norm_cand,
+                    pre_candidates,
+                    me,
+                }))
+            })
         })
     }
 
@@ -1760,15 +1837,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     #[allow(clippy::cognitive_complexity)]
     pub fn modify(&self, audit: &mut AuditScope, me: &ModifyEvent) -> Result<(), OperationError> {
-        let _entered = trace_span!("server::modify").entered();
-        lperf_segment!(audit, "server::modify", || {
-            let mp = unsafe { self.modify_pre_apply(audit, me)? };
-            if let Some(mp) = mp {
-                self.modify_apply(audit, mp)
-            } else {
-                // No action to apply, the pre-apply said nothing to be done.
-                Ok(())
-            }
+        spanned!("server::modify", {
+            lperf_segment!(audit, "server::modify", || {
+                let mp = unsafe { self.modify_pre_apply(audit, me)? };
+                if let Some(mp) = mp {
+                    self.modify_apply(audit, mp)
+                } else {
+                    // No action to apply, the pre-apply said nothing to be done.
+                    Ok(())
+                }
+            })
         })
     }
 
@@ -2008,16 +2086,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
         filter: &Filter<FilterInvalid>,
         modlist: &ModifyList<ModifyInvalid>,
     ) -> Result<(), OperationError> {
-        let _entered = trace_span!("server::intenal_modify").entered();
-        lperf_segment!(audit, "server::internal_modify", || {
-            let f_valid = filter
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            let m_valid = modlist
-                .validate(self.get_schema())
-                .map_err(OperationError::SchemaViolation)?;
-            let me = ModifyEvent::new_internal(f_valid, m_valid);
-            self.modify(audit, &me)
+        spanned!("server::intenal_modify", {
+            lperf_segment!(audit, "server::internal_modify", || {
+                let f_valid = filter
+                    .validate(self.get_schema())
+                    .map_err(OperationError::SchemaViolation)?;
+                let m_valid = modlist
+                    .validate(self.get_schema())
+                    .map_err(OperationError::SchemaViolation)?;
+                let me = ModifyEvent::new_internal(f_valid, m_valid);
+                self.modify(audit, &me)
+            })
         })
     }
 

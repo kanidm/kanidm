@@ -1,4 +1,19 @@
-#[allow(unused_macros)]
+#[macro_export]
+macro_rules! spanned {
+    ($name:expr, $code:block) => {{
+        // Block: can short circuit outer function
+        use tracing::trace_span;
+        let _entered_span = trace_span!($name).entered();
+        $code
+    }};
+    ($name:expr, || $code:block) => {{
+        // Closure: cannot short circuit outer function
+        use tracing::trace_span;
+        let _entered_span = trace_span!($name).entered();
+        (|| $code)()
+    }};
+}
+
 #[macro_export]
 macro_rules! tagged_event {
     ($level:ident, $logtag:path, $($arg:tt)*) => {{

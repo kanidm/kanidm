@@ -11,9 +11,9 @@
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
 use crate::identity::IdentityId;
 use crate::ldap::ldap_attr_filter_map;
-use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
+use crate::{prelude::*, spanned};
 use concread::arcache::ARCacheReadTxn;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
@@ -488,19 +488,22 @@ impl Filter<FilterInvalid> {
     // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
+    // ! TRACING INTEGRATED
     pub fn from_ro(
         audit: &mut AuditScope,
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(audit, "filter::from_ro", || {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
-                },
+        spanned!("filer::from_ro", {
+            lperf_trace_segment!(audit, "filter::from_ro", || {
+                let depth = FILTER_DEPTH_MAX;
+                let mut elems = ev.limits.filter_max_elements;
+                Ok(Filter {
+                    state: FilterInvalid {
+                        inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
+                    },
+                })
             })
         })
     }
@@ -726,6 +729,7 @@ impl FilterComp {
         }
     }
 
+    // ! TRACING INTEGRATED
     fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,

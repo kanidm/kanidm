@@ -1,3 +1,4 @@
+use crate::admin_error;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 use crate::value::PartialValue;
@@ -17,11 +18,12 @@ pub struct Group {
     // We'll probably add policy and claims later to this
 }
 
+// ! TRACING INTEGRATED
 macro_rules! try_from_account_e {
     ($au:expr, $value:expr, $qs:expr) => {{
         let name = $value
             .get_ava_single_str("name")
-            .map(|s| s.to_string())
+            .map(|s| s.to_string()) // TODO: Refactor in another PR
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
@@ -30,6 +32,7 @@ macro_rules! try_from_account_e {
 
         let upg = Group { name, uuid };
 
+        // TODO: Refactor to use `map` and `unwrap_or_else`
         let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
                 // given a list of uuid, make a filter: even if this is empty, the be will
@@ -40,13 +43,13 @@ macro_rules! try_from_account_e {
                         .collect()
                 ));
                 let ges: Vec<_> = $qs.internal_search($au, f).map_err(|e| {
-                    // log
+                    admin_error!(?e, "internal search failed");
                     e
                 })?;
                 // Now convert the group entries to groups.
                 let groups: Result<Vec<_>, _> = ges.iter().map(Group::try_from_entry).collect();
                 groups.map_err(|e| {
-                    // log
+                    admin_error!(?e, "failed to transform group entries to groups");
                     e
                 })?
             }
@@ -61,6 +64,7 @@ macro_rules! try_from_account_e {
 }
 
 impl Group {
+    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_red_ro(
         au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
@@ -69,6 +73,7 @@ impl Group {
         try_from_account_e!(au, value, qs)
     }
 
+    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_ro(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
@@ -77,6 +82,7 @@ impl Group {
         try_from_account_e!(au, value, qs)
     }
 
+    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_rw(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
