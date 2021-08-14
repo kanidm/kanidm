@@ -1164,9 +1164,92 @@ impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for T
 }
 */
 
+#[cfg(test)]
+mod tests {
+
+    pub const TEST_STRING: &'static str = "OK";
+
+    #[async_std::test]
+    /// This is a simple test which should always pass, just testing that when the limiter is loaded, it doesn't bin *everything!
+    async fn request_limiter_ok() -> tide::Result<()> {
+        use crate::constants::MAX_BODY_SIZE;
+        use crate::core::https::RequestLimiter;
+        use tide::http::{Method, Request, Response, Url};
+
+        let mut app = tide::new();
+        app.with(RequestLimiter::from_size(MAX_BODY_SIZE));
+
+        app.at("/").post(|_| async { Ok(TEST_STRING) });
+        let url = Url::parse("https://example.com").unwrap();
+        let mut req = Request::new(Method::Post, url);
+        req.set_body("Hello Chashu");
+
+        let mut res: Response = app.respond(req).await?;
+        assert_eq!(TEST_STRING, res.body_string().await?);
+        Ok(())
+    }
+    #[async_std::test]
+    /// This test does the basic bits, sets a max length of 10 and sends a 10000 length body
+    async fn request_over_length() -> tide::Result<()> {
+        use crate::core::https::RequestLimiter;
+        use tide::http::{Method, Request, Response, Url};
+
+        let mut app = tide::new();
+        app.with(RequestLimiter::from_size(10));
+        app.at("/").post(|_| async { Ok(TEST_STRING) });
+        let url = Url::parse("https://example.com").unwrap();
+        let mut req = Request::new(Method::Post, url);
+
+        let mut body_string = String::new();
+        for _ in 0..10000 {
+            body_string.push_str("🦀");
+        }
+        req.set_body(body_string);
+
+        let mut res: Response = app.respond(req).await?;
+
+        assert_eq!(tide::StatusCode::BadRequest, res.status());
+        assert_eq!("", res.body_string().await?);
+        Ok(())
+    }
+
+    #[async_std::test]
+    /// This test makes sure we validate the content-length header
+    async fn request_limiter_content_length_validation() -> tide::Result<()> {
+        use crate::core::https::RequestLimiter;
+        use tide::http::{Method, Request, Response, Url};
+        // use crate::constants::MAX_BODY_SIZE;
+        let mut app = tide::new();
+        app.with(RequestLimiter::from_size(1000000));
+        app.at("/").post(|_| async { Ok(TEST_STRING) });
+        let url = Url::parse("https://example.com").unwrap();
+        let mut req = Request::new(Method::Post, url);
+        let mut body_string = String::new();
+        for _ in 0..10000 {
+            body_string.push_str("🦀");
+        }
+        req.set_body(body_string);
+        req.insert_header("Content-Length", "5");
+
+        // eprintln!("Dumping request headers: {:?}", req.header_values() );
+
+        println!("Content-Length header: {:?}", &req.header("Content-Length"));
+        let mut res: Response = app.respond(req).await?;
+
+        assert_eq!(tide::StatusCode::BadRequest, res.status());
+        assert_eq!("", res.body_string().await?);
+        Ok(())
+    }
+
+    // TODO: request with content-length header of 5 million
+}
+
 /// Custom tide middleware for handling a request limiter; trusts the Content-Length header as that's what's available at this point.
 ///
 /// <https://github.com/http-rs/tide/issues/448> seems to indicate that it's not possible to do this further in flight without major changes to how tide handles requests, but that lower-level libraries handle "you said you'd sent 100 bytes and you sent 80".
+///
+/// Turns out, with testing this doesn't seem to be the case...
+///
 ///
 /// TODO: work out how to test this, tl;dr send a request less than 100MB you should get a good response. over 100MB you should get a 400 error
 #[derive(Debug, Copy, Clone)]
@@ -1183,6 +1266,12 @@ impl RequestLimiter {
 #[tide::utils::async_trait]
 impl<T: Clone + Send + Sync + 'static> tide::Middleware<T> for RequestLimiter {
     async fn handle(&self, req: Request<T>, next: tide::Next<'_, T>) -> tide::Result {
+        // This checks the content-length header, not the actual body
+        if req.is_empty().unwrap_or(false) {
+            eprintln!("Empty body, or so you say...");
+            // return Ok(next.run(req).await)
+        }
+        eprintln!("got request");
         if let Some(value) = req.len() {
             if value > self.max_size {
                 eprintln!(
@@ -1194,9 +1283,17 @@ impl<T: Clone + Send + Sync + 'static> tide::Middleware<T> for RequestLimiter {
                 return Ok(res);
             }
         };
+        // We grab the content length header here so we can check it against the body length later.
+        let content_length_header = match &req.header("Content-Length") {
+            Some(value) => value.as_str().parse::<i128>().unwrap_or(-2),
+            None => -1,
+        };
+        // let content_length_header = content_length_header;
+
         // let the rest of the request continue
         let response = next.run(req).await;
 
+        eprintln!("req content-length header: {:?}", content_length_header);
         Ok(response)
     }
 }

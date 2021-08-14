@@ -101,6 +101,8 @@ criterion = { version = "0.3", features = ["html_reports"] }
 # For testing webauthn
 webauthn-authenticator-rs = "0.3.0-alpha.10"
 
+async-std = { version = "1.9", features = ["attributes"] }
+
 [dev-dependencies.cargo-husky]
 version = "1"
 default-features = false # Disable features which are enabled by default
@@ -117,4 +119,3 @@ rustc_version = "0.4.0"
 [[bench]]
 name = "scaling_10k"
 harness = false
-
