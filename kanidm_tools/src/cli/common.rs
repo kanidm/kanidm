@@ -80,22 +80,13 @@ impl CommonOpt {
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
                     // so we'll prompt the user to select one
-                    let mut options = Vec::new();
-                    for option in tokens.iter() {
-                        options.push(String::from(option.0));
+                    match prompt_for_username_get_token() {
+                        Ok(value) => value,
+                        Err(msg) => {
+                            eprintln!("{}", msg);
+                            std::process::exit(1);
+                        }
                     }
-                    let selection = Select::with_theme(&ColorfulTheme::default())
-                        .with_prompt("Multiple authentication tokens exist. Please select one")
-                        .default(0)
-                        .items(&options)
-                        .interact()
-                        .unwrap();
-                    debug!("Index of the chosen menu item: {:?}", selection);
-
-                    let (f_uname, f_token) =
-                        tokens.iter().nth(selection).expect("Memory Corruption");
-                    info!("Using cached token for name {}", f_uname);
-                    f_token.clone()
                 }
             }
         };
@@ -121,5 +112,75 @@ impl CommonOpt {
         client.set_token(token);
 
         client
+    }
+}
+
+/// This parses the token store and prompts the user to select their username, returns the username/token as a tuple of Strings
+///
+/// Used to reduce duplication in implementing [prompt_for_username_get_username] and [prompt_for_username_get_token]
+pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
+    let tokens = match read_tokens() {
+        Ok(value) => value,
+        _ => return Err("Error retrieving authentication token store".to_string()),
+    };
+    if tokens.is_empty() {
+        eprintln!("No tokens in store, quitting!");
+        std::process::exit(1);
+    }
+    let mut options = Vec::new();
+    for option in tokens.iter() {
+        options.push(String::from(option.0));
+    }
+    let user_select = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt("Authentication tokens exist. Please select one")
+        .default(0)
+        .items(&options)
+        .interact();
+    let selection = match user_select {
+        Err(error) => {
+            eprintln!("Failed to handle user input: {:?}", error);
+            std::process::exit(1);
+        }
+        Ok(value) => value,
+    };
+    debug!("Index of the chosen menu item: {:?}", selection);
+
+    match tokens.iter().nth(selection) {
+        Some(value) => {
+            let (f_uname, f_token) = value;
+            info!("Using cached token for name {}", f_uname);
+            debug!("Cached token: {}", f_token);
+            Ok((f_uname.to_string(), f_token.to_string()))
+        }
+        None => {
+            eprintln!("Memory corruption trying to read token store, quitting!");
+            std::process::exit(1);
+        }
+    }
+}
+
+/// This parses the token store and prompts the user to select their username, returns the username as a String
+///
+/// Powered by [prompt_for_username_get_values]
+pub fn prompt_for_username_get_username() -> Result<String, String> {
+    match prompt_for_username_get_values() {
+        Ok(value) => {
+            let (f_user, _) = value;
+            Ok(f_user)
+        }
+        Err(err) => Err(err),
+    }
+}
+
+/// This parses the token store and prompts the user to select their username, returns the token as a String
+///
+/// Powered by [prompt_for_username_get_values]
+pub fn prompt_for_username_get_token() -> Result<String, String> {
+    match prompt_for_username_get_values() {
+        Ok(value) => {
+            let (_, f_token) = value;
+            Ok(f_token)
+        }
+        Err(err) => Err(err),
     }
 }

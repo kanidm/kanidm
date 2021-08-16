@@ -68,8 +68,8 @@ impl RadiusAccount {
 
         Ok(RadiusAccount {
             name,
-            uuid,
             displayname,
+            uuid,
             groups,
             radius_secret,
             valid_from,

@@ -702,13 +702,7 @@ impl AuthEventStep {
     fn from_authstep(aus: AuthStep, sid: Option<Uuid>) -> Result<Self, OperationError> {
         match aus {
             AuthStep::Init(name) => {
-                if sid.is_some() {
-                    Err(OperationError::InvalidAuthState(
-                        "session id present in init".to_string(),
-                    ))
-                } else {
-                    Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
-                }
+                Ok(AuthEventStep::Init(AuthEventStepInit { name, appid: None }))
             }
             AuthStep::Begin(mech) => match sid {
                 Some(ssid) => Ok(AuthEventStep::Begin(AuthEventStepMech {
@@ -906,6 +900,27 @@ impl Default for PurgeRecycledEvent {
 impl PurgeRecycledEvent {
     pub fn new() -> Self {
         PurgeRecycledEvent {
+            ident: Identity::from_internal(),
+            eventid: Uuid::new_v4(),
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct OnlineBackupEvent {
+    pub ident: Identity,
+    pub eventid: Uuid,
+}
+
+impl Default for OnlineBackupEvent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl OnlineBackupEvent {
+    pub fn new() -> Self {
+        OnlineBackupEvent {
             ident: Identity::from_internal(),
             eventid: Uuid::new_v4(),
         }

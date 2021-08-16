@@ -1,40 +1,25 @@
 mod oauth2;
+mod v1;
 
 use self::oauth2::*;
+use self::v1::*;
 
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::config::{ServerRole, TlsConfiguration};
-use crate::event::AuthResult;
-use crate::filter::{Filter, FilterInvalid};
-use crate::idm::AuthState;
 use crate::prelude::*;
-use crate::status::{StatusActor, StatusRequestEvent};
-
-use kanidm_proto::v1::Entry as ProtoEntry;
-use kanidm_proto::v1::{
-    AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState, CreateRequest,
-    DeleteRequest, GroupUnixExtend, ModifyRequest, OperationError, SearchRequest,
-    SetCredentialRequest, SingleStringRequest,
-};
+use crate::status::StatusActor;
 
 use serde::Serialize;
 use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-// Temporary
 use tide_rustls::TlsListener;
-// use openssl::ssl::{SslAcceptor, SslAcceptorBuilder};
-// use tokio::net::TcpListener;
-// use async_std::io;
-use async_std::task;
-// use std::net;
-// use std::str::FromStr;
 
 use crate::tracing_tree::{KanidmEventTag, TreeMiddleware, TreeProcessor, TreeSubscriber};
 use tokio::sync::mpsc::unbounded_channel as unbounded;
-use tracing::{debug, error, info, instrument};
+use tracing::{error, info};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -165,6 +150,8 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
         <meta charset="utf-8">
         <title>Kanidm</title>
         <script src="/pkg/bundle.js" defer></script>
+        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>">
+
     </head>
 
     <body>
@@ -176,995 +163,131 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     Ok(res)
 }
 
-// pub async fn create((req, session, state): (Json<CreateRequest>, Session, Data<AppState>),
-pub async fn create(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    // parse the req to a CreateRequest
-    let msg: CreateRequest = req.body_json().await?;
+struct NoCacheMiddleware;
 
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req.state().qe_w_ref.handle_create(uat, msg, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn modify(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let msg: ModifyRequest = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req.state().qe_w_ref.handle_modify(uat, msg, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn delete(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let msg: DeleteRequest = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req.state().qe_w_ref.handle_delete(uat, msg, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn search(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let msg: SearchRequest = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req.state().qe_r_ref.handle_search(uat, msg, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn whoami(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let (eventid, hvalue) = req.new_eventid();
-    // New event, feed current auth data from the token to it.
-    let res = req.state().qe_r_ref.handle_whoami(uat, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-// =============== REST generics ========================
-
-pub async fn json_rest_event_get(
-    req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-    attrs: Option<Vec<String>>,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearch(uat, filter, attrs, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_get_id(
-    req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-    attrs: Option<Vec<String>>,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearch(uat, filter, attrs, eventid)
-        .await
-        .map(|mut r| r.pop());
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_delete_id(
-    req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_internaldelete(uat, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_get_id_attr(
-    req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> tide::Result {
-    let id = req.get_url_param("id")?;
-    let attr = req.get_url_param("attr")?;
-    let uat = req.get_current_uat();
-
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
-    let (eventid, hvalue) = req.new_eventid();
-
-    let attrs = Some(vec![attr.clone()]);
-
-    let res: Result<Option<_>, _> = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearch(uat, filter, attrs, eventid)
-        .await
-        .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)));
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_post(
-    mut req: tide::Request<AppState>,
-    classes: Vec<String>,
-) -> tide::Result {
-    debug_assert!(!classes.is_empty());
-    let (eventid, hvalue) = req.new_eventid();
-    // Read the json from the wire.
-    let uat = req.get_current_uat();
-    let mut obj: ProtoEntry = req.body_json().await?;
-    obj.attrs.insert("class".to_string(), classes);
-    let msg = CreateRequest { entries: vec![obj] };
-
-    let res = req.state().qe_w_ref.handle_create(uat, msg, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_post_id_attr(
-    mut req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let attr = req.get_url_param("attr")?;
-    let values: Vec<String> = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_appendattribute(uat, uuid_or_name, attr, values, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_put_id_attr(
-    mut req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let attr = req.get_url_param("attr")?;
-    let values: Vec<String> = req.body_json().await?;
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_setattribute(uat, uuid_or_name, attr, values, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-async fn json_rest_event_delete_id_attr(
-    mut req: tide::Request<AppState>,
-    filter: Filter<FilterInvalid>,
-    // Seperate for account_delete_id_radius
-    attr: String,
-) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let (eventid, hvalue) = req.new_eventid();
-
-    // TODO #211: Attempt to get an option Vec<String> here?
-    // It's probably better to focus on SCIM instead, it seems richer than this.
-    let body = req.take_body();
-    let values: Vec<String> = if body.is_empty().unwrap_or(true) {
-        vec![]
-    } else {
-        // Must now be a valid list.
-        body.into_json().await?
-    };
-
-    if values.is_empty() {
-        let res = req
-            .state()
-            .qe_w_ref
-            .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
-            .await;
-        to_tide_response(res, hvalue)
-    } else {
-        let res = req
-            .state()
-            .qe_w_ref
-            .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
-            .await;
-        to_tide_response(res, hvalue)
+impl Default for NoCacheMiddleware {
+    fn default() -> Self {
+        NoCacheMiddleware {}
     }
-}
-
-async fn json_rest_event_credential_put(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let sac: SetCredentialRequest = req.body_json().await?;
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_credentialset(uat, uuid_or_name, sac, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-// Okay, so a put normally needs
-//  * filter of what we are working on (id + class)
-//  * a Map<String, Vec<String>> that we turn into a modlist.
-//
-// OR
-//  * filter of what we are working on (id + class)
-//  * a Vec<String> that we are changing
-//  * the attr name  (as a param to this in path)
-//
-// json_rest_event_put_id(path, req, state
-
-pub async fn schema_get(req: tide::Request<AppState>) -> tide::Result {
-    // NOTE: This is filter_all, because from_internal_message will still do the alterations
-    // needed to make it safe. This is needed because there may be aci's that block access
-    // to the recycle/ts types in the filter, and we need the aci to only eval on this
-    // part of the filter!
-    let filter = filter_all!(f_or!([
-        f_eq("class", PartialValue::new_class("attributetype")),
-        f_eq("class", PartialValue::new_class("classtype"))
-    ]));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn schema_attributetype_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("attributetype")));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn schema_attributetype_get_id(req: tide::Request<AppState>) -> tide::Result {
-    // These can't use get_id because they attribute name and class name aren't ... well name.
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-
-    let filter = filter_all!(f_and!([
-        f_eq("class", PartialValue::new_class("attributetype")),
-        f_eq("attributename", PartialValue::new_iutf8(id.as_str()))
-    ]));
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearch(uat, filter, None, eventid)
-        .await
-        .map(|mut r| r.pop());
-    to_tide_response(res, hvalue)
-}
-
-pub async fn schema_classtype_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("classtype")));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn schema_classtype_get_id(req: tide::Request<AppState>) -> tide::Result {
-    // These can't use get_id because they attribute name and class name aren't ... well name.
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-
-    let filter = filter_all!(f_and!([
-        f_eq("class", PartialValue::new_class("classtype")),
-        f_eq("classname", PartialValue::new_iutf8(id.as_str()))
-    ]));
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearch(uat, filter, None, eventid)
-        .await
-        .map(|mut r| r.pop());
-    to_tide_response(res, hvalue)
-}
-
-// == person ==
-
-pub async fn person_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn person_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["account".to_string(), "object".to_string()];
-    json_rest_event_post(req, classes).await
-}
-
-pub async fn person_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("person")));
-    json_rest_event_get_id(req, filter, None).await
-}
-
-// == account ==
-
-pub async fn account_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn account_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["account".to_string(), "object".to_string()];
-    json_rest_event_post(req, classes).await
-}
-
-pub async fn account_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get_id(req, filter, None).await
-}
-
-pub async fn account_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_get_id_attr(req, filter).await
-}
-
-pub async fn account_id_post_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_post_id_attr(req, filter).await
-}
-
-pub async fn account_id_delete_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    let attr = req.get_url_param("attr")?;
-    json_rest_event_delete_id_attr(req, filter, attr).await
-}
-
-pub async fn account_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_put_id_attr(req, filter).await
-}
-
-pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id(req, filter).await
-}
-
-pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> tide::Result {
-    json_rest_event_credential_put(req).await
-}
-
-pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_idmcredentialstatus(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_get_backup_code(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_idmbackupcodeview(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-// Return a vec of str
-pub async fn account_get_id_ssh_pubkeys(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsshkeyread(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_ssh_pubkey(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let (tag, key): (String, String) = req.body_json().await?;
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-
-    let (eventid, hvalue) = req.new_eventid();
-    // Add a msg here
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_sshkeycreate(uat, uuid_or_name, tag, key, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_get_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let tag = req.get_url_param("tag")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsshkeytagread(uat, uuid_or_name, tag, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_delete_id_ssh_pubkey_tag(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let tag = req.get_url_param("tag")?;
-    let attr = "ssh_publickey".to_string();
-    let values = vec![tag];
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_removeattributevalues(uat, uuid_or_name, attr, values, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-// Get and return a single str
-pub async fn account_get_id_radius(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalradiusread(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_radius_regenerate(req: tide::Request<AppState>) -> tide::Result {
-    // Need to to send the regen msg
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_regenerateradius(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_delete_id_radius(req: tide::Request<AppState>) -> tide::Result {
-    let attr = "radius_secret".to_string();
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
-    json_rest_event_delete_id_attr(req, filter, attr).await
-}
-
-pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalradiustokenread(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_person_extend(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountpersonextend(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_unix(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let obj: AccountUnixExtend = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountunixextend(uat, uuid_or_name, obj, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_get_id_unix_token(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalunixusertokenread(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_post_id_unix_auth(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let obj: SingleStringRequest = req.body_json().await?;
-    let cred = obj.value;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_idmaccountunixauth(uat, uuid_or_name, cred, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_put_id_unix_credential(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let obj: SingleStringRequest = req.body_json().await?;
-    let cred = obj.value;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountunixsetcred(uat, uuid_or_name, cred, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn account_delete_id_unix_credential(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let attr = "unix_password".to_string();
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("posixaccount")));
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_purgeattribute(uat, uuid_or_name, attr, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn group_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn group_post(req: tide::Request<AppState>) -> tide::Result {
-    let classes = vec!["group".to_string(), "object".to_string()];
-    json_rest_event_post(req, classes).await
-}
-
-pub async fn group_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get_id(req, filter, None).await
-}
-
-pub async fn group_id_get_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_get_id_attr(req, filter).await
-}
-
-pub async fn group_id_post_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_post_id_attr(req, filter).await
-}
-
-pub async fn group_id_delete_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    let attr = req.get_url_param("attr")?;
-    json_rest_event_delete_id_attr(req, filter, attr).await
-}
-
-pub async fn group_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_put_id_attr(req, filter).await
-}
-
-pub async fn group_id_delete(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
-    json_rest_event_delete_id(req, filter).await
-}
-
-pub async fn group_post_id_unix(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-    let obj: GroupUnixExtend = req.body_json().await?;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmgroupunixextend(uat, uuid_or_name, obj, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn group_get_id_unix_token(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalunixgrouptokenread(uat, uuid_or_name, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn domain_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get(req, filter, None).await
-}
-
-pub async fn domain_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_id(req, filter, None).await
-}
-
-pub async fn domain_id_get_attr(
-    req: tide::Request<AppState>,
-    // (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_id_attr(req, filter).await
-}
-
-pub async fn domain_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_put_id_attr(req, filter).await
-}
-
-pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_pres("class"));
-    let uat = req.get_current_uat();
-    let attrs = None;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearchrecycled(uat, filter, attrs, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn recycle_bin_id_get(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let filter = filter_all!(f_id(id.as_str()));
-    let attrs = None;
-
-    let (eventid, hvalue) = req.new_eventid();
-
-    let res = req
-        .state()
-        .qe_r_ref
-        .handle_internalsearchrecycled(uat, filter, attrs, eventid)
-        .await
-        .map(|mut r| r.pop());
-    to_tide_response(res, hvalue)
-}
-
-pub async fn recycle_bin_revive_id_post(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let id = req.get_url_param("id")?;
-    let filter = filter_all!(f_id(id.as_str()));
-
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_reviverecycled(uat, filter, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn do_nothing(_req: tide::Request<AppState>) -> tide::Result {
-    let mut res = tide::Response::new(200);
-    res.set_body("did nothing");
-    Ok(res)
-}
-
-#[instrument(level = "trace", name = "https::auth", skip(req))]
-pub async fn auth(mut req: tide::Request<AppState>) -> tide::Result {
-    // First, deal with some state management.
-    // Do anything here first that's needed like getting the session details
-    // out of the req cookie.
-    let (eventid, hvalue) = req.new_eventid();
-
-    let maybe_sessionid = req.get_current_auth_session_id();
-    debug!("🍿 {:?}", maybe_sessionid);
-
-    let obj: AuthRequest = req.body_json().await.map_err(|e| {
-        debug!("wat? {:?}", e);
-        e
-    })?;
-
-    let mut auth_session_id_tok = None;
-
-    // We probably need to know if we allocate the cookie, that this is a
-    // new session, and in that case, anything *except* authrequest init is
-    // invalid.
-    let res: Result<AuthResponse, _> = match req
-        .state()
-        // This may change in the future ...
-        .qe_r_ref
-        .handle_auth(maybe_sessionid, obj, eventid)
-        .await
-    {
-        // .and_then(|ar| {
-        Ok(ar) => {
-            let AuthResult {
-                state,
-                sessionid,
-                delay,
-            } = ar;
-            // If there is a delay, honour it now.
-            if let Some(delay_timer) = delay {
-                task::sleep(delay_timer).await;
-            }
-            // Do some response/state management.
-            match state {
-                AuthState::Choose(allowed) => {
-                    debug!("🧩 -> AuthState::Choose");
-                    let msession = req.session_mut();
-
-                    // Ensure the auth-session-id is set
-                    msession.remove("auth-session-id");
-                    msession
-                        .insert("auth-session-id", sessionid)
-                        .map_err(|_| OperationError::InvalidSessionState)
-                        .and_then(|_| {
-                            let kref = &req.state().bundy_handle;
-                            // Get the header token ready.
-                            kref.sign(&sessionid)
-                                .map(|t| {
-                                    auth_session_id_tok = Some(t);
-                                })
-                                .map_err(|_| OperationError::InvalidSessionState)
-                        })
-                        .map(|_| ProtoAuthState::Choose(allowed))
-                }
-                AuthState::Continue(allowed) => {
-                    debug!("🧩 -> AuthState::Continue");
-                    let msession = req.session_mut();
-                    // Ensure the auth-session-id is set
-                    msession.remove("auth-session-id");
-                    msession
-                        .insert("auth-session-id", sessionid)
-                        .map_err(|_| OperationError::InvalidSessionState)
-                        .and_then(|_| {
-                            let kref = &req.state().bundy_handle;
-                            // Get the header token ready.
-                            kref.sign(&sessionid)
-                                .map(|t| {
-                                    auth_session_id_tok = Some(t);
-                                })
-                                .map_err(|_| OperationError::InvalidSessionState)
-                        })
-                        .map(|_| ProtoAuthState::Continue(allowed))
-                }
-                AuthState::Success(token) => {
-                    debug!("🧩 -> AuthState::Success");
-                    // Remove the auth-session-id
-                    let msession = req.session_mut();
-                    msession.remove("auth-session-id");
-                    // Create a session cookie?
-                    msession.remove("bearer");
-                    msession
-                        .insert("bearer", token.clone())
-                        .map_err(|_| OperationError::InvalidSessionState)
-                        .map(|_| ProtoAuthState::Success(token))
-                }
-                AuthState::Denied(reason) => {
-                    debug!("🧩 -> AuthState::Denied");
-                    let msession = req.session_mut();
-                    // Remove the auth-session-id
-                    msession.remove("auth-session-id");
-                    Ok(ProtoAuthState::Denied(reason))
-                }
-            }
-            .map(|state| AuthResponse { sessionid, state })
-        }
-        Err(e) => Err(e),
-    };
-
-    to_tide_response(res, hvalue).map(|mut res| {
-        // if the sessionid was injected into our cookie, set it in the
-        // header too.
-        if let Some(tok) = auth_session_id_tok {
-            res.insert_header("X-KANIDM-AUTH-SESSION-ID", tok);
-        }
-        res
-    })
-}
-
-pub async fn auth_valid(req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req.state().qe_r_ref.handle_auth_valid(uat, eventid).await;
-    to_tide_response(res, hvalue)
-}
-
-pub async fn idm_account_set_password(mut req: tide::Request<AppState>) -> tide::Result {
-    let uat = req.get_current_uat();
-    let obj: SingleStringRequest = req.body_json().await?;
-    let cleartext = obj.value;
-    let (eventid, hvalue) = req.new_eventid();
-    let res = req
-        .state()
-        .qe_w_ref
-        .handle_idmaccountsetpassword(uat, cleartext, eventid)
-        .await;
-    to_tide_response(res, hvalue)
-}
-
-// == Status
-
-pub async fn status(req: tide::Request<AppState>) -> tide::Result {
-    // We ignore the body in this req
-    let (eventid, hvalue) = req.new_eventid();
-    let r = req
-        .state()
-        .status_ref
-        .handle_request(StatusRequestEvent { eventid })
-        .await;
-    let mut res = tide::Response::new(tide::StatusCode::Ok);
-    res.insert_header("X-KANIDM-OPID", hvalue);
-    res.set_body(tide::Body::from_json(&r)?);
-    Ok(res)
-}
-
-// For future openid integration
-pub async fn get_openid_configuration(_req: tide::Request<AppState>) -> tide::Result {
-    let mut res = tide::Response::new(200);
-    res.set_content_type("text/html;charset=utf-8");
-    res.set_body("");
-    Ok(res)
-}
-
-/*
-// For openssl
-struct TlsListener {
-    address: String,
-    tls_params: &'static SslAcceptor,
-}
-
-impl TlsListener {
-    fn new(address: String, tls_params: &'static SslAcceptor) -> Self {
-        Self {
-            address,
-            tls_params,
-        }
-    }
-}
-
-impl std::fmt::Debug for TlsListener {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TlsListener {{}}")
-    }
-}
-
-impl std::fmt::Display for TlsListener {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "TlsListener {{}}")
-    }
-}
-
-impl<State: Clone + Send + Sync + 'static> tide::listener::ToListener<State> for TlsListener {
-    type Listener = TlsListener;
-
-    fn to_listener(self) -> std::io::Result<Self::Listener> {
-        Ok(self)
-    }
-}
-
-fn handle_client<State: Clone + Send + Sync + 'static>(
-    _app: tide::Server<State>,
-    _stream: tokio_openssl::SslStream<tokio::net::TcpStream>,
-    _local_addr: std::net::SocketAddr,
-    _peer_addr: std::net::SocketAddr,
-) {
-    tokio::spawn(async move {
-        let fut = async_h1::accept(stream, |mut req| async {
-            req.set_local_addr(Some(local_addr));
-            req.set_peer_addr(Some(peer_addr));
-            app.respond(req).await
-        });
-
-        if let Err(error) = fut.await {
-            // Do nothing
-            // log::error!("async-h1 error", { error: error.to_string() });
-        }
-    });
 }
 
 #[async_trait::async_trait]
-impl<State: Clone + Send + Sync + 'static> tide::listener::Listener<State> for TlsListener {
-    async fn listen(&mut self, app: tide::Server<State>) -> io::Result<()> {
-        let addr = net::SocketAddr::from_str(&self.address).map_err(|e| {
-            eprintln!(
-                "Could not parse https server address {} -> {:?}",
-                self.address, e
-            );
-            std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Could not parse https server address",
-            )
-        })?;
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for NoCacheMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("Cache-Control", "no-store, max-age=0");
+        response.insert_header("Pragma", "no-cache");
+        Ok(response)
+    }
+}
 
-        let mut listener = TcpListener::bind(&addr).await?;
+struct CacheableMiddleware;
 
-        let tls_params = self.tls_params;
+impl Default for CacheableMiddleware {
+    fn default() -> Self {
+        CacheableMiddleware {}
+    }
+}
 
-        loop {
-            match listener.accept().await {
-                Ok((tcpstream, paddr)) => {
-                    let iapp = app.clone();
-                    tokio::spawn(async move {
-                        let res = tokio_openssl::accept(tls_params, tcpstream).await;
-                        match res {
-                            Ok(tlsstream) => {
-                                handle_client(iapp, tlsstream, addr, paddr);
-                            }
-                            Err(e) => {
-                                error!("tcp handshake error, continuing -> {:?}", e);
-                            }
-                        };
-                    });
-                }
-                Err(e) => {
-                    error!("acceptor error, continuing -> {:?}", e);
-                }
-            }
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for CacheableMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("Cache-Control", "max-age=60,must-revalidate,private");
+        Ok(response)
+    }
+}
+
+struct StaticContentMiddleware;
+
+impl Default for StaticContentMiddleware {
+    fn default() -> Self {
+        StaticContentMiddleware {}
+    }
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticContentMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("Cache-Control", "max-age=3600,private");
+        Ok(response)
+    }
+}
+
+struct StrictResponseMiddleware;
+
+impl Default for StrictResponseMiddleware {
+    fn default() -> Self {
+        StrictResponseMiddleware {}
+    }
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictResponseMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let mut response = next.run(request).await;
+        response.insert_header("x-frame-options", "deny");
+        response.insert_header("x-content-type-options", "nosniff");
+        response.insert_header("cross-origin-resource-policy", "same-origin");
+        response.insert_header("cross-origin-embedder-policy", "require-corp");
+        response.insert_header("cross-origin-opener-policy", "same-origin");
+        Ok(response)
+    }
+}
+
+struct StrictRequestMiddleware;
+
+impl Default for StrictRequestMiddleware {
+    fn default() -> Self {
+        StrictRequestMiddleware {}
+    }
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRequestMiddleware {
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        let proceed = request
+            .header("sec-fetch-site")
+            .map(|hv| {
+                matches!(hv.as_str(), "same-origin" | "same-site" | "none")
+                    || (request.header("sec-fetch-mode").map(|v| v.as_str()) == Some("navigate")
+                        && request.method() == tide::http::Method::Get
+                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("object")
+                        && request.header("sec-fetch-dest").map(|v| v.as_str()) != Some("embed"))
+            })
+            .unwrap_or(true);
+
+        if proceed {
+            Ok(next.run(request).await)
+        } else {
+            Err(tide::Error::from_str(
+                tide::StatusCode::MethodNotAllowed,
+                "StrictRequestViolation",
+            ))
         }
     }
 }
-*/
 
 // TODO: Add request limits.
 pub fn create_https_server(
@@ -1209,12 +332,15 @@ pub fn create_https_server(
     // tserver.with(tide::log::LogMiddleware::new());
     // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(
+        // We do not force a session ttl, because we validate this elsewhere in usage.
         tide::sessions::SessionMiddleware::new(tide::sessions::MemoryStore::new(), cookie_key)
             .with_cookie_name("kanidm-session")
             .with_same_site_policy(tide::http::cookies::SameSite::Strict),
     );
+    tserver.with(StrictResponseMiddleware::default());
 
     // Add routes
+    // ==== static content routes that have a longer cache policy.
 
     // If we are no-ui, we remove this.
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
@@ -1227,10 +353,13 @@ pub fn create_https_server(
             std::process::exit(1);
         }
 
-        tserver.at("/").get(index_view);
-        tserver.at("/ui/").get(index_view);
-        tserver.at("/ui/*").get(index_view);
-        tserver
+        let mut static_tserver = tserver.at("");
+        static_tserver.with(StaticContentMiddleware::default());
+
+        static_tserver.at("/").get(index_view);
+        static_tserver.at("/ui/").get(index_view);
+        static_tserver.at("/ui/*").get(index_view);
+        static_tserver
             .at("/pkg")
             .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
             .map_err(|e| {
@@ -1242,16 +371,35 @@ pub fn create_https_server(
             })?;
     };
 
-    tserver.at("/status").get(self::status);
+    // ==== Some routes can be cached - these are here:
+    let mut tserver_cacheable = tserver.at("");
+    tserver_cacheable.with(CacheableMiddleware::default());
 
-    let mut well_known = tserver.at("/well-known");
+    let mut account_route_cacheable = tserver_cacheable.at("/v1/account");
+
+    // We allow caching of the radius token.
+    account_route_cacheable
+        .at("/:id/_radius/_token")
+        .get(account_get_id_radius_token);
+    // We allow clients to cache the unix token.
+    account_route_cacheable
+        .at("/:id/_unix/_token")
+        .get(account_get_id_unix_token);
+
+    // ==== These routes can not be cached
+
+    let mut appserver = tserver.at("");
+    appserver.with(NoCacheMiddleware::default());
+
+    let mut well_known = appserver.at("/.well-known");
     well_known
         .at("/openid-configuration")
         .get(get_openid_configuration);
 
+    appserver.at("/status").get(self::status);
     // == oauth endpoints.
 
-    let mut oauth2_process = tserver.at("/oauth2");
+    let mut oauth2_process = appserver.at("/oauth2");
     oauth2_process
         .at("/authorise")
         .post(oauth2_authorise_post)
@@ -1267,16 +415,16 @@ pub fn create_https_server(
         .get(oauth2_token_introspect_get);
     */
 
-    let mut raw_route = tserver.at("/v1/raw");
+    let mut raw_route = appserver.at("/v1/raw");
     raw_route.at("/create").post(create);
     raw_route.at("/modify").post(modify);
     raw_route.at("/delete").post(delete);
     raw_route.at("/search").post(search);
 
-    tserver.at("/v1/auth").post(auth);
-    tserver.at("/v1/auth/valid").get(auth_valid);
+    appserver.at("/v1/auth").post(auth);
+    appserver.at("/v1/auth/valid").get(auth_valid);
 
-    let mut schema_route = tserver.at("/v1/schema");
+    let mut schema_route = appserver.at("/v1/schema");
     schema_route.at("/").get(schema_get);
     schema_route
         .at("/attributetype")
@@ -1298,7 +446,7 @@ pub fn create_https_server(
         .put(do_nothing)
         .patch(do_nothing);
 
-    let mut oauth2_route = tserver.at("/v1/oauth2");
+    let mut oauth2_route = appserver.at("/v1/oauth2");
     oauth2_route.at("/").get(oauth2_get);
 
     oauth2_route.at("/_basic").post(oauth2_basic_post);
@@ -1311,7 +459,7 @@ pub fn create_https_server(
         .patch(oauth2_id_patch)
         .delete(oauth2_id_delete);
 
-    let mut self_route = tserver.at("/v1/self");
+    let mut self_route = appserver.at("/v1/self");
     self_route.at("/").get(whoami);
 
     self_route.at("/_attr/:attr").get(do_nothing);
@@ -1334,12 +482,11 @@ pub fn create_https_server(
         .at("/_radius/_config/:token/apple")
         .get(do_nothing);
 
-    let mut person_route = tserver.at("/v1/person");
+    let mut person_route = appserver.at("/v1/person");
     person_route.at("/").get(person_get).post(person_post);
     person_route.at("/:id").get(person_id_get);
 
-    let mut account_route = tserver.at("/v1/account");
-
+    let mut account_route = appserver.at("/v1/account");
     account_route.at("/").get(account_get).post(account_post);
     account_route
         .at("/:id")
@@ -1388,14 +535,7 @@ pub fn create_https_server(
         .post(account_post_id_radius_regenerate)
         .delete(account_delete_id_radius);
 
-    account_route
-        .at("/:id/_radius/_token")
-        .get(account_get_id_radius_token);
-
     account_route.at("/:id/_unix").post(account_post_id_unix);
-    account_route
-        .at("/:id/_unix/_token")
-        .get(account_get_id_unix_token);
     account_route
         .at("/:id/_unix/_auth")
         .post(account_post_id_unix_auth);
@@ -1404,7 +544,7 @@ pub fn create_https_server(
         .put(account_put_id_unix_credential)
         .delete(account_delete_id_unix_credential);
 
-    let mut group_route = tserver.at("/v1/group");
+    let mut group_route = appserver.at("/v1/group");
     group_route.at("/").get(group_get).post(group_post);
     group_route
         .at("/:id")
@@ -1421,7 +561,7 @@ pub fn create_https_server(
         .at("/:id/_unix/_token")
         .get(group_get_id_unix_token);
 
-    let mut domain_route = tserver.at("/v1/domain");
+    let mut domain_route = appserver.at("/v1/domain");
     domain_route.at("/").get(domain_get);
     domain_route.at("/:id").get(domain_id_get);
     domain_route
@@ -1429,17 +569,19 @@ pub fn create_https_server(
         .get(domain_id_get_attr)
         .put(domain_id_put_attr);
 
-    let mut recycle_route = tserver.at("/v1/recycle_bin");
+    let mut recycle_route = appserver.at("/v1/recycle_bin");
     recycle_route.at("/").get(recycle_bin_get);
     recycle_route.at("/:id").get(recycle_bin_id_get);
     recycle_route
         .at("/:id/_revive")
         .post(recycle_bin_revive_id_post);
 
-    let mut accessprof_route = tserver.at("/v1/access_profile");
+    let mut accessprof_route = appserver.at("/v1/access_profile");
     accessprof_route.at("/").get(do_nothing);
     accessprof_route.at("/:id").get(do_nothing);
     accessprof_route.at("/:id/_attr/:attr").get(do_nothing);
+
+    // ===  End routes
 
     // Create listener?
     match opt_tls_params {

@@ -12,14 +12,13 @@
 
 use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
-use crate::prelude::*;
-// use crate::modify::{Modify, ModifyList};
 use crate::plugins::Plugin;
+use crate::prelude::*;
 use crate::value::{PartialValue, Value};
+use crate::valueset::ValueSet;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
 use hashbrown::HashMap;
-use std::collections::BTreeSet;
 use uuid::Uuid;
 
 lazy_static! {
@@ -351,7 +350,7 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: BTreeSet<_> = direct_memberof
+            let d_groups_set: ValueSet = direct_memberof
                 .iter()
                 .map(|e| Value::new_refer(*e.get_uuid()))
                 .collect();

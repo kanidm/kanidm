@@ -8,8 +8,9 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use kanidm_client::KanidmClientBuilder;
 use std::path::PathBuf;
+
+use kanidm_client::{ClientError, KanidmClientBuilder};
 
 use log::{debug, error};
 use structopt::StructOpt;
@@ -72,9 +73,13 @@ fn main() {
         });
         client.auth_simple_password(opt.username.as_str(), password.as_str())
     };
-
     if r.is_err() {
-        eprintln!("Error during authentication phase: {:?}", r);
+        match r {
+            Err(ClientError::Transport(value)) => {
+                error!("Failed to connect to kanidm server: {}", value.to_string());
+            }
+            _ => error!("Error during authentication phase: {:?}", r),
+        }
         std::process::exit(1);
     }
 

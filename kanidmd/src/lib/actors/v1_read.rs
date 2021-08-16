@@ -1,11 +1,16 @@
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::{error, info, instrument, trace};
 
+use chrono::{DateTime, SecondsFormat, Utc};
 use std::sync::Arc;
 
 use crate::{admin_error, prelude::*, security_info, spanned};
 
-use crate::event::{AuthEvent, AuthResult, SearchEvent, SearchResult, WhoamiResult};
+use crate::be::BackendTransaction;
+
+use crate::event::{
+    AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult,
+};
 use crate::idm::event::{
     CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
     UnixUserAuthEvent, UnixUserTokenEvent,
@@ -27,6 +32,9 @@ use kanidm_proto::v1::{
     WhoamiResponse,
 };
 
+use regex::Regex;
+use std::fs;
+use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
 use ldap3_server::simple::*;
@@ -36,7 +44,7 @@ use std::convert::TryFrom;
 
 pub struct QueryServerReadV1 {
     log: Sender<AuditScope>,
-    log_level: Option<u32>,
+    pub log_level: Option<u32>,
     idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
@@ -205,6 +213,133 @@ impl QueryServerReadV1 {
             OperationError::InvalidState
         })?;
         res
+    }
+
+    pub async fn handle_online_backup(
+        &self,
+        msg: OnlineBackupEvent,
+        outpath: &str,
+        versions: usize,
+    ) {
+        let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
+
+        ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
+
+        let now: DateTime<Utc> = Utc::now();
+        let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
+        let dest_file = format!("{}/backup-{}.json", outpath, timestamp);
+
+        match Path::new(&dest_file).exists() {
+            true => {
+                error!(
+                    "Online backup file {} already exists, will not owerwrite it.",
+                    dest_file
+                );
+            }
+            false => {
+                let idms_prox_read = self.idms.proxy_read_async().await;
+                lperf_op_segment!(
+                    &mut audit,
+                    "actors::v1_read::handle<OnlineBackupEvent>",
+                    || {
+                        let res = idms_prox_read
+                            .qs_read
+                            .get_be_txn()
+                            .backup(&mut audit, &dest_file);
+
+                        match &res {
+                            Ok(()) => {
+                                info!("Online backup created {} successfully", dest_file);
+                            }
+                            Err(e) => {
+                                error!("Online backup failed to create {}: {:?}", dest_file, e);
+                            }
+                        }
+
+                        ladmin_info!(audit, "online backup result: {:?}", res);
+                    }
+                );
+            }
+        }
+
+        // cleanup of maximum backup versions to keep
+        let mut backup_file_list: Vec<PathBuf> = Vec::new();
+        // pattern to find automatically generated backup files
+        let re = match Regex::new(r"^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$") {
+            Ok(value) => value,
+            Err(error) => {
+                eprintln!(
+                    "Failed to parse regexp for online backup files: {:?}",
+                    error
+                );
+                return;
+            }
+        };
+
+        // get a list of backup files
+        match fs::read_dir(outpath) {
+            Ok(rd) => {
+                for entry in rd {
+                    // get PathBuf
+                    let pb = entry.unwrap().path();
+
+                    // skip everything that is not a file
+                    if !pb.is_file() {
+                        continue;
+                    }
+
+                    // get the /some/dir/<file_name> of the file
+                    let file_name = pb.file_name().unwrap().to_str().unwrap();
+                    // check for a online backup file
+                    if re.is_match(file_name) {
+                        backup_file_list.push(pb.clone());
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Online backup cleanup error read dir {}: {}", outpath, e);
+            }
+        }
+
+        // sort it to have items listed old to new
+        backup_file_list.sort();
+
+        // Versions: OLD 10.9.8.7.6.5.4.3.2.1 NEW
+        //              |----delete----|keep|
+        // 10 items, we want to keep the latest 3
+
+        // if we have more files then we want to keep, me do some cleanup
+        if backup_file_list.len() > versions {
+            let x = backup_file_list.len() - versions;
+            info!(
+                "Online backup cleanup found {} versions, should keep {}, will remove {}",
+                backup_file_list.len(),
+                versions,
+                x
+            );
+            backup_file_list.truncate(x);
+
+            // removing files
+            for file in backup_file_list {
+                debug!("Online backup cleanup: removing {:?}", &file);
+                match fs::remove_file(&file) {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!(
+                            "Online backup cleanup failed to remove file {:?}: {:?}",
+                            file, e
+                        )
+                    }
+                };
+            }
+        } else {
+            debug!("Online backup cleanup had no files to remove");
+        };
+
+        // At the end of the event we send it for logging.
+        self.log.send(audit).unwrap_or_else(|_| {
+            error!("CRITICAL: UNABLE TO COMMIT LOGS");
+        });
     }
 
     #[instrument(
@@ -1119,11 +1254,10 @@ impl QueryServerReadV1 {
     pub async fn handle_ldaprequest(
         &self,
         eventid: Uuid,
+        mut audit: AuditScope,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
     ) -> Option<LdapResponseState> {
-        let mut audit = AuditScope::new("ldap_request_message", eventid, self.log_level);
-
         /*
         let res = lperf_op_segment!(
             &mut audit,

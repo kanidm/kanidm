@@ -47,6 +47,7 @@ mod interval;
 pub(crate) mod ldap;
 mod modify;
 pub mod value;
+pub mod valueset;
 #[macro_use]
 mod plugins;
 mod access;

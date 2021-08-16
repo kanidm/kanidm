@@ -49,6 +49,7 @@ impl ClientCodec {
     }
 }
 
+/// Makes a call to kanidm_unixd via a unix socket at `path`
 pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientResponse, Box<dyn Error>> {
     let stream = UnixStream::connect(path).await?;
 
@@ -63,7 +64,7 @@ pub async fn call_daemon(path: &str, req: ClientRequest) -> Result<ClientRespons
             Ok(res)
         }
         _ => {
-            error!("Error");
+            error!("Error making request to kanidm_unixd");
             Err(Box::new(IoError::new(ErrorKind::Other, "oh no!")))
         }
     }

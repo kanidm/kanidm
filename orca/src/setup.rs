@@ -12,7 +12,7 @@ use uuid::Uuid;
 
 pub(crate) fn config(
     target: &TargetOpt,
-    profile_path: &PathBuf,
+    profile_path: &Path,
 ) -> Result<(TestData, Profile, TargetServer), ()> {
     // read the profile that we are going to be using/testing
     let mut f = File::open(profile_path).map_err(|e| {
@@ -91,7 +91,7 @@ pub(crate) fn config(
     Ok((data, profile, server))
 }
 
-pub(crate) async fn doit(target: &TargetOpt, profile_path: &PathBuf) -> Result<(), ()> {
+pub(crate) async fn doit(target: &TargetOpt, profile_path: &Path) -> Result<(), ()> {
     info!(
         "Performing setup of {:?} from {}",
         target,

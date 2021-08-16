@@ -12,6 +12,7 @@
 extern crate log;
 
 use log::debug;
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 use futures::executor::block_on;
@@ -37,12 +38,25 @@ async fn main() {
     let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd")
     {
         Ok(c) => c,
-        Err(_e) => {
-            error!("Failed to parse /etc/kanidm/unixd");
+        Err(e) => {
+            error!("Failed to parse /etc/kanidm/unixd: {:?}", e);
             std::process::exit(1);
         }
     };
 
+    debug!(
+        "Using kanidm_unixd socket path: {:?}",
+        cfg.sock_path.as_str()
+    );
+
+    // see if the kanidm_unixd socket exists and quit if not
+    if !PathBuf::from(&cfg.sock_path).exists() {
+        error!(
+            "Failed to find unix socket at {}, quitting!",
+            cfg.sock_path.as_str()
+        );
+        std::process::exit(1);
+    }
     let req = ClientRequest::SshKey(opt.account_id);
 
     match block_on(call_daemon(cfg.sock_path.as_str(), req)) {
@@ -51,11 +65,11 @@ async fn main() {
                 println!("{}", k);
             }),
             _ => {
-                error!("Error: unexpected response -> {:?}", r);
+                error!("Error calling kanidm_unixd: unexpected response -> {:?}", r);
             }
         },
         Err(e) => {
-            error!("Error -> {:?}", e);
+            error!("Error calling kanidm_unixd -> {:?}", e);
         }
     }
 }

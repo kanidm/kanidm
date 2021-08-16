@@ -1,13 +1,13 @@
 use crate::setup::config;
 use crate::{TargetOpt, TestTypeOpt};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 mod search;
 
 pub(crate) async fn doit(
     testtype: &TestTypeOpt,
     target: &TargetOpt,
-    profile_path: &PathBuf,
+    profile_path: &Path,
 ) -> Result<(), ()> {
     info!(
         "Performing test {} against {:?} from {}",

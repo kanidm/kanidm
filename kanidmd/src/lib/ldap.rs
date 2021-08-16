@@ -98,8 +98,8 @@ impl LdapServer {
         };
 
         Ok(LdapServer {
-            basedn,
             rootdse,
+            basedn,
             dnre,
             binddnre,
         })

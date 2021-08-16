@@ -314,8 +314,7 @@ pub trait BackendTransaction {
                 let mut f_rem_count = f_rem.len() + f_andnot.len() - 1;
 
                 // Setup the query plan tracker
-                let mut plan = Vec::new();
-                plan.push(fp);
+                let mut plan = vec![fp];
 
                 match &cand_idl {
                     IdList::Indexed(idl) | IdList::Partial(idl) | IdList::PartialThreshold(idl) => {

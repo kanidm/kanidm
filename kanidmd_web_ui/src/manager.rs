@@ -104,6 +104,8 @@ impl Component for ManagerApp {
                 <link rel="stylesheet" href="/pkg/style.css"/>
                 <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
                 <script src="/pkg/external/confetti.js"></script>
+                <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>" />
+
             </head>
 
             {

@@ -108,6 +108,9 @@ origin, a unique server, a timerange, or a selection of these properties. This m
 also be called a change serial number (CSN) in other application like 389 Directory
 Server
 
+This is so that any allocated CID is guaranteed to be unique as the timestamp generator
+within a server is a lamport clock that always advances with each new write transaction.
+
 Change
 ======
 
@@ -116,7 +119,7 @@ altered in an operation. These state records are atomic units that describe a se
 changes that must occur together to be considered valid. There may be multiple state
 assertions in a change.
 
-The possible states are:
+The possible entry states are:
 
 * NonExistant
 * Live
@@ -132,7 +135,7 @@ The possible state transitions are:
 * Tombstoned
 * Purge (*not changelogged!*)
 
-A pseudocode change could be:
+A conceptual pseudocode change could be:
 
 ::
 
@@ -145,7 +148,8 @@ A pseudocode change could be:
     ]
 
 The valid transitions are representing in a NFA, where any un-listed transition is
-considered invalid and must be discarded.
+considered invalid and must be discarded. Transitions are consider 'in-order' within
+a CID.
 
 ::
 
@@ -159,13 +163,201 @@ considered invalid and must be discarded.
 .. image:: diagrams/object-lifecycle-states.png
     :width: 800
 
-Changelog
-=========
+Within a single CID, in a single server, it's consider that every transition applies,
+or none do.
+
+Entry Change Log
+================
+
+Within Kanidm id2entry is the primary store of active entry state representation. However
+the content of id2entry is a reflection of the series of modifications and changes that
+have applied to create that entitiy. As a result id2entry can be considered as an entry
+state cache.
+
+The true stable storage and representation for an entry will exist in a seperate Entry
+Change Log type. Each entry will have it's own internal changelog that represents the
+changes that have occured in the entries lifetime and it's relevant state at that time.
+
+The reason for making a per-entry change log is to allow fine grained testing of the
+conflict resolution state machine on a per-entry scale, and then to be able to test
+the higher level object behaviour above that. This will allow us to model and test
+all possible states.
+
+Changelog Index
+===============
 
 The changelog stores a series of changes associated by their CID, allowing querying
 of changes based on CID properties. The changelog stores changes from multiple
-server uuid's or domain uuid's, acting as a single linear history of affects on
+server uuid's or domain uuid's, acting as a single linear history of effects on
 the data of this system.
+
+If we assume we have a single read-write server, there is no possibility of conflict
+and the changelog becomes a perfect history of transitions within the database content.
+
+We can visualise the changelog index as a series of CID's with references to the associated
+entries that need to be considered. This is where we start to consider the true implementation
+structure of how we will code this within Kanidm.
+
+::
+
+    ┌─────────────────────────────────┐             ┌─────────────────────────┐
+    │ Changelog Index                 │             │ e1 - entry change log   │
+    │┌───────────────────────────────┐│             │ ┌─────────────────────┐ │
+    ││CID 1                          ││             │ │CID 2                │ │
+    │├───────────────────────────────┤│             │ │┌───────────────────┐│ │
+    ││                               ││             │ ││create: {          ││ │
+    ││CID 2                          ││  ┌──────────┼─▶│    attrs          ││ │
+    ││transitions {                  ││  │          │ ││}                  ││ │
+    ││    create: uuid - e1, ────────┼┼──┘          │ │├───────────────────┤│ │
+    ││    modify: uuid - e1, ────────┼┼─────────────┼─▶│   modify: attrs   ││ │
+    ││    recycle: uuid - e2,────────┼┼──┐          │ │└───────────────────┘│ │
+    ││}                              ││  │          │ └─────────────────────┘ │
+    ││                               ││  │          │  ...                    │
+    │├───────────────────────────────┤│  │          │                         │
+    ││CID 3                          ││  │          │                         │
+    │├───────────────────────────────┤│  │          └─────────────────────────┘
+    ││CID 4                          ││  │                                     
+    │├───────────────────────────────┤│  │          ┌─────────────────────────┐
+    ││CID 5                          ││  │          │ e2 - entry change log   │
+    │├───────────────────────────────┤│  │          │ ┌─────────────────────┐ │
+    ││CID 6                          ││  │          │ │CID 2                │ │
+    │├───────────────────────────────┤│  │          │ │┌───────────────────┐│ │
+    ││CID 7                          ││  └──────────┼─▶│recycle            ││ │
+    │├───────────────────────────────┤│             │ │└───────────────────┘│ │
+    ││CID 8                          ││             │ └─────────────────────┘ │
+    │├───────────────────────────────┤│             │  ...                    │
+    ││CID 9                          ││             │                         │
+    │├───────────────────────────────┤│             └─────────────────────────┘
+    ││CID 10                         ││                                        
+    │├───────────────────────────────┤│                                        
+    ││CID 11                         ││                                        
+    │├───────────────────────────────┤│                                        
+    ││CID 12                         ││                                        
+    │└───────────────────────────────┘│                                        
+    └─────────────────────────────────┘                                        
+
+This allows expression of both:
+
+* An ordered set of changes globally to be applied to the set of entries
+* Entries to internally maintain their set of ordered changes
+
+Entry Snapshots
+===============
+
+Within an entry there may be many changes, and if we have an old change inserted, we need
+to be able to replay those events. For example:
+
+::
+
+                                       ┌─────────────────────────────────┐             ┌─────────────────────────┐
+                                       │ Changelog Index                 │             │ e1 - entry change log   │
+    ┌───────────────────────────────┐  │                                 │             │ ┌─────────────────────┐ │
+    │CID 1                         ─┼──┼─────────────▶                   │             │ │CID 2                │ │
+    └───────────────────────────────┘  │┌───────────────────────────────┐│             │ │┌───────────────────┐│ │
+                                       ││                               ││             │ ││create: {          ││ │
+                                       ││CID 2                          ││  ┌──────────┼─▶│    attrs          ││ │
+                                       ││transitions {                  ││  │          │ ││}                  ││ │
+                                       ││    create: uuid - e1, ────────┼┼──┘          │ │├───────────────────┤│ │
+                                       ││    modify: uuid - e1, ────────┼┼─────────────┼─▶│   modify: attrs   ││ │
+                                       ││    recycle: uuid - e2,────────┼┼──┐          │ │└───────────────────┘│ │
+                                       ││}                              ││  │          │ └─────────────────────┘ │
+                                       ││                               ││  │          │  ...                    │
+                                       │├───────────────────────────────┤│  │          │                         │
+                                       ││CID 3                          ││  │          │                         │
+                                       │├───────────────────────────────┤│  │          └─────────────────────────┘
+                                       ││CID 4                          ││  │                                     
+                                       │├───────────────────────────────┤│  │          ┌─────────────────────────┐
+                                       ││CID 5                          ││  │          │ e2 - entry change log   │
+                                       │├───────────────────────────────┤│  │          │ ┌─────────────────────┐ │
+                                       ││CID 6                          ││  │          │ │CID 2                │ │
+                                       │├───────────────────────────────┤│  │          │ │┌───────────────────┐│ │
+                                       ││CID 7                          ││  └──────────┼─▶│recycle            ││ │
+                                       │├───────────────────────────────┤│             │ │└───────────────────┘│ │
+                                       ││CID 8                          ││             │ └─────────────────────┘ │
+                                       │├───────────────────────────────┤│             │  ...                    │
+                                       ││CID 9                          ││             │                         │
+                                       │├───────────────────────────────┤│             └─────────────────────────┘
+                                       ││CID 10                         ││                                        
+                                       │├───────────────────────────────┤│                                        
+                                       ││CID 11                         ││                                        
+                                       │├───────────────────────────────┤│                                        
+                                       ││CID 12                         ││                                        
+                                       │└───────────────────────────────┘│                                        
+                                       └─────────────────────────────────┘                                        
+
+
+Since CID 1 has been inserted previous to CID 2 we need to "undo" the changes of CID 2 in
+e1/e2 and then replay from CID 1 and all subsequent changes affecting the same UUID's to
+ensure the state is applied in order correctly.
+
+In order to improve the processing time of this operation, entry change logs need
+snapshots of their entry state. At the start of the entry change log is an anchor
+snapshot that describes the entry as the sum of previous changes.
+
+::
+
+    ┌─────────────────────────┐
+    │ e1 - entry change log   │
+    │ ┌─────────────────────┐ │
+    │ │Anchor Snapshot      │ │
+    │ │state: {             │ │
+    │ │    ...              │ │
+    │ │}                    │ │
+    │ │                     │ │
+    │ ├─────────────────────┤ │
+    │ │CID 2                │ │
+    │ │┌───────────────────┐│ │
+    │ ││create: {          ││ │
+    │ ││    attrs          ││ │
+    │ ││}                  ││ │
+    │ │├───────────────────┤│ │
+    │ ││   modify: attrs   ││ │
+    │ │└───────────────────┘│ │
+    │ ├─────────────────────┤ │
+    │ │Snapshot             │ │
+    │ │state: {             │ │
+    │ │    ...              │ │
+    │ │}                    │ │
+    │ │                     │ │
+    │ └─────────────────────┘ │
+    │  ...                    │
+    │                         │
+    └─────────────────────────┘
+
+In our example here we would find the snapshot preceeding our newely inserted CID (in this case
+our Anchor) and from that we would then replay all subsequent changes to ensure they apply
+correctly (or are rejected as conflicts).
+
+For example if our newly inserted CID was say CID 15 then we would use the second snapshot
+and we would not need to replay CID 2. These snapshots are a trade between space (disk/memory)
+and replay processing time. Snapshot frequency is not yet determined. It will require measurement
+and heuristic to determine an effective space/time saving. For example larger entries may want fewer
+snapshots due to the size of their snapshots, where smaller entries may want more snapshots
+to allow faster change replay.
+
+Replay Processing Details
+=========================
+
+Given our CID 1 inserted prior to other CID's, we need to consider how to replay these effectively.
+
+If CID 1 changed uuid A and B, we would add these to the active replay set. These are based on the
+snapshots which are then replayed up to and include CID 1 (but no further).
+
+From there we now proceed through the changelog index, and only consider changes that contain A or B.
+
+Let's assume CID 3 operated on B and C. C was not considered before, and is now added to the replay
+set, and the same process begins to replay A, B, C to CID 3 now.
+
+This process continues such that the replay set is always expanding to the set of affected
+entries that require processing to ensure consistency of their changes.
+
+If a change is inconsistent or rejected, then it is rejected and marked as such in the changelog
+index. Remember a future replay may allow the rejected change to be applied correctly, this rejection
+is just metadata so we know what changes were not applied.
+
+Even if a change is rejected, we still continue to assume that the entries include in that set of changes
+should be consider for replay. In theory we could skip them if they were added in this change, but
+it's simpler and correct to continue to consider them.
 
 Changelog Comparison - Replication Update Vector (RUV)
 ======================================================
@@ -220,12 +412,57 @@ changelog - we have changes from min to max. If a server provides it's ruv, and 
 is lower than our min, we must consider that server has been disconnected for "too long" and
 we are unable to supply changes until an administrator intervenes.
 
+As a more graphical representation, we could consider our ruv as follows:
+
+::
+
+    ┌─────────────────────┐                  ┌─────────────────────────────────┐             ┌─────────────────────────┐
+    │RUV                  │                  │ Changelog Index                 │             │ e1 - entry change log   │
+    │┌───────────────────┐│                  │┌───────────────────────────────┐│             │ ┌─────────────────────┐ │
+    ││{d_uuid, s_uuid}:  ││     ─ ─ ─ ─ ─ ─ ─▶│CID 1                          ││             │ │CID 2                │ │
+    ││    min: CID 2 ────┼┼────┼─┐           │├───────────────────────────────┤│             │ │┌───────────────────┐│ │
+    ││    max: CID 4 ────┼┼──────┤           ││                               ││             │ ││create: {          ││ │
+    │├───────────────────┤│    │ ├───────────▶│CID 2                          ││  ┌──────────┼─▶│    attrs          ││ │
+    ││{d_uuid, s_uuid}:  ││      │           ││transitions {                  ││  │          │ ││}                  ││ │
+    ││    min: CID 1 ─ ─ ┼│─ ─ ┘ │           ││    create: uuid - e1, ────────┼┼──┘          │ │├───────────────────┤│ │
+    ││    max: CID 8 ─ ─ ┼│─ ─ ┐ │           ││    modify: uuid - e1, ────────┼┼─────────────┼─▶│   modify: attrs   ││ │
+    │├───────────────────┤│      │           ││    recycle: uuid - e2,────────┼┼──┐          │ │└───────────────────┘│ │
+    ││{d_uuid, s_uuid}:  ││    │ │           ││}                              ││  │          │ └─────────────────────┘ │
+    ││    min: CID 3 ────┼┼──┐   │           ││                               ││  │          │  ...                    │
+    ││    max: CID 12────┼┼──┤ │ │           │├───────────────────────────────┤│  │          │                         │
+    │└───────────────────┘│  ├───┼───────────▶│CID 3                          ││  │          │                         │
+    └─────────────────────┘  │ │ │           │├───────────────────────────────┤│  │          └─────────────────────────┘
+                             │   └───────────▶│CID 4                          ││  │                                     
+                             │ │             │├───────────────────────────────┤│  │          ┌─────────────────────────┐
+                             │               ││CID 5                          ││  │          │ e2 - entry change log   │
+                             │ │             │├───────────────────────────────┤│  │          │ ┌─────────────────────┐ │
+                             │               ││CID 6                          ││  │          │ │CID 2                │ │
+                             │ │             │├───────────────────────────────┤│  │          │ │┌───────────────────┐│ │
+                             │               ││CID 7                          ││  └──────────┼─▶│recycle            ││ │
+                             │ │             │├───────────────────────────────┤│             │ │└───────────────────┘│ │
+                             │  ─ ─ ─ ─ ─ ─ ─▶│CID 8                          ││             │ └─────────────────────┘ │
+                             │               │├───────────────────────────────┤│             │  ...                    │
+                             │               ││CID 9                          ││             │                         │
+                             │               │├───────────────────────────────┤│             └─────────────────────────┘
+                             │               ││CID 10                         ││                                        
+                             │               │├───────────────────────────────┤│                                        
+                             │               ││CID 11                         ││                                        
+                             │               │├───────────────────────────────┤│                                        
+                             └───────────────▶│CID 12                         ││                                        
+                                             │└───────────────────────────────┘│                                        
+                                             └─────────────────────────────────┘                                        
+
+It may be that we also add a RUV index that allows the association of exact set of CID's to a
+server's cl, or if during CL replay we just iterate through the CL index finding all values that are
+greater than the set of min CID's requested in this operation.
+
 Changelog Purging
 =================
 
 In order to prevent infinite growth of the changelog, any change older than a fixed window X
 is trimmed from the changelog. When trimming occurs this moves the "min" CID in the RUV up to
-a higher point in time.
+a higher point in time. This also trims the entry change log and recreates a new anchor
+snapshot.
 
 RUV cleaning
 ============

@@ -22,7 +22,7 @@ If you want to deploy Kanidm to see what it can do, you should read the [kanidm 
 
 We also publish limited [support guidelines].
 
-[kanidm book]: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/SUMMARY.md
+[kanidm book]: https://kanidm.github.io/kanidm/
 [support guidelines]: https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md
 
 ## Code of Conduct / Ethics
