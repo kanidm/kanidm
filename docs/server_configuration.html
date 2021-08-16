@@ -3,9 +3,8 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title></title>
-                        <base href="/">
-        
+        <title>Server Configuration - Kanidm Administration</title>
+                
 
         <!-- Custom HTML head -->
         
@@ -83,7 +82,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="server_configuration.html"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="security_hardening.html"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="accounts_and_groups.html"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li></ol></li><li class="chapter-item expanded "><a href="ldap.html"><strong aria-hidden="true">6.</strong> LDAP</a></li><li class="chapter-item expanded "><a href="pam_and_nsswitch.html"><strong aria-hidden="true">7.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="radius.html"><strong aria-hidden="true">8.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="why_tls.html"><strong aria-hidden="true">9.</strong> Why TLS?</a></li><li class="chapter-item expanded "><a href="DEVELOPER_README.html"><strong aria-hidden="true">10.</strong> Developer Guide</a></li></ol>            </div>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="intro.html"><strong aria-hidden="true">1.</strong> Introduction to Kanidm</a></li><li class="chapter-item expanded "><a href="installing_the_server.html"><strong aria-hidden="true">2.</strong> Installing the Server</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="server_configuration.html" class="active"><strong aria-hidden="true">2.1.</strong> Server Configuration</a></li><li class="chapter-item expanded "><a href="security_hardening.html"><strong aria-hidden="true">2.2.</strong> Security Hardening</a></li></ol></li><li class="chapter-item expanded "><a href="client_tools.html"><strong aria-hidden="true">3.</strong> Client Tools</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installing_client_tools.html"><strong aria-hidden="true">3.1.</strong> Installing client tools</a></li></ol></li><li class="chapter-item expanded "><a href="accounts_and_groups.html"><strong aria-hidden="true">4.</strong> Accounts and Groups</a></li><li class="chapter-item expanded "><a href="administrivia.html"><strong aria-hidden="true">5.</strong> Administrative Tasks</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="monitoring.html"><strong aria-hidden="true">5.1.</strong> Monitoring the platform</a></li><li class="chapter-item expanded "><a href="password_quality.html"><strong aria-hidden="true">5.2.</strong> Password Quality and Badlisting</a></li><li class="chapter-item expanded "><a href="posix_accounts.html"><strong aria-hidden="true">5.3.</strong> POSIX Accounts and Groups</a></li><li class="chapter-item expanded "><a href="ssh_key_dist.html"><strong aria-hidden="true">5.4.</strong> SSH Key Distribution</a></li><li class="chapter-item expanded "><a href="recycle_bin.html"><strong aria-hidden="true">5.5.</strong> The Recycle Bin</a></li></ol></li><li class="chapter-item expanded "><a href="ldap.html"><strong aria-hidden="true">6.</strong> LDAP</a></li><li class="chapter-item expanded "><a href="pam_and_nsswitch.html"><strong aria-hidden="true">7.</strong> PAM and nsswitch</a></li><li class="chapter-item expanded "><a href="radius.html"><strong aria-hidden="true">8.</strong> RADIUS</a></li><li class="chapter-item expanded "><a href="why_tls.html"><strong aria-hidden="true">9.</strong> Why TLS?</a></li><li class="chapter-item expanded "><a href="DEVELOPER_README.html"><strong aria-hidden="true">10.</strong> Developer Guide</a></li></ol>            </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
 
@@ -144,14 +143,96 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="document-not-found-404"><a class="header" href="#document-not-found-404">Document not found (404)</a></h1>
-<p>This URL is invalid, sorry. Please use the navigation bar or search to continue.</p>
+                        <h2 id="configuring-the-server"><a class="header" href="#configuring-the-server">Configuring the Server</a></h2>
+<p>You will also need a config file in the volume named <code>server.toml</code> (Within the container it should be <code>/data/server.toml</code>). Its contents should be as follows:</p>
+<pre><code>#   The webserver bind address. Will use HTTPS if tls_* is provided.
+#   Defaults to &quot;127.0.0.1:8443&quot;
+bindaddress = &quot;[::]:8443&quot;
+#
+#   The read-only ldap server bind address. The server will use LDAPS if tls_* is provided.
+#   Defaults to &quot;&quot; (disabled)
+# ldapbindaddress = &quot;[::]:3636&quot;
+#
+#   The path to the kanidm database.
+db_path = &quot;/data/kanidm.db&quot;
+#
+#   If you have a known filesystem, kanidm can tune sqlite to match. Valid choices are:
+#   [zfs, other]
+#   If you are unsure about this leave it as the default (other). After changing this
+#   value you must run a vacuum task.
+#   - zfs:
+#     * sets sqlite pagesize to 64k. You must set recordsize=64k on the zfs filesystem.
+#   - other:
+#     * sets sqlite pagesize to 4k, matching most filesystems block sizes.
+# db_fs_type = &quot;zfs&quot;
+#
+#   The number of entries to store in the in-memory cache. Minimum value is 256. If unset
+#   an automatic heuristic is used to scale this.
+# db_arc_size = 2048
+#
+#   TLS chain and key in pem format. Both must be commented, or both must be present
+# tls_chain = &quot;/data/chain.pem&quot;
+# tls_key = &quot;/data/key.pem&quot;
+#
+#   The log level of the server. May be default, verbose, perfbasic, perffull
+#   Defaults to &quot;default&quot;
+# log_level = &quot;default&quot;
+#
+#   The origin for webauthn. This is the url to the server, with the port included if
+#   it is non-standard (any port except 443)
+# origin = &quot;https://idm.example.com&quot;
+origin = &quot;https://idm.example.com:8443&quot;
+#
+#
+# [online_backup]
+#   The path to the output folder for online backups
+# path = &quot;/var/lib/kanidm/backups/&quot;
+#   The schedule to run online backups - see https://crontab.guru/
+#   every day at 22:00 UTC (default)
+# schedule = &quot;00 22 * * *&quot;
+#    four times a day at 3 minutes past the hour, every 6th hours
+# schedule = &quot;03 */6 * * *&quot;
+#   Number of backups to keep (default 7)
+# versions = 7
+#
+#
+#   The role of this server. This affects features available and how replication may interact.
+#   Valid roles are:
+#   - WriteReplica
+#     This server provides all functionality of Kanidm. It allows authentication, writes, and
+#     the web user interface to be served.
+#   - WriteReplicaNoUI
+#     This server is the same as a WriteReplica, but does NOT offer the web user interface.
+#   - ReadOnlyReplica
+#     This server will not writes initiated by clients. It supports authentication and reads,
+#     and must have a replication agreement as a source of it's data.
+#   Defaults to &quot;WriteReplica&quot;.
+# role = &quot;WriteReplica&quot;
+</code></pre>
+<p>An example is located in <a href="../../examples/server.toml">examples/server.toml</a>.</p>
+<p>Then you can setup the initial admin account and initialise the database into your volume.</p>
+<pre><code>docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
+</code></pre>
+<p>You then want to set your domain name so that security principal names (spn's) are generated correctly.
+This domain name <em>must</em> match the url/origin of the server that you plan to use to interact with
+so that other features work correctly. It is possible to change this domain name later.</p>
+<pre><code>docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml -n idm.example.com
+</code></pre>
+<p>Now we can run the server so that it can accept connections. This defaults to using <code>-c /data/server.toml</code></p>
+<pre><code>docker run -p 8443:8443 -v kanidmd:/data kanidm/server:latest
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
+                                                    <a rel="prev" href="installing_the_server.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
                         
+                                                    <a rel="next" href="security_hardening.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
                         
                         <div style="clear: both"></div>
                     </nav>
@@ -159,7 +240,13 @@
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                                    <a rel="prev" href="installing_the_server.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
                 
+                                    <a rel="next" href="security_hardening.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
                             </nav>
 
         </div>
