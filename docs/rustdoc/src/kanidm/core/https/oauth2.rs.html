@@ -372,10 +372,10 @@
 <span id="370">370</span>
 <span id="371">371</span>
 <span id="372">372</span>
+<span id="373">373</span>
 </pre><pre class="rust">
-<span class="kw">use</span> <span class="kw">super</span>::{
-    <span class="ident">json_rest_event_get</span>, <span class="ident">json_rest_event_post</span>, <span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>,
-};
+<span class="kw">use</span> <span class="kw">super</span><span class="ident">::v1</span>::{<span class="ident">json_rest_event_get</span>, <span class="ident">json_rest_event_post</span>};
+<span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::idm::oauth2</span>::{
     <span class="ident">AccessTokenRequest</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>, <span class="ident">ErrorResponse</span>, <span class="ident">Oauth2Error</span>,
 };
@@ -589,8 +589,6 @@
         }
     }
     .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
-        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Cache-Control&quot;</span>, <span class="string">&quot;no-store&quot;</span>);
-        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Pragma&quot;</span>, <span class="string">&quot;no-cache&quot;</span>);
         <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
         <span class="ident">res</span>
     })
@@ -665,8 +663,6 @@
             <span class="ident">tide::Response::new</span>(<span class="number">500</span>)
         }
     };
-    <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Cache-Control&quot;</span>, <span class="string">&quot;no-store&quot;</span>);
-    <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Pragma&quot;</span>, <span class="string">&quot;no-cache&quot;</span>);
     <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
     <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
 }
@@ -734,11 +730,17 @@
         }
     }
     .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
-        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Cache-Control&quot;</span>, <span class="string">&quot;no-store&quot;</span>);
-        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Pragma&quot;</span>, <span class="string">&quot;no-cache&quot;</span>);
         <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
         <span class="ident">res</span>
     })
+}
+
+<span class="comment">// For future openid integration</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_openid_configuration</span>(<span class="ident">_req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+    <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/html;charset=utf-8&quot;</span>);
+    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="string">&quot;&quot;</span>);
+    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
 }
 
 <span class="comment">/*
