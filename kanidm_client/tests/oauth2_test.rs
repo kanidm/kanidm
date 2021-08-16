@@ -7,6 +7,30 @@ use oauth2_ext::PkceCodeChallenge;
 use std::collections::HashMap;
 use url::Url;
 
+macro_rules! assert_no_cache {
+    ($response:expr) => {{
+        // Check we have correct nocache headers.
+        let cache_header: &str = $response
+            .headers()
+            .get("cache-control")
+            .expect("missing cache-control header")
+            .to_str()
+            .expect("invalid cache-control header");
+
+        assert!(cache_header.contains("no-store"));
+        assert!(cache_header.contains("max-age=0"));
+
+        let pragma_header: &str = $response
+            .headers()
+            .get("pragma")
+            .expect("missing cache-control header")
+            .to_str()
+            .expect("invalid cache-control header");
+
+        assert!(pragma_header.contains("no-cache"));
+    }};
+}
+
 #[test]
 fn test_oauth2_basic_flow() {
     run_test(|rsclient: KanidmClient| {
@@ -73,6 +97,7 @@ fn test_oauth2_basic_flow() {
                 .expect("Failed to send request.");
 
             assert!(response.status() == reqwest::StatusCode::OK);
+            assert_no_cache!(response);
 
             let consent_req: ConsentRequest = response
                 .json()
@@ -92,6 +117,7 @@ fn test_oauth2_basic_flow() {
 
             // This should yield a 302 redirect with some query params.
             assert!(response.status() == reqwest::StatusCode::FOUND);
+            assert_no_cache!(response);
 
             // And we should have a URL in the location header.
             let redir_str = response
@@ -134,6 +160,7 @@ fn test_oauth2_basic_flow() {
                 .expect("Failed to send code exchange request.");
 
             assert!(response.status() == reqwest::StatusCode::OK);
+            assert_no_cache!(response);
 
             // The body is a json AccessTokenResponse
 
