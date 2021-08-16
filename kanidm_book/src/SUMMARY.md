@@ -2,7 +2,7 @@
 
 - [Introduction to Kanidm](./intro.md)
 - [Installing the Server](./installing_the_server.md)
-  - [Server Configuration](./installing_the_server.md)
+  - [Server Configuration](./server_configuration.md)
   - [Security Hardening](./security_hardening.md)
 
 
