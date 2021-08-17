@@ -1238,7 +1238,7 @@ mod tests {
             };
 
             // expire the account, check it's enforced.
-            std::mem::drop(idms_prox_read);
+            drop(idms_prox_read);
 
             let idms_prox_write = idms.proxy_write(ct);
 
