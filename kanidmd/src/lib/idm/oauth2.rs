@@ -515,17 +515,20 @@ impl Oauth2ResourceServersReadTransaction {
         // We are now GOOD TO GO! 🥳
 
         // Later we need to limit this and use refresh tokens.
-        let iat = (OffsetDateTime::unix_epoch() + ct).unix_timestamp();
-        let exp = code_xchg.uat.expiry.unix_timestamp();
+        let issued_at = (OffsetDateTime::unix_epoch() + ct).unix_timestamp();
+        let expiry = code_xchg.uat.expiry.unix_timestamp();
 
         // Used in the access token response.
-let expires_in = exp.checked_sub(iat).ok_or_else(|| {
-    lsecurity!(
-        audit,
-        "User Auth Token has expired before we could publish the oauth2 response"
-    )
-    Oauth2Error::AccessDenied
-)?;
+        let expires_in = expiry
+            .checked_sub(issued_at)
+            .and_then(|r| if r.is_negative() { None } else { Some(r) })
+            .ok_or_else(|| {
+                lsecurity!(
+                    audit,
+                    "User Auth Token has expired before we could publish the oauth2 response"
+                );
+                Oauth2Error::AccessDenied
+            })?;
 
         // Convert the uat into an oauth2 token from the code_xchg.uat
         let ouat = Oauth2UserToken {
@@ -533,11 +536,11 @@ let expires_in = exp.checked_sub(iat).ok_or_else(|| {
             session_id: code_xchg.uat.session_id,
             auth_type: code_xchg.uat.auth_type.clone(),
             oidc_token: OpenIDConnectToken {
-                sub: code_xchg.uat.uuid,
-                iss: self.inner.origin.clone(),
-                exp: code_xchg.uat.expiry.unix_timestamp(),
-                iat,
-                aud: vec![rsbasic.name.clone(), rsbasic.origin.ascii_serialization()],
+                subject: code_xchg.uat.uuid,
+                issuer: self.inner.origin.clone(),
+                expiry,
+                issued_at,
+                audience: vec![rsbasic.name.clone(), rsbasic.origin.ascii_serialization()],
                 auth_time: code_xchg.uat.issued_at.unix_timestamp(),
                 nonce: None,
                 acr: None,
@@ -551,7 +554,7 @@ let expires_in = exp.checked_sub(iat).ok_or_else(|| {
                 client_id: rsbasic.name.clone(),
                 jti: None,
                 // Can't be used before now!
-                nbf: Some(iat),
+                not_before: Some(issued_at),
             },
         };
 
@@ -615,7 +618,7 @@ let expires_in = exp.checked_sub(iat).ok_or_else(|| {
         // Is it still valid? This applies to both the token AND the account
         // that the token references.
 
-        if (time::OffsetDateTime::unix_epoch() + ct).unix_timestamp() >= ouat.oidc_token.exp {
+        if (time::OffsetDateTime::unix_epoch() + ct).unix_timestamp() >= ouat.oidc_token.expiry {
             lsecurity!(audit, "Token expired");
             // We return an inactive response here.
             return Ok(IntrospectionResponse::Invalid { active: false });
@@ -623,7 +626,7 @@ let expires_in = exp.checked_sub(iat).ok_or_else(|| {
 
         let entry = idm_read
             .get_qs_txn()
-            .internal_search_uuid(audit, &ouat.oidc_token.sub)
+            .internal_search_uuid(audit, &ouat.oidc_token.subject)
             .map_err(|e| {
                 ladmin_error!(audit, "from_ro_uat failed {:?}", e);
                 Oauth2Error::InvalidRequest
@@ -1226,7 +1229,7 @@ mod tests {
                 .is_err());
 
             // Now check if the time has passed to session exp
-            let exp = Duration::from_secs(token.oidc_token.exp as u64 + 1);
+            let exp = Duration::from_secs(token.oidc_token.expiry as u64 + 1);
 
             let r2 =
                 idms_prox_read.check_oauth2_token_introspect(audit, &client_authz, &good_req, exp);

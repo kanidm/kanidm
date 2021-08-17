@@ -172,11 +172,10 @@ impl Account {
 
         // TODO: Apply policy to this expiry time.
         let expiry = OffsetDateTime::unix_epoch() + ct + Duration::from_secs(AUTH_SESSION_EXPIRY);
-        let issued_at = OffsetDateTime::unix_epoch() + ct;
 
         Some(UserAuthToken {
             session_id,
-            issued_at,
+            issued_at: OffsetDateTime::unix_epoch() + ct,
             expiry,
             // name: self.name.clone(),
             spn: self.spn.clone(),

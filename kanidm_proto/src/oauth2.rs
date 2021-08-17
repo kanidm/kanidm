@@ -131,11 +131,11 @@ pub struct OpenIDConnectToken {
     #[serde(rename = "iss")]
     pub issuer: String,
     #[serde(rename = "exp")]
-    pub expiryf: i64,
+    pub expiry: i64,
     #[serde(rename = "iat")]
-    pub time_issued: i64,
+    pub issued_at: i64,
     #[serde(rename = "aud")]
-    pub intended_audience: Vec<String>,
+    pub audience: Vec<String>,
     pub auth_time: i64,
     //
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -165,6 +165,6 @@ pub struct Oauth2Rfc7662 {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jti: Option<String>,
     // not before
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub nbf: Option<i64>,
+    #[serde(rename = "nbf", skip_serializing_if = "Option::is_none")]
+    pub not_before: Option<i64>,
 }
