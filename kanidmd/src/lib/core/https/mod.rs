@@ -394,11 +394,9 @@ pub fn create_https_server(
         .post(oauth2_authorise_permit_post)
         .get(oauth2_authorise_permit_get);
     oauth2_process.at("/token").post(oauth2_token_post);
-    /*
     oauth2_process
         .at("/token/introspect")
-        .get(oauth2_token_introspect_get);
-    */
+        .post(oauth2_token_introspect_post);
 
     let mut raw_route = appserver.at("/v1/raw");
     raw_route.at("/create").post(create);

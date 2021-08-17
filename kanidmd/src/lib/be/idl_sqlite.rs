@@ -1039,7 +1039,7 @@ impl IdlSqliteWriteTransaction {
             Some(k) => self
                 .conn
                 .prepare("INSERT OR REPLACE INTO idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)")
-                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids), (":rdn", &k)]))
+                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids), (":rdn", k)]))
                 .map(|_| ())
                 .map_err(|e| {
                     ladmin_error!(audit, "SQLite Error {:?}", e);
@@ -1290,17 +1290,14 @@ impl IdlSqliteWriteTransaction {
     // ===== inner helpers =====
     // Some of these are not self due to use in new()
     fn get_db_version_key(&self, key: &str) -> i64 {
-        match self.conn.query_row(
-            "SELECT version FROM db_version WHERE id = :id",
-            &[(":id", &key)],
-            |row| row.get(0),
-        ) {
-            Ok(e) => e,
-            Err(_) => {
-                // The value is missing, default to 0.
-                0
-            }
-        }
+        self.conn
+            .query_row(
+                "SELECT version FROM db_version WHERE id = :id",
+                &[(":id", &key)],
+                |row| row.get(0),
+            )
+            .unwrap_or(0)
+        // The value is missing, default to 0.
     }
 
     fn set_db_version_key(&self, key: &str, v: i64) -> Result<(), rusqlite::Error> {

@@ -60,7 +60,7 @@ impl RadiusAccount {
                 OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
             })?;
 
-        let groups = Group::try_from_account_entry_red_ro(au, &value, qs)?;
+        let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
 
         let valid_from = value.get_ava_single_datetime("account_valid_from");
 

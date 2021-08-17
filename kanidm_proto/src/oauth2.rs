@@ -1,4 +1,6 @@
+use crate::v1::AuthType;
 use url::Url;
+use uuid::Uuid;
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
@@ -68,7 +70,7 @@ pub struct AccessTokenResponse {
     // Enum?
     pub token_type: String,
     // seconds.
-    pub expires_in: u32,
+    pub expires_in: i64,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub refresh_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -84,4 +86,85 @@ pub struct ErrorResponse {
     pub error_description: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error_uri: Option<Url>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct IntrospectionRequest {
+    pub token: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_type_hint: Option<String>,
+}
+
+// Revoked is just active-false.
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(untagged)]
+pub enum IntrospectionResponse {
+    Active {
+        active: bool,
+        #[serde(flatten)]
+        token: Oauth2UserToken,
+    },
+    Invalid {
+        active: bool,
+    },
+}
+
+// Kani extensions + oidc + rfc7662 introspect
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Oauth2UserToken {
+    // Kani extensions
+    pub spn: String,
+    pub session_id: Uuid,
+    pub auth_type: AuthType,
+    #[serde(flatten)]
+    pub oidc_token: OpenIDConnectToken,
+    #[serde(flatten)]
+    pub rfc7662: Oauth2Rfc7662,
+}
+
+// oidc id token
+// https://openid.net/specs/openid-connect-core-1_0.html#IDToken
+#[derive(Serialize, Deserialize, Debug)]
+pub struct OpenIDConnectToken {
+    #[serde(rename = "sub")]
+    pub subject: Uuid,
+    #[serde(rename = "iss")]
+    pub issuer: String,
+    #[serde(rename = "exp")]
+    pub expiry: i64,
+    #[serde(rename = "iat")]
+    pub issued_at: i64,
+    #[serde(rename = "aud")]
+    pub audience: Vec<String>,
+    pub auth_time: i64,
+    //
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<String>,
+    // auth context?
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acr: Option<String>,
+    // how it was auth / could come from authtype instead?
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub amr: Option<String>,
+    // not needed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub azp: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Oauth2Rfc7662 {
+    // rfc 7662 - most of this come from openidconnect token, these
+    // are just the missing values.
+
+    // space seperated scopes.
+    pub token_type: String,
+    pub username: String,
+    pub scope: String,
+    pub client_id: String,
+    // string identifier of the token
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jti: Option<String>,
+    // not before
+    #[serde(rename = "nbf", skip_serializing_if = "Option::is_none")]
+    pub not_before: Option<i64>,
 }

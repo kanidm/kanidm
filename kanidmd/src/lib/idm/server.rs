@@ -16,7 +16,8 @@ use crate::idm::event::{
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess,
-    ConsentRequest, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    ConsentRequest, IntrospectionRequest, IntrospectionResponse, Oauth2Error,
+    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
 };
 use crate::idm::radius::RadiusAccount;
@@ -62,7 +63,6 @@ use concread::{
     hashmap::HashMap,
 };
 use rand::prelude::*;
-use std::convert::TryFrom;
 use std::{sync::Arc, time::Duration};
 use url::Url;
 
@@ -191,7 +191,7 @@ impl IdmServer {
 
         let webauthn = Webauthn::new(WebauthnDomainConfig {
             rp_name,
-            origin,
+            origin: origin.clone(),
             rp_id,
         });
 
@@ -204,7 +204,7 @@ impl IdmServer {
             })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
-        let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set).map_err(|e| {
+        let oauth2rs = Oauth2ResourceServers::try_new(oauth2rs_set, origin).map_err(|e| {
             ladmin_error!(au, "Failed to load oauth2 resource servers - {:?}", e);
             e
         })?;
@@ -360,7 +360,7 @@ pub trait IdmServerTransaction<'a> {
             token
                 .ok_or(OperationError::NotAuthenticated)
                 .and_then(|token| {
-                    bref.verify(&token).map_err(|e| {
+                    bref.verify(token).map_err(|e| {
                         lsecurity!(audit, "Unable to verify token - {:?}", e);
                         OperationError::NotAuthenticated
                     })
@@ -391,11 +391,7 @@ pub trait IdmServerTransaction<'a> {
 
         // #59: If the account is expired, do not allow the event
         // to proceed
-        let valid = Account::check_within_valid_time(
-            ct,
-            entry.get_ava_single_datetime("account_valid_from").as_ref(),
-            entry.get_ava_single_datetime("account_expire").as_ref(),
-        );
+        let valid = Account::entry_within_valid_time(ct, &entry);
 
         if !valid {
             lsecurity!(
@@ -1075,6 +1071,17 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         self.oauth2rs
             .check_oauth2_token_exchange(audit, client_authz, token_req, ct)
+    }
+
+    pub fn check_oauth2_token_introspect(
+        &self,
+        audit: &mut AuditScope,
+        client_authz: &str,
+        token_req: &IntrospectionRequest,
+        ct: Duration,
+    ) -> Result<IntrospectionResponse, Oauth2Error> {
+        self.oauth2rs
+            .check_oauth2_token_introspect(audit, client_authz, token_req, ct, self)
     }
 }
 

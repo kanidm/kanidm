@@ -6,6 +6,8 @@
 //!
 
 use crate::identity::IdentityId;
+use crate::idm::account::Account;
+use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use concread::cowcell::*;
 use fernet::Fernet;
@@ -18,10 +20,10 @@ use webauthn_rs::base64_data::Base64UrlSafeData;
 
 pub use kanidm_proto::oauth2::{
     AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod,
-    ConsentRequest, ErrorResponse,
+    ConsentRequest, ErrorResponse, IntrospectionRequest, IntrospectionResponse, Oauth2Rfc7662,
+    Oauth2UserToken, OpenIDConnectToken,
 };
 
-use std::convert::TryFrom;
 use std::time::Duration;
 
 lazy_static! {
@@ -130,6 +132,7 @@ pub enum Oauth2RS {
 
 #[derive(Clone)]
 struct Oauth2RSInner {
+    origin: String,
     fernet: Fernet,
     rs_set: HashMap<String, Oauth2RS>,
 }
@@ -146,14 +149,16 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, Oauth2RSInner>,
 }
 
-impl TryFrom<Vec<EntrySealedCommitted>> for Oauth2ResourceServers {
-    type Error = OperationError;
-
-    fn try_from(value: Vec<EntrySealedCommitted>) -> Result<Self, Self::Error> {
+impl Oauth2ResourceServers {
+    pub fn try_new(
+        value: Vec<EntrySealedCommitted>,
+        origin: String,
+    ) -> Result<Self, OperationError> {
         let fernet =
             Fernet::new(&Fernet::generate_key()).ok_or(OperationError::CryptographyError)?;
         let oauth2rs = Oauth2ResourceServers {
             inner: CowCell::new(Oauth2RSInner {
+                origin,
                 fernet,
                 rs_set: HashMap::new(),
             }),
@@ -164,9 +169,7 @@ impl TryFrom<Vec<EntrySealedCommitted>> for Oauth2ResourceServers {
         oauth2rs_wr.commit();
         Ok(oauth2rs)
     }
-}
 
-impl Oauth2ResourceServers {
     pub fn read(&self) -> Oauth2ResourceServersReadTransaction {
         Oauth2ResourceServersReadTransaction {
             inner: self.inner.read(),
@@ -209,7 +212,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .get_ava_single_secret("oauth2_rs_basic_token_key")
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key| {
-                            Fernet::new(&key).ok_or(OperationError::CryptographyError)
+                            Fernet::new(key).ok_or(OperationError::CryptographyError)
                         })?;
 
                     // Currently unsure if this is how I want to handle this.
@@ -402,21 +405,11 @@ impl Oauth2ResourceServersReadTransaction {
         })
     }
 
-    pub fn check_oauth2_token_exchange(
+    fn oauth2_authz_basic(
         &self,
         audit: &mut AuditScope,
         client_authz: &str,
-        token_req: &AccessTokenRequest,
-        ct: Duration,
-    ) -> Result<AccessTokenResponse, Oauth2Error> {
-        if token_req.grant_type != "authorization_code" {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 grant_type (should be 'authorization_code')"
-            );
-            return Err(Oauth2Error::InvalidRequest);
-        }
-
+    ) -> Result<&Oauth2RSBasic, Oauth2Error> {
         // Check the client_authz
         let authz = base64::decode(&client_authz)
             .map_err(|_| {
@@ -450,16 +443,35 @@ impl Oauth2ResourceServersReadTransaction {
         })?;
 
         // check the secret.
-        let o2rs_fernet = match o2rs {
+        match o2rs {
             Oauth2RS::Basic(rsbasic) => {
                 if rsbasic.authz_secret != secret {
                     lsecurity!(audit, "Invalid oauth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
                 // We are authenticated! Yay! Now we can actually check things ...
-                &rsbasic.token_fernet
+                Ok(rsbasic)
             }
-        };
+        }
+    }
+
+    pub fn check_oauth2_token_exchange(
+        &self,
+        audit: &mut AuditScope,
+        client_authz: &str,
+        token_req: &AccessTokenRequest,
+        ct: Duration,
+    ) -> Result<AccessTokenResponse, Oauth2Error> {
+        if token_req.grant_type != "authorization_code" {
+            ladmin_warning!(
+                audit,
+                "Invalid oauth2 grant_type (should be 'authorization_code')"
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
+        let rsbasic = self.oauth2_authz_basic(audit, client_authz)?;
+        let o2rs_fernet = &rsbasic.token_fernet;
 
         // Check the token_req is within the valid time, and correctly signed for
         // this client.
@@ -499,24 +511,56 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // We are now GOOD TO GO!
-        // Use this to grant the access token response.
-        let odt_ct = OffsetDateTime::unix_epoch() + ct;
+        // =====================================================
+        // We are now GOOD TO GO! 🥳
 
-        let expires_in = if code_xchg.uat.expiry > odt_ct {
-            // Becomes a duration.
-            (code_xchg.uat.expiry - odt_ct).whole_seconds() as u32
-        } else {
-            lsecurity!(
-                audit,
-                "User Auth Token has expired before we could publish the oauth2 response"
-            );
-            return Err(Oauth2Error::AccessDenied);
+        // Later we need to limit this and use refresh tokens.
+        let issued_at = (OffsetDateTime::unix_epoch() + ct).unix_timestamp();
+        let expiry = code_xchg.uat.expiry.unix_timestamp();
+
+        // Used in the access token response.
+        let expires_in = expiry
+            .checked_sub(issued_at)
+            .and_then(|r| if r.is_negative() { None } else { Some(r) })
+            .ok_or_else(|| {
+                lsecurity!(
+                    audit,
+                    "User Auth Token has expired before we could publish the oauth2 response"
+                );
+                Oauth2Error::AccessDenied
+            })?;
+
+        // Convert the uat into an oauth2 token from the code_xchg.uat
+        let ouat = Oauth2UserToken {
+            spn: code_xchg.uat.spn.clone(),
+            session_id: code_xchg.uat.session_id,
+            auth_type: code_xchg.uat.auth_type.clone(),
+            oidc_token: OpenIDConnectToken {
+                subject: code_xchg.uat.uuid,
+                issuer: self.inner.origin.clone(),
+                expiry,
+                issued_at,
+                audience: vec![rsbasic.name.clone(), rsbasic.origin.ascii_serialization()],
+                auth_time: code_xchg.uat.issued_at.unix_timestamp(),
+                nonce: None,
+                acr: None,
+                amr: None,
+                azp: None,
+            },
+            rfc7662: Oauth2Rfc7662 {
+                token_type: "access_token".to_string(),
+                username: code_xchg.uat.displayname,
+                scope: "".to_string(),
+                client_id: rsbasic.name.clone(),
+                jti: None,
+                // Can't be used before now!
+                not_before: Some(issued_at),
+            },
         };
 
-        let access_token = serde_json::to_vec(&code_xchg.uat)
+        let access_token = serde_json::to_vec(&ouat)
             .map_err(|e| {
-                ladmin_error!(audit, "Unable to encode uat data {:?}", e);
+                ladmin_error!(audit, "Unable to encode oauth uat data {:?}", e);
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })
             .map(|data| o2rs_fernet.encrypt_at_time(&data, ct.as_secs()))?;
@@ -529,13 +573,87 @@ impl Oauth2ResourceServersReadTransaction {
             scope: None,
         })
     }
+
+    pub fn check_oauth2_token_introspect(
+        &self,
+        audit: &mut AuditScope,
+        client_authz: &str,
+        token_req: &IntrospectionRequest,
+        ct: Duration,
+        idm_read: &IdmServerProxyReadTransaction<'_>,
+    ) -> Result<IntrospectionResponse, Oauth2Error> {
+        // Check the client_authz
+        // Get our client handle
+
+        let rsbasic = self.oauth2_authz_basic(audit, client_authz)?;
+        let o2rs_fernet = &rsbasic.token_fernet;
+
+        // Check the token_req / type
+        if let Some(token_type_hint) = token_req.token_type_hint.as_ref() {
+            if token_type_hint != "access_token" {
+                ladmin_warning!(
+                    audit,
+                    "Invalid oauth2 token_type_hint (should be 'access_token' or not set)"
+                );
+                return Err(Oauth2Error::InvalidRequest);
+            }
+        }
+
+        // Can we decrypt the uat with our client handle?
+        // token_req.token
+
+        let ouat: Oauth2UserToken = o2rs_fernet
+            .decrypt(&token_req.token)
+            .map_err(|e| {
+                lsecurity!(audit, "Failed to decrypt token - {:?}", e);
+                Oauth2Error::InvalidRequest
+            })
+            .and_then(|data| {
+                serde_json::from_slice(&data).map_err(|e| {
+                    ladmin_error!(audit, "Failed to deserialise token - {:?}", e);
+                    Oauth2Error::ServerError(OperationError::SerdeJsonError)
+                })
+            })?;
+
+        // Is it still valid? This applies to both the token AND the account
+        // that the token references.
+
+        if (time::OffsetDateTime::unix_epoch() + ct).unix_timestamp() >= ouat.oidc_token.expiry {
+            lsecurity!(audit, "Token expired");
+            // We return an inactive response here.
+            return Ok(IntrospectionResponse::Invalid { active: false });
+        }
+
+        let entry = idm_read
+            .get_qs_txn()
+            .internal_search_uuid(audit, &ouat.oidc_token.subject)
+            .map_err(|e| {
+                ladmin_error!(audit, "from_ro_uat failed {:?}", e);
+                Oauth2Error::InvalidRequest
+            })?;
+
+        if !Account::entry_within_valid_time(ct, &entry) {
+            lsecurity!(audit, "Account expired");
+            // We return an inactive response here.
+            return Ok(IntrospectionResponse::Invalid { active: false });
+        }
+
+        lsecurity!(audit, "Token active");
+        // Generate the response structure.
+        Ok(IntrospectionResponse::Active {
+            active: true,
+            token: ouat,
+        })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
+    use crate::event::ModifyEvent;
     use crate::idm::oauth2::Oauth2Error;
     use crate::idm::server::{IdmServer, IdmServerTransaction};
+    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
 
     use kanidm_proto::oauth2::*;
@@ -1016,6 +1134,143 @@ mod tests {
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
+        })
+    }
+
+    #[test]
+    fn test_idm_oauth2_token_introspection_requests() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed,
+                       audit: &mut AuditScope| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+
+            let idms_prox_read = idms.proxy_read();
+            // First we need a valid session.
+
+            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+            let consent_request = good_authorisation_request!(
+                audit,
+                idms_prox_read,
+                &ident,
+                &uat,
+                ct,
+                code_challenge
+            );
+
+            let permit_success = idms_prox_read
+                .check_oauth2_authorise_permit(
+                    audit,
+                    &ident,
+                    &uat,
+                    &consent_request.consent_token,
+                    ct,
+                )
+                .expect("Failed to perform oauth2 permit");
+
+            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
+            let token_req = AccessTokenRequest {
+                grant_type: "authorization_code".to_string(),
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                client_id: None,
+                // From the first step.
+                code_verifier,
+            };
+
+            let token_response = idms_prox_read
+                .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                .expect("Failed to perform oauth2 token exchange");
+
+            assert!(token_response.token_type == "bearer");
+
+            // Check a good req
+            let good_req = IntrospectionRequest {
+                token: token_response.access_token.clone(),
+                token_type_hint: None,
+            };
+            let r1 =
+                idms_prox_read.check_oauth2_token_introspect(audit, &client_authz, &good_req, ct);
+
+            let token = if let Ok(IntrospectionResponse::Active { active, token }) = r1 {
+                assert!(active);
+                token
+            } else {
+                panic!();
+            };
+
+            assert!(token.spn == uat.spn);
+
+            // Check some invalid requests
+            assert!(idms_prox_read
+                .check_oauth2_token_introspect(
+                    audit,
+                    &client_authz,
+                    &IntrospectionRequest {
+                        token: token_response.access_token.clone(),
+                        token_type_hint: Some("cheese".to_string()),
+                    },
+                    ct
+                )
+                .is_err());
+
+            assert!(idms_prox_read
+                .check_oauth2_token_introspect(
+                    audit,
+                    &client_authz,
+                    &IntrospectionRequest {
+                        token: "".to_string(),
+                        token_type_hint: None,
+                    },
+                    ct
+                )
+                .is_err());
+
+            // Now check if the time has passed to session exp
+            let exp = Duration::from_secs(token.oidc_token.expiry as u64 + 1);
+
+            let r2 =
+                idms_prox_read.check_oauth2_token_introspect(audit, &client_authz, &good_req, exp);
+
+            if let Ok(IntrospectionResponse::Invalid { active }) = r2 {
+                assert!(!active);
+            } else {
+                panic!();
+            };
+
+            // expire the account, check it's enforced.
+            drop(idms_prox_read);
+
+            let idms_prox_write = idms.proxy_write(ct);
+
+            let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
+
+            let me_inv_m = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                    ModifyList::new_list(vec![Modify::Present(
+                        AttrString::from("account_expire"),
+                        v_expire,
+                    )]),
+                )
+            };
+            // go!
+            assert!(idms_prox_write.qs_write.modify(audit, &me_inv_m).is_ok());
+
+            idms_prox_write.commit(audit).expect("Must not fail");
+
+            let idms_prox_read = idms.proxy_read();
+
+            let r2 =
+                idms_prox_read.check_oauth2_token_introspect(audit, &client_authz, &good_req, ct);
+
+            if let Ok(IntrospectionResponse::Invalid { active }) = r2 {
+                assert!(!active);
+            } else {
+                panic!();
+            };
         })
     }
 }

@@ -175,10 +175,11 @@ impl Account {
 
         Some(UserAuthToken {
             session_id,
+            issued_at: OffsetDateTime::unix_epoch() + ct,
             expiry,
             // name: self.name.clone(),
             spn: self.spn.clone(),
-            // displayname: self.displayname.clone(),
+            displayname: self.displayname.clone(),
             uuid: self.uuid,
             // application: None,
             // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
@@ -193,7 +194,7 @@ impl Account {
         })
     }
 
-    pub fn check_within_valid_time(
+    fn check_within_valid_time(
         ct: Duration,
         valid_from: Option<&OffsetDateTime>,
         expire: Option<&OffsetDateTime>,
@@ -216,6 +217,14 @@ impl Account {
         };
         // Mix the results
         vmin && vmax
+    }
+
+    pub fn entry_within_valid_time(ct: Duration, entry: &EntrySealedCommitted) -> bool {
+        Self::check_within_valid_time(
+            ct,
+            entry.get_ava_single_datetime("account_valid_from").as_ref(),
+            entry.get_ava_single_datetime("account_expire").as_ref(),
+        )
     }
 
     pub fn is_within_valid_time(&self, ct: Duration) -> bool {
