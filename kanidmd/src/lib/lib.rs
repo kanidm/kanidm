@@ -61,7 +61,7 @@ mod status;
 pub mod config;
 pub mod core;
 
-/// A prelude of imports that should be imported by all other Kanid modules to
+/// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
 pub mod prelude {
     pub use crate::utils::duration_from_epoch_now;
@@ -86,4 +86,4 @@ pub mod prelude {
     pub use crate::value::{IndexType, PartialValue, SyntaxType, Value};
 }
 
-mod tracing_tree;
+pub mod tracing_tree;

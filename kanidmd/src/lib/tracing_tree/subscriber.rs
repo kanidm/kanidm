@@ -7,7 +7,11 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use chrono::{DateTime, Utc};
+use futures::Future;
+use tokio::sync::mpsc::unbounded_channel;
 use tokio::sync::mpsc::UnboundedSender;
+use tokio::task::JoinHandle;
+use tracing::dispatcher::SetGlobalDefaultError;
 use tracing::field::{Field, Visit};
 use tracing::span::{Attributes, Record};
 use tracing::{Event, Id, Level, Metadata, Subscriber};
@@ -16,46 +20,50 @@ use tracing_subscriber::registry::{LookupSpan, Registry, Scope, SpanRef};
 use tracing_subscriber::Layer;
 use uuid::Uuid;
 
-use super::formatter::LogFmt;
-use super::timings::Timer;
+use crate::tracing_tree::processor::TestProcessor;
 
-pub struct TreeSubscriber<E> {
-    inner: Layered<TreeLayer<E>, Registry>,
+use super::formatter::LogFmt;
+use super::processor::{ExportProcessor, Processor};
+use super::timings::Timer;
+use super::EventTag;
+
+pub struct TreeSubscriber<P> {
+    inner: Layered<TreeLayer<P>, Registry>,
 }
 
-struct TreeLayer<E> {
+struct TreeLayer<P> {
     fmt: LogFmt,
-    log_tx: UnboundedSender<TreeProcessor<E>>,
+    processor: P,
 }
 
 #[derive(Debug)]
-pub(crate) struct TreeEvent<E> {
+pub(crate) struct TreeEvent {
     pub timestamp: DateTime<Utc>,
     pub message: String,
     pub level: Level,
-    pub tag: Option<E>,
+    pub tag: Option<EventTag>,
     pub values: Vec<(&'static str, String)>,
 }
 
 #[derive(Debug)]
-struct TreeSpan<E> {
+struct TreeSpan {
     pub timestamp: DateTime<Utc>,
     pub name: &'static str,
-    pub buf: Vec<Tree<E>>,
+    pub buf: Vec<Tree>,
     pub uuid: Option<String>,
     pub out: TreeIo,
 }
 
 #[derive(Debug)]
-enum Tree<E> {
-    Event(TreeEvent<E>),
-    Span(TreeSpan<E>, Duration),
+enum Tree {
+    Event(TreeEvent),
+    Span(TreeSpan, Duration),
 }
 
 #[derive(Debug)]
-pub struct TreeProcessor<E> {
+pub struct TreePreProcessed {
     fmt: LogFmt,
-    logs: Tree<E>,
+    logs: Tree,
 }
 
 #[derive(Debug)]
@@ -65,48 +73,58 @@ pub enum TreeIo {
     File(PathBuf),
 }
 
-pub trait EventTagSet:
-    'static + Send + Sync + fmt::Debug + Copy + TryFrom<u64, Error = ()> + Into<u64>
-{
-    fn pretty(self) -> &'static str;
-
-    fn emoji(self) -> &'static str;
-}
-
-pub(crate) struct TreeSpanProcessed<E> {
+pub(crate) struct TreeSpanProcessed {
     pub timestamp: DateTime<Utc>,
     pub name: &'static str,
-    pub processed_buf: Vec<TreeProcessed<E>>,
+    pub processed_buf: Vec<TreeProcessed>,
     pub uuid: Option<String>,
     pub out: TreeIo,
     pub nested_duration: u64,
     pub total_duration: u64,
 }
 
-pub(crate) enum TreeProcessed<E> {
-    Event(TreeEvent<E>),
-    Span(TreeSpanProcessed<E>),
+pub(crate) enum TreeProcessed {
+    Event(TreeEvent),
+    Span(TreeSpanProcessed),
 }
 
-impl<E: EventTagSet> TreeSubscriber<E> {
-    // Only reason this is public is so we can configure at runtime.
-    pub fn new(fmt: LogFmt, log_tx: UnboundedSender<TreeProcessor<E>>) -> Self {
+impl TreeSubscriber<ExportProcessor> {
+    fn new_with(fmt: LogFmt, sender: UnboundedSender<TreePreProcessed>) -> Self {
+        let layer = TreeLayer {
+            fmt,
+            processor: ExportProcessor::with_sender(sender),
+        };
+
         TreeSubscriber {
-            inner: Registry::default().with(TreeLayer { fmt, log_tx }),
+            inner: Registry::default().with(layer),
         }
+    }
+
+    pub fn new(fmt: LogFmt) -> (Self, impl Future<Output = ()>) {
+        let (log_tx, mut log_rx) = unbounded_channel();
+        let subscriber = TreeSubscriber::new_with(fmt, log_tx);
+        let logger = async move {
+            while let Some(processor) = log_rx.recv().await {
+                processor.process().expect("Failed to write logs");
+            }
+        };
+
+        (subscriber, logger)
     }
 
     // These are the preferred constructors.
     #[allow(dead_code)]
-    pub fn json(log_tx: UnboundedSender<TreeProcessor<E>>) -> Self {
-        TreeSubscriber::new(LogFmt::Json, log_tx)
+    pub fn json() -> (Self, impl Future<Output = ()>) {
+        TreeSubscriber::new(LogFmt::Json)
     }
 
     #[allow(dead_code)]
-    pub fn pretty(log_tx: UnboundedSender<TreeProcessor<E>>) -> Self {
-        TreeSubscriber::new(LogFmt::Pretty, log_tx)
+    pub fn pretty() -> (Self, impl Future<Output = ()>) {
+        TreeSubscriber::new(LogFmt::Pretty)
     }
+}
 
+impl<P: Processor> TreeSubscriber<P> {
     #[allow(dead_code)]
     pub fn thread_operation_id(&self) -> Option<Uuid> {
         let current = self.inner.current_span();
@@ -121,7 +139,7 @@ impl<E: EventTagSet> TreeSubscriber<E> {
             let extensions = span.extensions();
             // If `uuid` is `None`, then we keep searching.
             let uuid = extensions
-                .get::<TreeSpan<E>>()
+                .get::<TreeSpan>()
                 .expect("Span buffer not found, this is a bug")
                 .uuid
                 .as_ref()?;
@@ -131,7 +149,7 @@ impl<E: EventTagSet> TreeSubscriber<E> {
     }
 }
 
-impl<E: EventTagSet> Subscriber for TreeSubscriber<E> {
+impl<P: Processor> Subscriber for TreeSubscriber<P> {
     fn enabled(&self, metadata: &Metadata) -> bool {
         self.inner.enabled(metadata)
     }
@@ -182,28 +200,25 @@ impl<E: EventTagSet> Subscriber for TreeSubscriber<E> {
     }
 }
 
-impl<E: EventTagSet> TreeLayer<E> {
-    fn log_to_parent(&self, logs: Tree<E>, parent: Option<SpanRef<Registry>>) {
+impl<P: Processor> TreeLayer<P> {
+    fn log_to_parent(&self, logs: Tree, parent: Option<SpanRef<Registry>>) {
         match parent {
             // The parent exists- write to them
             Some(span) => span
                 .extensions_mut()
-                .get_mut::<TreeSpan<E>>()
+                .get_mut::<TreeSpan>()
                 .expect("Log buffer not found, this is a bug")
                 .log(logs),
             // The parent doesn't exist- send to formatter
-            None => self
-                .log_tx
-                .send(TreeProcessor {
-                    fmt: self.fmt,
-                    logs,
-                })
-                .expect("Processing channel has been closed, cannot log events."),
+            None => self.processor.process(TreePreProcessed {
+                fmt: self.fmt,
+                logs,
+            }),
         }
     }
 }
 
-impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
+impl<P: Processor> Layer<Registry> for TreeLayer<P> {
     fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<Registry>) {
         let span = ctx.span(id).expect("Span not found, this is a bug");
 
@@ -236,7 +251,7 @@ impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
 
         let mut extensions = span.extensions_mut();
 
-        extensions.insert(TreeSpan::<E>::new(name, uuid, out));
+        extensions.insert(TreeSpan::new(name, uuid, out));
         extensions.insert(Timer::new());
     }
 
@@ -278,7 +293,7 @@ impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
         let mut extensions = span.extensions_mut();
 
         let span_buf = extensions
-            .remove::<TreeSpan<E>>()
+            .remove::<TreeSpan>()
             .expect("Span buffer not found, this is a bug");
 
         let duration = extensions
@@ -292,22 +307,22 @@ impl<E: EventTagSet> Layer<Registry> for TreeLayer<E> {
     }
 }
 
-impl<E: EventTagSet> TreeEvent<E> {
+impl TreeEvent {
     fn parse(event: &Event) -> (Self, bool) {
         let timestamp = Utc::now();
         let level = *event.metadata().level();
 
-        struct Visitor<TagSet> {
+        struct Visitor {
             message: String,
-            tag: Option<TagSet>,
+            tag: Option<EventTag>,
             values: Vec<(&'static str, String)>,
             immediate: bool,
         }
 
-        impl<TagSet: EventTagSet> Visit for Visitor<TagSet> {
+        impl Visit for Visitor {
             fn record_u64(&mut self, field: &Field, value: u64) {
                 if field.name() == "event_tag" {
-                    let tag = TagSet::try_from(value).unwrap_or_else(|_| {
+                    let tag = EventTag::try_from(value).unwrap_or_else(|_| {
                         panic!("Invalid `event_tag`: {}, this is a bug", value)
                     });
                     self.tag = Some(tag);
@@ -363,27 +378,31 @@ impl<E: EventTagSet> TreeEvent<E> {
     }
 
     pub(super) fn emoji(&self) -> &'static str {
-        self.tag.map(E::emoji).unwrap_or_else(|| match self.level {
-            Level::ERROR => "🚨",
-            Level::WARN => "🚧",
-            Level::INFO => "💬",
-            Level::DEBUG => "🐛",
-            Level::TRACE => "📍",
-        })
+        self.tag
+            .map(EventTag::emoji)
+            .unwrap_or_else(|| match self.level {
+                Level::ERROR => "🚨",
+                Level::WARN => "🚧",
+                Level::INFO => "💬",
+                Level::DEBUG => "🐛",
+                Level::TRACE => "📍",
+            })
     }
 
     pub(super) fn tag(&self) -> &'static str {
-        self.tag.map(E::pretty).unwrap_or_else(|| match self.level {
-            Level::ERROR => "error",
-            Level::WARN => "warn",
-            Level::INFO => "info",
-            Level::DEBUG => "debug",
-            Level::TRACE => "trace",
-        })
+        self.tag
+            .map(EventTag::pretty)
+            .unwrap_or_else(|| match self.level {
+                Level::ERROR => "error",
+                Level::WARN => "warn",
+                Level::INFO => "info",
+                Level::DEBUG => "debug",
+                Level::TRACE => "trace",
+            })
     }
 }
 
-impl<E> TreeSpan<E> {
+impl TreeSpan {
     fn new(name: &'static str, uuid: Option<String>, out: TreeIo) -> Self {
         TreeSpan {
             timestamp: Utc::now(),
@@ -394,13 +413,13 @@ impl<E> TreeSpan<E> {
         }
     }
 
-    fn log(&mut self, logs: Tree<E>) {
+    fn log(&mut self, logs: Tree) {
         self.buf.push(logs)
     }
 }
 
-impl<E: EventTagSet> Tree<E> {
-    pub fn process(self) -> TreeProcessed<E> {
+impl Tree {
+    pub fn process(self) -> TreeProcessed {
         match self {
             Tree::Event(event) => TreeProcessed::Event(event),
             Tree::Span(span_buf, duration) => {
@@ -438,7 +457,7 @@ impl<E: EventTagSet> Tree<E> {
     }
 }
 
-impl<E: EventTagSet> TreeProcessor<E> {
+impl TreePreProcessed {
     pub fn process(self) -> io::Result<()> {
         let processed_logs = self.logs.process();
         let formatted_logs = self.fmt.format(&processed_logs);
@@ -452,14 +471,13 @@ impl<E: EventTagSet> TreeProcessor<E> {
                 .create(true)
                 .append(true)
                 .write(true)
-                .open(path)
-                .unwrap_or_else(|_| panic!("Failed to open file: {:#?}", path))
+                .open(path)?
                 .write_all(buf),
         }
     }
 }
 
-impl<E: EventTagSet> TreeProcessed<E> {
+impl TreeProcessed {
     fn tree_io(self) -> TreeIo {
         match self {
             TreeProcessed::Event(_) => TreeIo::Stderr,
@@ -469,11 +487,40 @@ impl<E: EventTagSet> TreeProcessed<E> {
 }
 
 // Returns the UUID of the threads current span operation, or None if not in any spans.
+#[allow(dead_code)]
 pub fn operation_id() -> Option<Uuid> {
     tracing::dispatcher::get_default(|dispatch| {
+        // Try to find the release subscriber
         dispatch
-            .downcast_ref::<TreeSubscriber<super::KanidmEventTag>>()
+            .downcast_ref::<TreeSubscriber<ExportProcessor>>()
+            .map(TreeSubscriber::<ExportProcessor>::thread_operation_id)
+            .or_else(|| {
+                // Try to find the testing subscriber
+                dispatch
+                    .downcast_ref::<TreeSubscriber<TestProcessor>>()
+                    .map(TreeSubscriber::<TestProcessor>::thread_operation_id)
+            })
             .expect("operation_id only works for `TreeSubscriber`'s!")
-            .thread_operation_id()
+    })
+}
+
+pub fn main_init() -> JoinHandle<()> {
+    let (subscriber, logger) = TreeSubscriber::pretty();
+    tracing::subscriber::set_global_default(subscriber)
+        .expect("🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨");
+    tokio::spawn(logger)
+}
+
+// This should be used in testing only, because it processes logs on the working thread.
+// The main benefit is that this makes testing much easier, since it can be called in
+// every test without worring about a processing thread in a test holding an `UnboundedReceiver`
+// and then getting dropped, making the global subscriber panic on further attempts to send logs.
+#[allow(dead_code)]
+pub fn test_init() -> Result<(), SetGlobalDefaultError> {
+    tracing::subscriber::set_global_default(TreeSubscriber {
+        inner: Registry::default().with(TreeLayer {
+            fmt: LogFmt::Pretty,
+            processor: TestProcessor {},
+        }),
     })
 }

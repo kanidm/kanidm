@@ -1,8 +1,7 @@
-use super::subscriber::EventTagSet;
 use std::convert::TryFrom;
 
 #[derive(Debug, Clone, Copy)]
-pub enum KanidmEventTag {
+pub enum EventTag {
     AdminError,
     AdminWarn,
     AdminInfo,
@@ -20,29 +19,29 @@ pub enum KanidmEventTag {
     PerfTrace,
 }
 
-impl EventTagSet for KanidmEventTag {
-    fn pretty(self) -> &'static str {
+impl EventTag {
+    pub fn pretty(self) -> &'static str {
         match self {
-            KanidmEventTag::AdminError => "admin.error",
-            KanidmEventTag::AdminWarn => "admin.warn",
-            KanidmEventTag::AdminInfo => "admin.info",
-            KanidmEventTag::RequestError => "request.error",
-            KanidmEventTag::RequestWarn => "request.warn",
-            KanidmEventTag::RequestInfo => "request.info",
-            KanidmEventTag::RequestTrace => "request.trace",
-            KanidmEventTag::SecurityCritical => "security.critical",
-            KanidmEventTag::SecurityInfo => "security.info",
-            KanidmEventTag::SecurityAccess => "security.access",
-            KanidmEventTag::FilterError => "filter.error",
-            KanidmEventTag::FilterWarn => "filter.warn",
-            KanidmEventTag::FilterInfo => "filter.info",
-            KanidmEventTag::FilterTrace => "filter.trace",
-            KanidmEventTag::PerfTrace => "perf.trace",
+            EventTag::AdminError => "admin.error",
+            EventTag::AdminWarn => "admin.warn",
+            EventTag::AdminInfo => "admin.info",
+            EventTag::RequestError => "request.error",
+            EventTag::RequestWarn => "request.warn",
+            EventTag::RequestInfo => "request.info",
+            EventTag::RequestTrace => "request.trace",
+            EventTag::SecurityCritical => "security.critical",
+            EventTag::SecurityInfo => "security.info",
+            EventTag::SecurityAccess => "security.access",
+            EventTag::FilterError => "filter.error",
+            EventTag::FilterWarn => "filter.warn",
+            EventTag::FilterInfo => "filter.info",
+            EventTag::FilterTrace => "filter.trace",
+            EventTag::PerfTrace => "perf.trace",
         }
     }
 
-    fn emoji(self) -> &'static str {
-        use KanidmEventTag::*;
+    pub fn emoji(self) -> &'static str {
+        use EventTag::*;
         match self {
             AdminError | RequestError | FilterError => "🚨",
             AdminWarn | RequestWarn | FilterWarn => "🚧",
@@ -54,9 +53,9 @@ impl EventTagSet for KanidmEventTag {
     }
 }
 
-impl From<KanidmEventTag> for u64 {
-    fn from(tag: KanidmEventTag) -> Self {
-        use KanidmEventTag::*;
+impl From<EventTag> for u64 {
+    fn from(tag: EventTag) -> Self {
+        use EventTag::*;
         match tag {
             AdminError => 0,
             AdminWarn => 1,
@@ -77,11 +76,11 @@ impl From<KanidmEventTag> for u64 {
     }
 }
 
-impl TryFrom<u64> for KanidmEventTag {
+impl TryFrom<u64> for EventTag {
     type Error = ();
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        use KanidmEventTag::*;
+        use EventTag::*;
         match value {
             0 => Ok(AdminError),
             1 => Ok(AdminWarn),

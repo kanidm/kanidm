@@ -811,7 +811,11 @@ impl AuthSession {
                     CredState::Success(auth_type) => {
                         security_info!("Successful cred handling");
                         lsecurity!(au, "Successful cred handling");
-                        let _tracing_id = tracing_tree::operation_id().unwrap(); // TODO: put this in below
+                        // TODO: put the operation id into the call to `to_userauthtoken`
+                        // Can't `unwrap` the uuid until full integration, because some unit tests
+                        // call functions that call this indirectly without opening a span first,
+                        // and this returns `None` when not in a span (and panics if the tree isn't initialized).
+                        let _tracing_id = tracing_tree::operation_id();
                         let uat = self
                             .account
                             .to_userauthtoken(au.uuid, *time, auth_type)
@@ -899,6 +903,7 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use crate::tracing_tree;
     use hashbrown::HashSet;
     pub use std::collections::BTreeSet as Set;
 
@@ -934,6 +939,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_anonymous_auth_mech",
             uuid::Uuid::new_v4(),
@@ -1024,6 +1030,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_simple_password_mech",
             uuid::Uuid::new_v4(),
@@ -1085,6 +1092,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_badlist() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_simple_password_badlist",
             uuid::Uuid::new_v4(),
@@ -1177,6 +1185,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_totp_password_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_totp_password_mech",
             uuid::Uuid::new_v4(),
@@ -1344,6 +1353,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_password_mfa_badlist() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_password_mfa_badlist",
             uuid::Uuid::new_v4(),
@@ -1490,6 +1500,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_only_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_webauthn_only_mech",
             uuid::Uuid::new_v4(),
@@ -1630,6 +1641,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_webauthn_password_mech",
             uuid::Uuid::new_v4(),
@@ -1813,6 +1825,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_totp_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_webauthn_password_totp_mech",
             uuid::Uuid::new_v4(),
@@ -2067,6 +2080,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_backup_code_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_backup_code_mech",
             uuid::Uuid::new_v4(),

@@ -1,4 +1,5 @@
-use super::subscriber::{EventTagSet, TreeEvent, TreeProcessed, TreeSpanProcessed};
+use super::subscriber::{TreeEvent, TreeProcessed, TreeSpanProcessed};
+use super::EventTag;
 use serde::{ser::SerializeStruct, Serialize};
 use std::fmt::{self, Write as _};
 use std::io::{self, Write as _};
@@ -15,7 +16,7 @@ pub enum LogFmt {
 const EVENT_UUID: &str = "00000000-0000-0000-0000-000000000000";
 
 impl LogFmt {
-    pub(crate) fn format<A: EventTagSet>(self, processed_logs: &TreeProcessed<A>) -> Vec<u8> {
+    pub(crate) fn format(self, processed_logs: &TreeProcessed) -> Vec<u8> {
         match self {
             LogFmt::Json => format_json(processed_logs),
             LogFmt::Pretty => format_pretty(processed_logs),
@@ -23,22 +24,22 @@ impl LogFmt {
     }
 }
 
-fn format_json<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
-    fn fmt_rec<'a, B: EventTagSet>(
-        tree: &TreeProcessed<B>,
+fn format_json(processed_logs: &TreeProcessed) -> Vec<u8> {
+    fn fmt_rec<'a>(
+        tree: &TreeProcessed,
         spans: &'a mut Vec<&'static str>,
         uuid: Option<&'a str>,
         mut writer: &mut Vec<u8>,
     ) -> io::Result<()> {
         match tree {
             TreeProcessed::Event(event) => {
-                struct SerializeEvent<'a, C> {
-                    event: &'a TreeEvent<C>,
+                struct SerializeEvent<'a> {
+                    event: &'a TreeEvent,
                     uuid: &'a str,
                     spans: &'a mut Vec<&'static str>,
                 }
 
-                impl<'a, C: EventTagSet> Serialize for SerializeEvent<'a, C> {
+                impl<'a> Serialize for SerializeEvent<'a> {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where
                         S: serde::Serializer,
@@ -49,7 +50,7 @@ fn format_json<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
                         model.serialize_field("level", &self.event.level.as_serde())?;
                         model.serialize_field("message", &self.event.message)?;
                         model.serialize_field("log-type", "event")?;
-                        model.serialize_field("tag", &self.event.tag.map(EventTagSet::pretty))?;
+                        model.serialize_field("tag", &self.event.tag.map(EventTag::pretty))?;
                         model.serialize_field("spans", self.spans)?;
                         model.end()
                     }
@@ -65,12 +66,12 @@ fn format_json<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
                 writeln!(writer)
             }
             TreeProcessed::Span(span) => {
-                struct SerializeSpan<'a, C> {
-                    span: &'a TreeSpanProcessed<C>,
+                struct SerializeSpan<'a> {
+                    span: &'a TreeSpanProcessed,
                     uuid: &'a str,
                 }
 
-                impl<'a, C> Serialize for SerializeSpan<'a, C> {
+                impl<'a> Serialize for SerializeSpan<'a> {
                     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
                     where
                         S: serde::Serializer,
@@ -115,7 +116,7 @@ fn format_json<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
     writer
 }
 
-fn format_pretty<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
+fn format_pretty(processed_logs: &TreeProcessed) -> Vec<u8> {
     #[derive(Clone, Copy)]
     enum Fill {
         Void,
@@ -136,8 +137,8 @@ fn format_pretty<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
         }
     }
 
-    fn fmt_rec<B: EventTagSet>(
-        tree: &TreeProcessed<B>,
+    fn fmt_rec(
+        tree: &TreeProcessed,
         indent: &mut Vec<Fill>,
         uuid: Option<&str>,
         root_duration: Option<f64>,
@@ -267,8 +268,8 @@ fn format_pretty<A: EventTagSet>(processed_logs: &TreeProcessed<A>) -> Vec<u8> {
     writer
 }
 
-pub(super) fn format_immediate_event<E: EventTagSet>(
-    event: &TreeEvent<E>,
+pub(super) fn format_immediate_event(
+    event: &TreeEvent,
     maybe_scope: Option<ScopeFromRoot<Registry>>,
 ) -> Result<String, fmt::Error> {
     let mut writer = String::new();

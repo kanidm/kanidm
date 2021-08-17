@@ -33,6 +33,7 @@ use kanidm::core::{
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
+use kanidm::tracing_tree;
 use kanidm::utils::file_permissions_readonly;
 
 use structopt::StructOpt;
@@ -107,6 +108,8 @@ fn read_file_metadata(path: &PathBuf) -> Metadata {
 
 #[tokio::main]
 async fn main() {
+    tracing_tree::main_init();
+
     // Get info about who we are.
     let cuid = get_current_uid();
     let ceuid = get_effective_uid();

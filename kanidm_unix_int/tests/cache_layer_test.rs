@@ -7,6 +7,7 @@ use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
 
+use kanidm::tracing_tree;
 use kanidm_unix_common::cache::{CacheLayer, Id};
 use kanidm_unix_common::constants::{
     DEFAULT_GID_ATTR_MAP, DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX,
@@ -37,6 +38,7 @@ fn is_free_port(port: u16) -> bool {
 
 fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsyncClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "kanidm=debug");
+    let _ = tracing_tree::test_init();
     let _ = env_logger::builder().is_test(true).try_init();
 
     let (ready_tx, mut ready_rx) = mpsc::channel(1);
