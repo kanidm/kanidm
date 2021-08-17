@@ -126,16 +126,16 @@ pub struct Oauth2UserToken {
 // https://openid.net/specs/openid-connect-core-1_0.html#IDToken
 #[derive(Serialize, Deserialize, Debug)]
 pub struct OpenIDConnectToken {
-    // Subject (uuid)
-    pub sub: Uuid,
-    // issuer
-    pub iss: String,
-    // expiryf
-    pub exp: i64,
-    // time issued
-    pub iat: i64,
-    // "intended audience"
-    pub aud: Vec<String>,
+    #[serde(rename = "sub")]
+    pub subject: Uuid,
+    #[serde(rename = "iss")]
+    pub issuer: String,
+    #[serde(rename = "exp")]
+    pub expiryf: i64,
+    #[serde(rename = "iat")]
+    pub time_issued: i64,
+    #[serde(rename = "aud")]
+    pub intended_audience: Vec<String>,
     pub auth_time: i64,
     //
     #[serde(skip_serializing_if = "Option::is_none")]
