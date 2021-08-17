@@ -519,16 +519,13 @@ impl Oauth2ResourceServersReadTransaction {
         let exp = code_xchg.uat.expiry.unix_timestamp();
 
         // Used in the access token response.
-        let expires_in = if exp > iat {
-            exp - iat
-        } else {
-            lsecurity!(
-                audit,
-                "User Auth Token has expired before we could publish the oauth2 response"
-            );
-            return Err(Oauth2Error::AccessDenied);
-        };
-        debug_assert!(expires_in.is_positive());
+let expires_in = exp.checked_sub(iat).ok_or_else(|| {
+    lsecurity!(
+        audit,
+        "User Auth Token has expired before we could publish the oauth2 response"
+    )
+    Oauth2Error::AccessDenied
+)?;
 
         // Convert the uat into an oauth2 token from the code_xchg.uat
         let ouat = Oauth2UserToken {
