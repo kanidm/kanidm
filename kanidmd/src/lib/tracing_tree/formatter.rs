@@ -1,6 +1,6 @@
 use super::subscriber::{TreeEvent, TreeProcessed, TreeSpanProcessed};
 use super::EventTag;
-use serde::{ser::SerializeStruct, Serialize};
+use serde::ser::{Serialize, SerializeMap, SerializeStruct};
 use std::fmt::{self, Write as _};
 use std::io::{self, Write as _};
 use tracing_serde::AsSerde;
@@ -33,6 +33,23 @@ fn format_json(processed_logs: &TreeProcessed) -> Vec<u8> {
     ) -> io::Result<()> {
         match tree {
             TreeProcessed::Event(event) => {
+                struct SerializeFields<'a> {
+                    values: &'a Vec<(&'static str, String)>,
+                }
+
+                impl<'a> Serialize for SerializeFields<'a> {
+                    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+                    where
+                        S: serde::Serializer,
+                    {
+                        let mut model = serializer.serialize_map(Some(self.values.len()))?;
+                        for (key, value) in self.values.iter() {
+                            model.serialize_entry(key, value)?;
+                        }
+                        model.end()
+                    }
+                }
+
                 struct SerializeEvent<'a> {
                     event: &'a TreeEvent,
                     uuid: &'a str,
@@ -44,13 +61,19 @@ fn format_json(processed_logs: &TreeProcessed) -> Vec<u8> {
                     where
                         S: serde::Serializer,
                     {
-                        let mut model = serializer.serialize_struct("event", 7)?;
+                        let mut model = serializer.serialize_struct("event", 8)?;
                         model.serialize_field("uuid", self.uuid)?;
                         model.serialize_field("timestamp", &self.event.timestamp.to_rfc3339())?;
                         model.serialize_field("level", &self.event.level.as_serde())?;
                         model.serialize_field("message", &self.event.message)?;
                         model.serialize_field("log-type", "event")?;
                         model.serialize_field("tag", &self.event.tag.map(EventTag::pretty))?;
+                        model.serialize_field(
+                            "fields",
+                            &SerializeFields {
+                                values: &self.event.values,
+                            },
+                        )?;
                         model.serialize_field("spans", self.spans)?;
                         model.end()
                     }
