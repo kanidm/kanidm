@@ -386,7 +386,6 @@
 <span id="384">384</span>
 <span id="385">385</span>
 <span id="386">386</span>
-<span id="387">387</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::data</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">rand::seq::SliceRandom</span>;
@@ -503,8 +502,7 @@
                             <span class="prelude-val">Some</span>(<span class="ident">Entity::Group</span>(<span class="ident">_g</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="comment">// This could be better! It&#39;s quite an evil method at the moment...</span>
                                 <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0</span>..<span class="ident">max_m</span>);
-                                <span class="kw">let</span> <span class="ident">ngrp</span> <span class="op">=</span>
-                                    (<span class="kw-2">&amp;</span><span class="ident">exists</span>).<span class="ident">choose_multiple</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rng</span>, <span class="ident">m</span>).<span class="ident">cloned</span>().<span class="ident">collect</span>();
+                                <span class="kw">let</span> <span class="ident">ngrp</span> <span class="op">=</span> (<span class="ident">exists</span>).<span class="ident">choose_multiple</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rng</span>, <span class="ident">m</span>).<span class="ident">cloned</span>().<span class="ident">collect</span>();
                                 (<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">Change::Group</span>(<span class="ident">ngrp</span>))
                             }
                             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {

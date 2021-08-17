@@ -2471,7 +2471,7 @@
                     <span class="ident">pw_mfa</span>.<span class="ident">backup_code</span>.<span class="ident">as_ref</span>(),
                 ) {
                     (<span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>), <span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">wan_state</span>)), <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">match</span> <span class="ident">webauthn</span>.<span class="ident">authenticate_credential</span>(<span class="kw-2">&amp;</span><span class="ident">resp</span>, <span class="kw-2">&amp;</span><span class="ident">wan_state</span>) {
+                        <span class="kw">match</span> <span class="ident">webauthn</span>.<span class="ident">authenticate_credential</span>(<span class="ident">resp</span>, <span class="ident">wan_state</span>) {
                             <span class="prelude-val">Ok</span>((<span class="ident">cid</span>, <span class="ident">auth_data</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="ident">pw_mfa</span>.<span class="ident">mfa_state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Success</span>;
                                 <span class="comment">// Success. Determine if we need to update the counter</span>
@@ -2522,7 +2522,7 @@
                         }
                     }
                     (<span class="ident">AuthCredential::BackupCode</span>(<span class="ident">code_chal</span>), <span class="kw">_</span>, <span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="ident">backup_codes</span>)) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="kw">if</span> <span class="ident">backup_codes</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">code_chal</span>) {
+                        <span class="kw">if</span> <span class="ident">backup_codes</span>.<span class="ident">verify</span>(<span class="ident">code_chal</span>) {
                             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">_e</span>) <span class="op">=</span>
                                 <span class="ident">async_tx</span>.<span class="ident">send</span>(<span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="ident">BackupCodeRemoval</span> {
                                     <span class="ident">target_uuid</span>: <span class="ident">who</span>,
@@ -2636,7 +2636,7 @@
         <span class="kw">match</span> <span class="ident">cred</span> {
             <span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// lets see how we go.</span>
-                <span class="kw">match</span> <span class="ident">webauthn</span>.<span class="ident">authenticate_credential</span>(<span class="kw-2">&amp;</span><span class="ident">resp</span>, <span class="kw-2">&amp;</span><span class="ident">wan_cred</span>.<span class="ident">wan_state</span>) {
+                <span class="kw">match</span> <span class="ident">webauthn</span>.<span class="ident">authenticate_credential</span>(<span class="ident">resp</span>, <span class="kw-2">&amp;</span><span class="ident">wan_cred</span>.<span class="ident">wan_state</span>) {
                     <span class="prelude-val">Ok</span>((<span class="ident">cid</span>, <span class="ident">auth_data</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">wan_cred</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Success</span>;
                         <span class="comment">// Success. Determine if we need to update the counter</span>

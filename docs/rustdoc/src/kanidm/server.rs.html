@@ -4407,7 +4407,7 @@
 
             <span class="kw">let</span> <span class="ident">lims</span> <span class="op">=</span> <span class="ident">ee</span>.<span class="ident">get_limits</span>();
 
-            <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">exists</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">lims</span>, <span class="kw-2">&amp;</span><span class="ident">vfr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">exists</span>(<span class="ident">audit</span>, <span class="ident">lims</span>, <span class="kw-2">&amp;</span><span class="ident">vfr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;backend failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::Backend</span>
             })

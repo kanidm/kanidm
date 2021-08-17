@@ -608,8 +608,6 @@
 <span id="606">606</span>
 <span id="607">607</span>
 <span id="608">608</span>
-<span id="609">609</span>
-<span id="610">610</span>
 </pre><pre class="rust">
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
@@ -1007,11 +1005,9 @@
         .<span class="ident">post</span>(<span class="ident">oauth2_authorise_permit_post</span>)
         .<span class="ident">get</span>(<span class="ident">oauth2_authorise_permit_get</span>);
     <span class="ident">oauth2_process</span>.<span class="ident">at</span>(<span class="string">&quot;/token&quot;</span>).<span class="ident">post</span>(<span class="ident">oauth2_token_post</span>);
-    <span class="comment">/*
-    oauth2_process
-        .at(&quot;/token/introspect&quot;)
-        .get(oauth2_token_introspect_get);
-    */</span>
+    <span class="ident">oauth2_process</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/token/introspect&quot;</span>)
+        .<span class="ident">post</span>(<span class="ident">oauth2_token_introspect_post</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">raw_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/raw&quot;</span>);
     <span class="ident">raw_route</span>.<span class="ident">at</span>(<span class="string">&quot;/create&quot;</span>).<span class="ident">post</span>(<span class="ident">create</span>);

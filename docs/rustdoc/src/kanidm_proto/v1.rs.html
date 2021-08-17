@@ -863,6 +863,9 @@
 <span id="861">861</span>
 <span id="862">862</span>
 <span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -1048,12 +1051,15 @@ pub struct Application {
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">UserAuthToken</span> {
     <span class="kw">pub</span> <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
     <span class="kw">pub</span> <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
+    <span class="comment">// What time we issued this authentication token.</span>
+    <span class="kw">pub</span> <span class="ident">issued_at</span>: <span class="ident">time::OffsetDateTime</span>,
     <span class="comment">// When this token should be considered expired. Interpretation</span>
     <span class="comment">// may depend on the client application.</span>
     <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="ident">time::OffsetDateTime</span>,
     <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
     <span class="comment">// pub name: String,</span>
     <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="comment">// pub groups: Vec&lt;Group&gt;,</span>
     <span class="comment">// pub claims: Vec&lt;Claim&gt;,</span>
     <span class="comment">// Should we just retrieve these inside the server instead of in the uat?</span>
