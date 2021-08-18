@@ -11,9 +11,9 @@
 use crate::be::{IdxKey, IdxKeyRef, IdxKeyToRef, IdxMeta, IdxSlope};
 use crate::identity::IdentityId;
 use crate::ldap::ldap_attr_filter_map;
+use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use crate::value::{IndexType, PartialValue};
-use crate::{prelude::*, spanned};
 use concread::arcache::ARCacheReadTxn;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};

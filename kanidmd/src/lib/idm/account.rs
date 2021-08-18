@@ -1,6 +1,6 @@
 use crate::credential::BackupCodes;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
-use crate::{prelude::*, spanned};
+use crate::prelude::*;
 
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthType, UserAuthToken};

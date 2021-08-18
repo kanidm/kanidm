@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use super::subscriber::TreeIo;
-use crate::{request_error, request_info, request_warn};
+use crate::prelude::*;
 use tide::{self, Middleware, Next, Request};
 use tracing::{self, instrument};
 
