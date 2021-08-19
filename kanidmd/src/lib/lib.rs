@@ -84,6 +84,11 @@ pub mod prelude {
         QueryServerWriteTransaction,
     };
     pub use crate::value::{IndexType, PartialValue, SyntaxType, Value};
+    pub use crate::{
+        admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace, filter_warn,
+        perf_trace, request_error, request_info, request_trace, request_warn, security_access,
+        security_critical, security_info, spanned,
+    };
 }
 
 pub mod tracing_tree;
