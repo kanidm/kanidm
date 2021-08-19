@@ -605,7 +605,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 .map(|s| {
                     // This should NOT fail - if it does, it means our schema is
                     // in an invalid state!
-                    Ok(schema_attributes.get(s).ok_or(SchemaError::Corrupted)?)
+                    schema_attributes.get(s).ok_or(SchemaError::Corrupted)
                 })
                 .collect();
 

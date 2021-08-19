@@ -451,23 +451,10 @@ pub trait QueryServerTransaction<'a> {
                 })?;
                 let se = SearchEvent::new_internal(f_valid);
 
-                // TODO: Refactor to use this
-                // let mut vs = self.search(audit, &se)?;
-                // match vs.pop() {
-                //     Some(entry) if vs.is_empty() => Ok(entry),
-                //     _ => Err(OperationError::NoMatchingEntries),
-                // }
-                let res = self.search(audit, &se);
-                match res {
-                    Ok(vs) => {
-                        if vs.len() > 1 {
-                            return Err(OperationError::NoMatchingEntries);
-                        }
-                        vs.into_iter()
-                            .next()
-                            .ok_or(OperationError::NoMatchingEntries)
-                    }
-                    Err(e) => Err(e),
+                let mut vs = self.search(audit, &se)?;
+                match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         })
@@ -484,23 +471,11 @@ pub trait QueryServerTransaction<'a> {
             lperf_segment!(audit, "server::internal_search_ext_uuid", || {
                 let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
                 let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-                let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
-                // TODO: Refactor to use this
-                // let mut vs = self.impersonate_search_ext(audit, filter, filter_intent, event)?;
-                // match vs.pop() {
-                //     Some(entry) if vs.is_empty() => Ok(entry),
-                //     _ => Err(OperationError::NoMatchingEntries),
-                // }
-                match res {
-                    Ok(vs) => {
-                        if vs.len() > 1 {
-                            return Err(OperationError::NoMatchingEntries);
-                        }
-                        vs.into_iter()
-                            .next()
-                            .ok_or(OperationError::NoMatchingEntries)
-                    }
-                    Err(e) => Err(e),
+
+                let mut vs = self.impersonate_search_ext(audit, filter, filter_intent, event)?;
+                match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         })
@@ -517,23 +492,11 @@ pub trait QueryServerTransaction<'a> {
             lperf_segment!(audit, "server::internal_search_uuid", || {
                 let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
                 let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-                let res = self.impersonate_search(audit, filter, filter_intent, event);
-                // TODO: Refactor to use this
-                // let mut vs = self.impersonate_search(audit, filter, filter_intent, event)?;
-                // match vs.pop() {
-                //     Some(entry) if vs.is_empty() => Ok(entry),
-                //     _ => Err(OperationError::NoMatchingEntries),
-                // }
-                match res {
-                    Ok(vs) => {
-                        if vs.len() > 1 {
-                            return Err(OperationError::NoMatchingEntries);
-                        }
-                        vs.into_iter()
-                            .next()
-                            .ok_or(OperationError::NoMatchingEntries)
-                    }
-                    Err(e) => Err(e),
+
+                let mut vs = self.impersonate_search(audit, filter, filter_intent, event)?;
+                match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         })
@@ -767,7 +730,7 @@ pub trait QueryServerTransaction<'a> {
         } else if value.is_sshkey() {
             value
                 .get_sshkey()
-                .map(|s| s.to_string()) // TODO: Refactor in another PR
+                .map(str::to_string)
                 .ok_or(OperationError::InvalidValueState)
         } else {
             // Not? Okay, do the to string.
@@ -782,7 +745,7 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search_uuid(audit, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_str("domain_name")
-                    .map(|s| s.to_string()) // TODO: Refactor in another PR
+                    .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
@@ -804,7 +767,7 @@ pub trait QueryServerTransaction<'a> {
                     let mut badlist_hashset = HashSet::with_capacity(badlist_entry.len());
                     badlist_entry
                         .iter()
-                        .filter_map(|e| e.as_string()) // TODO: Refactor in another PR
+                        .filter_map(Value::as_string)
                         .cloned()
                         .for_each(|s| {
                             badlist_hashset.insert(s);
