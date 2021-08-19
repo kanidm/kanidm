@@ -5,6 +5,7 @@ use std::thread;
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
 use kanidm::core::create_server_core;
+use kanidm::tracing_tree;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 use async_std::task;
@@ -15,6 +16,7 @@ pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 fn is_free_port(port: u16) -> bool {
+    // TODO: Refactor to use `Result::is_err` in a future PR
     match TcpStream::connect(("0.0.0.0", port)) {
         Ok(_) => false,
         Err(_) => true,
@@ -25,6 +27,7 @@ fn is_free_port(port: u16) -> bool {
 
 pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     // ::std::env::set_var("RUST_LOG", "tide=debug,kanidm=debug");
+    let _ = tracing_tree::test_init();
     let _ = env_logger::builder()
         .format_timestamp(None)
         .format_level(false)

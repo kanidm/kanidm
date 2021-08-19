@@ -605,7 +605,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                 .map(|s| {
                     // This should NOT fail - if it does, it means our schema is
                     // in an invalid state!
-                    schema_attributes.get(s).ok_or(SchemaError::Corrupted)
+                    Ok(schema_attributes.get(s).ok_or(SchemaError::Corrupted)?)
                 })
                 .collect();
 
@@ -1241,7 +1241,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                             (Some(pre_vs), Some(post_vs)) => {
                                 // it exists in both, we need to work out the differents within the attr.
                                 pre_vs
-                                    .difference(post_vs)
+                                    .difference(&post_vs)
                                     .map(|pre_v| {
                                         // Was in pre, now not in post
                                         match ikey.itype {
@@ -1262,7 +1262,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                                             IndexType::SubString => Vec::new(),
                                         }
                                     })
-                                    .chain(post_vs.difference(pre_vs).map(|post_v| {
+                                    .chain(post_vs.difference(&pre_vs).map(|post_v| {
                                         // is in post, but not in pre (add)
                                         match ikey.itype {
                                             IndexType::Equality => {
@@ -1293,6 +1293,9 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
+    // ! TRACING INTEGRATED
+    // Why is this returning a `Result<Self, ()>` when we could just do `Option<Self>`
+    // How did this even pass clippy?
     pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
         // Convert attrs from db format to value
         let r_attrs: Result<Map<AttrString, ValueSet>, ()> = match db_e.ent {
@@ -1305,6 +1308,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                     match vv {
                         Ok(vv) => Ok((k, vv)),
                         Err(()) => {
+                            admin_error!(value = ?k, "from_dbentry failed");
                             ladmin_error!(au, "from_dbentry failed on value {:?}", k);
                             Err(())
                         }
@@ -1389,7 +1393,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         attrs_new.insert(
             AttrString::from("uuid"),
-            valueset![Value::new_uuidr(self.get_uuid())],
+            valueset![Value::new_uuidr(&self.get_uuid())],
         );
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
@@ -1477,6 +1481,7 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
+    // ! TRACING INTEGRATED
     pub fn to_pe(
         &self,
         audit: &mut AuditScope,

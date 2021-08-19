@@ -92,6 +92,10 @@ validator = { version = "0.14" }
 touch = "0.0.1"
 filetime = "0.2.14"
 
+tracing = { version = "0.1.26", features = ["attributes"] }
+tracing-subscriber = "0.2.19"
+tracing-serde = "0.1.2"
+
 [features]
 simd_support = [ "concread/simd_support" ]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]

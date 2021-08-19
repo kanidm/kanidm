@@ -192,7 +192,7 @@ impl Password {
             Kdf::SSHA512(salt, key) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
-                hasher.update(salt);
+                hasher.update(&salt);
                 let r = hasher.finish();
                 Ok(key == &(r.to_vec()))
             }
@@ -341,22 +341,25 @@ impl TryFrom<DbCredV1> for Credential {
             None => None,
         };
 
-        let v_webauthn = webauthn.map(|dbw| {
-            dbw.into_iter()
-                .map(|wc| {
-                    (
-                        wc.label,
-                        WebauthnCredential {
-                            cred_id: wc.id,
-                            cred: wc.cred,
-                            counter: wc.counter,
-                            verified: wc.verified,
-                            registration_policy: wc.registration_policy,
-                        },
-                    )
-                })
-                .collect()
-        });
+        let v_webauthn = match webauthn {
+            Some(dbw) => Some(
+                dbw.into_iter()
+                    .map(|wc| {
+                        (
+                            wc.label,
+                            WebauthnCredential {
+                                cred_id: wc.id,
+                                cred: wc.cred,
+                                counter: wc.counter,
+                                verified: wc.verified,
+                                registration_policy: wc.registration_policy,
+                            },
+                        )
+                    })
+                    .collect(),
+            ),
+            None => None,
+        };
 
         let v_backup_code = match backup_code {
             Some(dbb) => Some(BackupCodes::try_from(dbb)?),
@@ -803,7 +806,7 @@ impl Credential {
             CredentialType::PasswordMfa(pw, totp, wan, opt_backup_codes) => {
                 match opt_backup_codes {
                     Some(mut backup_codes) => {
-                        backup_codes.remove(code_to_remove);
+                        backup_codes.remove(&code_to_remove);
                         Ok(Credential {
                             type_: CredentialType::PasswordMfa(pw, totp, wan, Some(backup_codes)),
                             claims: self.claims.clone(),
@@ -838,13 +841,13 @@ impl Credential {
         match &self.type_ {
             CredentialType::PasswordMfa(_, _, _, opt_bc) => opt_bc
                 .as_ref()
-                .ok_or_else(|| {
-                    OperationError::InvalidAccountState(String::from(
-                        "No backup codes are available for this account",
-                    ))
-                })
-                .map(|bc| BackupCodesView {
-                    backup_codes: bc.code_set.clone().into_iter().collect(),
+                .ok_or(OperationError::InvalidAccountState(String::from(
+                    "No backup codes are available for this account",
+                )))
+                .and_then(|bc| {
+                    Ok(BackupCodesView {
+                        backup_codes: bc.code_set.clone().into_iter().collect(),
+                    })
                 }),
             _ => Err(OperationError::InvalidAccountState(
                 "Non-MFA credential type".to_string(),

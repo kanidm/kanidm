@@ -257,7 +257,7 @@ impl LoginApp {
                     let promise = win
                         .navigator()
                         .credentials()
-                        .get_with_options(challenge)
+                        .get_with_options(&challenge)
                         .expect("Unable to create promise");
                     let fut = JsFuture::from(promise);
                     let linkc = self.link.clone();

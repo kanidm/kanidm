@@ -17,6 +17,9 @@ use uuid::Uuid;
 
 use tide_rustls::TlsListener;
 
+use crate::tracing_tree::TreeMiddleware;
+use tracing::{error, info};
+
 #[derive(Clone)]
 pub struct AppState {
     pub status_ref: &'static StatusActor,
@@ -300,7 +303,7 @@ pub fn create_https_server(
     info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
 
     let bundy_handle = bundy::hs512::HS512::from_str(bundy_key).map_err(|e| {
-        error!("Failed to generate bundy handle - {:?}", e);
+        error!(?e, "Failed to generate bundy handle");
     })?;
 
     let bundy_handle = std::sync::Arc::new(bundy_handle);
@@ -315,7 +318,9 @@ pub fn create_https_server(
     // tide::log::with_level(tide::log::LevelFilter::Debug);
 
     // Add middleware?
-    tserver.with(tide::log::LogMiddleware::new());
+    tserver.with(TreeMiddleware::with_stdout());
+    // tserver.with(tide::log::LogMiddleware::new());
+    // We do not force a session ttl, because we validate this elsewhere in usage.
     tserver.with(
         // We do not force a session ttl, because we validate this elsewhere in usage.
         tide::sessions::SessionMiddleware::new(tide::sessions::MemoryStore::new(), cookie_key)
@@ -394,9 +399,11 @@ pub fn create_https_server(
         .post(oauth2_authorise_permit_post)
         .get(oauth2_authorise_permit_get);
     oauth2_process.at("/token").post(oauth2_token_post);
+    /*
     oauth2_process
         .at("/token/introspect")
-        .post(oauth2_token_introspect_post);
+        .get(oauth2_token_introspect_get);
+    */
 
     let mut raw_route = appserver.at("/v1/raw");
     raw_route.at("/create").post(create);

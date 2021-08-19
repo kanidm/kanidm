@@ -239,7 +239,7 @@ impl Component for Oauth2App {
 
                 self.state = match (&self.state, ar) {
                     (State::TokenCheck(token, _), Some(ar)) => {
-                        match Self::fetch_authreq(token, &ar, &self.link) {
+                        match Self::fetch_authreq(&token, &ar, &self.link) {
                             Ok(ft) => State::SubmitAuthReq(token.clone(), ft),
                             Err(e_msg) => {
                                 ConsoleService::log(e_msg.as_str());
@@ -268,7 +268,7 @@ impl Component for Oauth2App {
                 self.state = match &self.state {
                     State::Consent(token, consent_req) => {
                         match Self::fetch_consent_token(
-                            token,
+                            &token,
                             consent_req.consent_token.clone(),
                             &self.link,
                         ) {

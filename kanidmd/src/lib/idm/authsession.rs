@@ -7,6 +7,7 @@ use crate::idm::account::Account;
 use crate::idm::delayed::BackupCodeRemoval;
 use crate::idm::AuthState;
 use crate::prelude::*;
+use crate::tracing_tree;
 use hashbrown::HashSet;
 use kanidm_proto::v1::OperationError;
 use kanidm_proto::v1::{AuthAllowed, AuthCredential, AuthMech, AuthType};
@@ -88,6 +89,7 @@ enum CredHandler {
 }
 
 impl CredHandler {
+    // ! TRACING INTEGRATED
     /// Given a credential and some external configuration, Generate the credential handler
     /// that will be used for this session. This credential handler is a "self contained"
     /// unit that defines what is possible to use during this authentication session to prevent
@@ -127,6 +129,7 @@ impl CredHandler {
 
                 // Paranoia. Should NEVER occur.
                 if cmfa.totp.is_none() && cmfa.wan.is_none() {
+                    security_critical!("Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!");
                     lsecurity_critical!(
                         au,
                         "Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!"
@@ -146,6 +149,7 @@ impl CredHandler {
                     })
                 })
                 .map_err(|e| {
+                    security_info!(?e, "Unable to create webauthn authentication challenge");
                     lsecurity!(
                         au,
                         "Unable to create webauthn authentication challenge -> {:?}",
@@ -158,6 +162,7 @@ impl CredHandler {
 }
 
 impl CredHandler {
+    // ! TRACING INTEGRATED
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
     /// so, send an asynchronous event into the queue that will allow the password to have it's
     /// content upgraded later.
@@ -173,20 +178,26 @@ impl CredHandler {
                 target_uuid: who,
                 existing_password: cleartext.to_string(),
             })) {
+                admin_warn!("unable to queue delayed pwupgrade, continuing ... ");
                 ladmin_warning!(au, "unable to queue delayed pwupgrade, continuing ... ");
             };
         }
     }
 
+    // ! TRACING INTEGRATED
     /// validate that the client wants to authenticate as the anonymous user.
     fn validate_anonymous(au: &mut AuditScope, cred: &AuthCredential) -> CredState {
         match cred {
             AuthCredential::Anonymous => {
                 // For anonymous, no claims will ever be issued.
+                security_info!("Handler::Anonymous -> Result::Success");
                 lsecurity!(au, "Handler::Anonymous -> Result::Success");
                 CredState::Success(AuthType::Anonymous)
             }
             _ => {
+                security_info!(
+                    "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
+                );
                 lsecurity!(
                     au,
                     "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
@@ -196,6 +207,7 @@ impl CredHandler {
         }
     }
 
+    // ! TRACING INTEGRATED
     /// Validate a singule password credential of the account.
     fn validate_password(
         au: &mut AuditScope,
@@ -211,6 +223,7 @@ impl CredHandler {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
                     match pw_badlist_set {
                         Some(p) if p.contains(&cleartext.to_lowercase()) => {
+                            security_info!("Handler::Password -> Result::Denied - Password found in badlist during login");
                             lsecurity!(
                                 au,
                                 "Handler::Password -> Result::Denied - Password found in badlist during login"
@@ -218,6 +231,7 @@ impl CredHandler {
                             CredState::Denied(PW_BADLIST_MSG)
                         }
                         _ => {
+                            security_info!("Handler::Password -> Result::Success");
                             lsecurity!(au, "Handler::Password -> Result::Success");
                             Self::maybe_pw_upgrade(au, pw, who, cleartext.as_str(), async_tx);
                             if generated {
@@ -228,6 +242,7 @@ impl CredHandler {
                         }
                     }
                 } else {
+                    security_info!("Handler::Password -> Result::Denied - incorrect password");
                     lsecurity!(
                         au,
                         "Handler::Password -> Result::Denied - incorrect password"
@@ -237,6 +252,9 @@ impl CredHandler {
             }
             // All other cases fail.
             _ => {
+                security_info!(
+                    "Handler::Password -> Result::Denied - invalid cred type for handler"
+                );
                 lsecurity!(
                     au,
                     "Handler::Password -> Result::Denied - invalid cred type for handler"
@@ -246,6 +264,7 @@ impl CredHandler {
         }
     }
 
+    // ! TRACING INTEGRATED
     /// Proceed with the next step in a multifactor authentication, based on the current
     /// verification results and state. If this logic of this statemachine is violated, the
     /// authentication will fail.
@@ -269,7 +288,7 @@ impl CredHandler {
                     pw_mfa.backup_code.as_ref(),
                 ) {
                     (AuthCredential::Webauthn(resp), _, Some((_, wan_state)), _) => {
-                        match webauthn.authenticate_credential(resp, wan_state) {
+                        match webauthn.authenticate_credential(&resp, &wan_state) {
                             Ok((cid, auth_data)) => {
                                 pw_mfa.mfa_state = CredVerifyState::Success;
                                 // Success. Determine if we need to update the counter
@@ -285,6 +304,7 @@ impl CredHandler {
                                             },
                                         ))
                                     {
+                                        admin_warn!("unable to queue delayed webauthn counter increment, continuing ... ");
                                         ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                                     };
                                 };
@@ -293,6 +313,10 @@ impl CredHandler {
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
                                 // Denied.
+                                security_info!(
+                                    ?e,
+                                    "Handler::Webauthn -> Result::Denied - webauthn error"
+                                );
                                 lsecurity!(
                                     au,
                                     "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
@@ -305,6 +329,9 @@ impl CredHandler {
                     (AuthCredential::Totp(totp_chal), Some(totp), _, _) => {
                         if totp.verify(*totp_chal, ts) {
                             pw_mfa.mfa_state = CredVerifyState::Success;
+                            security_info!(
+                                "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
+                            );
                             lsecurity!(
                                 au,
                                 "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
@@ -312,6 +339,9 @@ impl CredHandler {
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
+                            security_info!(
+                                "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
+                            );
                             lsecurity!(
                                 au,
                                 "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
@@ -320,19 +350,23 @@ impl CredHandler {
                         }
                     }
                     (AuthCredential::BackupCode(code_chal), _, _, Some(backup_codes)) => {
-                        if backup_codes.verify(code_chal) {
+                        if backup_codes.verify(&code_chal) {
                             if let Err(_e) =
                                 async_tx.send(DelayedAction::BackupCodeRemoval(BackupCodeRemoval {
                                     target_uuid: who,
                                     code_to_remove: code_chal.to_string(),
                                 }))
                             {
+                                admin_warn!(
+                                    "unable to queue delayed backup code removal, continuing ... "
+                                );
                                 ladmin_warning!(
                                     au,
                                     "unable to queue delayed backup code removal, continuing ... "
                                 );
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
+                            security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
                             lsecurity!(
                                 au,
                                 "Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -"
@@ -340,6 +374,7 @@ impl CredHandler {
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
+                            security_info!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
                             lsecurity!(
                                 au,
                                 "Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -"
@@ -348,6 +383,7 @@ impl CredHandler {
                         }
                     }
                     _ => {
+                        security_info!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
                         lsecurity!(
                             au,
                             "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
@@ -364,6 +400,7 @@ impl CredHandler {
                             match pw_badlist_set {
                                 Some(p) if p.contains(&cleartext.to_lowercase()) => {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
+                                    security_info!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
                                     lsecurity!(
                                         au,
                                         "Handler::PasswordMfa -> Result::Denied - Password found in badlist during login"
@@ -372,6 +409,7 @@ impl CredHandler {
                                 }
                                 _ => {
                                     pw_mfa.pw_state = CredVerifyState::Success;
+                                    security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
                                     lsecurity!(
                                         au,
                                         "Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK"
@@ -388,6 +426,7 @@ impl CredHandler {
                             }
                         } else {
                             pw_mfa.pw_state = CredVerifyState::Fail;
+                            security_info!("Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail");
                             lsecurity!(
                                 au,
                                 "Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail"
@@ -396,6 +435,7 @@ impl CredHandler {
                         }
                     }
                     _ => {
+                        security_info!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
                         lsecurity!(
                             au,
                             "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
@@ -405,6 +445,9 @@ impl CredHandler {
                 }
             }
             _ => {
+                security_info!(
+                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
+                );
                 lsecurity!(
                     au,
                     "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
@@ -414,6 +457,7 @@ impl CredHandler {
         }
     } // end CredHandler::PasswordMfa
 
+    // ! TRACING INTEGRATED
     /// Validate a webauthn authentication attempt
     pub fn validate_webauthn(
         au: &mut AuditScope,
@@ -424,6 +468,7 @@ impl CredHandler {
         async_tx: &Sender<DelayedAction>,
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
+            security_info!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
             lsecurity!(
                 au,
                 "Handler::Webauthn -> Result::Denied - Internal State Already Fail"
@@ -434,7 +479,7 @@ impl CredHandler {
         match cred {
             AuthCredential::Webauthn(resp) => {
                 // lets see how we go.
-                match webauthn.authenticate_credential(resp, &wan_cred.wan_state) {
+                match webauthn.authenticate_credential(&resp, &wan_cred.wan_state) {
                     Ok((cid, auth_data)) => {
                         wan_cred.state = CredVerifyState::Success;
                         // Success. Determine if we need to update the counter
@@ -448,6 +493,7 @@ impl CredHandler {
                                     counter: auth_data.counter,
                                 },
                             )) {
+                                admin_warn!("unable to queue delayed webauthn counter increment, continuing ... ");
                                 ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                             };
                         };
@@ -456,6 +502,7 @@ impl CredHandler {
                     Err(e) => {
                         wan_cred.state = CredVerifyState::Fail;
                         // Denied.
+                        security_info!(?e, "Handler::Webauthn -> Result::Denied - webauthn error");
                         lsecurity!(
                             au,
                             "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
@@ -466,6 +513,9 @@ impl CredHandler {
                 }
             }
             _ => {
+                security_info!(
+                    "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
+                );
                 lsecurity!(
                     au,
                     "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
@@ -475,6 +525,7 @@ impl CredHandler {
         }
     }
 
+    // ! TRACING INTEGRATED
     #[allow(clippy::too_many_arguments)]
     /// Given the current handler, proceed to authenticate the attempted credential step.
     pub fn validate(
@@ -590,6 +641,7 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
+    // ! TRACING INTEGRATED
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
@@ -617,6 +669,9 @@ impl AuthSession {
                         CredHandler::try_from(au, cred, webauthn)
                             .map(|ch| AuthSessionState::Init(vec![ch]))
                             .unwrap_or_else(|_| {
+                                security_critical!(
+                                    "corrupt credentials, unable to start credhandler"
+                                );
                                 lsecurity_critical!(
                                     au,
                                     "corrupt credentials, unable to start credhandler"
@@ -625,12 +680,14 @@ impl AuthSession {
                             })
                     }
                     None => {
+                        security_info!("account has no primary credentials");
                         lsecurity!(au, "account has no primary credentials");
                         AuthSessionState::Denied("invalid credential state")
                     }
                 }
             }
         } else {
+            security_info!("account expired");
             lsecurity!(au, "account expired");
             AuthSessionState::Denied(ACCOUNT_EXPIRED)
         };
@@ -659,6 +716,7 @@ impl AuthSession {
     /// Given the users indicated and preferred authentication mechanism that they want to proceed
     /// with, select the credential handler and begin the process of stepping through the
     /// authentication process.
+    // ! TRACING INTEGRATED
     pub fn start_session(
         &mut self,
         _au: &mut AuditScope,
@@ -720,6 +778,7 @@ impl AuthSession {
         response
     }
 
+    // ! TRACING INTEGRATED
     /// Conduct a step of the authentication process. This validates the next credential factor
     /// presented and returns a result of Success, Continue, or Denied. Only in the success
     /// case is a UAT granted -- all others do not, including raised operation errors.
@@ -750,7 +809,13 @@ impl AuthSession {
                     pw_badlist_set,
                 ) {
                     CredState::Success(auth_type) => {
+                        security_info!("Successful cred handling");
                         lsecurity!(au, "Successful cred handling");
+                        // TODO: put the operation id into the call to `to_userauthtoken`
+                        // Can't `unwrap` the uuid until full integration, because some unit tests
+                        // call functions that call this indirectly without opening a span first,
+                        // and this returns `None` when not in a span (and panics if the tree isn't initialized).
+                        let _tracing_id = tracing_tree::operation_id();
                         let uat = self
                             .account
                             .to_userauthtoken(au.uuid, *time, auth_type)
@@ -758,6 +823,7 @@ impl AuthSession {
 
                         // Now encrypt and prepare the token for return to the client.
                         let token = uat_bundy_hmac.sign(&uat).map_err(|e| {
+                            admin_error!(?e, "Failed to sign UserAuthToken");
                             ladmin_error!(au, "Failed to sign UserAuthToken - {:?}", e);
                             OperationError::InvalidState
                         })?;
@@ -768,10 +834,12 @@ impl AuthSession {
                         )
                     }
                     CredState::Continue(allowed) => {
+                        security_info!(?allowed, "Request credential continuation");
                         lsecurity!(au, "Request credential continuation: {:?}", allowed);
                         (None, Ok(AuthState::Continue(allowed)))
                     }
                     CredState::Denied(reason) => {
+                        security_info!(%reason, "Credentials denied");
                         lsecurity!(au, "Credentials denied: {}", reason);
                         (
                             Some(AuthSessionState::Denied(reason)),
@@ -835,6 +903,7 @@ mod tests {
     use crate::idm::delayed::DelayedAction;
     use crate::idm::AuthState;
     use crate::prelude::*;
+    use crate::tracing_tree;
     use hashbrown::HashSet;
     pub use std::collections::BTreeSet as Set;
 
@@ -870,6 +939,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_anonymous_auth_mech",
             uuid::Uuid::new_v4(),
@@ -960,6 +1030,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_simple_password_mech",
             uuid::Uuid::new_v4(),
@@ -1021,6 +1092,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_simple_password_badlist() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_simple_password_badlist",
             uuid::Uuid::new_v4(),
@@ -1113,6 +1185,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_totp_password_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_totp_password_mech",
             uuid::Uuid::new_v4(),
@@ -1280,6 +1353,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_password_mfa_badlist() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_password_mfa_badlist",
             uuid::Uuid::new_v4(),
@@ -1426,6 +1500,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_only_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_webauthn_only_mech",
             uuid::Uuid::new_v4(),
@@ -1566,6 +1641,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_webauthn_password_mech",
             uuid::Uuid::new_v4(),
@@ -1749,6 +1825,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_webauthn_password_totp_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_webauthn_password_totp_mech",
             uuid::Uuid::new_v4(),
@@ -2003,6 +2080,7 @@ mod tests {
 
     #[test]
     fn test_idm_authsession_backup_code_mech() {
+        let _ = tracing_tree::test_init();
         let mut audit = AuditScope::new(
             "test_idm_authsession_backup_code_mech",
             uuid::Uuid::new_v4(),

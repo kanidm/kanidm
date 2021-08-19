@@ -6,11 +6,13 @@
 
 use std::fs;
 
+use crate::prelude::*;
 use crate::value::IndexType;
 use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
 use std::cell::UnsafeCell;
 use std::sync::Arc;
+use tracing::trace_span;
 
 use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
@@ -122,20 +124,24 @@ pub struct BackendWriteTransaction<'a> {
 }
 
 impl IdRawEntry {
+    // ! TRACING INTEGRATED
     fn into_dbentry(self, audit: &mut AuditScope) -> Result<(u64, DbEntry), OperationError> {
         serde_cbor::from_slice(self.data.as_slice())
             .map_err(|e| {
+                admin_error!(?e, "Serde CBOR Error");
                 ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
                 OperationError::SerdeCborError
             })
             .map(|dbe| (self.id, dbe))
     }
 
+    // ! TRACING INTEGRATED
     fn into_entry(
         self,
         audit: &mut AuditScope,
     ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice()).map_err(|e| {
+            admin_error!(?e, "Serde CBOR Error");
             ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
             OperationError::SerdeCborError
         })?;
@@ -153,6 +159,7 @@ pub trait BackendTransaction {
 
     fn get_idxmeta_ref(&self) -> &IdxMeta;
 
+    // ! TRACING INTEGRATED
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
@@ -256,6 +263,7 @@ pub trait BackendTransaction {
                         (IdList::AllIds, fp) => {
                             plan.push(fp);
                             // If we find anything unindexed, the whole term is unindexed.
+                            filter_trace!("Term {:?} is AllIds, shortcut return", f);
                             lfilter!(au, "Term {:?} is AllIds, shortcut return", f);
                             let setplan = FilterPlan::OrUnindexed(plan);
                             return Ok((IdList::AllIds, setplan));
@@ -292,6 +300,9 @@ pub trait BackendTransaction {
                 let (mut cand_idl, fp) = match f_rem_iter.next() {
                     Some(f) => self.filter2idl(au, f, thres)?,
                     None => {
+                        filter_warn!(
+                            "And filter was empty, or contains only AndNot, can not evaluate."
+                        );
                         lfilter_error!(au, "WARNING: And filter was empty, or contains only AndNot, can not evaluate.");
                         return Ok((IdList::Indexed(IDLBitRange::new()), FilterPlan::Invalid));
                     }
@@ -389,6 +400,9 @@ pub trait BackendTransaction {
                     let f_in = match f {
                         FilterResolved::AndNot(f_in, _) => f_in,
                         _ => {
+                            filter_error!(
+                                "Invalid server state, a cand filter leaked to andnot set!"
+                            );
                             lfilter_error!(
                                 au,
                                 "Invalid server state, a cand filter leaked to andnot set!"
@@ -486,6 +500,7 @@ pub trait BackendTransaction {
                             plan.push(fp);
                             if idl.is_empty() {
                                 // It's empty, so something is missing. Bail fast.
+                                filter_trace!("Inclusion is unable to proceed - an empty (missing) item was found!");
                                 lfilter!(au, "Inclusion is unable to proceed - an empty (missing) item was found!");
                                 let setplan = FilterPlan::InclusionIndexed(plan);
                                 return Ok((IdList::Indexed(IDLBitRange::new()), setplan));
@@ -495,6 +510,9 @@ pub trait BackendTransaction {
                         }
                         (_, fp) => {
                             plan.push(fp);
+                            filter_error!(
+                                "Inclusion is unable to proceed - all terms must be fully indexed!"
+                            );
                             lfilter_error!(
                                 au,
                                 "Inclusion is unable to proceed - all terms must be fully indexed!"
@@ -515,6 +533,7 @@ pub trait BackendTransaction {
             FilterResolved::AndNot(_f, _) => {
                 // get the idl for f
                 // now do andnot?
+                filter_error!("Requested a top level or isolated AndNot, returning empty");
                 lfilter_error!(
                     au,
                     "ERROR: Requested a top level or isolated AndNot, returning empty"
@@ -524,14 +543,17 @@ pub trait BackendTransaction {
         })
     }
 
+    // ! TRACING INTEGRATED
     fn search(
         &self,
         au: &mut AuditScope,
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        let _entered = trace_span!("be::search").entered();
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
+
         lperf_trace_segment!(au, "be::search", || {
             /*
             // Do a final optimise of the filter
@@ -540,20 +562,24 @@ pub trait BackendTransaction {
                 lperf_trace_segment!(au, "be::search<filt::optimise>", || { filt.optimise() });
             lfilter!(au, "filter optimised to --> {:?}", filt);
             */
+            filter_trace!(?filt, "filter optimized");
             lfilter!(au, "filter optimised --> {:?}", filt);
 
-            // Using the indexes, resolve the IdList here, or AllIds.
-            // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = lperf_trace_segment!(au, "be::search -> filter2idl", || {
-                self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
+            let (idl, fplan) = trace_span!("be::search -> filter2idl").in_scope(|| {
+                lperf_trace_segment!(au, "be::search -> filter2idl", || {
+                    self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
+                })
             })?;
 
+            filter_info!(?fplan, "filter executed plan");
             lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
-            // Based on the IdList we determine if limits are required at this point.
             match &idl {
                 IdList::AllIds => {
                     if !erl.unindexed_allow {
+                        admin_error!(
+                            "filter (search) is fully unindexed, and not allowed by resource limits"
+                        );
                         ladmin_error!(au, "filter (search) is fully unindexed, and not allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
                     }
@@ -561,6 +587,7 @@ pub trait BackendTransaction {
                 IdList::Partial(idl_br) => {
                     // if idl_br.len() > erl.search_max_filter_test {
                     if !idl_br.below_threshold(erl.search_max_filter_test) {
+                        admin_error!("filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits");
                         ladmin_error!(au, "filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
                     }
@@ -575,6 +602,7 @@ pub trait BackendTransaction {
                     // indexed ...
                     // if idl_br.len() > erl.search_max_results {
                     if !idl_br.below_threshold(erl.search_max_results) {
+                        admin_error!("filter (search) is indexed and greater than search_max_results allowed by resource limits");
                         ladmin_error!(au, "filter (search) is indexed and greater than search_max_results allowed by resource limits");
                         return Err(OperationError::ResourceLimit);
                     }
@@ -582,35 +610,42 @@ pub trait BackendTransaction {
             };
 
             let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                admin_error!(?e, "get_identry failed");
                 ladmin_error!(au, "get_identry failed {:?}", e);
                 e
             })?;
 
             let entries_filtered = match idl {
-                IdList::AllIds => lperf_segment!(au, "be::search<entry::ftest::allids>", || {
-                    entries
-                        .into_iter()
-                        .filter(|e| e.entry_match_no_index(filt))
-                        .collect()
+                IdList::AllIds => trace_span!("be::search<entry::ftest::allids>").in_scope(|| {
+                    lperf_segment!(au, "be::search<entry::ftest::allids>", || {
+                        entries
+                            .into_iter()
+                            .filter(|e| e.entry_match_no_index(&filt))
+                            .collect()
+                    })
                 }),
                 IdList::Partial(_) => {
-                    lperf_segment!(au, "be::search<entry::ftest::partial>", || {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(filt))
-                            .collect()
+                    trace_span!("be::search<entry::ftest::partial>").in_scope(|| {
+                        lperf_segment!(au, "be::search<entry::ftest::partial>", || {
+                            entries
+                                .into_iter()
+                                .filter(|e| e.entry_match_no_index(&filt))
+                                .collect()
+                        })
                     })
                 }
-                IdList::PartialThreshold(_) => {
-                    lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
-                        entries
-                            .into_iter()
-                            .filter(|e| e.entry_match_no_index(filt))
-                            .collect()
-                    })
-                }
+                IdList::PartialThreshold(_) => trace_span!("be::search<entry::ftest::thresh>")
+                    .in_scope(|| {
+                        lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
+                            entries
+                                .into_iter()
+                                .filter(|e| e.entry_match_no_index(&filt))
+                                .collect()
+                        })
+                    }),
                 // Since the index fully resolved, we can shortcut the filter test step here!
                 IdList::Indexed(_) => {
+                    filter_trace!("filter (search) was fully indexed 👏");
                     lfilter!(au, "filter (search) was fully indexed 👏");
                     entries
                 }
@@ -619,6 +654,7 @@ pub trait BackendTransaction {
             // If the idl was not indexed, apply the resource limit now. Avoid the needless match since the
             // if statement is quick.
             if entries_filtered.len() > erl.search_max_results {
+                admin_error!("filter (search) is resolved and greater than search_max_results allowed by resource limits");
                 ladmin_error!(au, "filter (search) is resolved and greater than search_max_results allowed by resource limits");
                 return Err(OperationError::ResourceLimit);
             }
@@ -627,6 +663,7 @@ pub trait BackendTransaction {
         })
     }
 
+    // ! TRACING INTEGRATED
     /// Given a filter, assert some condition exists.
     /// Basically, this is a specialised case of search, where we don't need to
     /// load any candidates if they match. This is heavily used in uuid
@@ -637,73 +674,91 @@ pub trait BackendTransaction {
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
-        lperf_trace_segment!(au, "be::exists", || {
-            /*
-            // Do a final optimise of the filter
-            lfilter!(au, "filter unoptimised form --> {:?}", filt);
-            let filt = filt.optimise();
-            lfilter!(au, "filter optimised to --> {:?}", filt);
-            */
-            lfilter!(au, "filter optimised --> {:?}", filt);
+        let _entered = trace_span!("be::exists").entered();
+        spanned!("be::exists", {
+            lperf_trace_segment!(au, "be::exists", || {
+                /*
+                // Do a final optimise of the filter
+                lfilter!(au, "filter unoptimised form --> {:?}", filt);
+                let filt = filt.optimise();
+                lfilter!(au, "filter optimised to --> {:?}", filt);
+                */
+                filter_trace!(?filt, "filter optimised");
+                lfilter!(au, "filter optimised --> {:?}", filt);
 
-            // Using the indexes, resolve the IdList here, or AllIds.
-            // Also get if the filter was 100% resolved or not.
-            let (idl, fplan) = lperf_trace_segment!(au, "be::exists -> filter2idl", || {
-                self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
-            })?;
+                // Using the indexes, resolve the IdList here, or AllIds.
+                // Also get if the filter was 100% resolved or not.
+                let (idl, fplan) = spanned!("be::exists -> filter2idl", {
+                    lperf_trace_segment!(au, "be::exists -> filter2idl", || {
+                        self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
+                    })
+                })?;
 
-            lfilter_info!(au, "filter executed plan -> {:?}", fplan);
+                filter_info!(?fplan, "filter executed plan");
+                lfilter_info!(au, "filter executed plan -> {:?}", fplan);
 
-            // Apply limits to the IdList.
-            match &idl {
-                IdList::AllIds => {
-                    if !erl.unindexed_allow {
-                        ladmin_error!(au, "filter (exists) is fully unindexed, and not allowed by resource limits");
-                        return Err(OperationError::ResourceLimit);
+                // Apply limits to the IdList.
+                match &idl {
+                    IdList::AllIds => {
+                        if !erl.unindexed_allow {
+                            admin_error!("filter (exists) is fully unindexed, and not allowed by resource limits");
+                            ladmin_error!(au, "filter (exists) is fully unindexed, and not allowed by resource limits");
+                            return Err(OperationError::ResourceLimit);
+                        }
                     }
-                }
-                IdList::Partial(idl_br) => {
-                    if !idl_br.below_threshold(erl.search_max_filter_test) {
-                        ladmin_error!(au, "filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
-                        return Err(OperationError::ResourceLimit);
+                    IdList::Partial(idl_br) => {
+                        if !idl_br.below_threshold(erl.search_max_filter_test) {
+                            admin_error!("filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
+                            ladmin_error!(au, "filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits");
+                            return Err(OperationError::ResourceLimit);
+                        }
                     }
+                    IdList::PartialThreshold(_) => {
+                        // Since we opted for this, this is not the fault
+                        // of the user and we should not penalise them.
+                    }
+                    IdList::Indexed(_) => {}
                 }
-                IdList::PartialThreshold(_) => {
-                    // Since we opted for this, this is not the fault
-                    // of the user and we should not penalise them.
-                }
-                IdList::Indexed(_) => {}
-            }
 
-            // Now, check the idl -- if it's fully resolved, we can skip this because the query
-            // was fully indexed.
-            match &idl {
-                IdList::Indexed(idl) => Ok(!idl.is_empty()),
-                _ => {
-                    let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
-                        ladmin_error!(au, "get_identry failed {:?}", e);
-                        e
-                    })?;
+                // Now, check the idl -- if it's fully resolved, we can skip this because the query
+                // was fully indexed.
+                match &idl {
+                    IdList::Indexed(idl) => Ok(!idl.is_empty()),
+                    _ => {
+                        let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                            admin_error!(?e, "get_identry failed");
+                            ladmin_error!(au, "get_identry failed {:?}", e);
+                            e
+                        })?;
 
-                    // if not 100% resolved query, apply the filter test.
-                    let entries_filtered: Vec<_> =
-                        lperf_trace_segment!(au, "be::exists -> entry_match_no_index", || {
-                            entries
-                                .into_iter()
-                                .filter(|e| e.entry_match_no_index(filt))
-                                .collect()
-                        });
+                        // if not 100% resolved query, apply the filter test.
+                        let entries_filtered: Vec<_> =
+                            spanned!("be::exists -> entry_match_no_index", {
+                                lperf_trace_segment!(
+                                    au,
+                                    "be::exists -> entry_match_no_index",
+                                    || {
+                                        entries
+                                            .into_iter()
+                                            .filter(|e| e.entry_match_no_index(&filt))
+                                            .collect()
+                                    }
+                                )
+                            });
 
-                    Ok(!entries_filtered.is_empty())
-                }
-            } // end match idl
-        }) // end audit segment
+                        Ok(!entries_filtered.is_empty())
+                    }
+                } // end match idl
+            }) // end audit segment
+        }) // end spanned
     }
 
+    // ! TRACING INTEGRATED
     fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         self.get_idlayer().verify(audit)
     }
 
+    // ! TRACING INTEGRATED
     fn verify_entry_index(
         &self,
         audit: &mut AuditScope,
@@ -713,11 +768,12 @@ pub trait BackendTransaction {
         if e.mask_recycled_ts().is_some() {
             let e_uuid = e.get_uuid();
             // We only check these on live entries.
-            let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(e));
+            let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(&e));
 
             let n2u_set = match (n2u_add, n2u_rem) {
                 (Some(set), None) => set,
                 (_, _) => {
+                    admin_error!("Invalid idx_name2uuid_diff state");
                     ladmin_error!(audit, "Invalid idx_name2uuid_diff state");
                     return Err(ConsistencyError::BackendIndexSync);
                 }
@@ -730,6 +786,7 @@ pub trait BackendTransaction {
                         if &idx_uuid == e_uuid {
                             Ok(())
                         } else {
+                            admin_error!("Invalid name2uuid state -> incorrect uuid association");
                             ladmin_error!(
                                 audit,
                                 "Invalid name2uuid state -> incorrect uuid association"
@@ -738,6 +795,7 @@ pub trait BackendTransaction {
                         }
                     }
                     r => {
+                        admin_error!(state = ?r, "Invalid name2uuid state");
                         ladmin_error!(audit, "Invalid name2uuid state -> {:?}", r);
                         Err(ConsistencyError::BackendIndexSync)
                     }
@@ -745,28 +803,32 @@ pub trait BackendTransaction {
             })?;
 
             let spn = e.get_uuid2spn();
-            match self.get_idlayer().uuid2spn(audit, e_uuid) {
+            match self.get_idlayer().uuid2spn(audit, &e_uuid) {
                 Ok(Some(idx_spn)) => {
                     if spn != idx_spn {
+                        admin_error!("Invalid uuid2spn state -> incorrect idx spn value");
                         ladmin_error!(audit, "Invalid uuid2spn state -> incorrect idx spn value");
                         return Err(ConsistencyError::BackendIndexSync);
                     }
                 }
                 r => {
+                    admin_error!(state = ?r, "Invalid uuid2spn state");
                     ladmin_error!(audit, "Invalid uuid2spn state -> {:?}", r);
                     return Err(ConsistencyError::BackendIndexSync);
                 }
             };
 
             let rdn = e.get_uuid2rdn();
-            match self.get_idlayer().uuid2rdn(audit, e_uuid) {
+            match self.get_idlayer().uuid2rdn(audit, &e_uuid) {
                 Ok(Some(idx_rdn)) => {
                     if rdn != idx_rdn {
+                        admin_error!("Invalid uuid2rdn state -> incorrect idx rdn value");
                         ladmin_error!(audit, "Invalid uuid2rdn state -> incorrect idx rdn value");
                         return Err(ConsistencyError::BackendIndexSync);
                     }
                 }
                 r => {
+                    admin_error!(state = ?r, "Invalid uuid2rdn state");
                     ladmin_error!(audit, "Invalid uuid2rdn state -> {:?}", r);
                     return Err(ConsistencyError::BackendIndexSync);
                 }
@@ -782,11 +844,13 @@ pub trait BackendTransaction {
         Ok(())
     }
 
+    // ! TRACING INTEGRATED
     fn verify_indexes(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let idl = IdList::AllIds;
         let entries = match self.get_idlayer().get_identry(audit, &idl) {
             Ok(s) => s,
             Err(e) => {
+                admin_error!(?e, "get_identry failure");
                 ladmin_error!(audit, "get_identry failure {:?}", e);
                 return vec![Err(ConsistencyError::Unknown)];
             }
@@ -803,6 +867,7 @@ pub trait BackendTransaction {
         }
     }
 
+    // ! TRACING INTEGRATED
     fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
@@ -813,13 +878,14 @@ pub trait BackendTransaction {
             .iter()
             .map(|id_ent| {
                 serde_cbor::from_slice(id_ent.data.as_slice())
-                    .map_err(|_| OperationError::SerdeJsonError)
+                    .map_err(|_| OperationError::SerdeJsonError) // log?
             })
             .collect();
 
         let entries = entries?;
 
         let serialized_entries_str = serde_json::to_string_pretty(&entries).map_err(|e| {
+            admin_error!(?e, "serde error");
             ladmin_error!(audit, "serde error {:?}", e);
             OperationError::SerdeJsonError
         })?;
@@ -827,11 +893,13 @@ pub trait BackendTransaction {
         fs::write(dst_path, serialized_entries_str)
             .map(|_| ())
             .map_err(|e| {
+                admin_error!(?e, "fs::write error");
                 ladmin_error!(audit, "fs::write error {:?}", e);
                 OperationError::FsError
             })
     }
 
+    // ! TRACING INTEGRATED
     fn name2uuid(
         &self,
         audit: &mut AuditScope,
@@ -840,6 +908,7 @@ pub trait BackendTransaction {
         self.get_idlayer().name2uuid(audit, name)
     }
 
+    // ! TRACING INTEGRATED
     fn uuid2spn(
         &self,
         audit: &mut AuditScope,
@@ -848,6 +917,7 @@ pub trait BackendTransaction {
         self.get_idlayer().uuid2spn(audit, uuid)
     }
 
+    // ! TRACING INTEGRATED
     fn uuid2rdn(
         &self,
         audit: &mut AuditScope,
@@ -882,10 +952,12 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 }
 
 impl<'a> BackendReadTransaction<'a> {
+    // ! TRACING INTEGRATED
     pub fn list_indexes(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
         self.get_idlayer().list_idxs(audit)
     }
 
+    // ! TRACING INTEGRATED
     pub fn list_id2entry(
         &self,
         audit: &mut AuditScope,
@@ -893,6 +965,7 @@ impl<'a> BackendReadTransaction<'a> {
         self.get_idlayer().list_id2entry(audit)
     }
 
+    // ! TRACING INTEGRATED
     pub fn list_index_content(
         &self,
         audit: &mut AuditScope,
@@ -901,6 +974,7 @@ impl<'a> BackendReadTransaction<'a> {
         self.get_idlayer().list_index_content(audit, index_name)
     }
 
+    // ! TRACING INTEGRATED
     pub fn get_id2entry(
         &self,
         audit: &mut AuditScope,
@@ -924,6 +998,7 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 }
 
 impl<'a> BackendWriteTransaction<'a> {
+    // TODO: tracing
     pub fn create(
         &self,
         au: &mut AuditScope,
@@ -1079,6 +1154,7 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
+    // TODO: tracing
     // Should take a mut index set, and then we write the whole thing back
     // in a single stripe.
     //

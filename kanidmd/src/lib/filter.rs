@@ -485,19 +485,22 @@ impl Filter<FilterInvalid> {
     // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
+    // ! TRACING INTEGRATED
     pub fn from_ro(
         audit: &mut AuditScope,
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(audit, "filter::from_ro", || {
-            let depth = FILTER_DEPTH_MAX;
-            let mut elems = ev.limits.filter_max_elements;
-            Ok(Filter {
-                state: FilterInvalid {
-                    inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
-                },
+        spanned!("filer::from_ro", {
+            lperf_trace_segment!(audit, "filter::from_ro", || {
+                let depth = FILTER_DEPTH_MAX;
+                let mut elems = ev.limits.filter_max_elements;
+                Ok(Filter {
+                    state: FilterInvalid {
+                        inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
+                    },
+                })
             })
         })
     }
@@ -622,7 +625,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -637,7 +640,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -663,7 +666,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -723,6 +726,7 @@ impl FilterComp {
         }
     }
 
+    // ! TRACING INTEGRATED
     fn from_ro(
         audit: &mut AuditScope,
         f: &ProtoFilter,

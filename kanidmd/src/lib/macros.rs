@@ -208,6 +208,7 @@ macro_rules! run_idm_test_inner {
 #[cfg(test)]
 macro_rules! run_idm_test {
     ($test_fn:expr) => {{
+        let _ = crate::tracing_tree::test_init();
         let audit = run_idm_test_inner!($test_fn);
         audit.write_log();
     }};

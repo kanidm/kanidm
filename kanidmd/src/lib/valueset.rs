@@ -77,7 +77,7 @@ impl ValueSet {
     // We'll need to be able to do partialeq/intersect etc later.
 
     pub fn iter(&self) -> Iter {
-        self.into_iter()
+        (&self).into_iter()
     }
 
     pub fn difference<'a>(&'a self, other: &'a ValueSet) -> Difference<'a> {

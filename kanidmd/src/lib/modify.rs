@@ -143,11 +143,11 @@ impl ModifyList<ModifyInvalid> {
 
         pe.attrs.iter().try_for_each(|(attr, vals)| {
             // Issue a purge to the attr.
-            mods.push(m_purge(attr));
+            mods.push(m_purge(&attr));
             // Now if there are vals, push those too.
             // For each value we want to now be present.
             vals.iter().try_for_each(|val| {
-                qs.clone_value(audit, attr, val).map(|resolved_v| {
+                qs.clone_value(audit, &attr, &val).map(|resolved_v| {
                     mods.push(Modify::Present(attr.as_str().into(), resolved_v));
                 })
             })
@@ -176,7 +176,7 @@ impl ModifyList<ModifyInvalid> {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(schema_a) => schema_a
-                            .validate_value(attr_norm.as_str(), value)
+                            .validate_value(attr_norm.as_str(), &value)
                             .map(|_| Modify::Present(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }
@@ -185,7 +185,7 @@ impl ModifyList<ModifyInvalid> {
                     let attr_norm = schema.normalise_attr_name(attr);
                     match schema_attributes.get(&attr_norm) {
                         Some(schema_a) => schema_a
-                            .validate_partialvalue(attr_norm.as_str(), value)
+                            .validate_partialvalue(attr_norm.as_str(), &value)
                             .map(|_| Modify::Removed(attr_norm, value.clone())),
                         None => Err(SchemaError::InvalidAttribute(attr_norm.to_string())),
                     }

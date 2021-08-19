@@ -128,6 +128,7 @@ impl UnixUserAccount {
         try_from_entry!(value, groups)
     }
 
+    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_ro(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
@@ -208,6 +209,7 @@ impl UnixUserAccount {
         vmin && vmax
     }
 
+    // ! TRACING INTEGRATED
     pub(crate) fn verify_unix_credential(
         &self,
         au: &mut AuditScope,
@@ -230,6 +232,7 @@ impl UnixUserAccount {
             Some(cred) => {
                 cred.password_ref().and_then(|pw| {
                     if pw.verify(cleartext)? {
+                        security_info!("Successful unix cred handling");
                         lsecurity!(au, "Successful unix cred handling");
                         if pw.requires_upgrade() {
                             async_tx
@@ -238,6 +241,9 @@ impl UnixUserAccount {
                                     existing_password: cleartext.to_string(),
                                 }))
                                 .map_err(|_| {
+                                    admin_error!(
+                                        "failed to queue delayed action - unix password upgrade"
+                                    );
                                     ladmin_error!(
                                         au,
                                         "failed to queue delayed action - unix password upgrade"
@@ -251,6 +257,7 @@ impl UnixUserAccount {
                         Some(self.to_unixusertoken(ct)).transpose()
                     } else {
                         // Failed to auth
+                        security_info!("Failed unix cred handling (denied)");
                         lsecurity!(au, "Failed unix cred handling (denied)");
                         Ok(None)
                     }
@@ -258,6 +265,7 @@ impl UnixUserAccount {
             }
             // They don't have a unix cred, fail the auth.
             None => {
+                security_info!("Failed unix cred handling (no cred present)");
                 lsecurity!(au, "Failed unix cred handling (no cred present)");
                 Ok(None)
             }
@@ -402,6 +410,7 @@ impl UnixGroup {
         try_from_account_group_e!(au, value, qs)
     }
 
+    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_ro(
         au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
