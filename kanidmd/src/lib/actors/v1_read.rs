@@ -122,30 +122,21 @@ impl QueryServerReadV1 {
                     })?;
 
                 // Make an event from the request
-                // TODO: Refactor this in another PR to use `map_err` and `?`
-                let search = match SearchEvent::from_message(
-                    &mut audit,
-                    ident,
-                    &req,
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        admin_error!(?e, "Failed to begin search");
-                        ladmin_error!(audit, "Failed to begin search: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                let search =
+                    SearchEvent::from_message(&mut audit, ident, &req, &idms_prox_read.qs_read)
+                        .map_err(|e| {
+                            admin_error!(?e, "Failed to begin search");
+                            ladmin_error!(audit, "Failed to begin search: {:?}", e);
+                            e
+                        })?;
 
                 trace!(?search, "Begin event");
                 ltrace!(audit, "Begin event {:?}", search);
 
-                // TODO: Refactor this in another PR to use `?`
-                match idms_prox_read.qs_read.search_ext(&mut audit, &search) {
-                    Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
-                        .map(SearchResult::response),
-                    Err(e) => Err(e),
-                }
+                let entries = idms_prox_read.qs_read.search_ext(&mut audit, &search)?;
+
+                SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
+                    .map(SearchResult::response)
             })
         });
         // At the end of the event we send it for logging.
@@ -387,48 +378,26 @@ impl QueryServerReadV1 {
                         e
                     })?;
 
-                // TODO: Refactor this in another PR to use `?`
-                let srch = match SearchEvent::from_whoami_request(
-                    &mut audit,
-                    ident,
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        admin_error!(?e, "Failed to begin whoami");
-                        ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
-                        return Err(e);
-                    }
-                };
+                let srch =
+                    SearchEvent::from_whoami_request(&mut audit, ident, &idms_prox_read.qs_read)
+                        .map_err(|e| {
+                            admin_error!(?e, "Failed to begin whoami");
+                            ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
+                            e
+                        })?;
 
                 trace!(search = ?srch, "Begin event");
                 ltrace!(audit, "Begin event {:?}", srch);
 
-                // TODO: Refactor this in another PR to use `?`
-                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                    Ok(mut entries) => {
-                        // assert there is only one ...
-                        match entries.len() {
-                            0 => Err(OperationError::NoMatchingEntries),
-                            1 => {
-                                #[allow(clippy::expect_used)]
-                                let e = entries.pop().expect("Entry length mismatch!!!");
-                                // Now convert to a response, and return
-                                WhoamiResult::new(&mut audit, &idms_prox_read.qs_read, &e, uat)
-                                    .map(|ok_wr| ok_wr.response())
-                            }
-                            // Somehow we matched multiple, which should be impossible.
-                            _ => Err(OperationError::InvalidState),
-                        }
-                        // TODO: Refactor this in another PR use use the following
-                        // entries.pop() {
-                        //     Some(e) if entries.is_empty() => // whoami stuff...
-                        //     Some(_) => Err(OperationError::InvalidState) // matched multiple
-                        //     _ => Err(OperationError::NoMatchingEntries),
-                        // }
+                let mut entries = idms_prox_read.qs_read.search_ext(&mut audit, &srch)?;
+
+                match entries.pop() {
+                    Some(e) if entries.is_empty() => {
+                        WhoamiResult::new(&mut audit, &idms_prox_read.qs_read, &e, uat)
+                            .map(WhoamiResult::response)
                     }
-                    // Something else went wrong ...
-                    Err(e) => Err(e),
+                    Some(_) => Err(OperationError::InvalidState), // Somehow matched multiple entries...
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         });

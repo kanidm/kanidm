@@ -341,25 +341,22 @@ impl TryFrom<DbCredV1> for Credential {
             None => None,
         };
 
-        let v_webauthn = match webauthn {
-            Some(dbw) => Some(
-                dbw.into_iter()
-                    .map(|wc| {
-                        (
-                            wc.label,
-                            WebauthnCredential {
-                                cred_id: wc.id,
-                                cred: wc.cred,
-                                counter: wc.counter,
-                                verified: wc.verified,
-                                registration_policy: wc.registration_policy,
-                            },
-                        )
-                    })
-                    .collect(),
-            ),
-            None => None,
-        };
+        let v_webauthn = webauthn.map(|dbw| {
+            dbw.into_iter()
+                .map(|wc| {
+                    (
+                        wc.label,
+                        WebauthnCredential {
+                            cred_id: wc.id,
+                            cred: wc.cred,
+                            counter: wc.counter,
+                            verified: wc.verified,
+                            registration_policy: wc.registration_policy,
+                        },
+                    )
+                })
+                .collect()
+        });
 
         let v_backup_code = match backup_code {
             Some(dbb) => Some(BackupCodes::try_from(dbb)?),
@@ -544,11 +541,11 @@ impl Credential {
             }
             CredentialType::PasswordMfa(_, _, map, _) | CredentialType::Webauthn(map) => map
                 .iter()
-                .fold(None, |acc, (k, v)| {
-                    if acc.is_none() && &v.cred_id == cid && v.counter < counter {
+                .find_map(|(k, v)| {
+                    if &v.cred_id == cid && v.counter < counter {
                         Some(k)
                     } else {
-                        acc
+                        None
                     }
                 })
                 .map(|label| {
@@ -841,13 +838,13 @@ impl Credential {
         match &self.type_ {
             CredentialType::PasswordMfa(_, _, _, opt_bc) => opt_bc
                 .as_ref()
-                .ok_or(OperationError::InvalidAccountState(String::from(
-                    "No backup codes are available for this account",
-                )))
-                .and_then(|bc| {
-                    Ok(BackupCodesView {
-                        backup_codes: bc.code_set.clone().into_iter().collect(),
-                    })
+                .ok_or_else(|| {
+                    OperationError::InvalidAccountState(
+                        "No backup codes are available for this account".to_string(),
+                    )
+                })
+                .map(|bc| BackupCodesView {
+                    backup_codes: bc.code_set.clone().into_iter().collect(),
                 }),
             _ => Err(OperationError::InvalidAccountState(
                 "Non-MFA credential type".to_string(),

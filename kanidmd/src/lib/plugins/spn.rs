@@ -139,20 +139,16 @@ impl Plugin for Spn {
         //    trigger the spn regen ... which is expensive. Future
         // TODO #157: will be improvements to modify on large txns.
 
-        let domain_name_changed =
-            cand.iter()
-                .zip(pre_cand.iter())
-                .fold(None, |acc, (post, pre)| {
-                    if acc.is_some() {
-                        acc
-                    } else if post.attribute_equality("uuid", &PV_UUID_DOMAIN_INFO)
-                        && post.get_ava_single("domain_name") != pre.get_ava_single("domain_name")
-                    {
-                        post.get_ava_single("domain_name")
-                    } else {
-                        acc
-                    }
-                });
+        let domain_name_changed = cand.iter().zip(pre_cand.iter()).find_map(|(post, pre)| {
+            let domain_name = post.get_ava_single("domain_name");
+            if post.attribute_equality("uuid", &PV_UUID_DOMAIN_INFO)
+                && domain_name != pre.get_ava_single("domain_name")
+            {
+                domain_name
+            } else {
+                None
+            }
+        });
 
         let domain_name = match domain_name_changed {
             Some(s) => s,

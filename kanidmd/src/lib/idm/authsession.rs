@@ -957,12 +957,7 @@ mod tests {
         );
 
         if let AuthState::Choose(auth_mechs) = state {
-            assert!(
-                true == auth_mechs.iter().fold(false, |acc, x| match x {
-                    AuthMech::Anonymous => true,
-                    _ => acc,
-                })
-            );
+            assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Anonymous)));
         } else {
             panic!("Invalid auth state")
         }
@@ -973,12 +968,9 @@ mod tests {
             .expect("Failed to select anonymous mech.");
 
         if let AuthState::Continue(auth_mechs) = state {
-            assert!(
-                true == auth_mechs.iter().fold(false, |acc, x| match x {
-                    AuthAllowed::Anonymous => true,
-                    _ => acc,
-                })
-            );
+            assert!(auth_mechs
+                .iter()
+                .any(|x| matches!(x, AuthAllowed::Anonymous)));
         } else {
             panic!("Invalid auth state")
         }
@@ -999,12 +991,7 @@ mod tests {
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
-                assert!(
-                    true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        AuthMech::Password => true,
-                        _ => acc,
-                    })
-                );
+                assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Password)));
             } else {
                 panic!();
             }
@@ -1014,12 +1001,9 @@ mod tests {
                 .expect("Failed to select anonymous mech.");
 
             if let AuthState::Continue(auth_mechs) = state {
-                assert!(
-                    true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        AuthAllowed::Password => true,
-                        _ => acc,
-                    })
-                );
+                assert!(auth_mechs
+                    .iter()
+                    .any(|x| matches!(x, AuthAllowed::Password)));
             } else {
                 panic!("Invalid auth state")
             }
@@ -1147,12 +1131,9 @@ mod tests {
             let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
-                assert!(
-                    true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        AuthMech::PasswordMfa => true,
-                        _ => acc,
-                    })
-                );
+                assert!(auth_mechs
+                    .iter()
+                    .any(|x| matches!(x, AuthMech::PasswordMfa)))
             } else {
                 panic!();
             }
@@ -1171,10 +1152,20 @@ mod tests {
                             rchal = Some(chal.clone());
                             true
                         }
+                        // Why does this also return `true`? If we hit this but not
+                        // Webauthn, then we will panic when unwrapping `rchal` later...
                         AuthAllowed::Totp => true,
                         _ => acc,
                     })
                 );
+
+                // I feel like this is what we should be doing
+                // assuming there will only be one `AuthAllowed::Webauthn`.
+                // rchal = auth_mechs.iter().find_map(|x| match x {
+                //     AuthAllowed::Webauthn(chal) => Some(chal),
+                //     _ => None,
+                // });
+                // assert!(rchal.is_some());
             } else {
                 panic!("Invalid auth state")
             }
@@ -1441,12 +1432,7 @@ mod tests {
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
-                assert!(
-                    true == auth_mechs.iter().fold(false, |acc, x| match x {
-                        AuthMech::Webauthn => true,
-                        _ => acc,
-                    })
-                );
+                assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Webauthn)));
             } else {
                 panic!();
             }
