@@ -1245,8 +1245,62 @@
 <span id="1243">1243</span>
 <span id="1244">1244</span>
 <span id="1245">1245</span>
+<span id="1246">1246</span>
+<span id="1247">1247</span>
+<span id="1248">1248</span>
+<span id="1249">1249</span>
+<span id="1250">1250</span>
+<span id="1251">1251</span>
+<span id="1252">1252</span>
+<span id="1253">1253</span>
+<span id="1254">1254</span>
+<span id="1255">1255</span>
+<span id="1256">1256</span>
+<span id="1257">1257</span>
+<span id="1258">1258</span>
+<span id="1259">1259</span>
+<span id="1260">1260</span>
+<span id="1261">1261</span>
+<span id="1262">1262</span>
+<span id="1263">1263</span>
+<span id="1264">1264</span>
+<span id="1265">1265</span>
+<span id="1266">1266</span>
+<span id="1267">1267</span>
+<span id="1268">1268</span>
+<span id="1269">1269</span>
+<span id="1270">1270</span>
+<span id="1271">1271</span>
+<span id="1272">1272</span>
+<span id="1273">1273</span>
+<span id="1274">1274</span>
+<span id="1275">1275</span>
+<span id="1276">1276</span>
+<span id="1277">1277</span>
+<span id="1278">1278</span>
+<span id="1279">1279</span>
+<span id="1280">1280</span>
+<span id="1281">1281</span>
+<span id="1282">1282</span>
+<span id="1283">1283</span>
+<span id="1284">1284</span>
+<span id="1285">1285</span>
+<span id="1286">1286</span>
+<span id="1287">1287</span>
+<span id="1288">1288</span>
+<span id="1289">1289</span>
+<span id="1290">1290</span>
+<span id="1291">1291</span>
+<span id="1292">1292</span>
+<span id="1293">1293</span>
+<span id="1294">1294</span>
+<span id="1295">1295</span>
+<span id="1296">1296</span>
+<span id="1297">1297</span>
+<span id="1298">1298</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">instrument</span>, <span class="ident">trace</span>};
 
 <span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">SecondsFormat</span>, <span class="ident">Utc</span>};
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -1268,7 +1322,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::idm::oauth2</span>::{
     <span class="ident">AccessTokenRequest</span>, <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>,
-    <span class="ident">ConsentRequest</span>, <span class="ident">IntrospectionRequest</span>, <span class="ident">IntrospectionResponse</span>, <span class="ident">Oauth2Error</span>,
+    <span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerTransaction</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ldap</span>::{<span class="ident">LdapBoundToken</span>, <span class="ident">LdapResponseState</span>, <span class="ident">LdapServer</span>};
@@ -1329,6 +1383,17 @@
     <span class="comment">// required complete. We still need to do certain validation steps, but</span>
     <span class="comment">// at this point our just is just to route to do_&lt;action&gt;</span>
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="comment">// ! For uuid, we should deprecate `RequestExtensions::new_eventid` and just manually call</span>
+    <span class="comment">// ! `Uuid::new_v4().to_hyphenated().to_string()` instead of keeping a `Uuid` around.</span>
+    <span class="comment">// ! Ideally, this function takes &amp;self, uat, req, and then a `uuid` argument that is a `&amp;str` of the hyphenated uuid.</span>
+    <span class="comment">// ! Then we just don&#39;t skip uuid, and we don&#39;t have to do the custom `fields(..)` stuff in this macro call.</span>
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">req</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1339,32 +1404,50 @@
         <span class="comment">// Begin a read</span>
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">lperf_op_segment!</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="string">&quot;actors::v1_read::handle&lt;SearchMessage&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
-                .<span class="ident">validate_and_parse_uat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> <span class="ident">idms_prox_read</span>.<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>))
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">e</span>
-                })<span class="question-mark">?</span>;
+        <span class="comment">// ! NOTICE: The inner function contains a short-circuiting `return`, which is only exits the closure.</span>
+        <span class="comment">// ! If we removed the `lperf_op_segment` and kept the inside, this would short circuit before logging `audit`.</span>
+        <span class="comment">// ! However, since we immediately return `res` after logging `audit`, and we should be removing the lperf stuff</span>
+        <span class="comment">// ! and the logging of `audit` at the same time, it is ok if the inner code short circuits the whole function because</span>
+        <span class="comment">// ! there is no work to be done afterwards.</span>
+        <span class="comment">// ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block</span>
+        <span class="comment">// ! in order to not short-circuit the entire function.</span>
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;SearchMessage&gt;&quot;</span>, {
+            <span class="macro">lperf_op_segment!</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="string">&quot;actors::v1_read::handle&lt;SearchMessage&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                    .<span class="ident">validate_and_parse_uat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> <span class="ident">idms_prox_read</span>.<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>))
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Invalid identity&quot;</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">e</span>
+                    })<span class="question-mark">?</span>;
 
-            <span class="comment">// Make an event from the request</span>
-            <span class="kw">let</span> <span class="ident">srch</span> <span class="op">=</span>
-                <span class="kw">match</span> <span class="ident">SearchEvent::from_message</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>, <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>) {
+                <span class="comment">// Make an event from the request</span>
+                <span class="comment">// TODO: Refactor this in another PR to use `map_err` and `?`</span>
+                <span class="kw">let</span> <span class="ident">search</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">SearchEvent::from_message</span>(
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
+                    <span class="ident">ident</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">req</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
+                ) {
                     <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to begin search&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to begin search: {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                     }
                 };
 
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Begin event {:?}&quot;</span>, <span class="ident">srch</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">search</span>, <span class="string">&quot;Begin event&quot;</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Begin event {:?}&quot;</span>, <span class="ident">search</span>);
 
-            <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SearchResult::new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">entries</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ok_sr</span><span class="op">|</span> <span class="ident">ok_sr</span>.<span class="ident">response</span>()),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-            }
+                <span class="comment">// TODO: Refactor this in another PR to use `?`</span>
+                <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">search</span>) {
+                    <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SearchResult::new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">entries</span>)
+                        .<span class="ident">map</span>(<span class="ident">SearchResult::response</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                }
+            })
         });
         <span class="comment">// At the end of the event we send it for logging.</span>
         <span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">audit</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -1374,6 +1457,13 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;auth&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">sessionid</span>, <span class="ident">req</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_auth</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">sessionid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
@@ -1388,12 +1478,14 @@
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idm_auth</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">auth_async</span>().<span class="kw">await</span>;
         <span class="comment">// let res = lperf_op_segment!(&amp;mut audit, &quot;actors::v1_read::handle&lt;AuthMessage&gt;&quot;, || {</span>
+        <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">sessionid</span>, <span class="question-mark">?</span><span class="ident">req</span>, <span class="string">&quot;Begin auth event&quot;</span>);
         <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;Begin auth event {:?} {:?}&quot;</span>, <span class="ident">sessionid</span>, <span class="ident">req</span>);
 
         <span class="comment">// Destructure it.</span>
         <span class="comment">// Convert the AuthRequest to an AuthEvent that the idm server</span>
         <span class="comment">// can use.</span>
         <span class="kw">let</span> <span class="ident">ae</span> <span class="op">=</span> <span class="ident">AuthEvent::from_message</span>(<span class="ident">sessionid</span>, <span class="ident">req</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to parse AuthEvent&quot;</span>);
             <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to parse AuthEvent -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">e</span>
         })<span class="question-mark">?</span>;
@@ -1410,6 +1502,7 @@
             .<span class="kw">await</span>
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="ident">idm_auth</span>.<span class="ident">commit</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">r</span>));
 
+        <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">res</span>, <span class="string">&quot;Sending auth result&quot;</span>);
         <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;Sending auth result -&gt; {:?}&quot;</span>, <span class="ident">res</span>);
         <span class="comment">// Build the result.</span>
         <span class="comment">// r.map(|r| r.response())</span>
@@ -1497,7 +1590,7 @@
                     }
 
                     <span class="comment">// get the /some/dir/&lt;file_name&gt; of the file</span>
-                    <span class="kw">let</span> <span class="ident">file_name</span> <span class="op">=</span> <span class="ident">pb</span>.<span class="ident">file_name</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_str</span>()).<span class="ident">unwrap</span>();
+                    <span class="kw">let</span> <span class="ident">file_name</span> <span class="op">=</span> <span class="ident">pb</span>.<span class="ident">file_name</span>().<span class="ident">unwrap</span>().<span class="ident">to_str</span>().<span class="ident">unwrap</span>();
                     <span class="comment">// check for a online backup file</span>
                     <span class="kw">if</span> <span class="ident">re</span>.<span class="ident">is_match</span>(<span class="ident">file_name</span>) {
                         <span class="ident">backup_file_list</span>.<span class="ident">push</span>(<span class="ident">pb</span>.<span class="ident">clone</span>());
@@ -1550,6 +1643,12 @@
         });
     }
 
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;whoami&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_whoami</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1560,59 +1659,79 @@
         <span class="comment">// Begin a read</span>
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">lperf_op_segment!</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="string">&quot;actors::v1_read::handle&lt;WhoamiMessage&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// Make an event from the whoami request. This will process the event and</span>
-            <span class="comment">// generate a selfuuid search.</span>
-            <span class="comment">//</span>
-            <span class="comment">// This current handles the unauthenticated check, and will</span>
-            <span class="comment">// trigger the failure, but if we can manage to work out async</span>
-            <span class="comment">// then move this to core.rs, and don&#39;t allow Option&lt;UAT&gt; to get</span>
-            <span class="comment">// this far.</span>
-            <span class="kw">let</span> (<span class="ident">uat</span>, <span class="ident">ident</span>) <span class="op">=</span> <span class="ident">idms_prox_read</span>
-                .<span class="ident">validate_and_parse_uat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> {
-                    <span class="ident">idms_prox_read</span>
-                        .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> (<span class="ident">uat</span>, <span class="ident">i</span>))
-                })
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">e</span>
-                })<span class="question-mark">?</span>;
+        <span class="comment">// ! NOTICE: The inner function contains a short-circuiting `return`, which is only exits the closure.</span>
+        <span class="comment">// ! If we removed the `lperf_op_segment` and kept the inside, this would short circuit before logging `audit`.</span>
+        <span class="comment">// ! However, since we immediately return `res` after logging `audit`, and we should be removing the lperf stuff</span>
+        <span class="comment">// ! and the logging of `audit` at the same time, it is ok if the inner code short circuits the whole function because</span>
+        <span class="comment">// ! there is no work to be done afterwards.</span>
+        <span class="comment">// ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block</span>
+        <span class="comment">// ! in order to not short-circuit the entire function.</span>
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;WhoamiMessage&gt;&quot;</span>, {
+            <span class="macro">lperf_op_segment!</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="string">&quot;actors::v1_read::handle&lt;WhoamiMessage&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// Make an event from the whoami request. This will process the event and</span>
+                <span class="comment">// generate a selfuuid search.</span>
+                <span class="comment">//</span>
+                <span class="comment">// This current handles the unauthenticated check, and will</span>
+                <span class="comment">// trigger the failure, but if we can manage to work out async</span>
+                <span class="comment">// then move this to core.rs, and don&#39;t allow Option&lt;UAT&gt; to get</span>
+                <span class="comment">// this far.</span>
+                <span class="kw">let</span> (<span class="ident">uat</span>, <span class="ident">ident</span>) <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                    .<span class="ident">validate_and_parse_uat</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> {
+                        <span class="ident">idms_prox_read</span>
+                            .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> (<span class="ident">uat</span>, <span class="ident">i</span>))
+                    })
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Invalid identity&quot;</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">e</span>
+                    })<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">srch</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">SearchEvent::from_whoami_request</span>(
-                <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
-                <span class="ident">ident</span>,
-                <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
-            ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to begin whoami: {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
-                }
-            };
-
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Begin event {:?}&quot;</span>, <span class="ident">srch</span>);
-
-            <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="comment">// assert there is only one ...</span>
-                    <span class="kw">match</span> <span class="ident">entries</span>.<span class="ident">len</span>() {
-                        <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
-                        <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                            <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">entries</span>.<span class="ident">pop</span>().<span class="ident">expect</span>(<span class="string">&quot;Entry length mismatch!!!&quot;</span>);
-                            <span class="comment">// Now convert to a response, and return</span>
-                            <span class="ident">WhoamiResult::new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="ident">uat</span>)
-                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ok_wr</span><span class="op">|</span> <span class="ident">ok_wr</span>.<span class="ident">response</span>())
-                        }
-                        <span class="comment">// Somehow we matched multiple, which should be impossible.</span>
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
+                <span class="comment">// TODO: Refactor this in another PR to use `?`</span>
+                <span class="kw">let</span> <span class="ident">srch</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">SearchEvent::from_whoami_request</span>(
+                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
+                    <span class="ident">ident</span>,
+                    <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
+                ) {
+                    <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to begin whoami&quot;</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to begin whoami: {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                     }
+                };
+
+                <span class="macro">trace!</span>(<span class="ident">search</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">srch</span>, <span class="string">&quot;Begin event&quot;</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Begin event {:?}&quot;</span>, <span class="ident">srch</span>);
+
+                <span class="comment">// TODO: Refactor this in another PR to use `?`</span>
+                <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">srch</span>) {
+                    <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// assert there is only one ...</span>
+                        <span class="kw">match</span> <span class="ident">entries</span>.<span class="ident">len</span>() {
+                            <span class="number">0</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                            <span class="number">1</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
+                                <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">entries</span>.<span class="ident">pop</span>().<span class="ident">expect</span>(<span class="string">&quot;Entry length mismatch!!!&quot;</span>);
+                                <span class="comment">// Now convert to a response, and return</span>
+                                <span class="ident">WhoamiResult::new</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="ident">uat</span>)
+                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ok_wr</span><span class="op">|</span> <span class="ident">ok_wr</span>.<span class="ident">response</span>())
+                            }
+                            <span class="comment">// Somehow we matched multiple, which should be impossible.</span>
+                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
+                        }
+                        <span class="comment">// TODO: Refactor this in another PR use use the following</span>
+                        <span class="comment">// entries.pop() {</span>
+                        <span class="comment">//     Some(e) if entries.is_empty() =&gt; // whoami stuff...</span>
+                        <span class="comment">//     Some(_) =&gt; Err(OperationError::InvalidState) // matched multiple</span>
+                        <span class="comment">//     _ =&gt; Err(OperationError::NoMatchingEntries),</span>
+                        <span class="comment">// }</span>
+                    }
+                    <span class="comment">// Something else went wrong ...</span>
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
-                <span class="comment">// Something else went wrong ...</span>
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-            }
+            })
         });
         <span class="comment">// Should we log the final result?</span>
         <span class="comment">// At the end of the event we send it for logging.</span>
@@ -1623,6 +1742,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalsearch</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1675,6 +1795,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalsearchrecycled</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1728,6 +1849,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalradiusread</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1797,6 +1919,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalradiustokenread</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1857,6 +1980,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalunixusertokenread</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1914,6 +2038,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalunixgrouptokenread</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -1973,6 +2098,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalsshkeyread</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2044,6 +2170,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_internalsshkeytagread</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2123,6 +2250,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_idmaccountunixauth</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2176,6 +2304,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_idmcredentialstatus</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2231,6 +2360,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_idmbackupcodeview</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2286,6 +2416,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_authorise</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2322,6 +2453,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_authorise_permit</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2363,6 +2495,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_token_exchange</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client_authz</span>: <span class="ident">String</span>,
@@ -2392,35 +2525,7 @@
         <span class="ident">res</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_token_introspect</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client_authz</span>: <span class="ident">String</span>,
-        <span class="ident">token_req</span>: <span class="ident">IntrospectionRequest</span>,
-        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">IntrospectionResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">audit</span> <span class="op">=</span> <span class="ident">AuditScope::new</span>(<span class="string">&quot;oauth2_token_introspect&quot;</span>, <span class="ident">eventid</span>, <span class="self">self</span>.<span class="ident">log_level</span>);
-        <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
-        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">lperf_op_segment!</span>(
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
-            <span class="string">&quot;actors::v1_read::handle&lt;Oauth2TokenIntrospection&gt;&quot;</span>,
-            <span class="op">|</span><span class="op">|</span> {
-                <span class="comment">// Now we can send to the idm server for authorisation checking.</span>
-                <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_introspect</span>(
-                    <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">client_authz</span>,
-                    <span class="kw-2">&amp;</span><span class="ident">token_req</span>,
-                    <span class="ident">ct</span>,
-                )
-            }
-        );
-        <span class="self">self</span>.<span class="ident">log</span>.<span class="ident">send</span>(<span class="ident">audit</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;CRITICAL: UNABLE TO COMMIT LOGS&quot;</span>);
-            <span class="ident">Oauth2Error::ServerError</span>(<span class="ident">OperationError::InvalidState</span>)
-        })<span class="question-mark">?</span>;
-        <span class="ident">res</span>
-    }
-
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_auth_valid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
@@ -2446,6 +2551,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO (Quinn): instrument</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_ldaprequest</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,

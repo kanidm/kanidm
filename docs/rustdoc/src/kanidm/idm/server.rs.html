@@ -3912,6 +3912,62 @@
 <span id="3910">3910</span>
 <span id="3911">3911</span>
 <span id="3912">3912</span>
+<span id="3913">3913</span>
+<span id="3914">3914</span>
+<span id="3915">3915</span>
+<span id="3916">3916</span>
+<span id="3917">3917</span>
+<span id="3918">3918</span>
+<span id="3919">3919</span>
+<span id="3920">3920</span>
+<span id="3921">3921</span>
+<span id="3922">3922</span>
+<span id="3923">3923</span>
+<span id="3924">3924</span>
+<span id="3925">3925</span>
+<span id="3926">3926</span>
+<span id="3927">3927</span>
+<span id="3928">3928</span>
+<span id="3929">3929</span>
+<span id="3930">3930</span>
+<span id="3931">3931</span>
+<span id="3932">3932</span>
+<span id="3933">3933</span>
+<span id="3934">3934</span>
+<span id="3935">3935</span>
+<span id="3936">3936</span>
+<span id="3937">3937</span>
+<span id="3938">3938</span>
+<span id="3939">3939</span>
+<span id="3940">3940</span>
+<span id="3941">3941</span>
+<span id="3942">3942</span>
+<span id="3943">3943</span>
+<span id="3944">3944</span>
+<span id="3945">3945</span>
+<span id="3946">3946</span>
+<span id="3947">3947</span>
+<span id="3948">3948</span>
+<span id="3949">3949</span>
+<span id="3950">3950</span>
+<span id="3951">3951</span>
+<span id="3952">3952</span>
+<span id="3953">3953</span>
+<span id="3954">3954</span>
+<span id="3955">3955</span>
+<span id="3956">3956</span>
+<span id="3957">3957</span>
+<span id="3958">3958</span>
+<span id="3959">3959</span>
+<span id="3960">3960</span>
+<span id="3961">3961</span>
+<span id="3962">3962</span>
+<span id="3963">3963</span>
+<span id="3964">3964</span>
+<span id="3965">3965</span>
+<span id="3966">3966</span>
+<span id="3967">3967</span>
+<span id="3968">3968</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::softlock::CredSoftLock</span>;
@@ -3931,8 +3987,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::idm::mfareg</span>::{<span class="ident">MfaRegCred</span>, <span class="ident">MfaRegNext</span>, <span class="ident">MfaRegSession</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::idm::oauth2</span>::{
     <span class="ident">AccessTokenRequest</span>, <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>,
-    <span class="ident">ConsentRequest</span>, <span class="ident">IntrospectionRequest</span>, <span class="ident">IntrospectionResponse</span>, <span class="ident">Oauth2Error</span>,
-    <span class="ident">Oauth2ResourceServers</span>, <span class="ident">Oauth2ResourceServersReadTransaction</span>,
+    <span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span>, <span class="ident">Oauth2ResourceServers</span>, <span class="ident">Oauth2ResourceServersReadTransaction</span>,
     <span class="ident">Oauth2ResourceServersWriteTransaction</span>,
 };
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::idm::radius::RadiusAccount</span>;
@@ -3978,6 +4033,7 @@
     <span class="ident">hashmap::HashMap</span>,
 };
 <span class="kw">use</span> <span class="ident">rand::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">url::Url</span>;
 
@@ -3985,6 +4041,8 @@
 
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::delayed::BackupCodeRemoval</span>;
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::event</span>::{<span class="ident">GenerateBackupCodeEvent</span>, <span class="ident">ReadBackupCodeEvent</span>, <span class="ident">RemoveBackupCodeEvent</span>};
+
+<span class="kw">use</span> <span class="ident">tracing::trace</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServer</span> {
     <span class="comment">// There is a good reason to keep this single thread - it</span>
@@ -4084,6 +4142,7 @@
         <span class="comment">// Check that it gels with our origin.</span>
         <span class="ident">Url::parse</span>(<span class="ident">origin</span>.<span class="ident">as_str</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">_e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}&quot;</span>, <span class="ident">origin</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}&quot;</span>, <span class="ident">origin</span>);
                 <span class="ident">OperationError::InvalidState</span>
             })
@@ -4096,6 +4155,7 @@
                     }
                 })
                 .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}&quot;</span>, <span class="ident">origin</span>, <span class="ident">rp_id</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}&quot;</span>, <span class="ident">origin</span>, <span class="ident">rp_id</span>);
                     <span class="ident">OperationError::InvalidState</span>
                 })
@@ -4106,7 +4166,7 @@
 
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">Webauthn::new</span>(<span class="ident">WebauthnDomainConfig</span> {
             <span class="ident">rp_name</span>,
-            <span class="ident">origin</span>: <span class="ident">origin</span>.<span class="ident">clone</span>(),
+            <span class="ident">origin</span>,
             <span class="ident">rp_id</span>,
         });
 
@@ -4114,12 +4174,14 @@
         <span class="kw">let</span> <span class="ident">bundy_handle</span> <span class="op">=</span> <span class="ident">HS512::generate_key</span>()
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">bundy_key</span><span class="op">|</span> <span class="ident">HS512::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">bundy_key</span>))
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to generate uat_bundy_hmac - {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed to generate uat_bundy_hmac - {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::InvalidState</span>
             })<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">uat_bundy_hmac</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">bundy_handle</span>));
 
-        <span class="kw">let</span> <span class="ident">oauth2rs</span> <span class="op">=</span> <span class="ident">Oauth2ResourceServers::try_new</span>(<span class="ident">oauth2rs_set</span>, <span class="ident">origin</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">oauth2rs</span> <span class="op">=</span> <span class="ident">Oauth2ResourceServers::try_from</span>(<span class="ident">oauth2rs_set</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to load oauth2 resource servers - {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed to load oauth2 resource servers - {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">e</span>
         })<span class="question-mark">?</span>;
@@ -4262,6 +4324,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HS512</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">validate_and_parse_uat</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4275,13 +4338,15 @@
             <span class="ident">token</span>
                 .<span class="ident">ok_or</span>(<span class="ident">OperationError::NotAuthenticated</span>)
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">token</span><span class="op">|</span> {
-                    <span class="ident">bref</span>.<span class="ident">verify</span>(<span class="ident">token</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="ident">bref</span>.<span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to verify token&quot;</span>);
                         <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;Unable to verify token - {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="ident">OperationError::NotAuthenticated</span>
                     })
                 })<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="ident">time::OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">uat</span>.<span class="ident">expiry</span> {
+            <span class="macro">security_info!</span>(<span class="string">&quot;Session expired&quot;</span>);
             <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;Session expired&quot;</span>);
             <span class="prelude-val">Err</span>(<span class="ident">OperationError::SessionExpired</span>)
         } <span class="kw">else</span> {
@@ -4289,6 +4354,7 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">process_uat_to_identity</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4300,15 +4366,21 @@
             .<span class="ident">get_qs_txn</span>()
             .<span class="ident">internal_search_uuid</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>.<span class="ident">uuid</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;from_ro_uat failed&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;from_ro_uat failed {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
 
         <span class="comment">// #59: If the account is expired, do not allow the event</span>
         <span class="comment">// to proceed</span>
-        <span class="kw">let</span> <span class="ident">valid</span> <span class="op">=</span> <span class="ident">Account::entry_within_valid_time</span>(<span class="ident">ct</span>, <span class="kw-2">&amp;</span><span class="ident">entry</span>);
+        <span class="kw">let</span> <span class="ident">valid</span> <span class="op">=</span> <span class="ident">Account::check_within_valid_time</span>(
+            <span class="ident">ct</span>,
+            <span class="ident">entry</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_valid_from&quot;</span>).<span class="ident">as_ref</span>(),
+            <span class="ident">entry</span>.<span class="ident">get_ava_single_datetime</span>(<span class="string">&quot;account_expire&quot;</span>).<span class="ident">as_ref</span>(),
+        );
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">valid</span> {
+            <span class="macro">security_info!</span>(<span class="string">&quot;Account has expired or is not yet valid, not allowing to proceed&quot;</span>);
             <span class="macro">lsecurity!</span>(
                 <span class="ident">audit</span>,
                 <span class="string">&quot;Account has expired or is not yet valid, not allowing to proceed&quot;</span>
@@ -4345,6 +4417,7 @@
         };
         */</span>
 
+        <span class="macro">trace!</span>(<span class="ident">claims</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">entry</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;claim&quot;</span>), <span class="string">&quot;Applied claims&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Applied claims -&gt; {:?}&quot;</span>, <span class="ident">entry</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;claim&quot;</span>));
 
         <span class="kw">let</span> <span class="ident">limits</span> <span class="op">=</span> <span class="ident">Limits::from_uat</span>(<span class="ident">uat</span>);
@@ -4386,12 +4459,14 @@
         <span class="ident">session_write</span>.<span class="ident">commit</span>();
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ae</span>: <span class="kw-2">&amp;</span><span class="ident">AuthEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResult</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">ae</span>, <span class="string">&quot;Recieved&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Received -&gt; {:?}&quot;</span>, <span class="ident">ae</span>);
         <span class="comment">// Match on the auth event, to see what we need to do.</span>
 
@@ -4416,11 +4491,16 @@
                 <span class="comment">//</span>
                 <span class="comment">// Check anything needed? Get the current auth-session-id from request</span>
                 <span class="comment">// because it associates to the nonce&#39;s etc which were all cached.</span>
-                <span class="kw">let</span> <span class="ident">euuid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">name_to_uuid</span>(<span class="ident">au</span>, <span class="ident">init</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">euuid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">name_to_uuid</span>(<span class="ident">au</span>, <span class="ident">init</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>; <span class="comment">// I CAN&#39;T TRACE WHERE AUDITSCOPE GOES :(((</span>
 
                 <span class="comment">// Get the first / single entry we expect here ....</span>
                 <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">internal_search_uuid</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">euuid</span>)<span class="question-mark">?</span>;
 
+                <span class="macro">security_info!</span>(
+                    <span class="question-mark">?</span><span class="ident">entry</span>,
+                    <span class="ident">uuid</span> <span class="op">=</span> <span class="op">%</span><span class="ident">euuid</span>,
+                    <span class="string">&quot;Initiating Authentication Session&quot;</span>,
+                );
                 <span class="macro">lsecurity!</span>(
                     <span class="ident">au</span>,
                     <span class="string">&quot;Initiating Authentication Session for ... {:?}: {:?}&quot;</span>,
@@ -4459,6 +4539,7 @@
                     <span class="ident">AuthSession::new</span>(<span class="ident">au</span>, <span class="ident">account</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">ct</span>)
                 } <span class="kw">else</span> {
                     <span class="comment">// it&#39;s softlocked, don&#39;t even bother.</span>
+                    <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked.&quot;</span>);
                     <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Account is softlocked.&quot;</span>);
                     (
                         <span class="prelude-val">None</span>,
@@ -4471,19 +4552,22 @@
                         <span class="comment">// Now acquire the session tree for writing.</span>
                         <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">write</span>();
-                        <span class="macro">lperf_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;idm::server::auth&lt;Init&gt; -&gt; sessions&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                            <span class="kw">if</span> <span class="ident">session_write</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>) {
-                                <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidSessionState</span>)
-                            } <span class="kw">else</span> {
-                                <span class="ident">session_write</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">auth_session</span>);
-                                <span class="comment">// Debugging: ensure we really inserted ...</span>
-                                <span class="macro">debug_assert!</span>(<span class="ident">session_write</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>).<span class="ident">is_some</span>());
-                                <span class="prelude-val">Ok</span>(())
-                            }
-                        })<span class="question-mark">?</span>;
-                        <span class="ident">session_write</span>.<span class="ident">commit</span>();
+                        <span class="macro">spanned!</span>(<span class="string">&quot;idm::server::auth&lt;Init&gt; -&gt; sessions&quot;</span>, {
+                            <span class="macro">lperf_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;idm::server::auth&lt;Init&gt; -&gt; sessions&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                                <span class="kw">if</span> <span class="ident">session_write</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>) {
+                                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidSessionState</span>)
+                                } <span class="kw">else</span> {
+                                    <span class="ident">session_write</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">auth_session</span>);
+                                    <span class="comment">// Debugging: ensure we really inserted ...</span>
+                                    <span class="macro">debug_assert!</span>(<span class="ident">session_write</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>).<span class="ident">is_some</span>());
+                                    <span class="prelude-val">Ok</span>(())
+                                }
+                            })<span class="question-mark">?</span>;
+                            <span class="ident">session_write</span>.<span class="ident">commit</span>();
+                        })
                     }
                     <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">security_info!</span>(<span class="string">&quot;Authentication Session Unable to begin&quot;</span>);
                         <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Authentication Session Unable to begin&quot;</span>);
                     }
                 };
@@ -4512,6 +4596,7 @@
                     <span class="comment">// Why is the session missing?</span>
                     .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">mech</span>.<span class="ident">sessionid</span>)
                     .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid Session State (no present session uuid)&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Invalid Session State (no present session uuid)&quot;</span>);
                         <span class="ident">OperationError::InvalidSessionState</span>
                     })<span class="question-mark">?</span>;
@@ -4562,6 +4647,7 @@
                     <span class="comment">// Why is the session missing?</span>
                     .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">sessionid</span>)
                     .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid Session State (no present session uuid)&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Invalid Session State (no present session uuid)&quot;</span>);
                         <span class="ident">OperationError::InvalidSessionState</span>
                     })<span class="question-mark">?</span>;
@@ -4639,6 +4725,7 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_unix</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4653,11 +4740,13 @@
                 <span class="ident">UnixUserAccount::try_from_entry_ro</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">account_entry</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">qs_read</span>)
             })
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to start auth unix -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed to start auth unix -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">account</span>.<span class="ident">is_within_valid_time</span>(<span class="ident">ct</span>) {
+            <span class="macro">security_info!</span>(<span class="string">&quot;Account is not within valid time period&quot;</span>);
             <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Account is not within valid time period&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }
@@ -4706,6 +4795,7 @@
                 })
         } <span class="kw">else</span> {
             <span class="comment">// Account is slocked!</span>
+            <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked.&quot;</span>);
             <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Account is softlocked.&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
         };
@@ -4714,6 +4804,7 @@
         <span class="ident">res</span>
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_ldap</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4859,6 +4950,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_radiusauthtoken</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4879,6 +4971,7 @@
         <span class="ident">account</span>.<span class="ident">to_radiusauthtoken</span>(<span class="ident">ct</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_unixusertoken</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4899,6 +4992,7 @@
         <span class="ident">account</span>.<span class="ident">to_unixusertoken</span>(<span class="ident">ct</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_unixgrouptoken</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4915,6 +5009,7 @@
         <span class="ident">group</span>.<span class="ident">to_unixgrouptoken</span>()
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_credentialstatus</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4934,6 +5029,7 @@
         <span class="ident">account</span>.<span class="ident">to_credentialstatus</span>()
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_backup_codes</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4953,6 +5049,7 @@
         <span class="ident">account</span>.<span class="ident">to_backupcodesview</span>()
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_oauth2_authorisation</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4965,6 +5062,7 @@
             .<span class="ident">check_oauth2_authorisation</span>(<span class="ident">audit</span>, <span class="ident">ident</span>, <span class="ident">uat</span>, <span class="ident">auth_req</span>, <span class="ident">ct</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_oauth2_authorise_permit</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4977,6 +5075,7 @@
             .<span class="ident">check_oauth2_authorise_permit</span>(<span class="ident">audit</span>, <span class="ident">ident</span>, <span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">ct</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_oauth2_token_exchange</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4986,17 +5085,6 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">audit</span>, <span class="ident">client_authz</span>, <span class="ident">token_req</span>, <span class="ident">ct</span>)
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">check_oauth2_token_introspect</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
-        <span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">token_req</span>: <span class="kw-2">&amp;</span><span class="ident">IntrospectionRequest</span>,
-        <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">IntrospectionResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">oauth2rs</span>
-            .<span class="ident">check_oauth2_token_introspect</span>(<span class="ident">audit</span>, <span class="ident">client_authz</span>, <span class="ident">token_req</span>, <span class="ident">ct</span>, <span class="self">self</span>)
     }
 }
 
@@ -5022,6 +5110,7 @@
         <span class="comment">// expired will now be dropped, and can&#39;t be used by future sessions.</span>
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">fn</span> <span class="ident">check_password_quality</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5076,6 +5165,7 @@
         }
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">target_to_account</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5102,6 +5192,7 @@
         }
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5182,6 +5273,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_unix_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5271,6 +5363,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recover_account</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5312,6 +5405,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">cleartext</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5356,6 +5450,7 @@
             })
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="doccomment">/// Generate a new set of backup code and remove the old ones.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
@@ -5396,6 +5491,7 @@
             })
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5426,6 +5522,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SetCredentialResponse::Success</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">regenerate_radius_secret</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5465,6 +5562,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">cleartext</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reg_account_webauthn_init</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5488,6 +5586,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reg_account_webauthn_complete</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5542,6 +5641,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_account_webauthn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5579,6 +5679,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SetCredentialResponse::Success</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_account_totp</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5602,6 +5703,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify_account_totp</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5660,6 +5762,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">accept_account_sha1_totp</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5716,6 +5819,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">next</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_account_totp</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5746,6 +5850,7 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">SetCredentialResponse::Success</span>)
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="comment">// -- delayed action processing --</span>
     <span class="kw">fn</span> <span class="ident">process_pwupgrade</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
@@ -5763,6 +5868,7 @@
             <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">account</span>
                 .<span class="ident">gen_password_mod</span>(<span class="ident">pwu</span>.<span class="ident">existing_password</span>.<span class="ident">as_str</span>(), <span class="self">self</span>.<span class="ident">crypto_policy</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to generate password mod {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Unable to generate password mod {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">e</span>
                 })<span class="question-mark">?</span>;
@@ -5778,6 +5884,7 @@
         }
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">fn</span> <span class="ident">process_unixpwupgrade</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5814,6 +5921,7 @@
         }
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_webauthncounterinc</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5842,6 +5950,7 @@
         }
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_backupcoderemoval</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5863,6 +5972,7 @@
         )
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_delayedaction</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5878,6 +5988,7 @@
         }
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">lperf_trace_segment!</span>(
             <span class="ident">au</span>,
@@ -5904,6 +6015,7 @@
         )
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">fn</span> <span class="ident">reload_password_badlist</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_password_badlist</span>(<span class="ident">au</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">badlist_entry</span>) <span class="op">=</span><span class="op">&gt;</span> {

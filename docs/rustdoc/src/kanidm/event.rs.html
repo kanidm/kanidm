@@ -963,6 +963,8 @@
 <span id="961">961</span>
 <span id="962">962</span>
 <span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
 </pre><pre class="rust">
 <span class="doccomment">//! An `event` is a self contained module of data, that contains all of the</span>
 <span class="doccomment">//! required information for any operation to proceed. While there are many</span>
@@ -1008,6 +1010,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SearchResult</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
@@ -1049,6 +1052,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">SearchEvent</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
@@ -1250,7 +1254,7 @@
         <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">AttrString</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Kanidm Filter from LdapFilter</span>
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ldap_ro</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="ident">lf</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ldap_ro</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">lf</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
             .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -1504,7 +1508,7 @@
         <span class="comment">// Add any supplemental conditions we have.</span>
         <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::join_parts_and</span>(<span class="ident">f_uuid</span>, <span class="ident">filter</span>);
 
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="ident">audit</span>, <span class="ident">proto_ml</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">proto_ml</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
             .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;

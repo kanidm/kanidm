@@ -4164,6 +4164,119 @@
 <span id="4162">4162</span>
 <span id="4163">4163</span>
 <span id="4164">4164</span>
+<span id="4165">4165</span>
+<span id="4166">4166</span>
+<span id="4167">4167</span>
+<span id="4168">4168</span>
+<span id="4169">4169</span>
+<span id="4170">4170</span>
+<span id="4171">4171</span>
+<span id="4172">4172</span>
+<span id="4173">4173</span>
+<span id="4174">4174</span>
+<span id="4175">4175</span>
+<span id="4176">4176</span>
+<span id="4177">4177</span>
+<span id="4178">4178</span>
+<span id="4179">4179</span>
+<span id="4180">4180</span>
+<span id="4181">4181</span>
+<span id="4182">4182</span>
+<span id="4183">4183</span>
+<span id="4184">4184</span>
+<span id="4185">4185</span>
+<span id="4186">4186</span>
+<span id="4187">4187</span>
+<span id="4188">4188</span>
+<span id="4189">4189</span>
+<span id="4190">4190</span>
+<span id="4191">4191</span>
+<span id="4192">4192</span>
+<span id="4193">4193</span>
+<span id="4194">4194</span>
+<span id="4195">4195</span>
+<span id="4196">4196</span>
+<span id="4197">4197</span>
+<span id="4198">4198</span>
+<span id="4199">4199</span>
+<span id="4200">4200</span>
+<span id="4201">4201</span>
+<span id="4202">4202</span>
+<span id="4203">4203</span>
+<span id="4204">4204</span>
+<span id="4205">4205</span>
+<span id="4206">4206</span>
+<span id="4207">4207</span>
+<span id="4208">4208</span>
+<span id="4209">4209</span>
+<span id="4210">4210</span>
+<span id="4211">4211</span>
+<span id="4212">4212</span>
+<span id="4213">4213</span>
+<span id="4214">4214</span>
+<span id="4215">4215</span>
+<span id="4216">4216</span>
+<span id="4217">4217</span>
+<span id="4218">4218</span>
+<span id="4219">4219</span>
+<span id="4220">4220</span>
+<span id="4221">4221</span>
+<span id="4222">4222</span>
+<span id="4223">4223</span>
+<span id="4224">4224</span>
+<span id="4225">4225</span>
+<span id="4226">4226</span>
+<span id="4227">4227</span>
+<span id="4228">4228</span>
+<span id="4229">4229</span>
+<span id="4230">4230</span>
+<span id="4231">4231</span>
+<span id="4232">4232</span>
+<span id="4233">4233</span>
+<span id="4234">4234</span>
+<span id="4235">4235</span>
+<span id="4236">4236</span>
+<span id="4237">4237</span>
+<span id="4238">4238</span>
+<span id="4239">4239</span>
+<span id="4240">4240</span>
+<span id="4241">4241</span>
+<span id="4242">4242</span>
+<span id="4243">4243</span>
+<span id="4244">4244</span>
+<span id="4245">4245</span>
+<span id="4246">4246</span>
+<span id="4247">4247</span>
+<span id="4248">4248</span>
+<span id="4249">4249</span>
+<span id="4250">4250</span>
+<span id="4251">4251</span>
+<span id="4252">4252</span>
+<span id="4253">4253</span>
+<span id="4254">4254</span>
+<span id="4255">4255</span>
+<span id="4256">4256</span>
+<span id="4257">4257</span>
+<span id="4258">4258</span>
+<span id="4259">4259</span>
+<span id="4260">4260</span>
+<span id="4261">4261</span>
+<span id="4262">4262</span>
+<span id="4263">4263</span>
+<span id="4264">4264</span>
+<span id="4265">4265</span>
+<span id="4266">4266</span>
+<span id="4267">4267</span>
+<span id="4268">4268</span>
+<span id="4269">4269</span>
+<span id="4270">4270</span>
+<span id="4271">4271</span>
+<span id="4272">4272</span>
+<span id="4273">4273</span>
+<span id="4274">4274</span>
+<span id="4275">4275</span>
+<span id="4276">4276</span>
+<span id="4277">4277</span>
 </pre><pre class="rust">
 <span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
@@ -4178,6 +4291,7 @@
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">tokio::sync</span>::{<span class="ident">Semaphore</span>, <span class="ident">SemaphorePermit</span>};
+<span class="kw">use</span> <span class="ident">tracing::trace</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::access</span>::{
     <span class="ident">AccessControlCreate</span>, <span class="ident">AccessControlDelete</span>, <span class="ident">AccessControlModify</span>, <span class="ident">AccessControlSearch</span>,
@@ -4296,6 +4410,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Conduct a search and apply access controls to yield a set of entries that</span>
     <span class="doccomment">/// have been reduced to the set of user visible avas. Note that if you provide</span>
     <span class="doccomment">/// a `SearchEvent` for the internal user, this query will fail. It is invalid for</span>
@@ -4310,110 +4425,130 @@
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">se</span>: <span class="kw-2">&amp;</span><span class="ident">SearchEvent</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::search_ext&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">/*
-             * This just wraps search, but it&#39;s for the external interface
-             * so as a result it also reduces the entry set&#39;s attributes at
-             * the end.
-             */</span>
-            <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="ident">se</span>)<span class="question-mark">?</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::search_ext&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::search_ext&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">/*
+                 * This just wraps search, but it&#39;s for the external interface
+                 * so as a result it also reduces the entry set&#39;s attributes at
+                 * the end.
+                 */</span>
+                <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="ident">se</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">access</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accesscontrols</span>();
-            <span class="ident">access</span>
-                .<span class="ident">search_filter_entry_attributes</span>(<span class="ident">audit</span>, <span class="ident">se</span>, <span class="ident">entries</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="comment">// Log and fail if something went wrong.</span>
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to filter entry attributes {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">e</span>
-                })
-            <span class="comment">// This now returns the reduced vec.</span>
+                <span class="kw">let</span> <span class="ident">access</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accesscontrols</span>();
+                <span class="ident">access</span>
+                    .<span class="ident">search_filter_entry_attributes</span>(<span class="ident">audit</span>, <span class="ident">se</span>, <span class="ident">entries</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="comment">// Log and fail if something went wrong.</span>
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to filter entry attributes&quot;</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to filter entry attributes {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">e</span>
+                    })
+                <span class="comment">// This now returns the reduced vec.</span>
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">se</span>: <span class="kw-2">&amp;</span><span class="ident">SearchEvent</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::search&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">se</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
-                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;search: internal filter -&gt; {:?}&quot;</span>, <span class="ident">se</span>.<span class="ident">filter</span>);
-            } <span class="kw">else</span> {
-                <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;search initiator: -&gt; {}&quot;</span>, <span class="ident">se</span>.<span class="ident">ident</span>);
-                <span class="macro">ladmin_info!</span>(<span class="ident">audit</span>, <span class="string">&quot;search: external filter -&gt; {:?}&quot;</span>, <span class="ident">se</span>.<span class="ident">filter</span>);
-            }
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::search&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::search&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="ident">se</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
+                    <span class="macro">trace!</span>(<span class="ident">internal_filter</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">se</span>.<span class="ident">filter</span>, <span class="string">&quot;search&quot;</span>);
+                    <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;search: internal filter -&gt; {:?}&quot;</span>, <span class="ident">se</span>.<span class="ident">filter</span>);
+                } <span class="kw">else</span> {
+                    <span class="macro">security_info!</span>(<span class="ident">initiator</span> <span class="op">=</span> <span class="op">%</span><span class="ident">se</span>.<span class="ident">ident</span>, <span class="string">&quot;search&quot;</span>);
+                    <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;search initiator: -&gt; {}&quot;</span>, <span class="ident">se</span>.<span class="ident">ident</span>);
+                    <span class="macro">admin_info!</span>(<span class="ident">external_filter</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">se</span>.<span class="ident">filter</span>, <span class="string">&quot;search&quot;</span>);
+                    <span class="macro">ladmin_info!</span>(<span class="ident">audit</span>, <span class="string">&quot;search: external filter -&gt; {:?}&quot;</span>, <span class="ident">se</span>.<span class="ident">filter</span>);
+                }
 
-            <span class="comment">// This is an important security step because it prevents us from</span>
-            <span class="comment">// performing un-indexed searches on attr&#39;s that don&#39;t exist in the</span>
-            <span class="comment">// server. This is why ExtensibleObject can only take schema that</span>
-            <span class="comment">// exists in the server, not arbitrary attr names.</span>
-            <span class="comment">//</span>
-            <span class="comment">// This normalises and validates in a single step.</span>
-            <span class="comment">//</span>
-            <span class="comment">// NOTE: Filters are validated in event conversion.</span>
+                <span class="comment">// This is an important security step because it prevents us from</span>
+                <span class="comment">// performing un-indexed searches on attr&#39;s that don&#39;t exist in the</span>
+                <span class="comment">// server. This is why ExtensibleObject can only take schema that</span>
+                <span class="comment">// exists in the server, not arbitrary attr names.</span>
+                <span class="comment">//</span>
+                <span class="comment">// This normalises and validates in a single step.</span>
+                <span class="comment">//</span>
+                <span class="comment">// NOTE: Filters are validated in event conversion.</span>
 
-            <span class="kw">let</span> <span class="ident">resolve_filter_cache</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_resolve_filter_cache</span>();
+                <span class="kw">let</span> <span class="ident">resolve_filter_cache</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_resolve_filter_cache</span>();
 
-            <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>();
-            <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_idxmeta_ref</span>();
-            <span class="comment">// Now resolve all references and indexes.</span>
-            <span class="kw">let</span> <span class="ident">vfr</span> <span class="op">=</span> <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::search&lt;filter_resolve&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                <span class="ident">se</span>.<span class="ident">filter</span>
-                    .<span class="ident">resolve</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>.<span class="ident">ident</span>, <span class="prelude-val">Some</span>(<span class="ident">idxmeta</span>), <span class="prelude-val">Some</span>(<span class="ident">resolve_filter_cache</span>))
-            })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;search filter resolve failure {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
-
-            <span class="kw">let</span> <span class="ident">lims</span> <span class="op">=</span> <span class="ident">se</span>.<span class="ident">get_limits</span>();
-
-            <span class="comment">// NOTE: We currently can&#39;t build search plugins due to the inability to hand</span>
-            <span class="comment">// the QS wr/ro to the plugin trait. However, there shouldn&#39;t be a need for search</span>
-            <span class="comment">// plugis, because all data transforms should be in the write path.</span>
-
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">search</span>(<span class="ident">audit</span>, <span class="ident">lims</span>, <span class="kw-2">&amp;</span><span class="ident">vfr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;backend failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::Backend</span>
-            })<span class="question-mark">?</span>;
-
-            <span class="comment">// Apply ACP before we let the plugins &quot;have at it&quot;.</span>
-            <span class="comment">// WARNING; for external searches this is NOT the only</span>
-            <span class="comment">// ACP application. There is a second application to reduce the</span>
-            <span class="comment">// attribute set on the entries!</span>
-            <span class="comment">//</span>
-            <span class="kw">let</span> <span class="ident">access</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accesscontrols</span>();
-            <span class="ident">access</span>.<span class="ident">search_filter_entries</span>(<span class="ident">audit</span>, <span class="ident">se</span>, <span class="ident">res</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Unable to access filter entries {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })
-        })
-    }
-
-    <span class="kw">fn</span> <span class="ident">exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">ee</span>: <span class="kw-2">&amp;</span><span class="ident">ExistsEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::exists&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>();
-            <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_idxmeta_ref</span>();
-
-            <span class="kw">let</span> <span class="ident">resolve_filter_cache</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_resolve_filter_cache</span>();
-
-            <span class="kw">let</span> <span class="ident">vfr</span> <span class="op">=</span> <span class="ident">ee</span>
-                .<span class="ident">filter</span>
-                .<span class="ident">resolve</span>(<span class="kw-2">&amp;</span><span class="ident">ee</span>.<span class="ident">ident</span>, <span class="prelude-val">Some</span>(<span class="ident">idxmeta</span>), <span class="prelude-val">Some</span>(<span class="ident">resolve_filter_cache</span>))
+                <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>();
+                <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_idxmeta_ref</span>();
+                <span class="comment">// Now resolve all references and indexes.</span>
+                <span class="kw">let</span> <span class="ident">vfr</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;server::search&lt;filter_resolve&gt;&quot;</span>, {
+                    <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::search&lt;filter_resolve&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">se</span>.<span class="ident">filter</span>
+                            .<span class="ident">resolve</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>.<span class="ident">ident</span>, <span class="prelude-val">Some</span>(<span class="ident">idxmeta</span>), <span class="prelude-val">Some</span>(<span class="ident">resolve_filter_cache</span>))
+                    })
+                })
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to resolve filter {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;search filter resolve failure&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;search filter resolve failure {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">e</span>
                 })<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">lims</span> <span class="op">=</span> <span class="ident">ee</span>.<span class="ident">get_limits</span>();
+                <span class="kw">let</span> <span class="ident">lims</span> <span class="op">=</span> <span class="ident">se</span>.<span class="ident">get_limits</span>();
 
-            <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">exists</span>(<span class="ident">audit</span>, <span class="ident">lims</span>, <span class="kw-2">&amp;</span><span class="ident">vfr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;backend failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::Backend</span>
+                <span class="comment">// NOTE: We currently can&#39;t build search plugins due to the inability to hand</span>
+                <span class="comment">// the QS wr/ro to the plugin trait. However, there shouldn&#39;t be a need for search</span>
+                <span class="comment">// plugis, because all data transforms should be in the write path.</span>
+
+                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">search</span>(<span class="ident">audit</span>, <span class="ident">lims</span>, <span class="kw-2">&amp;</span><span class="ident">vfr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;backend failure&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;backend failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">OperationError::Backend</span>
+                })<span class="question-mark">?</span>;
+
+                <span class="comment">// Apply ACP before we let the plugins &quot;have at it&quot;.</span>
+                <span class="comment">// WARNING; for external searches this is NOT the only</span>
+                <span class="comment">// ACP application. There is a second application to reduce the</span>
+                <span class="comment">// attribute set on the entries!</span>
+                <span class="comment">//</span>
+                <span class="kw">let</span> <span class="ident">access</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accesscontrols</span>();
+                <span class="ident">access</span>.<span class="ident">search_filter_entries</span>(<span class="ident">audit</span>, <span class="ident">se</span>, <span class="ident">res</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to access filter entries&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Unable to access filter entries {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">e</span>
+                })
             })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">fn</span> <span class="ident">exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">ee</span>: <span class="kw-2">&amp;</span><span class="ident">ExistsEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::exists&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::exists&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>();
+                <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_idxmeta_ref</span>();
+
+                <span class="kw">let</span> <span class="ident">resolve_filter_cache</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_resolve_filter_cache</span>();
+
+                <span class="kw">let</span> <span class="ident">vfr</span> <span class="op">=</span> <span class="ident">ee</span>
+                    .<span class="ident">filter</span>
+                    .<span class="ident">resolve</span>(<span class="kw-2">&amp;</span><span class="ident">ee</span>.<span class="ident">ident</span>, <span class="prelude-val">Some</span>(<span class="ident">idxmeta</span>), <span class="prelude-val">Some</span>(<span class="ident">resolve_filter_cache</span>))
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to resolve filter&quot;</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to resolve filter {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">e</span>
+                    })<span class="question-mark">?</span>;
+
+                <span class="kw">let</span> <span class="ident">lims</span> <span class="op">=</span> <span class="ident">ee</span>.<span class="ident">get_limits</span>();
+
+                <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">exists</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">lims</span>, <span class="kw-2">&amp;</span><span class="ident">vfr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;backend failure&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;backend failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">OperationError::Backend</span>
+                })
+            })
+        })
+    }
+
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// Should this actually be names_to_uuids and we do batches?</span>
     <span class="comment">//  In the initial design &quot;no&quot;, we can always write a batched</span>
     <span class="comment">//  interface later.</span>
@@ -4430,16 +4565,18 @@
     <span class="comment">//</span>
     <span class="comment">// Remember, we don&#39;t care if the name is invalid, because search</span>
     <span class="comment">// will validate/normalise the filter we construct for us. COOL!</span>
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name_to_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Is it just a uuid?</span>
         <span class="ident">Uuid::parse_str</span>(<span class="ident">name</span>).<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">lname</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">to_lowercase</span>();
             <span class="self">self</span>.<span class="ident">get_be_txn</span>()
                 .<span class="ident">name2uuid</span>(<span class="ident">audit</span>, <span class="ident">lname</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>
-                .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>) <span class="comment">// should we log this?</span>
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid_to_spn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4447,15 +4584,16 @@
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">n</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">debug_assert!</span>(<span class="ident">n</span>.<span class="ident">is_spn</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">is_iname</span>());
-            }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {}
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">n</span>) <span class="op">=</span> <span class="ident">r</span> {
+            <span class="comment">// Shouldn&#39;t we be doing more graceful error handling here?</span>
+            <span class="comment">// Or, if we know it will always be true, we should remove this.</span>
+            <span class="macro">debug_assert!</span>(<span class="ident">n</span>.<span class="ident">is_spn</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">n</span>.<span class="ident">is_iname</span>());
         }
+
         <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// If we have a some, pass it on, else unwrap into a default.</span>
         <span class="self">self</span>.<span class="ident">get_be_txn</span>()
@@ -4463,38 +4601,45 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>())))
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// From internal, generate an exists event and dispatch</span>
     <span class="kw">fn</span> <span class="ident">internal_exists</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_exists&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// Check the filter</span>
-            <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
-                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-            <span class="comment">// Build an exists event</span>
-            <span class="kw">let</span> <span class="ident">ee</span> <span class="op">=</span> <span class="ident">ExistsEvent::new_internal</span>(<span class="ident">f_valid</span>);
-            <span class="comment">// Submit it</span>
-            <span class="self">self</span>.<span class="ident">exists</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ee</span>)
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_exists&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_exists&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// Check the filter</span>
+                <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
+                    .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+                <span class="comment">// Build an exists event</span>
+                <span class="kw">let</span> <span class="ident">ee</span> <span class="op">=</span> <span class="ident">ExistsEvent::new_internal</span>(<span class="ident">f_valid</span>);
+                <span class="comment">// Submit it</span>
+                <span class="self">self</span>.<span class="ident">exists</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ee</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">internal_search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
-                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_internal</span>(<span class="ident">f_valid</span>);
-            <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>)
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
+                    .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_internal</span>(<span class="ident">f_valid</span>);
+                <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_valid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4502,12 +4647,15 @@
         <span class="ident">f_intent_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_valid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_impersonate</span>(<span class="ident">event</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>);
-            <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>)
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_valid&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_valid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_impersonate</span>(<span class="ident">event</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>);
+                <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// this applys ACP to filter result entries.</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext_valid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4520,6 +4668,7 @@
         <span class="self">self</span>.<span class="ident">search_ext</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// Who they are will go here</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4537,6 +4686,7 @@
         <span class="self">self</span>.<span class="ident">impersonate_search_valid</span>(<span class="ident">audit</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>, <span class="ident">event</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4544,17 +4694,20 @@
         <span class="ident">filter_intent</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_ext_valid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
-                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">f_intent_valid</span> <span class="op">=</span> <span class="ident">filter_intent</span>
-                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-            <span class="self">self</span>.<span class="ident">impersonate_search_ext_valid</span>(<span class="ident">audit</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>, <span class="ident">event</span>)
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_ext_valid&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_ext_valid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
+                    .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">f_intent_valid</span> <span class="op">=</span> <span class="ident">filter_intent</span>
+                    .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">impersonate_search_ext_valid</span>(<span class="ident">audit</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>, <span class="ident">event</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// Get a single entry by it&#39;s UUID. This is heavily relied on for internal</span>
     <span class="comment">// server operations, especially in login and acp checks for acp.</span>
     <span class="kw">fn</span> <span class="ident">internal_search_uuid</span>(
@@ -4562,81 +4715,111 @@
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
-            <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="macro">lperf_trace_segment!</span>(
-                <span class="ident">audit</span>,
-                <span class="string">&quot;server::internal_search_uuid&lt;filter_validate&gt;&quot;</span>,
-                <span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">filter</span>
-                        .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                        .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)
-                }
-            )<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_internal</span>(<span class="ident">f_valid</span>);
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>);
-            <span class="kw">match</span> <span class="ident">res</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_uuid&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
+                <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_uuid&lt;filter_validate&gt;&quot;</span>, {
+                    <span class="macro">lperf_trace_segment!</span>(
+                        <span class="ident">audit</span>,
+                        <span class="string">&quot;server::internal_search_uuid&lt;filter_validate&gt;&quot;</span>,
+                        <span class="op">|</span><span class="op">|</span> {
+                            <span class="ident">filter</span>
+                                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>) <span class="comment">// I feel like we should log this...</span>
+                        }
+                    )
+                })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_internal</span>(<span class="ident">f_valid</span>);
+
+                <span class="comment">// TODO: Refactor to use this</span>
+                <span class="comment">// let mut vs = self.search(audit, &amp;se)?;</span>
+                <span class="comment">// match vs.pop() {</span>
+                <span class="comment">//     Some(entry) if vs.is_empty() =&gt; Ok(entry),</span>
+                <span class="comment">//     _ =&gt; Err(OperationError::NoMatchingEntries),</span>
+                <span class="comment">// }</span>
+                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">search</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">se</span>);
+                <span class="kw">match</span> <span class="ident">res</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
+                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+                        }
+                        <span class="ident">vs</span>.<span class="ident">into_iter</span>()
+                            .<span class="ident">next</span>()
+                            .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
                     }
-                    <span class="ident">vs</span>.<span class="ident">into_iter</span>()
-                        .<span class="ident">next</span>()
-                        .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-            }
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext_uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_ext_uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">filter_intent</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
-            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">impersonate_search_ext</span>(<span class="ident">audit</span>, <span class="ident">filter</span>, <span class="ident">filter_intent</span>, <span class="ident">event</span>);
-            <span class="kw">match</span> <span class="ident">res</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_ext_uuid&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_ext_uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">filter_intent</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
+                <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
+                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">impersonate_search_ext</span>(<span class="ident">audit</span>, <span class="ident">filter</span>, <span class="ident">filter_intent</span>, <span class="ident">event</span>);
+                <span class="comment">// TODO: Refactor to use this</span>
+                <span class="comment">// let mut vs = self.impersonate_search_ext(audit, filter, filter_intent, event)?;</span>
+                <span class="comment">// match vs.pop() {</span>
+                <span class="comment">//     Some(entry) if vs.is_empty() =&gt; Ok(entry),</span>
+                <span class="comment">//     _ =&gt; Err(OperationError::NoMatchingEntries),</span>
+                <span class="comment">// }</span>
+                <span class="kw">match</span> <span class="ident">res</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
+                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+                        }
+                        <span class="ident">vs</span>.<span class="ident">into_iter</span>()
+                            .<span class="ident">next</span>()
+                            .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
                     }
-                    <span class="ident">vs</span>.<span class="ident">into_iter</span>()
-                        .<span class="ident">next</span>()
-                        .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-            }
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">filter_intent</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
-            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">impersonate_search</span>(<span class="ident">audit</span>, <span class="ident">filter</span>, <span class="ident">filter_intent</span>, <span class="ident">event</span>);
-            <span class="kw">match</span> <span class="ident">res</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_uuid&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_search_uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">filter_intent</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
+                <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
+                <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">impersonate_search</span>(<span class="ident">audit</span>, <span class="ident">filter</span>, <span class="ident">filter_intent</span>, <span class="ident">event</span>);
+                <span class="comment">// TODO: Refactor to use this</span>
+                <span class="comment">// let mut vs = self.impersonate_search(audit, filter, filter_intent, event)?;</span>
+                <span class="comment">// match vs.pop() {</span>
+                <span class="comment">//     Some(entry) if vs.is_empty() =&gt; Ok(entry),</span>
+                <span class="comment">//     _ =&gt; Err(OperationError::NoMatchingEntries),</span>
+                <span class="comment">// }</span>
+                <span class="kw">match</span> <span class="ident">res</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">1</span> {
+                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+                        }
+                        <span class="ident">vs</span>.<span class="ident">into_iter</span>()
+                            .<span class="ident">next</span>()
+                            .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
                     }
-                    <span class="ident">vs</span>.<span class="ident">into_iter</span>()
-                        .<span class="ident">next</span>()
-                        .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingEntries</span>)
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
-            }
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Do a schema aware conversion from a String:String to String:Value for modification</span>
     <span class="doccomment">/// present.</span>
     <span class="kw">fn</span> <span class="ident">clone_value</span>(
@@ -4719,6 +4902,7 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">clone_partialvalue</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4759,6 +4943,18 @@
                             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid UUID syntax&quot;</span>.<span class="ident">to_string</span>())
                             })
+                        <span class="comment">// This avoids having unreachable code:</span>
+                        <span class="comment">// Ok(PartialValue::new_uuids(value)</span>
+                        <span class="comment">//     .unwrap_or_else(|| {</span>
+                        <span class="comment">//         // it&#39;s not a uuid, try to resolve it.</span>
+                        <span class="comment">//         // if the value is NOT found, we map to &quot;does not exist&quot; to allow</span>
+                        <span class="comment">//         // the value to continue being evaluated, which of course, will fail</span>
+                        <span class="comment">//         // all subsequent filter tests because it ... well, doesn&#39;t exist.</span>
+                        <span class="comment">//         let un = self</span>
+                        <span class="comment">//             .name_to_uuid(audit, value)</span>
+                        <span class="comment">//             .unwrap_or(*UUID_DOES_NOT_EXIST);</span>
+                        <span class="comment">//         PartialValue::new_uuid(un)</span>
+                        <span class="comment">//     }))</span>
                     }
                     <span class="ident">SyntaxType::REFERENCE_UUID</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="comment">// See comments above.</span>
@@ -4770,6 +4966,7 @@
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_refer</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
+                            <span class="comment">// See above case for how to avoid having unreachable code</span>
                             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="ident">OperationError::InvalidAttribute</span>(
                                     <span class="string">&quot;Invalid Reference syntax&quot;</span>.<span class="ident">to_string</span>(),
@@ -4818,6 +5015,7 @@
     }
 
     <span class="comment">// In the opposite direction, we can resolve values for presentation</span>
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">resolve_value</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4836,6 +5034,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">value</span>.<span class="ident">to_proto_string_clone</span>())
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">resolve_value_ldap</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4848,7 +5047,7 @@
         } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">value</span>.<span class="ident">is_sshkey</span>() {
             <span class="ident">value</span>
                 .<span class="ident">get_sshkey</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>()) <span class="comment">// TODO: Refactor in another PR</span>
                 .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidValueState</span>)
         } <span class="kw">else</span> {
             <span class="comment">// Not? Okay, do the to string.</span>
@@ -4856,21 +5055,24 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// This is a prebaked helper to get the domain name for related modules.</span>
     <span class="comment">// in the future we could make this cache the value to avoid entry lookups.</span>
     <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="ident">e</span>.<span class="ident">get_ava_single_str</span>(<span class="string">&quot;domain_name&quot;</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>()) <span class="comment">// TODO: Refactor in another PR</span>
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
             })
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Error getting domain name&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Error getting domain name -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// This is a helper to get password badlist.</span>
     <span class="kw">fn</span> <span class="ident">get_password_badlist</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4882,7 +5084,7 @@
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">badlist_hashset</span> <span class="op">=</span> <span class="ident">HashSet::with_capacity</span>(<span class="ident">badlist_entry</span>.<span class="ident">len</span>());
                     <span class="ident">badlist_entry</span>
                         .<span class="ident">iter</span>()
-                        .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_string</span>())
+                        .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_string</span>()) <span class="comment">// TODO: Refactor in another PR</span>
                         .<span class="ident">cloned</span>()
                         .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
                             <span class="ident">badlist_hashset</span>.<span class="ident">insert</span>(<span class="ident">s</span>);
@@ -4892,11 +5094,13 @@
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryState</span>),
             })
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to retrieve system configuration&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to retrieve system configuration {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_oauth2rs_set</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -5690,120 +5894,138 @@
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;x</span> <span class="ident">ModifyEvent</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyPartial</span><span class="op">&lt;</span><span class="lifetime">&#39;x</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::modify_pre_apply&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// Get the candidates.</span>
-            <span class="comment">// Modify applies a modlist to a filter, so we need to internal search</span>
-            <span class="comment">// then apply.</span>
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">me</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
-                <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify initiator: -&gt; {}&quot;</span>, <span class="ident">me</span>.<span class="ident">ident</span>);
-            }
-
-            <span class="comment">// Validate input.</span>
-
-            <span class="comment">// Is the modlist non zero?</span>
-            <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-                <span class="macro">lrequest_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify: empty modify request&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
-            }
-
-            <span class="comment">// Is the modlist valid?</span>
-            <span class="comment">// This is now done in the event transform</span>
-
-            <span class="comment">// Is the filter invalid to schema?</span>
-            <span class="comment">// This is now done in the event transform</span>
-
-            <span class="comment">// This also checks access controls due to use of the impersonation.</span>
-            <span class="kw">let</span> <span class="ident">pre_candidates</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">impersonate_search_valid</span>(
-                <span class="ident">audit</span>,
-                <span class="ident">me</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
-                <span class="ident">me</span>.<span class="ident">filter_orig</span>.<span class="ident">clone</span>(),
-                <span class="kw-2">&amp;</span><span class="ident">me</span>.<span class="ident">ident</span>,
-            ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">results</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">results</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify: error in pre-candidate selection {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::modify_pre_apply&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::modify_pre_apply&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// Get the candidates.</span>
+                <span class="comment">// Modify applies a modlist to a filter, so we need to internal search</span>
+                <span class="comment">// then apply.</span>
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">me</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
+                    <span class="macro">security_info!</span>(<span class="ident">name</span> <span class="op">=</span> <span class="op">%</span><span class="ident">me</span>.<span class="ident">ident</span>, <span class="string">&quot;modify initiator&quot;</span>);
+                    <span class="macro">lsecurity!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify initiator: -&gt; {}&quot;</span>, <span class="ident">me</span>.<span class="ident">ident</span>);
                 }
-            };
 
-            <span class="kw">if</span> <span class="ident">pre_candidates</span>.<span class="ident">is_empty</span>() {
-                <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
-                    <span class="macro">ltrace!</span>(
-                        <span class="ident">audit</span>,
-                        <span class="string">&quot;modify: no candidates match filter ... continuing {:?}&quot;</span>,
-                        <span class="ident">me</span>.<span class="ident">filter</span>
-                    );
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-                } <span class="kw">else</span> {
-                    <span class="macro">lrequest_error!</span>(
-                        <span class="ident">audit</span>,
-                        <span class="string">&quot;modify: no candidates match filter, failure {:?}&quot;</span>,
-                        <span class="ident">me</span>.<span class="ident">filter</span>
-                    );
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+                <span class="comment">// Validate input.</span>
+
+                <span class="comment">// Is the modlist non zero?</span>
+                <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                    <span class="macro">request_error!</span>(<span class="string">&quot;modify: empty modify request&quot;</span>);
+                    <span class="macro">lrequest_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify: empty modify request&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
                 }
-            };
 
-            <span class="comment">// Are we allowed to make the changes we want to?</span>
-            <span class="comment">// modify_allow_operation</span>
-            <span class="kw">let</span> <span class="ident">access</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accesscontrols</span>();
-            <span class="kw">let</span> <span class="ident">op_allow</span> <span class="op">=</span> <span class="ident">access</span>
-                .<span class="ident">modify_allow_operation</span>(<span class="ident">audit</span>, <span class="ident">me</span>, <span class="kw-2">&amp;</span><span class="ident">pre_candidates</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Unable to check modify access {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="comment">// Is the modlist valid?</span>
+                <span class="comment">// This is now done in the event transform</span>
+
+                <span class="comment">// Is the filter invalid to schema?</span>
+                <span class="comment">// This is now done in the event transform</span>
+
+                <span class="comment">// This also checks access controls due to use of the impersonation.</span>
+                <span class="kw">let</span> <span class="ident">pre_candidates</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">impersonate_search_valid</span>(
+                    <span class="ident">audit</span>,
+                    <span class="ident">me</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
+                    <span class="ident">me</span>.<span class="ident">filter_orig</span>.<span class="ident">clone</span>(),
+                    <span class="kw-2">&amp;</span><span class="ident">me</span>.<span class="ident">ident</span>,
+                ) {
+                    <span class="prelude-val">Ok</span>(<span class="ident">results</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">results</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;modify: error in pre-candidate selection {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify: error in pre-candidate selection {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
+                    }
+                };
+
+                <span class="kw">if</span> <span class="ident">pre_candidates</span>.<span class="ident">is_empty</span>() {
+                    <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
+                        <span class="macro">trace!</span>(
+                            <span class="string">&quot;modify: no candidates match filter ... continuing {:?}&quot;</span>,
+                            <span class="ident">me</span>.<span class="ident">filter</span>
+                        );
+                        <span class="macro">ltrace!</span>(
+                            <span class="ident">audit</span>,
+                            <span class="string">&quot;modify: no candidates match filter ... continuing {:?}&quot;</span>,
+                            <span class="ident">me</span>.<span class="ident">filter</span>
+                        );
+                        <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+                    } <span class="kw">else</span> {
+                        <span class="macro">request_error!</span>(
+                            <span class="string">&quot;modify: no candidates match filter, failure {:?}&quot;</span>,
+                            <span class="ident">me</span>.<span class="ident">filter</span>
+                        );
+                        <span class="macro">lrequest_error!</span>(
+                            <span class="ident">audit</span>,
+                            <span class="string">&quot;modify: no candidates match filter, failure {:?}&quot;</span>,
+                            <span class="ident">me</span>.<span class="ident">filter</span>
+                        );
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
+                    }
+                };
+
+                <span class="comment">// Are we allowed to make the changes we want to?</span>
+                <span class="comment">// modify_allow_operation</span>
+                <span class="kw">let</span> <span class="ident">access</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_accesscontrols</span>();
+                <span class="kw">let</span> <span class="ident">op_allow</span> <span class="op">=</span> <span class="ident">access</span>
+                    .<span class="ident">modify_allow_operation</span>(<span class="ident">audit</span>, <span class="ident">me</span>, <span class="kw-2">&amp;</span><span class="ident">pre_candidates</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to check modify access {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Unable to check modify access {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">e</span>
+                    })<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="op">!</span><span class="ident">op_allow</span> {
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::AccessDenied</span>);
+                }
+
+                <span class="comment">// Clone a set of writeables.</span>
+                <span class="comment">// Apply the modlist -&gt; Remember, we have a set of origs</span>
+                <span class="comment">// and the new modified ents.</span>
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pre_candidates</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> <span class="ident">er</span>.<span class="ident">clone</span>().<span class="ident">invalidate</span>(<span class="self">self</span>.<span class="ident">cid</span>.<span class="ident">clone</span>()))
+                    .<span class="ident">collect</span>();
+
+                <span class="ident">candidates</span>
+                    .<span class="ident">iter_mut</span>()
+                    .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> <span class="ident">er</span>.<span class="ident">apply_modlist</span>(<span class="kw-2">&amp;</span><span class="ident">me</span>.<span class="ident">modlist</span>));
+
+                <span class="macro">trace!</span>(<span class="string">&quot;modify: candidates -&gt; {:?}&quot;</span>, <span class="ident">candidates</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify: candidates -&gt; {:?}&quot;</span>, <span class="ident">candidates</span>);
+
+                <span class="comment">// Pre mod plugins</span>
+                <span class="comment">// We should probably supply the pre-post cands here.</span>
+                <span class="ident">Plugins::run_pre_modify</span>(<span class="ident">audit</span>, <span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">candidates</span>, <span class="ident">me</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">e</span>
                 })<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">op_allow</span> {
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::AccessDenied</span>);
-            }
 
-            <span class="comment">// Clone a set of writeables.</span>
-            <span class="comment">// Apply the modlist -&gt; Remember, we have a set of origs</span>
-            <span class="comment">// and the new modified ents.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pre_candidates</span>
-                .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> <span class="ident">er</span>.<span class="ident">clone</span>().<span class="ident">invalidate</span>(<span class="self">self</span>.<span class="ident">cid</span>.<span class="ident">clone</span>()))
-                .<span class="ident">collect</span>();
+                <span class="comment">// NOTE: There is a potential optimisation here, where if</span>
+                <span class="comment">// candidates == pre-candidates, then we don&#39;t need to store anything</span>
+                <span class="comment">// because we effectively just did an assert. However, like all</span>
+                <span class="comment">// optimisations, this could be premature - so we for now, just</span>
+                <span class="comment">// do the CORRECT thing and recommit as we may find later we always</span>
+                <span class="comment">// want to add CSN&#39;s or other.</span>
 
-            <span class="ident">candidates</span>
-                .<span class="ident">iter_mut</span>()
-                .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> <span class="ident">er</span>.<span class="ident">apply_modlist</span>(<span class="kw-2">&amp;</span><span class="ident">me</span>.<span class="ident">modlist</span>));
-
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;modify: candidates -&gt; {:?}&quot;</span>, <span class="ident">candidates</span>);
-
-            <span class="comment">// Pre mod plugins</span>
-            <span class="comment">// We should probably supply the pre-post cands here.</span>
-            <span class="ident">Plugins::run_pre_modify</span>(<span class="ident">audit</span>, <span class="self">self</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">candidates</span>, <span class="ident">me</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Modify operation failed (plugin), {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
-
-            <span class="comment">// NOTE: There is a potential optimisation here, where if</span>
-            <span class="comment">// candidates == pre-candidates, then we don&#39;t need to store anything</span>
-            <span class="comment">// because we effectively just did an assert. However, like all</span>
-            <span class="comment">// optimisations, this could be premature - so we for now, just</span>
-            <span class="comment">// do the CORRECT thing and recommit as we may find later we always</span>
-            <span class="comment">// want to add CSN&#39;s or other.</span>
-
-            <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">candidates</span>
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="ident">e</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Schema Violation {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
+                <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="ident">candidates</span>
+                        .<span class="ident">into_iter</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                            <span class="ident">e</span>.<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>)
+                                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                                    <span class="macro">admin_error!</span>(<span class="string">&quot;Schema Violation {:?}&quot;</span>, <span class="ident">e</span>);
+                                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Schema Violation {:?}&quot;</span>, <span class="ident">e</span>);
+                                    <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
+                                })
+                                .<span class="ident">map</span>(<span class="ident">Entry::seal</span>)
                         })
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">seal</span>())
-                })
-                .<span class="ident">collect</span>();
+                        .<span class="ident">collect</span>();
 
-            <span class="kw">let</span> <span class="ident">norm_cand</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">res</span><span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">norm_cand</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">res</span><span class="question-mark">?</span>;
 
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ModifyPartial</span> {
-                <span class="ident">norm_cand</span>,
-                <span class="ident">pre_candidates</span>,
-                <span class="ident">me</span>,
-            }))
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ModifyPartial</span> {
+                    <span class="ident">norm_cand</span>,
+                    <span class="ident">pre_candidates</span>,
+                    <span class="ident">me</span>,
+                }))
+            })
         })
     }
 
@@ -5895,14 +6117,16 @@
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::modify&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">mp</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">modify_pre_apply</span>(<span class="ident">audit</span>, <span class="ident">me</span>)<span class="question-mark">?</span> };
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">mp</span> {
-                <span class="self">self</span>.<span class="ident">modify_apply</span>(<span class="ident">audit</span>, <span class="ident">mp</span>)
-            } <span class="kw">else</span> {
-                <span class="comment">// No action to apply, the pre-apply said nothing to be done.</span>
-                <span class="prelude-val">Ok</span>(())
-            }
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::modify&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::modify&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">mp</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">modify_pre_apply</span>(<span class="ident">audit</span>, <span class="ident">me</span>)<span class="question-mark">?</span> };
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">mp</span> {
+                    <span class="self">self</span>.<span class="ident">modify_apply</span>(<span class="ident">audit</span>, <span class="ident">mp</span>)
+                } <span class="kw">else</span> {
+                    <span class="comment">// No action to apply, the pre-apply said nothing to be done.</span>
+                    <span class="prelude-val">Ok</span>(())
+                }
+            })
         })
     }
 
@@ -6142,15 +6366,17 @@
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_modify&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
-                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">m_valid</span> <span class="op">=</span> <span class="ident">modlist</span>
-                .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
-                .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">me</span> <span class="op">=</span> <span class="ident">ModifyEvent::new_internal</span>(<span class="ident">f_valid</span>, <span class="ident">m_valid</span>);
-            <span class="self">self</span>.<span class="ident">modify</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">me</span>)
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::intenal_modify&quot;</span>, {
+            <span class="macro">lperf_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;server::internal_modify&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
+                    .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">m_valid</span> <span class="op">=</span> <span class="ident">modlist</span>
+                    .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">me</span> <span class="op">=</span> <span class="ident">ModifyEvent::new_internal</span>(<span class="ident">f_valid</span>, <span class="ident">m_valid</span>);
+                <span class="self">self</span>.<span class="ident">modify</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">me</span>)
+            })
         })
     }
 

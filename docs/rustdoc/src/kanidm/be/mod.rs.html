@@ -3056,6 +3056,82 @@
 <span id="3054">3054</span>
 <span id="3055">3055</span>
 <span id="3056">3056</span>
+<span id="3057">3057</span>
+<span id="3058">3058</span>
+<span id="3059">3059</span>
+<span id="3060">3060</span>
+<span id="3061">3061</span>
+<span id="3062">3062</span>
+<span id="3063">3063</span>
+<span id="3064">3064</span>
+<span id="3065">3065</span>
+<span id="3066">3066</span>
+<span id="3067">3067</span>
+<span id="3068">3068</span>
+<span id="3069">3069</span>
+<span id="3070">3070</span>
+<span id="3071">3071</span>
+<span id="3072">3072</span>
+<span id="3073">3073</span>
+<span id="3074">3074</span>
+<span id="3075">3075</span>
+<span id="3076">3076</span>
+<span id="3077">3077</span>
+<span id="3078">3078</span>
+<span id="3079">3079</span>
+<span id="3080">3080</span>
+<span id="3081">3081</span>
+<span id="3082">3082</span>
+<span id="3083">3083</span>
+<span id="3084">3084</span>
+<span id="3085">3085</span>
+<span id="3086">3086</span>
+<span id="3087">3087</span>
+<span id="3088">3088</span>
+<span id="3089">3089</span>
+<span id="3090">3090</span>
+<span id="3091">3091</span>
+<span id="3092">3092</span>
+<span id="3093">3093</span>
+<span id="3094">3094</span>
+<span id="3095">3095</span>
+<span id="3096">3096</span>
+<span id="3097">3097</span>
+<span id="3098">3098</span>
+<span id="3099">3099</span>
+<span id="3100">3100</span>
+<span id="3101">3101</span>
+<span id="3102">3102</span>
+<span id="3103">3103</span>
+<span id="3104">3104</span>
+<span id="3105">3105</span>
+<span id="3106">3106</span>
+<span id="3107">3107</span>
+<span id="3108">3108</span>
+<span id="3109">3109</span>
+<span id="3110">3110</span>
+<span id="3111">3111</span>
+<span id="3112">3112</span>
+<span id="3113">3113</span>
+<span id="3114">3114</span>
+<span id="3115">3115</span>
+<span id="3116">3116</span>
+<span id="3117">3117</span>
+<span id="3118">3118</span>
+<span id="3119">3119</span>
+<span id="3120">3120</span>
+<span id="3121">3121</span>
+<span id="3122">3122</span>
+<span id="3123">3123</span>
+<span id="3124">3124</span>
+<span id="3125">3125</span>
+<span id="3126">3126</span>
+<span id="3127">3127</span>
+<span id="3128">3128</span>
+<span id="3129">3129</span>
+<span id="3130">3130</span>
+<span id="3131">3131</span>
+<span id="3132">3132</span>
 </pre><pre class="rust">
 <span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
@@ -3065,11 +3141,13 @@
 
 <span class="kw">use</span> <span class="ident">std::fs</span>;
 
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::value::IndexType</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashMap</span> <span class="kw">as</span> <span class="ident">Map</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::cell::UnsafeCell</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
+<span class="kw">use</span> <span class="ident">tracing::trace_span</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be::dbentry::DbEntry</span>;
@@ -3181,20 +3259,24 @@
 }
 
 <span class="kw">impl</span> <span class="ident">IdRawEntry</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">into_dbentry</span>(<span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">DbEntry</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="ident">serde_cbor::from_slice</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Serde CBOR Error&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SerdeCborError</span>
             })
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbe</span><span class="op">|</span> (<span class="self">self</span>.<span class="ident">id</span>, <span class="ident">dbe</span>))
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">into_entry</span>(
         <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">db_e</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Serde CBOR Error&quot;</span>);
             <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SerdeCborError</span>
         })<span class="question-mark">?</span>;
@@ -3212,6 +3294,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_idxmeta_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">IdxMeta</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Recursively apply a filter, transforming into IdList&#39;s on the way. This builds a query</span>
     <span class="doccomment">/// execution log, so that it can be examined how an operation proceeded.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
@@ -3315,6 +3398,7 @@
                         (<span class="ident">IdList::AllIds</span>, <span class="ident">fp</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="ident">plan</span>.<span class="ident">push</span>(<span class="ident">fp</span>);
                             <span class="comment">// If we find anything unindexed, the whole term is unindexed.</span>
+                            <span class="macro">filter_trace!</span>(<span class="string">&quot;Term {:?} is AllIds, shortcut return&quot;</span>, <span class="ident">f</span>);
                             <span class="macro">lfilter!</span>(<span class="ident">au</span>, <span class="string">&quot;Term {:?} is AllIds, shortcut return&quot;</span>, <span class="ident">f</span>);
                             <span class="kw">let</span> <span class="ident">setplan</span> <span class="op">=</span> <span class="ident">FilterPlan::OrUnindexed</span>(<span class="ident">plan</span>);
                             <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">IdList::AllIds</span>, <span class="ident">setplan</span>));
@@ -3351,6 +3435,9 @@
                 <span class="kw">let</span> (<span class="kw-2">mut</span> <span class="ident">cand_idl</span>, <span class="ident">fp</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">f_rem_iter</span>.<span class="ident">next</span>() {
                     <span class="prelude-val">Some</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">filter2idl</span>(<span class="ident">au</span>, <span class="ident">f</span>, <span class="ident">thres</span>)<span class="question-mark">?</span>,
                     <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">filter_warn!</span>(
+                            <span class="string">&quot;And filter was empty, or contains only AndNot, can not evaluate.&quot;</span>
+                        );
                         <span class="macro">lfilter_error!</span>(<span class="ident">au</span>, <span class="string">&quot;WARNING: And filter was empty, or contains only AndNot, can not evaluate.&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">IdList::Indexed</span>(<span class="ident">IDLBitRange::new</span>()), <span class="ident">FilterPlan::Invalid</span>));
                     }
@@ -3448,6 +3535,9 @@
                     <span class="kw">let</span> <span class="ident">f_in</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">f</span> {
                         <span class="ident">FilterResolved::AndNot</span>(<span class="ident">f_in</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f_in</span>,
                         <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="macro">filter_error!</span>(
+                                <span class="string">&quot;Invalid server state, a cand filter leaked to andnot set!&quot;</span>
+                            );
                             <span class="macro">lfilter_error!</span>(
                                 <span class="ident">au</span>,
                                 <span class="string">&quot;Invalid server state, a cand filter leaked to andnot set!&quot;</span>
@@ -3545,6 +3635,7 @@
                             <span class="ident">plan</span>.<span class="ident">push</span>(<span class="ident">fp</span>);
                             <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">is_empty</span>() {
                                 <span class="comment">// It&#39;s empty, so something is missing. Bail fast.</span>
+                                <span class="macro">filter_trace!</span>(<span class="string">&quot;Inclusion is unable to proceed - an empty (missing) item was found!&quot;</span>);
                                 <span class="macro">lfilter!</span>(<span class="ident">au</span>, <span class="string">&quot;Inclusion is unable to proceed - an empty (missing) item was found!&quot;</span>);
                                 <span class="kw">let</span> <span class="ident">setplan</span> <span class="op">=</span> <span class="ident">FilterPlan::InclusionIndexed</span>(<span class="ident">plan</span>);
                                 <span class="kw">return</span> <span class="prelude-val">Ok</span>((<span class="ident">IdList::Indexed</span>(<span class="ident">IDLBitRange::new</span>()), <span class="ident">setplan</span>));
@@ -3554,6 +3645,9 @@
                         }
                         (<span class="kw">_</span>, <span class="ident">fp</span>) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="ident">plan</span>.<span class="ident">push</span>(<span class="ident">fp</span>);
+                            <span class="macro">filter_error!</span>(
+                                <span class="string">&quot;Inclusion is unable to proceed - all terms must be fully indexed!&quot;</span>
+                            );
                             <span class="macro">lfilter_error!</span>(
                                 <span class="ident">au</span>,
                                 <span class="string">&quot;Inclusion is unable to proceed - all terms must be fully indexed!&quot;</span>
@@ -3574,6 +3668,7 @@
             <span class="ident">FilterResolved::AndNot</span>(<span class="ident">_f</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// get the idl for f</span>
                 <span class="comment">// now do andnot?</span>
+                <span class="macro">filter_error!</span>(<span class="string">&quot;Requested a top level or isolated AndNot, returning empty&quot;</span>);
                 <span class="macro">lfilter_error!</span>(
                     <span class="ident">au</span>,
                     <span class="string">&quot;ERROR: Requested a top level or isolated AndNot, returning empty&quot;</span>
@@ -3583,14 +3678,17 @@
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">erl</span>: <span class="kw-2">&amp;</span><span class="ident">Limits</span>,
         <span class="ident">filt</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">_entered</span> <span class="op">=</span> <span class="macro">trace_span!</span>(<span class="string">&quot;be::search&quot;</span>).<span class="ident">entered</span>();
         <span class="comment">// Unlike DS, even if we don&#39;t get the index back, we can just pass</span>
         <span class="comment">// to the in-memory filter test and be done.</span>
+
         <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&quot;</span>, <span class="op">|</span><span class="op">|</span> {
             <span class="comment">/*
             // Do a final optimise of the filter
@@ -3599,20 +3697,24 @@
                 lperf_trace_segment!(au, &quot;be::search&lt;filt::optimise&gt;&quot;, || { filt.optimise() });
             lfilter!(au, &quot;filter optimised to --&gt; {:?}&quot;, filt);
             */</span>
+            <span class="macro">filter_trace!</span>(<span class="question-mark">?</span><span class="ident">filt</span>, <span class="string">&quot;filter optimized&quot;</span>);
             <span class="macro">lfilter!</span>(<span class="ident">au</span>, <span class="string">&quot;filter optimised --&gt; {:?}&quot;</span>, <span class="ident">filt</span>);
 
-            <span class="comment">// Using the indexes, resolve the IdList here, or AllIds.</span>
-            <span class="comment">// Also get if the filter was 100% resolved or not.</span>
-            <span class="kw">let</span> (<span class="ident">idl</span>, <span class="ident">fplan</span>) <span class="op">=</span> <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search -&gt; filter2idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">filter2idl</span>(<span class="ident">au</span>, <span class="ident">filt</span>.<span class="ident">to_inner</span>(), <span class="ident">FILTER_SEARCH_TEST_THRESHOLD</span>)
+            <span class="kw">let</span> (<span class="ident">idl</span>, <span class="ident">fplan</span>) <span class="op">=</span> <span class="macro">trace_span!</span>(<span class="string">&quot;be::search -&gt; filter2idl&quot;</span>).<span class="ident">in_scope</span>(<span class="op">|</span><span class="op">|</span> {
+                <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search -&gt; filter2idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                    <span class="self">self</span>.<span class="ident">filter2idl</span>(<span class="ident">au</span>, <span class="ident">filt</span>.<span class="ident">to_inner</span>(), <span class="ident">FILTER_SEARCH_TEST_THRESHOLD</span>)
+                })
             })<span class="question-mark">?</span>;
 
+            <span class="macro">filter_info!</span>(<span class="question-mark">?</span><span class="ident">fplan</span>, <span class="string">&quot;filter executed plan&quot;</span>);
             <span class="macro">lfilter_info!</span>(<span class="ident">au</span>, <span class="string">&quot;filter executed plan -&gt; {:?}&quot;</span>, <span class="ident">fplan</span>);
 
-            <span class="comment">// Based on the IdList we determine if limits are required at this point.</span>
             <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">idl</span> {
                 <span class="ident">IdList::AllIds</span> <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">erl</span>.<span class="ident">unindexed_allow</span> {
+                        <span class="macro">admin_error!</span>(
+                            <span class="string">&quot;filter (search) is fully unindexed, and not allowed by resource limits&quot;</span>
+                        );
                         <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (search) is fully unindexed, and not allowed by resource limits&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
                     }
@@ -3620,6 +3722,7 @@
                 <span class="ident">IdList::Partial</span>(<span class="ident">idl_br</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="comment">// if idl_br.len() &gt; erl.search_max_filter_test {</span>
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">idl_br</span>.<span class="ident">below_threshold</span>(<span class="ident">erl</span>.<span class="ident">search_max_filter_test</span>) {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (search) is partial indexed and greater than search_max_filter_test allowed by resource limits&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
                     }
@@ -3634,6 +3737,7 @@
                     <span class="comment">// indexed ...</span>
                     <span class="comment">// if idl_br.len() &gt; erl.search_max_results {</span>
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">idl_br</span>.<span class="ident">below_threshold</span>(<span class="ident">erl</span>.<span class="ident">search_max_results</span>) {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;filter (search) is indexed and greater than search_max_results allowed by resource limits&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (search) is indexed and greater than search_max_results allowed by resource limits&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
                     }
@@ -3641,35 +3745,42 @@
             };
 
             <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">get_identry</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">idl</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;get_identry failed&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;get_identry failed {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">e</span>
             })<span class="question-mark">?</span>;
 
             <span class="kw">let</span> <span class="ident">entries_filtered</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">idl</span> {
-                <span class="ident">IdList::AllIds</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">lperf_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&lt;entry::ftest::allids&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                    <span class="ident">entries</span>
-                        .<span class="ident">into_iter</span>()
-                        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="ident">filt</span>))
-                        .<span class="ident">collect</span>()
+                <span class="ident">IdList::AllIds</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">trace_span!</span>(<span class="string">&quot;be::search&lt;entry::ftest::allids&gt;&quot;</span>).<span class="ident">in_scope</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="macro">lperf_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&lt;entry::ftest::allids&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">entries</span>
+                            .<span class="ident">into_iter</span>()
+                            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>))
+                            .<span class="ident">collect</span>()
+                    })
                 }),
                 <span class="ident">IdList::Partial</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">lperf_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&lt;entry::ftest::partial&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                        <span class="ident">entries</span>
-                            .<span class="ident">into_iter</span>()
-                            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="ident">filt</span>))
-                            .<span class="ident">collect</span>()
+                    <span class="macro">trace_span!</span>(<span class="string">&quot;be::search&lt;entry::ftest::partial&gt;&quot;</span>).<span class="ident">in_scope</span>(<span class="op">|</span><span class="op">|</span> {
+                        <span class="macro">lperf_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&lt;entry::ftest::partial&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                            <span class="ident">entries</span>
+                                .<span class="ident">into_iter</span>()
+                                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>))
+                                .<span class="ident">collect</span>()
+                        })
                     })
                 }
-                <span class="ident">IdList::PartialThreshold</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&lt;entry::ftest::thresh&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                        <span class="ident">entries</span>
-                            .<span class="ident">into_iter</span>()
-                            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="ident">filt</span>))
-                            .<span class="ident">collect</span>()
-                    })
-                }
+                <span class="ident">IdList::PartialThreshold</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">trace_span!</span>(<span class="string">&quot;be::search&lt;entry::ftest::thresh&gt;&quot;</span>)
+                    .<span class="ident">in_scope</span>(<span class="op">|</span><span class="op">|</span> {
+                        <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::search&lt;entry::ftest::thresh&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                            <span class="ident">entries</span>
+                                .<span class="ident">into_iter</span>()
+                                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>))
+                                .<span class="ident">collect</span>()
+                        })
+                    }),
                 <span class="comment">// Since the index fully resolved, we can shortcut the filter test step here!</span>
                 <span class="ident">IdList::Indexed</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="macro">filter_trace!</span>(<span class="string">&quot;filter (search) was fully indexed 👏&quot;</span>);
                     <span class="macro">lfilter!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (search) was fully indexed 👏&quot;</span>);
                     <span class="ident">entries</span>
                 }
@@ -3678,6 +3789,7 @@
             <span class="comment">// If the idl was not indexed, apply the resource limit now. Avoid the needless match since the</span>
             <span class="comment">// if statement is quick.</span>
             <span class="kw">if</span> <span class="ident">entries_filtered</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="ident">erl</span>.<span class="ident">search_max_results</span> {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;filter (search) is resolved and greater than search_max_results allowed by resource limits&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (search) is resolved and greater than search_max_results allowed by resource limits&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
             }
@@ -3686,6 +3798,7 @@
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Given a filter, assert some condition exists.</span>
     <span class="doccomment">/// Basically, this is a specialised case of search, where we don&#39;t need to</span>
     <span class="doccomment">/// load any candidates if they match. This is heavily used in uuid</span>
@@ -3696,73 +3809,91 @@
         <span class="ident">erl</span>: <span class="kw-2">&amp;</span><span class="ident">Limits</span>,
         <span class="ident">filt</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::exists&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">/*
-            // Do a final optimise of the filter
-            lfilter!(au, &quot;filter unoptimised form --&gt; {:?}&quot;, filt);
-            let filt = filt.optimise();
-            lfilter!(au, &quot;filter optimised to --&gt; {:?}&quot;, filt);
-            */</span>
-            <span class="macro">lfilter!</span>(<span class="ident">au</span>, <span class="string">&quot;filter optimised --&gt; {:?}&quot;</span>, <span class="ident">filt</span>);
+        <span class="kw">let</span> <span class="ident">_entered</span> <span class="op">=</span> <span class="macro">trace_span!</span>(<span class="string">&quot;be::exists&quot;</span>).<span class="ident">entered</span>();
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::exists&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::exists&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">/*
+                // Do a final optimise of the filter
+                lfilter!(au, &quot;filter unoptimised form --&gt; {:?}&quot;, filt);
+                let filt = filt.optimise();
+                lfilter!(au, &quot;filter optimised to --&gt; {:?}&quot;, filt);
+                */</span>
+                <span class="macro">filter_trace!</span>(<span class="question-mark">?</span><span class="ident">filt</span>, <span class="string">&quot;filter optimised&quot;</span>);
+                <span class="macro">lfilter!</span>(<span class="ident">au</span>, <span class="string">&quot;filter optimised --&gt; {:?}&quot;</span>, <span class="ident">filt</span>);
 
-            <span class="comment">// Using the indexes, resolve the IdList here, or AllIds.</span>
-            <span class="comment">// Also get if the filter was 100% resolved or not.</span>
-            <span class="kw">let</span> (<span class="ident">idl</span>, <span class="ident">fplan</span>) <span class="op">=</span> <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::exists -&gt; filter2idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">filter2idl</span>(<span class="ident">au</span>, <span class="ident">filt</span>.<span class="ident">to_inner</span>(), <span class="ident">FILTER_EXISTS_TEST_THRESHOLD</span>)
-            })<span class="question-mark">?</span>;
+                <span class="comment">// Using the indexes, resolve the IdList here, or AllIds.</span>
+                <span class="comment">// Also get if the filter was 100% resolved or not.</span>
+                <span class="kw">let</span> (<span class="ident">idl</span>, <span class="ident">fplan</span>) <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;be::exists -&gt; filter2idl&quot;</span>, {
+                    <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::exists -&gt; filter2idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                        <span class="self">self</span>.<span class="ident">filter2idl</span>(<span class="ident">au</span>, <span class="ident">filt</span>.<span class="ident">to_inner</span>(), <span class="ident">FILTER_EXISTS_TEST_THRESHOLD</span>)
+                    })
+                })<span class="question-mark">?</span>;
 
-            <span class="macro">lfilter_info!</span>(<span class="ident">au</span>, <span class="string">&quot;filter executed plan -&gt; {:?}&quot;</span>, <span class="ident">fplan</span>);
+                <span class="macro">filter_info!</span>(<span class="question-mark">?</span><span class="ident">fplan</span>, <span class="string">&quot;filter executed plan&quot;</span>);
+                <span class="macro">lfilter_info!</span>(<span class="ident">au</span>, <span class="string">&quot;filter executed plan -&gt; {:?}&quot;</span>, <span class="ident">fplan</span>);
 
-            <span class="comment">// Apply limits to the IdList.</span>
-            <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">idl</span> {
-                <span class="ident">IdList::AllIds</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">erl</span>.<span class="ident">unindexed_allow</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (exists) is fully unindexed, and not allowed by resource limits&quot;</span>);
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
+                <span class="comment">// Apply limits to the IdList.</span>
+                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">idl</span> {
+                    <span class="ident">IdList::AllIds</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">erl</span>.<span class="ident">unindexed_allow</span> {
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;filter (exists) is fully unindexed, and not allowed by resource limits&quot;</span>);
+                            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (exists) is fully unindexed, and not allowed by resource limits&quot;</span>);
+                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
+                        }
                     }
-                }
-                <span class="ident">IdList::Partial</span>(<span class="ident">idl_br</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">if</span> <span class="op">!</span><span class="ident">idl_br</span>.<span class="ident">below_threshold</span>(<span class="ident">erl</span>.<span class="ident">search_max_filter_test</span>) {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits&quot;</span>);
-                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
+                    <span class="ident">IdList::Partial</span>(<span class="ident">idl_br</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">if</span> <span class="op">!</span><span class="ident">idl_br</span>.<span class="ident">below_threshold</span>(<span class="ident">erl</span>.<span class="ident">search_max_filter_test</span>) {
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits&quot;</span>);
+                            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;filter (exists) is partial indexed and greater than search_max_filter_test allowed by resource limits&quot;</span>);
+                            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::ResourceLimit</span>);
+                        }
                     }
+                    <span class="ident">IdList::PartialThreshold</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// Since we opted for this, this is not the fault</span>
+                        <span class="comment">// of the user and we should not penalise them.</span>
+                    }
+                    <span class="ident">IdList::Indexed</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
                 }
-                <span class="ident">IdList::PartialThreshold</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="comment">// Since we opted for this, this is not the fault</span>
-                    <span class="comment">// of the user and we should not penalise them.</span>
-                }
-                <span class="ident">IdList::Indexed</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-            }
 
-            <span class="comment">// Now, check the idl -- if it&#39;s fully resolved, we can skip this because the query</span>
-            <span class="comment">// was fully indexed.</span>
-            <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">idl</span> {
-                <span class="ident">IdList::Indexed</span>(<span class="ident">idl</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="op">!</span><span class="ident">idl</span>.<span class="ident">is_empty</span>()),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">get_identry</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">idl</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;get_identry failed {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">e</span>
-                    })<span class="question-mark">?</span>;
+                <span class="comment">// Now, check the idl -- if it&#39;s fully resolved, we can skip this because the query</span>
+                <span class="comment">// was fully indexed.</span>
+                <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">idl</span> {
+                    <span class="ident">IdList::Indexed</span>(<span class="ident">idl</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="op">!</span><span class="ident">idl</span>.<span class="ident">is_empty</span>()),
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">get_identry</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">idl</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                            <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;get_identry failed&quot;</span>);
+                            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;get_identry failed {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="ident">e</span>
+                        })<span class="question-mark">?</span>;
 
-                    <span class="comment">// if not 100% resolved query, apply the filter test.</span>
-                    <span class="kw">let</span> <span class="ident">entries_filtered</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
-                        <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::exists -&gt; entry_match_no_index&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                            <span class="ident">entries</span>
-                                .<span class="ident">into_iter</span>()
-                                .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="ident">filt</span>))
-                                .<span class="ident">collect</span>()
-                        });
+                        <span class="comment">// if not 100% resolved query, apply the filter test.</span>
+                        <span class="kw">let</span> <span class="ident">entries_filtered</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
+                            <span class="macro">spanned!</span>(<span class="string">&quot;be::exists -&gt; entry_match_no_index&quot;</span>, {
+                                <span class="macro">lperf_trace_segment!</span>(
+                                    <span class="ident">au</span>,
+                                    <span class="string">&quot;be::exists -&gt; entry_match_no_index&quot;</span>,
+                                    <span class="op">|</span><span class="op">|</span> {
+                                        <span class="ident">entries</span>
+                                            .<span class="ident">into_iter</span>()
+                                            .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">entry_match_no_index</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>))
+                                            .<span class="ident">collect</span>()
+                                    }
+                                )
+                            });
 
-                    <span class="prelude-val">Ok</span>(<span class="op">!</span><span class="ident">entries_filtered</span>.<span class="ident">is_empty</span>())
-                }
-            } <span class="comment">// end match idl</span>
-        }) <span class="comment">// end audit segment</span>
+                        <span class="prelude-val">Ok</span>(<span class="op">!</span><span class="ident">entries_filtered</span>.<span class="ident">is_empty</span>())
+                    }
+                } <span class="comment">// end match idl</span>
+            }) <span class="comment">// end audit segment</span>
+        }) <span class="comment">// end spanned</span>
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">verify</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify_entry_index</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3772,11 +3903,12 @@
         <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">mask_recycled_ts</span>().<span class="ident">is_some</span>() {
             <span class="kw">let</span> <span class="ident">e_uuid</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>();
             <span class="comment">// We only check these on live entries.</span>
-            <span class="kw">let</span> (<span class="ident">n2u_add</span>, <span class="ident">n2u_rem</span>) <span class="op">=</span> <span class="ident">Entry::idx_name2uuid_diff</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="ident">e</span>));
+            <span class="kw">let</span> (<span class="ident">n2u_add</span>, <span class="ident">n2u_rem</span>) <span class="op">=</span> <span class="ident">Entry::idx_name2uuid_diff</span>(<span class="prelude-val">None</span>, <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">e</span>));
 
             <span class="kw">let</span> <span class="ident">n2u_set</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">n2u_add</span>, <span class="ident">n2u_rem</span>) {
                 (<span class="prelude-val">Some</span>(<span class="ident">set</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">set</span>,
                 (<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid idx_name2uuid_diff state&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid idx_name2uuid_diff state&quot;</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendIndexSync</span>);
                 }
@@ -3789,6 +3921,7 @@
                         <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="ident">idx_uuid</span> <span class="op">=</span><span class="op">=</span> <span class="ident">e_uuid</span> {
                             <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else</span> {
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid name2uuid state -&gt; incorrect uuid association&quot;</span>);
                             <span class="macro">ladmin_error!</span>(
                                 <span class="ident">audit</span>,
                                 <span class="string">&quot;Invalid name2uuid state -&gt; incorrect uuid association&quot;</span>
@@ -3797,6 +3930,7 @@
                         }
                     }
                     <span class="ident">r</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="macro">admin_error!</span>(<span class="ident">state</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;Invalid name2uuid state&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid name2uuid state -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
                         <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendIndexSync</span>)
                     }
@@ -3804,28 +3938,32 @@
             })<span class="question-mark">?</span>;
 
             <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid2spn</span>();
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">e_uuid</span>) {
+            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2spn</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">e_uuid</span>) {
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">idx_spn</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="ident">spn</span> <span class="op">!</span><span class="op">=</span> <span class="ident">idx_spn</span> {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid uuid2spn state -&gt; incorrect idx spn value&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid uuid2spn state -&gt; incorrect idx spn value&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendIndexSync</span>);
                     }
                 }
                 <span class="ident">r</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="macro">admin_error!</span>(<span class="ident">state</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;Invalid uuid2spn state&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid uuid2spn state -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendIndexSync</span>);
                 }
             };
 
             <span class="kw">let</span> <span class="ident">rdn</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid2rdn</span>();
-            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2rdn</span>(<span class="ident">audit</span>, <span class="ident">e_uuid</span>) {
+            <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2rdn</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">e_uuid</span>) {
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">idx_rdn</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="ident">rdn</span> <span class="op">!</span><span class="op">=</span> <span class="ident">idx_rdn</span> {
+                        <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid uuid2rdn state -&gt; incorrect idx rdn value&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid uuid2rdn state -&gt; incorrect idx rdn value&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendIndexSync</span>);
                     }
                 }
                 <span class="ident">r</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="macro">admin_error!</span>(<span class="ident">state</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">r</span>, <span class="string">&quot;Invalid uuid2rdn state&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Invalid uuid2rdn state -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendIndexSync</span>);
                 }
@@ -3841,11 +3979,13 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify_indexes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">idl</span> <span class="op">=</span> <span class="ident">IdList::AllIds</span>;
         <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">get_identry</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">idl</span>) {
             <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;get_identry failure&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;get_identry failure {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="kw">return</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::Unknown</span>)];
             }
@@ -3862,6 +4002,7 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">backup</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">dst_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// load all entries into RAM, may need to change this later</span>
         <span class="comment">// if the size of the database compared to RAM is an issue</span>
@@ -3872,13 +4013,14 @@
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id_ent</span><span class="op">|</span> {
                 <span class="ident">serde_cbor::from_slice</span>(<span class="ident">id_ent</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>())
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SerdeJsonError</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SerdeJsonError</span>) <span class="comment">// log?</span>
             })
             .<span class="ident">collect</span>();
 
         <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="ident">entries</span><span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">serialized_entries_str</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">entries</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;serde error&quot;</span>);
             <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;serde error {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SerdeJsonError</span>
         })<span class="question-mark">?</span>;
@@ -3886,11 +4028,13 @@
         <span class="ident">fs::write</span>(<span class="ident">dst_path</span>, <span class="ident">serialized_entries_str</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;fs::write error&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;fs::write error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::FsError</span>
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3899,6 +4043,7 @@
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">name2uuid</span>(<span class="ident">audit</span>, <span class="ident">name</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3907,6 +4052,7 @@
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3941,10 +4087,12 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_indexes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">list_idxs</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_id2entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3952,6 +4100,7 @@
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">list_id2entry</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3960,6 +4109,7 @@
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">list_index_content</span>(<span class="ident">audit</span>, <span class="ident">index_name</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_id2entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -3983,6 +4133,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">BackendWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -4138,6 +4289,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
+    <span class="comment">// TODO: tracing</span>
     <span class="comment">// Should take a mut index set, and then we write the whole thing back</span>
     <span class="comment">// in a single stripe.</span>
     <span class="comment">//</span>

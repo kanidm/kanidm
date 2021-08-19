@@ -290,7 +290,7 @@
     <span class="comment">// We&#39;ll need to be able to do partialeq/intersect etc later.</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">iter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Iter</span> {
-        <span class="self">self</span>.<span class="ident">into_iter</span>()
+        (<span class="kw-2">&amp;</span><span class="self">self</span>).<span class="ident">into_iter</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">difference</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">other</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">ValueSet</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Difference</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {

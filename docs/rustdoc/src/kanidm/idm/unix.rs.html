@@ -443,6 +443,15 @@
 <span id="441">441</span>
 <span id="442">442</span>
 <span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -574,6 +583,7 @@
         <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_ro</span>(
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
@@ -654,6 +664,7 @@
         <span class="ident">vmin</span> <span class="op">&amp;&amp;</span> <span class="ident">vmax</span>
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">verify_unix_credential</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -676,6 +687,7 @@
             <span class="prelude-val">Some</span>(<span class="ident">cred</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="ident">cred</span>.<span class="ident">password_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">pw</span><span class="op">|</span> {
                     <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>)<span class="question-mark">?</span> {
+                        <span class="macro">security_info!</span>(<span class="string">&quot;Successful unix cred handling&quot;</span>);
                         <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Successful unix cred handling&quot;</span>);
                         <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">requires_upgrade</span>() {
                             <span class="ident">async_tx</span>
@@ -684,6 +696,9 @@
                                     <span class="ident">existing_password</span>: <span class="ident">cleartext</span>.<span class="ident">to_string</span>(),
                                 }))
                                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
+                                    <span class="macro">admin_error!</span>(
+                                        <span class="string">&quot;failed to queue delayed action - unix password upgrade&quot;</span>
+                                    );
                                     <span class="macro">ladmin_error!</span>(
                                         <span class="ident">au</span>,
                                         <span class="string">&quot;failed to queue delayed action - unix password upgrade&quot;</span>
@@ -697,6 +712,7 @@
                         <span class="prelude-val">Some</span>(<span class="self">self</span>.<span class="ident">to_unixusertoken</span>(<span class="ident">ct</span>)).<span class="ident">transpose</span>()
                     } <span class="kw">else</span> {
                         <span class="comment">// Failed to auth</span>
+                        <span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (denied)&quot;</span>);
                         <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed unix cred handling (denied)&quot;</span>);
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                     }
@@ -704,6 +720,7 @@
             }
             <span class="comment">// They don&#39;t have a unix cred, fail the auth.</span>
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (no cred present)&quot;</span>);
                 <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed unix cred handling (no cred present)&quot;</span>);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
@@ -848,6 +865,7 @@
         <span class="macro">try_from_account_group_e!</span>(<span class="ident">au</span>, <span class="ident">value</span>, <span class="ident">qs</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_ro</span>(
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,

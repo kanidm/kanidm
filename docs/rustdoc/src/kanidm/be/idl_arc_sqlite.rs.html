@@ -1368,6 +1368,135 @@
 <span id="1366">1366</span>
 <span id="1367">1367</span>
 <span id="1368">1368</span>
+<span id="1369">1369</span>
+<span id="1370">1370</span>
+<span id="1371">1371</span>
+<span id="1372">1372</span>
+<span id="1373">1373</span>
+<span id="1374">1374</span>
+<span id="1375">1375</span>
+<span id="1376">1376</span>
+<span id="1377">1377</span>
+<span id="1378">1378</span>
+<span id="1379">1379</span>
+<span id="1380">1380</span>
+<span id="1381">1381</span>
+<span id="1382">1382</span>
+<span id="1383">1383</span>
+<span id="1384">1384</span>
+<span id="1385">1385</span>
+<span id="1386">1386</span>
+<span id="1387">1387</span>
+<span id="1388">1388</span>
+<span id="1389">1389</span>
+<span id="1390">1390</span>
+<span id="1391">1391</span>
+<span id="1392">1392</span>
+<span id="1393">1393</span>
+<span id="1394">1394</span>
+<span id="1395">1395</span>
+<span id="1396">1396</span>
+<span id="1397">1397</span>
+<span id="1398">1398</span>
+<span id="1399">1399</span>
+<span id="1400">1400</span>
+<span id="1401">1401</span>
+<span id="1402">1402</span>
+<span id="1403">1403</span>
+<span id="1404">1404</span>
+<span id="1405">1405</span>
+<span id="1406">1406</span>
+<span id="1407">1407</span>
+<span id="1408">1408</span>
+<span id="1409">1409</span>
+<span id="1410">1410</span>
+<span id="1411">1411</span>
+<span id="1412">1412</span>
+<span id="1413">1413</span>
+<span id="1414">1414</span>
+<span id="1415">1415</span>
+<span id="1416">1416</span>
+<span id="1417">1417</span>
+<span id="1418">1418</span>
+<span id="1419">1419</span>
+<span id="1420">1420</span>
+<span id="1421">1421</span>
+<span id="1422">1422</span>
+<span id="1423">1423</span>
+<span id="1424">1424</span>
+<span id="1425">1425</span>
+<span id="1426">1426</span>
+<span id="1427">1427</span>
+<span id="1428">1428</span>
+<span id="1429">1429</span>
+<span id="1430">1430</span>
+<span id="1431">1431</span>
+<span id="1432">1432</span>
+<span id="1433">1433</span>
+<span id="1434">1434</span>
+<span id="1435">1435</span>
+<span id="1436">1436</span>
+<span id="1437">1437</span>
+<span id="1438">1438</span>
+<span id="1439">1439</span>
+<span id="1440">1440</span>
+<span id="1441">1441</span>
+<span id="1442">1442</span>
+<span id="1443">1443</span>
+<span id="1444">1444</span>
+<span id="1445">1445</span>
+<span id="1446">1446</span>
+<span id="1447">1447</span>
+<span id="1448">1448</span>
+<span id="1449">1449</span>
+<span id="1450">1450</span>
+<span id="1451">1451</span>
+<span id="1452">1452</span>
+<span id="1453">1453</span>
+<span id="1454">1454</span>
+<span id="1455">1455</span>
+<span id="1456">1456</span>
+<span id="1457">1457</span>
+<span id="1458">1458</span>
+<span id="1459">1459</span>
+<span id="1460">1460</span>
+<span id="1461">1461</span>
+<span id="1462">1462</span>
+<span id="1463">1463</span>
+<span id="1464">1464</span>
+<span id="1465">1465</span>
+<span id="1466">1466</span>
+<span id="1467">1467</span>
+<span id="1468">1468</span>
+<span id="1469">1469</span>
+<span id="1470">1470</span>
+<span id="1471">1471</span>
+<span id="1472">1472</span>
+<span id="1473">1473</span>
+<span id="1474">1474</span>
+<span id="1475">1475</span>
+<span id="1476">1476</span>
+<span id="1477">1477</span>
+<span id="1478">1478</span>
+<span id="1479">1479</span>
+<span id="1480">1480</span>
+<span id="1481">1481</span>
+<span id="1482">1482</span>
+<span id="1483">1483</span>
+<span id="1484">1484</span>
+<span id="1485">1485</span>
+<span id="1486">1486</span>
+<span id="1487">1487</span>
+<span id="1488">1488</span>
+<span id="1489">1489</span>
+<span id="1490">1490</span>
+<span id="1491">1491</span>
+<span id="1492">1492</span>
+<span id="1493">1493</span>
+<span id="1494">1494</span>
+<span id="1495">1495</span>
+<span id="1496">1496</span>
+<span id="1497">1497</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be::idl_sqlite</span>::{
@@ -1392,6 +1521,9 @@
 <span class="kw">use</span> <span class="ident">std::ops::DerefMut</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
+
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">tracing::trace</span>;
 
 <span class="comment">// use std::borrow::Borrow;</span>
 
@@ -1444,6 +1576,7 @@
     <span class="ident">maxid</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u64</span><span class="op">&gt;</span>,
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">get_identry</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
@@ -1451,7 +1584,7 @@
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idl</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">is_read_op</span>:<span class="ident">expr</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {{
-        <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="string">&quot;be::idl_arc_sqlite::get_identry&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::get_identry&quot;</span>, {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">result</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
             <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idl</span> {
                 <span class="ident">IdList::Partial</span>(<span class="ident">idli</span>) <span class="op">|</span> <span class="ident">IdList::PartialThreshold</span>(<span class="ident">idli</span>) <span class="op">|</span> <span class="ident">IdList::Indexed</span>(<span class="ident">idli</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -1506,6 +1639,7 @@
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">get_identry_raw</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
@@ -1517,6 +1651,7 @@
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">exists_idx</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
@@ -1529,6 +1664,7 @@
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">get_idl</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
@@ -1537,127 +1673,148 @@
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>:<span class="ident">expr</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {{
-        <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::get_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// SEE ALSO #259: Find a way to implement borrow for this properly.</span>
-            <span class="comment">// I don&#39;t think this is possible. When we make this dyn, the arc</span>
-            <span class="comment">// needs the dyn trait to be sized so that it *could* claim a clone</span>
-            <span class="comment">// for hit tracking reasons. That also means that we need From and</span>
-            <span class="comment">// some other traits that just seem incompatible. And in the end,</span>
-            <span class="comment">// we clone a few times in arc, and if we miss we need to insert anyway</span>
-            <span class="comment">//</span>
-            <span class="comment">// So the best path could be to replace IdlCacheKey with a compressed</span>
-            <span class="comment">// or smaller type. Perhaps even a small cache of the IdlCacheKeys that</span>
-            <span class="comment">// are allocated to reduce some allocs? Probably over thinking it at</span>
-            <span class="comment">// this point.</span>
-            <span class="comment">//</span>
-            <span class="comment">// First attempt to get from this cache.</span>
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKeyRef</span> {
-                <span class="ident">a</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
-                <span class="ident">i</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
-                <span class="ident">k</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>,
-            };
-            <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">idl_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">IdlCacheKeyToRef</span>);
-            <span class="comment">// If hit, continue.</span>
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">ltrace!</span>(
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>,
-                    <span class="string">&quot;Got cached idl for index {:?} {:?} -&gt; {}&quot;</span>,
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
-                    <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
-                    <span class="ident">data</span>
-                );
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">data</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
-            }
-            <span class="comment">// If miss, get from db *and* insert to the cache.</span>
-            <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">get_idl</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">idl</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-                <span class="kw">let</span> <span class="ident">ncache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKey</span> {
-                    <span class="ident">a</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>.<span class="ident">into</span>(),
-                    <span class="ident">i</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>.<span class="ident">clone</span>(),
-                    <span class="ident">k</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>.<span class="ident">into</span>(),
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::get_idl&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::get_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// SEE ALSO #259: Find a way to implement borrow for this properly.</span>
+                <span class="comment">// I don&#39;t think this is possible. When we make this dyn, the arc</span>
+                <span class="comment">// needs the dyn trait to be sized so that it *could* claim a clone</span>
+                <span class="comment">// for hit tracking reasons. That also means that we need From and</span>
+                <span class="comment">// some other traits that just seem incompatible. And in the end,</span>
+                <span class="comment">// we clone a few times in arc, and if we miss we need to insert anyway</span>
+                <span class="comment">//</span>
+                <span class="comment">// So the best path could be to replace IdlCacheKey with a compressed</span>
+                <span class="comment">// or smaller type. Perhaps even a small cache of the IdlCacheKeys that</span>
+                <span class="comment">// are allocated to reduce some allocs? Probably over thinking it at</span>
+                <span class="comment">// this point.</span>
+                <span class="comment">//</span>
+                <span class="comment">// First attempt to get from this cache.</span>
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKeyRef</span> {
+                    <span class="ident">a</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
+                    <span class="ident">i</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
+                    <span class="ident">k</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>,
                 };
-                <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">idl_cache</span>.<span class="ident">insert</span>(<span class="ident">ncache_key</span>, <span class="ident">Box::new</span>(<span class="ident">idl</span>.<span class="ident">clone</span>()))
-            }
-            <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+                <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">idl_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">IdlCacheKeyToRef</span>);
+                <span class="comment">// If hit, continue.</span>
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">cache_r</span> {
+                    <span class="macro">trace!</span>(
+                        <span class="op">%</span><span class="ident">data</span>,
+                        <span class="string">&quot;Got cached idl for index {:?} {:?}&quot;</span>,
+                        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
+                        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
+                    );
+                    <span class="macro">ltrace!</span>(
+                        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>,
+                        <span class="string">&quot;Got cached idl for index {:?} {:?} -&gt; {}&quot;</span>,
+                        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>,
+                        <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>,
+                        <span class="ident">data</span>
+                    );
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">data</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
+                }
+                <span class="comment">// If miss, get from db *and* insert to the cache.</span>
+                <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">get_idl</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">idl</span>) <span class="op">=</span> <span class="ident">db_r</span> {
+                    <span class="kw">let</span> <span class="ident">ncache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKey</span> {
+                        <span class="ident">a</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">attr</span>.<span class="ident">into</span>(),
+                        <span class="ident">i</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">itype</span>.<span class="ident">clone</span>(),
+                        <span class="ident">k</span>: <span class="macro-nonterminal">$</span><span class="macro-nonterminal">idx_key</span>.<span class="ident">into</span>(),
+                    };
+                    <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">idl_cache</span>.<span class="ident">insert</span>(<span class="ident">ncache_key</span>, <span class="ident">Box::new</span>(<span class="ident">idl</span>.<span class="ident">clone</span>()))
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+            })
         })
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">name2uuid</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>:<span class="ident">expr</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {{
-        <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>.<span class="ident">to_string</span>());
-            <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">ltrace!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Got cached uuid for name2uuid&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()));
-            }
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>.<span class="ident">to_string</span>());
+                <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Got cached uuid for name2uuid&quot;</span>);
+                    <span class="macro">ltrace!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Got cached uuid for name2uuid&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()));
+                }
 
-            <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">name2uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">uuid</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-                <span class="macro-nonterminal">$</span><span class="self">self</span>
-                    .<span class="macro-nonterminal">name_cache</span>
-                    .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()))
-            }
-            <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+                <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">name2uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">uuid</span>) <span class="op">=</span> <span class="ident">db_r</span> {
+                    <span class="macro-nonterminal">$</span><span class="self">self</span>
+                        .<span class="macro-nonterminal">name_cache</span>
+                        .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()))
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+            })
         })
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">uuid2spn</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>:<span class="ident">expr</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {{
-        <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
-            <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="kw-2">ref</span> <span class="ident">spn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">ltrace!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Got cached spn for uuid2spn&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">spn</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
-            }
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::uuid2spn&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
+                <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="kw-2">ref</span> <span class="ident">spn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Got cached spn for uuid2spn&quot;</span>);
+                    <span class="macro">ltrace!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Got cached spn for uuid2spn&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">spn</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
+                }
 
-            <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">uuid2spn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-                <span class="macro-nonterminal">$</span><span class="self">self</span>
-                    .<span class="macro-nonterminal">name_cache</span>
-                    .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::S</span>(<span class="ident">Box::new</span>(<span class="ident">data</span>.<span class="ident">clone</span>())))
-            }
-            <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+                <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">uuid2spn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">db_r</span> {
+                    <span class="macro-nonterminal">$</span><span class="self">self</span>
+                        .<span class="macro-nonterminal">name_cache</span>
+                        .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::S</span>(<span class="ident">Box::new</span>(<span class="ident">data</span>.<span class="ident">clone</span>())))
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+            })
         })
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">uuid2rdn</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>:<span class="ident">expr</span>,
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>:<span class="ident">expr</span>
     ) <span class="op">=</span><span class="op">&gt;</span> {{
-        <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
-            <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="kw-2">ref</span> <span class="ident">rdn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">ltrace!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Got cached rdn for uuid2rdn&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">rdn</span>.<span class="ident">clone</span>()));
-            }
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::uuid2rdn&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
+                <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="kw-2">ref</span> <span class="ident">rdn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Got cached rdn for uuid2rdn&quot;</span>);
+                    <span class="macro">ltrace!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Got cached rdn for uuid2rdn&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">rdn</span>.<span class="ident">clone</span>()));
+                }
 
-            <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">uuid2rdn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">db_r</span> {
-                <span class="macro-nonterminal">$</span><span class="self">self</span>
-                    .<span class="macro-nonterminal">name_cache</span>
-                    .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::R</span>(<span class="ident">data</span>.<span class="ident">clone</span>()))
-            }
-            <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+                <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">uuid2rdn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">data</span>) <span class="op">=</span> <span class="ident">db_r</span> {
+                    <span class="macro-nonterminal">$</span><span class="self">self</span>
+                        .<span class="macro-nonterminal">name_cache</span>
+                        .<span class="ident">insert</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::R</span>(<span class="ident">data</span>.<span class="ident">clone</span>()))
+                }
+                <span class="prelude-val">Ok</span>(<span class="ident">db_r</span>)
+            })
         })
     }};
 }
 
+<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">verify</span> {
     (
         <span class="macro-nonterminal">$</span><span class="self">self</span>:<span class="macro-nonterminal">expr</span>,
@@ -1669,10 +1826,18 @@
             <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="self">self</span>.<span class="macro-nonterminal">db</span>.<span class="ident">get_allids</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>) {
                 <span class="prelude-val">Ok</span>(<span class="ident">db_allids</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">if</span> <span class="op">!</span><span class="ident">db_allids</span>.<span class="ident">is_compressed</span>() <span class="op">|</span><span class="op">|</span> <span class="op">!</span>(<span class="kw-2">*</span>(<span class="macro-nonterminal">$</span><span class="self">self</span>).<span class="macro-nonterminal">allids</span>).<span class="ident">is_compressed</span>() {
+                        <span class="macro">admin_warn!</span>(<span class="string">&quot;Inconsistent ALLIDS compression state&quot;</span>);
                         <span class="macro">ladmin_warning!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Inconsistent ALLIDS compression state&quot;</span>);
                         <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::BackendAllIdsSync</span>))
                     }
                     <span class="kw">if</span> <span class="ident">db_allids</span> <span class="op">!</span><span class="op">=</span> (<span class="kw-2">*</span>(<span class="macro-nonterminal">$</span><span class="self">self</span>).<span class="macro-nonterminal">allids</span>) {
+                        <span class="comment">// might want to redo how large key-values are formatted considering what this could look like</span>
+                        <span class="macro">admin_warn!</span>(
+                            <span class="ident">db_allids</span> <span class="op">=</span> <span class="question-mark">?</span>(<span class="kw-2">&amp;</span><span class="ident">db_allids</span>).<span class="ident">andnot</span>(<span class="kw-2">&amp;</span>(<span class="macro-nonterminal">$</span><span class="self">self</span>).<span class="macro-nonterminal">allids</span>),
+                            <span class="ident">arc_allids</span> <span class="op">=</span> <span class="question-mark">?</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span>(<span class="macro-nonterminal">$</span><span class="self">self</span>).<span class="macro-nonterminal">allids</span>)).<span class="ident">andnot</span>(<span class="kw-2">&amp;</span><span class="ident">db_allids</span>),
+                            <span class="string">&quot;Inconsistent ALLIDS set&quot;</span>
+                        );
+
                         <span class="macro">ladmin_warning!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>, <span class="string">&quot;Inconsistent ALLIDS set&quot;</span>);
                         <span class="macro">ladmin_warning!</span>(
                             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>,
@@ -1695,18 +1860,21 @@
 }
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">IdlArcSqliteTransaction</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1714,6 +1882,7 @@
         <span class="ident">itype</span>: <span class="kw-2">&amp;</span><span class="ident">IndexType</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1726,38 +1895,46 @@
 
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">is_dirty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">IDLBitRange</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1766,6 +1943,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteTransaction</span> <span class="kw">for</span> <span class="ident">IdlArcSqliteReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1774,6 +1952,7 @@
         <span class="macro">get_identry!</span>(<span class="self">self</span>, <span class="ident">au</span>, <span class="ident">idl</span>, <span class="bool-val">true</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1782,6 +1961,7 @@
         <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, <span class="ident">au</span>, <span class="ident">idl</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1791,6 +1971,7 @@
         <span class="macro">exists_idx!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1801,14 +1982,17 @@
         <span class="macro">get_idl!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>, <span class="ident">idx_key</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_s_uuid</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_d_uuid</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">verify!</span>(<span class="self">self</span>, <span class="ident">audit</span>)
     }
@@ -1817,6 +2001,7 @@
         <span class="bool-val">false</span>
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1825,6 +2010,7 @@
         <span class="macro">name2uuid!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">name</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1833,6 +2019,7 @@
         <span class="macro">uuid2spn!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">uuid</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1841,16 +2028,19 @@
         <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">uuid</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_idxs</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_id2entry</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1860,6 +2050,7 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_index_content</span>(<span class="ident">audit</span>, <span class="ident">index_name</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1871,6 +2062,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteTransaction</span> <span class="kw">for</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1879,6 +2071,7 @@
         <span class="macro">get_identry!</span>(<span class="self">self</span>, <span class="ident">au</span>, <span class="ident">idl</span>, <span class="bool-val">false</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1887,6 +2080,7 @@
         <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, <span class="ident">au</span>, <span class="ident">idl</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1896,6 +2090,7 @@
         <span class="macro">exists_idx!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1906,14 +2101,17 @@
         <span class="macro">get_idl!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>, <span class="ident">idx_key</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_s_uuid</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_d_uuid</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">verify!</span>(<span class="self">self</span>, <span class="ident">audit</span>)
     }
@@ -1922,6 +2120,7 @@
         <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">is_dirty</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1930,6 +2129,7 @@
         <span class="macro">name2uuid!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">name</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1938,6 +2138,7 @@
         <span class="macro">uuid2spn!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">uuid</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1946,16 +2147,19 @@
         <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, <span class="ident">audit</span>, <span class="ident">uuid</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_idxs</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_id2entry</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1965,6 +2169,7 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_index_content</span>(<span class="ident">audit</span>, <span class="ident">index_name</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1976,90 +2181,107 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">IdlArcSqliteWriteTransaction</span> {
-                <span class="ident">db</span>,
-                <span class="kw-2">mut</span> <span class="ident">entry_cache</span>,
-                <span class="kw-2">mut</span> <span class="ident">idl_cache</span>,
-                <span class="kw-2">mut</span> <span class="ident">name_cache</span>,
-                <span class="ident">op_ts_max</span>,
-                <span class="ident">allids</span>,
-                <span class="ident">maxid</span>,
-            } <span class="op">=</span> <span class="self">self</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::commit&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">IdlArcSqliteWriteTransaction</span> {
+                    <span class="ident">db</span>,
+                    <span class="kw-2">mut</span> <span class="ident">entry_cache</span>,
+                    <span class="kw-2">mut</span> <span class="ident">idl_cache</span>,
+                    <span class="kw-2">mut</span> <span class="ident">name_cache</span>,
+                    <span class="ident">op_ts_max</span>,
+                    <span class="ident">allids</span>,
+                    <span class="ident">maxid</span>,
+                } <span class="op">=</span> <span class="self">self</span>;
 
-            <span class="comment">// Write any dirty items to the disk.</span>
-            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&lt;entry&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                <span class="ident">entry_cache</span>
-                    .<span class="ident">iter_mut_mark_clean</span>()
-                    .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">db</span>.<span class="ident">write_identry</span>(<span class="ident">audit</span>, <span class="ident">e</span>),
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">db</span>.<span class="ident">delete_identry</span>(<span class="ident">audit</span>, <span class="kw-2">*</span><span class="ident">k</span>),
+                <span class="comment">// Write any dirty items to the disk.</span>
+                <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::commit&lt;entry&gt;&quot;</span>, {
+                    <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&lt;entry&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">entry_cache</span>
+                            .<span class="ident">iter_mut_mark_clean</span>()
+                            .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="kw">match</span> <span class="ident">v</span> {
+                                <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">db</span>.<span class="ident">write_identry</span>(<span class="ident">audit</span>, <span class="ident">e</span>),
+                                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">db</span>.<span class="ident">delete_identry</span>(<span class="ident">audit</span>, <span class="kw-2">*</span><span class="ident">k</span>),
+                            })
                     })
-            })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to sync entry cache to sqlite {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
-
-            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&lt;idl&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                <span class="ident">idl_cache</span>.<span class="ident">iter_mut_mark_clean</span>().<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
-                    <span class="kw">match</span> <span class="ident">v</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">db</span>.<span class="ident">write_idl</span>(<span class="ident">audit</span>, <span class="ident">k</span>.<span class="ident">a</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">k</span>.<span class="ident">i</span>, <span class="ident">k</span>.<span class="ident">k</span>.<span class="ident">as_str</span>(), <span class="ident">idl</span>),
-                        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unreachable</span>)]</span>
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="comment">// Due to how we remove items, we always write an empty idl</span>
-                            <span class="comment">// to the cache, so this should never be none.</span>
-                            <span class="comment">//</span>
-                            <span class="comment">// If it is none, this means we have memory corruption so we MUST</span>
-                            <span class="comment">// panic.</span>
-                            <span class="macro">unreachable!</span>();
-                        }
-                    }
                 })
-            })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to sync idl cache to sqlite {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to sync entry cache to sqlite&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to sync entry cache to sqlite {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">e</span>
+                })<span class="question-mark">?</span>;
 
-            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&lt;names&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-                <span class="ident">name_cache</span>
-                    .<span class="ident">iter_mut_mark_clean</span>()
-                    .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="kw">match</span> (<span class="ident">k</span>, <span class="ident">v</span>) {
-                        (<span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">db</span>.<span class="ident">write_name2uuid_add</span>(<span class="ident">audit</span>, <span class="ident">k</span>, <span class="ident">v</span>)
-                        }
-                        (<span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">db</span>.<span class="ident">write_name2uuid_rem</span>(<span class="ident">audit</span>, <span class="ident">k</span>),
-                        (<span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">db</span>.<span class="ident">write_uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">Some</span>(<span class="ident">v</span>))
-                        }
-                        (<span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">db</span>.<span class="ident">write_uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">None</span>)
-                        }
-                        (<span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">db</span>.<span class="ident">write_uuid2rdn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">Some</span>(<span class="ident">v</span>))
-                        }
-                        (<span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="ident">db</span>.<span class="ident">write_uuid2rdn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">None</span>)
-                        }
-
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidCacheState</span>),
+                <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::commit&lt;idl&gt;&quot;</span>, {
+                    <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&lt;idl&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">idl_cache</span>.<span class="ident">iter_mut_mark_clean</span>().<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
+                            <span class="kw">match</span> <span class="ident">v</span> {
+                                <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_idl</span>(<span class="ident">audit</span>, <span class="ident">k</span>.<span class="ident">a</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">k</span>.<span class="ident">i</span>, <span class="ident">k</span>.<span class="ident">k</span>.<span class="ident">as_str</span>(), <span class="ident">idl</span>)
+                                }
+                                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unreachable</span>)]</span>
+                                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="comment">// Due to how we remove items, we always write an empty idl</span>
+                                    <span class="comment">// to the cache, so this should never be none.</span>
+                                    <span class="comment">//</span>
+                                    <span class="comment">// If it is none, this means we have memory corruption so we MUST</span>
+                                    <span class="comment">// panic.</span>
+                                    <span class="comment">// Why is `v` the `Option` type then?</span>
+                                    <span class="macro">unreachable!</span>();
+                                }
+                            }
+                        })
                     })
-            })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to sync name cache to sqlite {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">e</span>
-            })<span class="question-mark">?</span>;
+                })
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to sync idl cache to sqlite&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to sync idl cache to sqlite {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">e</span>
+                })<span class="question-mark">?</span>;
 
-            <span class="comment">// Undo the caches in the reverse order.</span>
-            <span class="ident">db</span>.<span class="ident">commit</span>(<span class="ident">audit</span>).<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
-                <span class="ident">op_ts_max</span>.<span class="ident">commit</span>();
-                <span class="ident">name_cache</span>.<span class="ident">commit</span>();
-                <span class="ident">idl_cache</span>.<span class="ident">commit</span>();
-                <span class="ident">entry_cache</span>.<span class="ident">commit</span>();
-                <span class="ident">allids</span>.<span class="ident">commit</span>();
-                <span class="ident">maxid</span>.<span class="ident">commit</span>();
+                <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::commit&lt;names&gt;&quot;</span>, {
+                    <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::commit&lt;names&gt;&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">name_cache</span>
+                            .<span class="ident">iter_mut_mark_clean</span>()
+                            .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="kw">match</span> (<span class="ident">k</span>, <span class="ident">v</span>) {
+                                (<span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_name2uuid_add</span>(<span class="ident">audit</span>, <span class="ident">k</span>, <span class="ident">v</span>)
+                                }
+                                (<span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_name2uuid_rem</span>(<span class="ident">audit</span>, <span class="ident">k</span>)
+                                }
+                                (<span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">Some</span>(<span class="ident">v</span>))
+                                }
+                                (<span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="ident">uuid</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_uuid2spn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">None</span>)
+                                }
+                                (<span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>), <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_uuid2rdn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">Some</span>(<span class="ident">v</span>))
+                                }
+                                (<span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="ident">uuid</span>), <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                    <span class="ident">db</span>.<span class="ident">write_uuid2rdn</span>(<span class="ident">audit</span>, <span class="ident">uuid</span>, <span class="prelude-val">None</span>)
+                                }
+
+                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidCacheState</span>),
+                            })
+                    })
+                })
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to sync name cache to sqlite&quot;</span>);
+                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Failed to sync name cache to sqlite {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">e</span>
+                })<span class="question-mark">?</span>;
+
+                <span class="comment">// Undo the caches in the reverse order.</span>
+                <span class="ident">db</span>.<span class="ident">commit</span>(<span class="ident">audit</span>).<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
+                    <span class="ident">op_ts_max</span>.<span class="ident">commit</span>();
+                    <span class="ident">name_cache</span>.<span class="ident">commit</span>();
+                    <span class="ident">idl_cache</span>.<span class="ident">commit</span>();
+                    <span class="ident">entry_cache</span>.<span class="ident">commit</span>();
+                    <span class="ident">allids</span>.<span class="ident">commit</span>();
+                    <span class="ident">maxid</span>.<span class="ident">commit</span>();
+                })
             })
         })
     }
@@ -2073,6 +2295,7 @@
         <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">maxid</span> <span class="op">=</span> <span class="ident">mid</span>;
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="ident">I</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2081,21 +2304,25 @@
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::idl_arc_sqlite::write_identries&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="ident">entries</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Inserting {:?} to cache&quot;</span>, <span class="ident">e</span>.<span class="ident">get_id</span>());
-                <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">get_id</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryId</span>)
-                } <span class="kw">else</span> {
-                    (<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">allids</span>).<span class="ident">insert_id</span>(<span class="ident">e</span>.<span class="ident">get_id</span>());
-                    <span class="self">self</span>.<span class="ident">entry_cache</span>
-                        .<span class="ident">insert_dirty</span>(<span class="ident">e</span>.<span class="ident">get_id</span>(), <span class="ident">Box::new</span>(<span class="ident">e</span>.<span class="ident">clone</span>()));
-                    <span class="prelude-val">Ok</span>(())
-                }
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_identries&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::idl_arc_sqlite::write_identries&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="ident">entries</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Inserting {:?} to cache&quot;</span>, <span class="ident">e</span>.<span class="ident">get_id</span>());
+                    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Inserting {:?} to cache&quot;</span>, <span class="ident">e</span>.<span class="ident">get_id</span>());
+                    <span class="kw">if</span> <span class="ident">e</span>.<span class="ident">get_id</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryId</span>)
+                    } <span class="kw">else</span> {
+                        (<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">allids</span>).<span class="ident">insert_id</span>(<span class="ident">e</span>.<span class="ident">get_id</span>());
+                        <span class="self">self</span>.<span class="ident">entry_cache</span>
+                            .<span class="ident">insert_dirty</span>(<span class="ident">e</span>.<span class="ident">get_id</span>(), <span class="ident">Box::new</span>(<span class="ident">e</span>.<span class="ident">clone</span>()));
+                        <span class="prelude-val">Ok</span>(())
+                    }
+                })
             })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries_raw</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2116,6 +2343,7 @@
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_identry</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2124,20 +2352,24 @@
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">u64</span><span class="op">&gt;</span>,
     {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::idl_arc_sqlite::delete_identry&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="ident">idl</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Removing {:?} from cache&quot;</span>, <span class="ident">i</span>);
-                <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryId</span>)
-                } <span class="kw">else</span> {
-                    (<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">allids</span>).<span class="ident">remove_id</span>(<span class="ident">i</span>);
-                    <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">i</span>);
-                    <span class="prelude-val">Ok</span>(())
-                }
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::delete_identry&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::idl_arc_sqlite::delete_identry&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="ident">idl</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> {
+                    <span class="macro">trace!</span>(<span class="string">&quot;Removing {:?} from cache&quot;</span>, <span class="ident">i</span>);
+                    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Removing {:?} from cache&quot;</span>, <span class="ident">i</span>);
+                    <span class="kw">if</span> <span class="ident">i</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryId</span>)
+                    } <span class="kw">else</span> {
+                        (<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">allids</span>).<span class="ident">remove_id</span>(<span class="ident">i</span>);
+                        <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">i</span>);
+                        <span class="prelude-val">Ok</span>(())
+                    }
+                })
             })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2146,37 +2378,42 @@
         <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IDLBitRange</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKey</span> {
-                <span class="ident">a</span>: <span class="ident">attr</span>.<span class="ident">into</span>(),
-                <span class="ident">i</span>: <span class="ident">itype</span>.<span class="ident">clone</span>(),
-                <span class="ident">k</span>: <span class="ident">idx_key</span>.<span class="ident">into</span>(),
-            };
-            <span class="comment">// On idl == 0 the db will remove this, and synthesise an empty IdList on a miss</span>
-            <span class="comment">// but we can cache this as a new empty IdList instead, so that we can avoid the</span>
-            <span class="comment">// db lookup on this idl.</span>
-            <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">is_empty</span>() {
-                <span class="self">self</span>.<span class="ident">idl_cache</span>
-                    .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">Box::new</span>(<span class="ident">IDLBitRange::new</span>()));
-            } <span class="kw">else</span> {
-                <span class="self">self</span>.<span class="ident">idl_cache</span>
-                    .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">Box::new</span>(<span class="ident">idl</span>.<span class="ident">clone</span>()));
-            }
-            <span class="comment">// self.db.write_idl(audit, attr, itype, idx_key, idl)</span>
-            <span class="prelude-val">Ok</span>(())
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_idl&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">IdlCacheKey</span> {
+                    <span class="ident">a</span>: <span class="ident">attr</span>.<span class="ident">into</span>(),
+                    <span class="ident">i</span>: <span class="ident">itype</span>.<span class="ident">clone</span>(),
+                    <span class="ident">k</span>: <span class="ident">idx_key</span>.<span class="ident">into</span>(),
+                };
+                <span class="comment">// On idl == 0 the db will remove this, and synthesise an empty IdList on a miss</span>
+                <span class="comment">// but we can cache this as a new empty IdList instead, so that we can avoid the</span>
+                <span class="comment">// db lookup on this idl.</span>
+                <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">is_empty</span>() {
+                    <span class="self">self</span>.<span class="ident">idl_cache</span>
+                        .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">Box::new</span>(<span class="ident">IDLBitRange::new</span>()));
+                } <span class="kw">else</span> {
+                    <span class="self">self</span>.<span class="ident">idl_cache</span>
+                        .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">Box::new</span>(<span class="ident">idl</span>.<span class="ident">clone</span>()));
+                }
+                <span class="comment">// self.db.write_idl(audit, attr, itype, idx_key, idl)</span>
+                <span class="prelude-val">Ok</span>(())
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">optimise_dirty_idls</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) {
         <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">iter_mut_dirty</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">maybe_idl</span>)<span class="op">|</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">maybe_idl</span> {
                 <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">maybe_compress</span>() {
+                    <span class="macro">filter_info!</span>(<span class="question-mark">?</span><span class="ident">k</span>, <span class="string">&quot;Compressed idl&quot;</span>);
                     <span class="macro">lfilter_info!</span>(<span class="ident">audit</span>, <span class="string">&quot;Compressed idl -&gt; {:?} &quot;</span>, <span class="ident">k</span>);
                 }
             }
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_idx_slopeyness_generated</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2184,6 +2421,7 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">is_idx_slopeyness_generated</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_idx_slope</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2199,6 +2437,7 @@
     <span class="doccomment">/// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always</span>
     <span class="doccomment">/// be better than class=*, but comparing name=foo to spn=foo is &quot;much over muchness&quot; since</span>
     <span class="doccomment">/// both are really fast.</span>
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">analyse_idx_slopes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">/*
          * Inside of this analysis there are two major factors we need to understand
@@ -2372,7 +2611,7 @@
         <span class="kw">let</span> <span class="ident">slopes</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">data</span>
             .<span class="ident">into_iter</span>()
             .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">lens</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">slope_factor</span> <span class="op">=</span> <span class="self">Self</span><span class="ident">::calculate_sd_slope</span>(<span class="kw-2">&amp;</span><span class="ident">lens</span>);
+                <span class="kw">let</span> <span class="ident">slope_factor</span> <span class="op">=</span> <span class="self">Self</span><span class="ident">::calculate_sd_slope</span>(<span class="ident">lens</span>);
                 <span class="kw">if</span> <span class="ident">slope_factor</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">slope_factor</span> <span class="op">=</span><span class="op">=</span> <span class="ident">IdxSlope::MAX</span> {
                     <span class="prelude-val">None</span>
                 } <span class="kw">else</span> {
@@ -2380,12 +2619,13 @@
                 }
             })
             .<span class="ident">collect</span>();
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">slopes</span>, <span class="string">&quot;Generated slopes&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Generated slopes -&gt; {:?}&quot;</span>, <span class="ident">slopes</span>);
         <span class="comment">// Write the data down</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">store_idx_slope_analysis</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">slopes</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">calculate_sd_slope</span>(<span class="ident">data</span>: <span class="kw-2">&amp;</span>[<span class="ident">f64</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdxSlope</span> {
+    <span class="kw">fn</span> <span class="ident">calculate_sd_slope</span>(<span class="ident">data</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">f64</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdxSlope</span> {
         <span class="kw">let</span> (<span class="ident">n_keys</span>, <span class="ident">sd_1</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">data</span>.<span class="ident">len</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">2</span> {
             <span class="comment">// We can only do SD on sets greater than 2</span>
             <span class="kw">let</span> <span class="ident">l</span>: <span class="ident">u32</span> <span class="op">=</span> <span class="ident">data</span>.<span class="ident">len</span>().<span class="ident">try_into</span>().<span class="ident">unwrap_or</span>(<span class="ident">u32::MAX</span>);
@@ -2433,111 +2673,129 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_name2uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_name2uuid</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_add</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">add</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_add&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">/*
-            self.db
-                .write_name2uuid_add(audit, uuid, &amp;add)
-                .and_then(|_| {
-            */</span>
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_add&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_add&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">/*
+                self.db
+                    .write_name2uuid_add(audit, uuid, &amp;add)
+                    .and_then(|_| {
+                */</span>
 
-            <span class="ident">add</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>);
-                <span class="kw">let</span> <span class="ident">cache_value</span> <span class="op">=</span> <span class="ident">NameCacheValue::U</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
-                <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">cache_value</span>)
-            });
-            <span class="prelude-val">Ok</span>(())
-            <span class="comment">/*
-                })
-            */</span>
+                <span class="comment">// why not just a for loop here...</span>
+                <span class="ident">add</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>);
+                    <span class="kw">let</span> <span class="ident">cache_value</span> <span class="op">=</span> <span class="ident">NameCacheValue::U</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
+                    <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">cache_value</span>)
+                });
+                <span class="prelude-val">Ok</span>(())
+                <span class="comment">/*
+                    })
+                */</span>
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_rem</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">rem</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_add&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// self.db.write_name2uuid_rem(audit, &amp;rem).and_then(|_| {</span>
-            <span class="ident">rem</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>);
-                <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>)
-            });
-            <span class="prelude-val">Ok</span>(())
-            <span class="comment">// })</span>
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_rem&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_add&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// self.db.write_name2uuid_rem(audit, &amp;rem).and_then(|_| {</span>
+                <span class="ident">rem</span>.<span class="ident">into_iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
+                    <span class="comment">// why not just a for loop here...</span>
+                    <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="ident">k</span>);
+                    <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>)
+                });
+                <span class="prelude-val">Ok</span>(())
+                <span class="comment">// })</span>
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_uuid2spn</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_uuid2spn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">/*
-            self.db
-                .write_uuid2spn(audit, uuid, k.as_ref())
-                .and_then(|_| {
-            */</span>
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
-            <span class="kw">match</span> <span class="ident">k</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
-                    .<span class="ident">name_cache</span>
-                    .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::S</span>(<span class="ident">Box::new</span>(<span class="ident">v</span>))),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>),
-            }
-            <span class="prelude-val">Ok</span>(())
-            <span class="comment">/*
-                })
-            */</span>
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_uuid2spn&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_uuid2spn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">/*
+                self.db
+                    .write_uuid2spn(audit, uuid, k.as_ref())
+                    .and_then(|_| {
+                */</span>
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
+                <span class="kw">match</span> <span class="ident">k</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+                        .<span class="ident">name_cache</span>
+                        .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::S</span>(<span class="ident">Box::new</span>(<span class="ident">v</span>))),
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>),
+                }
+                <span class="prelude-val">Ok</span>(())
+                <span class="comment">/*
+                    })
+                */</span>
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_uuid2rdn</span>(<span class="ident">audit</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_uuid2rdn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">/*
-            self.db
-                .write_uuid2rdn(audit, uuid, k.as_ref())
-                .and_then(|_| {
-            */</span>
-            <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
-            <span class="kw">match</span> <span class="ident">k</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
-                    .<span class="ident">name_cache</span>
-                    .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::R</span>(<span class="ident">s</span>)),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>),
-            }
-            <span class="prelude-val">Ok</span>(())
-            <span class="comment">/*
-                })
-            */</span>
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_uuid2rdn&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_arc_sqlite::write_uuid2rdn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">/*
+                self.db
+                    .write_uuid2rdn(audit, uuid, k.as_ref())
+                    .and_then(|_| {
+                */</span>
+                <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
+                <span class="kw">match</span> <span class="ident">k</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+                        .<span class="ident">name_cache</span>
+                        .<span class="ident">insert_dirty</span>(<span class="ident">cache_key</span>, <span class="ident">NameCacheValue::R</span>(<span class="ident">s</span>)),
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">remove_dirty</span>(<span class="ident">cache_key</span>),
+                }
+                <span class="prelude-val">Ok</span>(())
+                <span class="comment">/*
+                    })
+                */</span>
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_idx</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2548,12 +2806,14 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_idx</span>(<span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_idxs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">purge_idxs</span>(<span class="ident">audit</span>).<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
             <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">clear</span>();
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_id2entry</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">purge_id2entry</span>(<span class="ident">audit</span>).<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
@@ -2563,10 +2823,12 @@
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write_db_s_uuid</span>(<span class="ident">nsid</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write_db_d_uuid</span>(<span class="ident">nsid</span>)
     }
@@ -2576,6 +2838,7 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">set_db_ts_max</span>(<span class="ident">ts</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">op_ts_max</span> {
             <span class="prelude-val">Some</span>(<span class="ident">ts</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ts</span>)),
@@ -2587,10 +2850,12 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_index_version</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_db_index_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">set_db_index_version</span>(<span class="ident">v</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">setup</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>
             .<span class="ident">setup</span>(<span class="ident">audit</span>)
@@ -2606,6 +2871,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">IdlArcSqlite</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">BackendConfig</span>,
@@ -2614,39 +2880,31 @@
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">IdlSqlite::new</span>(<span class="ident">audit</span>, <span class="ident">cfg</span>, <span class="ident">vacuum</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Autotune heuristic.</span>
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache_size</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">cfg</span>.<span class="ident">arcsize</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="comment">// For now I&#39;ve noticed about 20% of the number of entries</span>
-                <span class="comment">// works well, but it may not be perfect ...</span>
-                <span class="kw">let</span> <span class="ident">tmpsize</span> <span class="op">=</span> <span class="ident">db</span>
-                    .<span class="ident">get_allids_count</span>(<span class="ident">audit</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-                        (<span class="kw">if</span> <span class="ident">c</span> <span class="op">&gt;</span> <span class="number">0</span> {
-                            <span class="comment">// We want one fifth of this.</span>
-                            <span class="ident">c</span> <span class="op">/</span> <span class="number">5</span>
-                        } <span class="kw">else</span> {
-                            <span class="ident">c</span>
-                        }) <span class="kw">as</span> <span class="ident">usize</span>
-                    })
-                    .<span class="ident">unwrap_or</span>(<span class="ident">DEFAULT_CACHE_TARGET</span>);
-                <span class="comment">// if our calculation&#39;s too small anyway, just set it to the minimum target</span>
-                <span class="kw">if</span> <span class="ident">tmpsize</span> <span class="op">&lt;</span> <span class="ident">DEFAULT_CACHE_TARGET</span> {
-                    <span class="ident">DEFAULT_CACHE_TARGET</span>
-                } <span class="kw">else</span> {
-                    <span class="ident">tmpsize</span>
-                }
-            }
-        };
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache_size</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">arcsize</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="comment">// For now I&#39;ve noticed about 20% of the number of entries</span>
+            <span class="comment">// works well, but it may not be perfect ...</span>
+            <span class="ident">db</span>.<span class="ident">get_allids_count</span>(<span class="ident">audit</span>)
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">tmpsize</span> <span class="op">=</span> (<span class="ident">c</span> <span class="op">/</span> <span class="number">5</span>) <span class="kw">as</span> <span class="ident">usize</span>;
+                    <span class="comment">// if our calculation&#39;s too small anyway, just set it to the minimum target</span>
+                    <span class="ident">std::cmp::max</span>(<span class="ident">tmpsize</span>, <span class="ident">DEFAULT_CACHE_TARGET</span>)
+                })
+                .<span class="ident">unwrap_or</span>(<span class="ident">DEFAULT_CACHE_TARGET</span>)
+        });
 
         <span class="kw">if</span> <span class="ident">cache_size</span> <span class="op">&lt;</span> <span class="ident">DEFAULT_CACHE_TARGET</span> {
-            <span class="ident">cache_size</span> <span class="op">=</span> <span class="ident">DEFAULT_CACHE_TARGET</span>;
+            <span class="macro">admin_warn!</span>(
+                <span class="ident">old</span> <span class="op">=</span> <span class="ident">cache_size</span>,
+                <span class="ident">new</span> <span class="op">=</span> <span class="ident">DEFAULT_CACHE_TARGET</span>,
+                <span class="string">&quot;Configured Arc Cache size too low, increasing...&quot;</span>
+            );
             <span class="macro">ladmin_warning!</span>(
                 <span class="ident">audit</span>,
                 <span class="string">&quot;Configured Arc Cache size too low {} - setting to {} ...&quot;</span>,
                 <span class="kw-2">&amp;</span><span class="ident">cache_size</span>,
                 <span class="ident">DEFAULT_CACHE_TARGET</span>
             );
+            <span class="ident">cache_size</span> <span class="op">=</span> <span class="ident">DEFAULT_CACHE_TARGET</span>; <span class="comment">// this being above the log was an uncaught bug</span>
         }
 
         <span class="kw">let</span> <span class="ident">entry_cache</span> <span class="op">=</span> <span class="ident">ARCache::new</span>(

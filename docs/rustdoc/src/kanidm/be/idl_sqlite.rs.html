@@ -1541,88 +1541,11 @@
 <span id="1539">1539</span>
 <span id="1540">1540</span>
 <span id="1541">1541</span>
-<span id="1542">1542</span>
-<span id="1543">1543</span>
-<span id="1544">1544</span>
-<span id="1545">1545</span>
-<span id="1546">1546</span>
-<span id="1547">1547</span>
-<span id="1548">1548</span>
-<span id="1549">1549</span>
-<span id="1550">1550</span>
-<span id="1551">1551</span>
-<span id="1552">1552</span>
-<span id="1553">1553</span>
-<span id="1554">1554</span>
-<span id="1555">1555</span>
-<span id="1556">1556</span>
-<span id="1557">1557</span>
-<span id="1558">1558</span>
-<span id="1559">1559</span>
-<span id="1560">1560</span>
-<span id="1561">1561</span>
-<span id="1562">1562</span>
-<span id="1563">1563</span>
-<span id="1564">1564</span>
-<span id="1565">1565</span>
-<span id="1566">1566</span>
-<span id="1567">1567</span>
-<span id="1568">1568</span>
-<span id="1569">1569</span>
-<span id="1570">1570</span>
-<span id="1571">1571</span>
-<span id="1572">1572</span>
-<span id="1573">1573</span>
-<span id="1574">1574</span>
-<span id="1575">1575</span>
-<span id="1576">1576</span>
-<span id="1577">1577</span>
-<span id="1578">1578</span>
-<span id="1579">1579</span>
-<span id="1580">1580</span>
-<span id="1581">1581</span>
-<span id="1582">1582</span>
-<span id="1583">1583</span>
-<span id="1584">1584</span>
-<span id="1585">1585</span>
-<span id="1586">1586</span>
-<span id="1587">1587</span>
-<span id="1588">1588</span>
-<span id="1589">1589</span>
-<span id="1590">1590</span>
-<span id="1591">1591</span>
-<span id="1592">1592</span>
-<span id="1593">1593</span>
-<span id="1594">1594</span>
-<span id="1595">1595</span>
-<span id="1596">1596</span>
-<span id="1597">1597</span>
-<span id="1598">1598</span>
-<span id="1599">1599</span>
-<span id="1600">1600</span>
-<span id="1601">1601</span>
-<span id="1602">1602</span>
-<span id="1603">1603</span>
-<span id="1604">1604</span>
-<span id="1605">1605</span>
-<span id="1606">1606</span>
-<span id="1607">1607</span>
-<span id="1608">1608</span>
-<span id="1609">1609</span>
-<span id="1610">1610</span>
-<span id="1611">1611</span>
-<span id="1612">1612</span>
-<span id="1613">1613</span>
-<span id="1614">1614</span>
-<span id="1615">1615</span>
-<span id="1616">1616</span>
-<span id="1617">1617</span>
-<span id="1618">1618</span>
-<span id="1619">1619</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be</span>::{<span class="ident">BackendConfig</span>, <span class="ident">IdList</span>, <span class="ident">IdRawEntry</span>, <span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntrySealed</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::value</span>::{<span class="ident">IndexType</span>, <span class="ident">Value</span>};
 <span class="kw">use</span> <span class="ident">hashbrown::HashMap</span>;
 <span class="kw">use</span> <span class="ident">idlset::v2::IDLBitRange</span>;
@@ -1634,12 +1557,23 @@
 <span class="kw">use</span> <span class="ident">rusqlite::OptionalExtension</span>;
 <span class="kw">use</span> <span class="ident">std::convert</span>::{<span class="ident">TryFrom</span>, <span class="ident">TryInto</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
+<span class="kw">use</span> <span class="ident">tracing::trace</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
 <span class="comment">// use uuid::Uuid;</span>
 
 <span class="kw">const</span> <span class="ident">DBV_ID2ENTRY</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;id2entry&quot;</span>;
 <span class="kw">const</span> <span class="ident">DBV_INDEXV</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;indexv&quot;</span>;
+
+<span class="kw">fn</span> <span class="ident">sqlite_error</span>(<span class="ident">e</span>: <span class="ident">rusqlite::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OperationError</span> {
+    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;SQLite Error&quot;</span>);
+    <span class="ident">OperationError::SqliteError</span>
+}
+
+<span class="kw">fn</span> <span class="ident">serde_cbor_error</span>(<span class="ident">e</span>: <span class="ident">serde_cbor::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OperationError</span> {
+    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Serde CBOR Error&quot;</span>);
+    <span class="ident">OperationError::SerdeCborError</span>
+}
 
 <span class="attribute">#[<span class="ident">repr</span>(<span class="ident">u32</span>)]</span>
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Copy</span>, <span class="ident">Clone</span>)]</span>
@@ -1721,22 +1655,26 @@
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">IdlSqliteTransaction</span> {
     <span class="kw">fn</span> <span class="ident">get_conn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">r2d2::PooledConnection</span><span class="op">&lt;</span><span class="ident">r2d2_sqlite::SqliteConnectionManager</span><span class="op">&gt;</span>;
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::idl_sqlite::get_identry&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="self">self</span>.<span class="ident">get_identry_raw</span>(<span class="ident">au</span>, <span class="ident">idl</span>)<span class="question-mark">?</span>
-                .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ide</span><span class="op">|</span> <span class="ident">ide</span>.<span class="ident">into_entry</span>(<span class="ident">au</span>))
-                .<span class="ident">collect</span>()
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::get_identry&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">au</span>, <span class="string">&quot;be::idl_sqlite::get_identry&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="self">self</span>.<span class="ident">get_identry_raw</span>(<span class="ident">au</span>, <span class="ident">idl</span>)<span class="question-mark">?</span>
+                    .<span class="ident">into_iter</span>()
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ide</span><span class="op">|</span> <span class="ident">ide</span>.<span class="ident">into_entry</span>(<span class="ident">au</span>))
+                    .<span class="ident">collect</span>()
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// is the idl allids?</span>
@@ -1745,10 +1683,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
                     .<span class="ident">get_conn</span>()
                     .<span class="ident">prepare</span>(<span class="string">&quot;SELECT id, data FROM id2entry&quot;</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SqliteError</span>
-                    })<span class="question-mark">?</span>;
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">id2entry_iter</span> <span class="op">=</span> <span class="ident">stmt</span>
                     .<span class="ident">query_map</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> {
                         <span class="prelude-val">Ok</span>(<span class="ident">IdSqliteEntry</span> {
@@ -1756,17 +1691,10 @@
                             <span class="ident">data</span>: <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">1</span>)<span class="question-mark">?</span>,
                         })
                     })
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SqliteError</span>
-                    })<span class="question-mark">?</span>;
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
                 <span class="ident">id2entry_iter</span>
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                        <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="ident">OperationError::SqliteError</span>
-                        })
-                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">ise</span><span class="op">|</span> {
+                        <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">ise</span><span class="op">|</span> {
                             <span class="comment">// Convert the idsqlite to id raw</span>
                             <span class="ident">ise</span>.<span class="ident">try_into</span>()
                         })
@@ -1777,10 +1705,7 @@
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
                     .<span class="ident">get_conn</span>()
                     .<span class="ident">prepare</span>(<span class="string">&quot;SELECT id, data FROM id2entry WHERE id = :idl&quot;</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SqliteError</span>
-                    })<span class="question-mark">?</span>;
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
                 <span class="comment">// TODO #258: Can this actually just load in a single select?</span>
                 <span class="comment">// TODO #258: I have no idea how to make this an iterator chain ... so what</span>
@@ -1802,18 +1727,11 @@
                                 <span class="ident">data</span>: <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">1</span>)<span class="question-mark">?</span>,
                             })
                         })
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="ident">OperationError::SqliteError</span>
-                        })<span class="question-mark">?</span>;
+                        .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
                     <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">id2entry_iter</span>
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                            <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                                <span class="ident">OperationError::SqliteError</span>
-                            })
-                            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">ise</span><span class="op">|</span> {
+                            <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">ise</span><span class="op">|</span> {
                                 <span class="comment">// Convert the idsqlite to id raw</span>
                                 <span class="ident">ise</span>.<span class="ident">try_into</span>()
                             })
@@ -1827,28 +1745,23 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">exists_table</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">tname</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">fn</span> <span class="ident">exists_table</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">tname</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_conn</span>()
             .<span class="ident">prepare</span>(<span class="string">&quot;SELECT COUNT(name) from sqlite_master where name = :tname&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">i</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
             .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:tname&quot;</span>, <span class="ident">tname</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">if</span> <span class="ident">i</span>.<span class="ident">unwrap_or</span>(<span class="number">0</span>) <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
-            <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-        } <span class="kw">else</span> {
-            <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
+        <span class="kw">match</span> <span class="ident">i</span> {
+            <span class="prelude-val">None</span> <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="number">0</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>),
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1859,6 +1772,7 @@
         <span class="self">self</span>.<span class="ident">exists_table</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">tname</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -1866,155 +1780,146 @@
         <span class="ident">itype</span>: <span class="kw-2">&amp;</span><span class="ident">IndexType</span>,
         <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::get_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="op">!</span>(<span class="self">self</span>.<span class="ident">exists_idx</span>(<span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)<span class="question-mark">?</span>) {
-                <span class="macro">lfilter_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Index {:?} {:?} not found&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>);
-                <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
-            }
-            <span class="comment">// The table exists - lets now get the actual index itself.</span>
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::get_idl&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::get_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="op">!</span>(<span class="self">self</span>.<span class="ident">exists_idx</span>(<span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)<span class="question-mark">?</span>) {
+                    <span class="macro">filter_error!</span>(<span class="string">&quot;Index {:?} {:?} not found&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>);
+                    <span class="macro">lfilter_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Index {:?} {:?} not found&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
+                }
+                <span class="comment">// The table exists - lets now get the actual index itself.</span>
 
-            <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(
-                <span class="string">&quot;SELECT idl FROM idx_{}_{} WHERE key = :idx_key&quot;</span>,
-                <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
-                <span class="ident">attr</span>
-            );
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_conn</span>().<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">idl_raw</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
-                .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:idx_key&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">idx_key</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-                <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
-                .<span class="ident">optional</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(
+                    <span class="string">&quot;SELECT idl FROM idx_{}_{} WHERE key = :idx_key&quot;</span>,
+                    <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
+                    <span class="ident">attr</span>
+                );
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">get_conn</span>()
+                    .<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>())
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">idl_raw</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
+                    .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:idx_key&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">idx_key</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
+                    <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
+                    .<span class="ident">optional</span>()
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">idl</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">idl_raw</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SerdeCborError</span>
-                })<span class="question-mark">?</span>,
-                <span class="comment">// We don&#39;t have this value, it must be empty (or we</span>
-                <span class="comment">// have a corrupted index .....</span>
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">IDLBitRange::new</span>(),
-            };
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got idl for index {:?} {:?} -&gt; {}&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>, <span class="ident">idl</span>);
+                <span class="kw">let</span> <span class="ident">idl</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">idl_raw</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="ident">serde_cbor_error</span>)<span class="question-mark">?</span>,
+                    <span class="comment">// We don&#39;t have this value, it must be empty (or we</span>
+                    <span class="comment">// have a corrupted index .....</span>
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">IDLBitRange::new</span>(),
+                };
+                <span class="macro">trace!</span>(<span class="op">%</span><span class="ident">idl</span>, <span class="string">&quot;Got idl for index {:?} {:?}&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got idl for index {:?} {:?} -&gt; {}&quot;</span>, <span class="ident">itype</span>, <span class="ident">attr</span>, <span class="ident">idl</span>);
 
-            <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">idl</span>))
+                <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">idl</span>))
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// The table exists - lets now get the actual index itself.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">get_conn</span>()
-                .<span class="ident">prepare</span>(<span class="string">&quot;SELECT uuid FROM idx_name2uuid WHERE name = :name&quot;</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">uuid_raw</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
-                .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:name&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-                <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
-                .<span class="ident">optional</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::name2uuid&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::name2uuid&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// The table exists - lets now get the actual index itself.</span>
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">get_conn</span>()
+                    .<span class="ident">prepare</span>(<span class="string">&quot;SELECT uuid FROM idx_name2uuid WHERE name = :name&quot;</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">uuid_raw</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
+                    .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:name&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
+                    <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
+                    .<span class="ident">optional</span>()
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">uuid_raw</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">Uuid::parse_str</span>(<span class="ident">u</span>).<span class="ident">ok</span>());
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got uuid for index name {} -&gt; {:?}&quot;</span>, <span class="ident">name</span>, <span class="ident">uuid</span>);
+                <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">uuid_raw</span>.<span class="ident">as_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">Uuid::parse_str</span>(<span class="ident">u</span>).<span class="ident">ok</span>());
+                <span class="macro">trace!</span>(<span class="op">%</span><span class="ident">name</span>, <span class="question-mark">?</span><span class="ident">uuid</span>, <span class="string">&quot;Got uuid for index&quot;</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got uuid for index name {} -&gt; {:?}&quot;</span>, <span class="ident">name</span>, <span class="ident">uuid</span>);
 
-            <span class="prelude-val">Ok</span>(<span class="ident">uuid</span>)
+                <span class="prelude-val">Ok</span>(<span class="ident">uuid</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::uuid2spn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
-            <span class="comment">// The table exists - lets now get the actual index itself.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">get_conn</span>()
-                .<span class="ident">prepare</span>(<span class="string">&quot;SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid&quot;</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">spn_raw</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
-                .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-                <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
-                .<span class="ident">optional</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::uuid2spn&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::uuid2spn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+                <span class="comment">// The table exists - lets now get the actual index itself.</span>
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">get_conn</span>()
+                    .<span class="ident">prepare</span>(<span class="string">&quot;SELECT spn FROM idx_uuid2spn WHERE uuid = :uuid&quot;</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">spn_raw</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
+                    .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
+                    <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
+                    .<span class="ident">optional</span>()
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">spn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">spn_raw</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">let</span> <span class="ident">dbv</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SerdeCborError</span>
-                    })<span class="question-mark">?</span>;
-                    <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">Value::from_db_valuev1</span>(<span class="ident">dbv</span>)
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::CorruptedIndex</span>(<span class="string">&quot;uuid2spn&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
-                    <span class="prelude-val">Some</span>(<span class="ident">spn</span>)
-                }
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-            };
+                <span class="kw">let</span> <span class="ident">spn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">spn_raw</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">let</span> <span class="ident">dbv</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="ident">serde_cbor_error</span>)<span class="question-mark">?</span>;
+                        <span class="kw">let</span> <span class="ident">spn</span> <span class="op">=</span> <span class="ident">Value::from_db_valuev1</span>(<span class="ident">dbv</span>)
+                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::CorruptedIndex</span>(<span class="string">&quot;uuid2spn&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
+                        <span class="prelude-val">Some</span>(<span class="ident">spn</span>)
+                    }
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                };
 
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got spn for uuid {:?} -&gt; {:?}&quot;</span>, <span class="ident">uuid</span>, <span class="ident">spn</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">uuid</span>, <span class="question-mark">?</span><span class="ident">spn</span>, <span class="string">&quot;Got spn for uuid&quot;</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got spn for uuid {:?} -&gt; {:?}&quot;</span>, <span class="ident">uuid</span>, <span class="ident">spn</span>);
 
-            <span class="prelude-val">Ok</span>(<span class="ident">spn</span>)
+                <span class="prelude-val">Ok</span>(<span class="ident">spn</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::uuid2rdn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
-            <span class="comment">// The table exists - lets now get the actual index itself.</span>
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">get_conn</span>()
-                .<span class="ident">prepare</span>(<span class="string">&quot;SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid&quot;</span>)
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
-            <span class="kw">let</span> <span class="ident">rdn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
-                .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-                <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
-                .<span class="ident">optional</span>()
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::uuid2rdn&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::uuid2rdn&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+                <span class="comment">// The table exists - lets now get the actual index itself.</span>
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
+                    .<span class="ident">get_conn</span>()
+                    .<span class="ident">prepare</span>(<span class="string">&quot;SELECT rdn FROM idx_uuid2rdn WHERE uuid = :uuid&quot;</span>)
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">rdn</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
+                    .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
+                    <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
+                    .<span class="ident">optional</span>()
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
-            <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got rdn for uuid {:?} -&gt; {:?}&quot;</span>, <span class="ident">uuid</span>, <span class="ident">rdn</span>);
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">uuid</span>, <span class="question-mark">?</span><span class="ident">rdn</span>, <span class="string">&quot;Got rdn for uuid&quot;</span>);
+                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got rdn for uuid {:?} -&gt; {:?}&quot;</span>, <span class="ident">uuid</span>, <span class="ident">rdn</span>);
 
-            <span class="prelude-val">Ok</span>(<span class="ident">rdn</span>)
+                <span class="prelude-val">Ok</span>(<span class="ident">rdn</span>)
+            })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Try to get a value.</span>
         <span class="kw">let</span> <span class="ident">data</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_conn</span>()
             .<span class="ident">query_row</span>(<span class="string">&quot;SELECT data FROM db_sid WHERE id = 2&quot;</span>, [], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
             .<span class="ident">optional</span>()
+            <span class="comment">// this whole map call is useless</span>
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e_opt</span><span class="op">|</span> {
                 <span class="comment">// If we have a row, we try to make it a sid</span>
                 <span class="ident">e_opt</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2027,6 +1932,7 @@
 
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">data</span> {
             <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SerdeCborError</span>
             })<span class="question-mark">?</span>),
@@ -2034,12 +1940,14 @@
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Try to get a value.</span>
         <span class="kw">let</span> <span class="ident">data</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_conn</span>()
             .<span class="ident">query_row</span>(<span class="string">&quot;SELECT data FROM db_did WHERE id = 2&quot;</span>, [], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
             .<span class="ident">optional</span>()
+            <span class="comment">// this whole map call is useless</span>
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e_opt</span><span class="op">|</span> {
                 <span class="comment">// If we have a row, we try to make it a sid</span>
                 <span class="ident">e_opt</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2052,6 +1960,7 @@
 
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">data</span> {
             <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SerdeCborError</span>
             })<span class="question-mark">?</span>),
@@ -2059,28 +1968,21 @@
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_allids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">trace!</span>(<span class="string">&quot;Building allids...&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Building allids...&quot;</span>);
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_conn</span>()
             .<span class="ident">prepare</span>(<span class="string">&quot;SELECT id FROM id2entry&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">query_map</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>)).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::SqliteError</span>
-        })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">query_map</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>)).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">IDLBitRange</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">res</span>
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">id</span>: <span class="ident">i64</span><span class="op">|</span> {
+                <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">id</span>: <span class="ident">i64</span><span class="op">|</span> {
                     <span class="comment">// Convert the idsqlite to id raw</span>
                     <span class="ident">id</span>.<span class="ident">try_into</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;I64 Parse Error&quot;</span>);
                         <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;I64 Parse Error {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="ident">OperationError::SqliteError</span>
                     })
@@ -2093,31 +1995,18 @@
         <span class="ident">ids</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_conn</span>()
             .<span class="ident">prepare</span>(<span class="string">&quot;SELECT name from sqlite_master where type=&#39;table&#39; and name GLOB &#39;idx_*&#39;&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">idx_table_iter</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">query_map</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>)).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::SqliteError</span>
-        })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">idx_table_iter</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">query_map</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>)).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">idx_table_iter</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })
-            })
-            .<span class="ident">collect</span>();
-
-        <span class="ident">r</span>
+        <span class="ident">idx_table_iter</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)).<span class="ident">collect</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">allids</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_identry_raw</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">IdList::AllIds</span>)<span class="question-mark">?</span>;
         <span class="ident">allids</span>
@@ -2129,6 +2018,7 @@
             .<span class="ident">collect</span>()
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2145,19 +2035,20 @@
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">IDLBitRange</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// TODO: Once we have slopes we can add .exists_table, and assert</span>
         <span class="comment">// it&#39;s an idx table.</span>
 
         <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;SELECT key, idl FROM {}&quot;</span>, <span class="ident">index_name</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_conn</span>().<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::SqliteError</span>
-        })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">get_conn</span>()
+            .<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>())
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">idx_iter</span> <span class="op">=</span> <span class="ident">stmt</span>
             .<span class="ident">query_map</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> {
@@ -2166,22 +2057,12 @@
                     <span class="ident">data</span>: <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">1</span>)<span class="question-mark">?</span>,
                 })
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
         <span class="ident">idx_iter</span>
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">KeyIdl</span> { <span class="ident">key</span>, <span class="ident">data</span> }<span class="op">|</span> {
+                <span class="ident">v</span>.<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">KeyIdl</span> { <span class="ident">key</span>, <span class="ident">data</span> }<span class="op">|</span> {
                     <span class="ident">serde_cbor::from_slice</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>())
-                        .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                            <span class="ident">OperationError::SerdeCborError</span>
-                        })
+                        .<span class="ident">map_err</span>(<span class="ident">serde_cbor_error</span>)
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idl</span><span class="op">|</span> (<span class="ident">key</span>, <span class="ident">idl</span>))
                 })
             })
@@ -2202,14 +2083,8 @@
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">v</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">v</span>.<span class="ident">get</span>(<span class="number">0</span>);
                     <span class="kw">match</span> <span class="ident">r</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">t</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="kw">if</span> <span class="ident">t</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;ok&quot;</span> {
-                                <span class="ident">Vec::new</span>()
-                            } <span class="kw">else</span> {
-                                <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::SqliteIntegrityFailure</span>)]
-                            }
-                        }
-                        <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::SqliteIntegrityFailure</span>)],
+                        <span class="prelude-val">Ok</span>(<span class="ident">t</span>) <span class="kw">if</span> <span class="ident">t</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;ok&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[],
+                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::SqliteIntegrityFailure</span>)],
                     }
                 }
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::SqliteIntegrityFailure</span>)],
@@ -2290,19 +2165,23 @@
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::commit&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// ltrace!(audit, &quot;Commiting BE WR txn&quot;);</span>
-            <span class="macro">assert!</span>(<span class="op">!</span><span class="self">self</span>.<span class="ident">committed</span>);
-            <span class="self">self</span>.<span class="ident">committed</span> <span class="op">=</span> <span class="bool-val">true</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::commit&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::commit&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="comment">// ltrace!(audit, &quot;Commiting BE WR txn&quot;);</span>
+                <span class="macro">assert!</span>(<span class="op">!</span><span class="self">self</span>.<span class="ident">committed</span>);
+                <span class="self">self</span>.<span class="ident">committed</span> <span class="op">=</span> <span class="bool-val">true</span>;
 
-            <span class="self">self</span>.<span class="ident">conn</span>
-                .<span class="ident">execute</span>(<span class="string">&quot;COMMIT TRANSACTION&quot;</span>, [])
-                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;CRITICAL: failed to commit sqlite txn -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::BackendEngine</span>
-                })
+                <span class="self">self</span>.<span class="ident">conn</span>
+                    .<span class="ident">execute</span>(<span class="string">&quot;COMMIT TRANSACTION&quot;</span>, [])
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: failed to commit sqlite txn&quot;</span>);
+                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;CRITICAL: failed to commit sqlite txn -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">OperationError::BackendEngine</span>
+                    })
+            })
         })
     }
 
@@ -2310,16 +2189,14 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">conn</span>
             .<span class="ident">prepare</span>(<span class="string">&quot;SELECT MAX(id) as id_max FROM id2entry&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
         <span class="comment">// This exists checks for if any rows WERE returned</span>
         <span class="comment">// that way we know to shortcut or not.</span>
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">exists</span>([]).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">exists</span>([]).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="ident">v</span> {
             <span class="comment">// We have some rows, let get max!</span>
-            <span class="kw">let</span> <span class="ident">i</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
-                .<span class="ident">query_row</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">i</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>.<span class="ident">query_row</span>([], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>)).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
             <span class="ident">i</span>.<span class="ident">unwrap_or</span>(<span class="number">0</span>)
                 .<span class="ident">try_into</span>()
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::InvalidEntryId</span>)
@@ -2356,16 +2233,14 @@
     }
     */</span>
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identry</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">entry</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dbe</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">to_dbentry</span>();
-        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbe</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::SerdeCborError</span>
-        })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbe</span>).<span class="ident">map_err</span>(<span class="ident">serde_cbor_error</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">raw_entries</span> <span class="op">=</span> <span class="ident">std::iter::once</span>(<span class="ident">IdRawEntry</span> {
             <span class="ident">id</span>: <span class="ident">entry</span>.<span class="ident">get_id</span>(),
@@ -2375,9 +2250,10 @@
         <span class="self">self</span>.<span class="ident">write_identries_raw</span>(<span class="ident">au</span>, <span class="ident">raw_entries</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries_raw</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="kw-2">mut</span> <span class="ident">entries</span>: <span class="ident">I</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
@@ -2386,10 +2262,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">conn</span>
             .<span class="ident">prepare</span>(<span class="string">&quot;INSERT OR REPLACE INTO id2entry (id, data) VALUES(:id, :data)&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="ident">entries</span>.<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="ident">IdSqliteEntry::try_from</span>(<span class="ident">e</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">ser_ent</span><span class="op">|</span> {
@@ -2399,10 +2272,7 @@
                 })
                 <span class="comment">// remove the updated usize</span>
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
             })
         })
     }
@@ -2444,15 +2314,13 @@
     }
     */</span>
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_identry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_identry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// lperf_trace_segment!(au, &quot;be::idl_sqlite::delete_identry&quot;, || {</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">conn</span>
             .<span class="ident">prepare</span>(<span class="string">&quot;DELETE FROM id2entry WHERE id = :id&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">iid</span>: <span class="ident">i64</span> <span class="op">=</span> <span class="ident">id</span>
             .<span class="ident">try_into</span>()
@@ -2467,13 +2335,11 @@
 
         <span class="macro">debug_assert!</span>(<span class="ident">iid</span> <span class="op">&gt;</span> <span class="number">0</span>);
 
-        <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">iid</span>]).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::SqliteError</span>
-        })
+        <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">iid</span>]).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
         <span class="comment">// })</span>
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_idl</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2482,73 +2348,67 @@
         <span class="ident">idx_key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IDLBitRange</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::write_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">is_empty</span>() {
-                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;purging idl -&gt; {:?}&quot;</span>, <span class="ident">idl</span>);
-                <span class="comment">// delete it</span>
-                <span class="comment">// Delete this idx_key from the table.</span>
-                <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(
-                    <span class="string">&quot;DELETE FROM idx_{}_{} WHERE key = :key&quot;</span>,
-                    <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
-                    <span class="ident">attr</span>
-                );
+        <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::write_idl&quot;</span>, {
+            <span class="macro">lperf_trace_segment!</span>(<span class="ident">audit</span>, <span class="string">&quot;be::idl_sqlite::write_idl&quot;</span>, <span class="op">|</span><span class="op">|</span> {
+                <span class="kw">if</span> <span class="ident">idl</span>.<span class="ident">is_empty</span>() {
+                    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">idl</span>, <span class="string">&quot;purging idl&quot;</span>);
+                    <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;purging idl -&gt; {:?}&quot;</span>, <span class="ident">idl</span>);
+                    <span class="comment">// delete it</span>
+                    <span class="comment">// Delete this idx_key from the table.</span>
+                    <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(
+                        <span class="string">&quot;DELETE FROM idx_{}_{} WHERE key = :key&quot;</span>,
+                        <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
+                        <span class="ident">attr</span>
+                    );
 
-                <span class="self">self</span>.<span class="ident">conn</span>
-                    .<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>())
-                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:key&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">idx_key</span>)]))
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SqliteError</span>
-                    })
-            } <span class="kw">else</span> {
-                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;writing idl -&gt; {}&quot;</span>, <span class="ident">idl</span>);
-                <span class="comment">// Serialise the IdList to Vec&lt;u8&gt;</span>
-                <span class="kw">let</span> <span class="ident">idl_raw</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="ident">idl</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SerdeCborError</span>
-                })<span class="question-mark">?</span>;
+                    <span class="self">self</span>.<span class="ident">conn</span>
+                        .<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>())
+                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:key&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">idx_key</span>)]))
+                        .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
+                } <span class="kw">else</span> {
+                    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">idl</span>, <span class="string">&quot;writing idl&quot;</span>);
+                    <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;writing idl -&gt; {}&quot;</span>, <span class="ident">idl</span>);
+                    <span class="comment">// Serialise the IdList to Vec&lt;u8&gt;</span>
+                    <span class="kw">let</span> <span class="ident">idl_raw</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="ident">idl</span>).<span class="ident">map_err</span>(<span class="ident">serde_cbor_error</span>)<span class="question-mark">?</span>;
 
-                <span class="comment">// update or create it.</span>
-                <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(
-                    <span class="string">&quot;INSERT OR REPLACE INTO idx_{}_{} (key, idl) VALUES(:key, :idl)&quot;</span>,
-                    <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
-                    <span class="ident">attr</span>
-                );
+                    <span class="comment">// update or create it.</span>
+                    <span class="kw">let</span> <span class="ident">query</span> <span class="op">=</span> <span class="macro">format!</span>(
+                        <span class="string">&quot;INSERT OR REPLACE INTO idx_{}_{} (key, idl) VALUES(:key, :idl)&quot;</span>,
+                        <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
+                        <span class="ident">attr</span>
+                    );
 
-                <span class="self">self</span>.<span class="ident">conn</span>
-                    .<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>())
-                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> {
-                        <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="macro">named_params!</span> {
-                            <span class="string">&quot;:key&quot;</span>: <span class="kw-2">&amp;</span><span class="ident">idx_key</span>,
-                            <span class="string">&quot;:idl&quot;</span>: <span class="kw-2">&amp;</span><span class="ident">idl_raw</span>
+                    <span class="self">self</span>.<span class="ident">conn</span>
+                        .<span class="ident">prepare</span>(<span class="ident">query</span>.<span class="ident">as_str</span>())
+                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> {
+                            <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="macro">named_params!</span> {
+                                <span class="string">&quot;:key&quot;</span>: <span class="kw-2">&amp;</span><span class="ident">idx_key</span>,
+                                <span class="string">&quot;:idl&quot;</span>: <span class="kw-2">&amp;</span><span class="ident">idl_raw</span>
+                            })
                         })
-                    })
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SqliteError</span>
-                    })
-            }
-            <span class="comment">// Get rid of the sqlite rows usize</span>
-            .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
+                        .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
+                }
+                <span class="comment">// Get rid of the sqlite rows usize</span>
+                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
+            })
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_name2uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_name2uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">execute</span>(
                 <span class="string">&quot;CREATE TABLE IF NOT EXISTS idx_name2uuid (name TEXT PRIMARY KEY, uuid TEXT)&quot;</span>,
                 [],
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_add</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -2563,43 +2423,37 @@
                 })
             })
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_rem</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">prepare</span>(<span class="string">&quot;DELETE FROM idx_name2uuid WHERE name = :name&quot;</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:name&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>)]))
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">execute</span>(
                 <span class="string">&quot;CREATE TABLE IF NOT EXISTS idx_uuid2spn (uuid TEXT PRIMARY KEY, spn BLOB)&quot;</span>,
                 [],
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2spn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -2607,10 +2461,7 @@
         <span class="kw">match</span> <span class="ident">k</span> {
             <span class="prelude-val">Some</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="kw">let</span> <span class="ident">dbv1</span> <span class="op">=</span> <span class="ident">k</span>.<span class="ident">to_db_valuev1</span>();
-                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbv1</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SerdeCborError</span>
-                })<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">dbv1</span>).<span class="ident">map_err</span>(<span class="ident">serde_cbor_error</span>)<span class="question-mark">?</span>;
                 <span class="self">self</span>.<span class="ident">conn</span>
                     .<span class="ident">prepare</span>(<span class="string">&quot;INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)&quot;</span>)
                     .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> {
@@ -2620,39 +2471,32 @@
                         })
                     })
                     .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">OperationError::SqliteError</span>
-                    })
+                    .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
                 .<span class="ident">conn</span>
                 .<span class="ident">prepare</span>(<span class="string">&quot;DELETE FROM idx_uuid2spn WHERE uuid = :uuid&quot;</span>)
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>)]))
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                }),
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">execute</span>(
                 <span class="string">&quot;CREATE TABLE IF NOT EXISTS idx_uuid2rdn (uuid TEXT PRIMARY KEY, rdn TEXT)&quot;</span>,
                 [],
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2rdn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">String</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -2661,24 +2505,19 @@
             <span class="prelude-val">Some</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
                 .<span class="ident">conn</span>
                 .<span class="ident">prepare</span>(<span class="string">&quot;INSERT OR REPLACE INTO idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)&quot;</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>), (<span class="string">&quot;:rdn&quot;</span>, <span class="ident">k</span>)]))
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>), (<span class="string">&quot;:rdn&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">k</span>)]))
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                }),
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
                 .<span class="ident">conn</span>
                 .<span class="ident">prepare</span>(<span class="string">&quot;DELETE FROM idx_uuid2rdn WHERE uuid = :uuid&quot;</span>)
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">uuids</span>)]))
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                }),
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>),
         }
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_idx</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2694,35 +2533,33 @@
             <span class="ident">itype</span>.<span class="ident">as_idx_str</span>(),
             <span class="ident">attr</span>
         );
+        <span class="macro">trace!</span>(<span class="ident">idx</span> <span class="op">=</span> <span class="op">%</span><span class="ident">idx_stmt</span>, <span class="string">&quot;Creating index&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Creating index -&gt; {}&quot;</span>, <span class="ident">idx_stmt</span>);
 
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">execute</span>(<span class="ident">idx_stmt</span>.<span class="ident">as_str</span>(), [])
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">idx_table_list</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">list_idxs</span>(<span class="ident">audit</span>)<span class="question-mark">?</span>;
 
         <span class="ident">idx_table_list</span>.<span class="ident">iter</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">idx_table</span><span class="op">|</span> {
+            <span class="macro">trace!</span>(<span class="ident">table</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">idx_table</span>, <span class="string">&quot;removing idx_table&quot;</span>);
             <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;removing idx_table -&gt; {:?}&quot;</span>, <span class="ident">idx_table</span>);
             <span class="self">self</span>.<span class="ident">conn</span>
                 .<span class="ident">prepare</span>(<span class="macro">format!</span>(<span class="string">&quot;DROP TABLE {}&quot;</span>, <span class="ident">idx_table</span>).<span class="ident">as_str</span>())
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">stmt</span><span class="op">|</span> <span class="ident">stmt</span>.<span class="ident">execute</span>([]).<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ()))
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">store_idx_slope_analysis</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
+        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">slopes</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">conn</span>
@@ -2734,19 +2571,13 @@
                 [],
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Remove any data if it exists.</span>
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">execute</span>(<span class="string">&quot;DELETE FROM idxslope_analysis&quot;</span>, [])
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="ident">slopes</span>.<span class="ident">iter</span>().<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">key</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;idx_{}_{}&quot;</span>, <span class="ident">k</span>.<span class="ident">itype</span>.<span class="ident">as_idx_str</span>(), <span class="ident">k</span>.<span class="ident">attr</span>);
@@ -2760,12 +2591,14 @@
                 )
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
                     <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::SqliteError</span>
                 })
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_idx_slopeyness_generated</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2773,6 +2606,7 @@
         <span class="self">self</span>.<span class="ident">exists_table</span>(<span class="ident">audit</span>, <span class="string">&quot;idxslope_analysis&quot;</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_idx_slope</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
@@ -2790,37 +2624,33 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_conn</span>()
             .<span class="ident">prepare</span>(<span class="string">&quot;SELECT slope FROM idxslope_analysis WHERE id = :id&quot;</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">slope</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IdxSlope</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">stmt</span>
             .<span class="ident">query_row</span>(<span class="kw-2">&amp;</span>[(<span class="string">&quot;:id&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>)], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
             <span class="comment">// We don&#39;t mind if it doesn&#39;t exist</span>
             .<span class="ident">optional</span>()
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
+        <span class="macro">trace!</span>(<span class="ident">name</span> <span class="op">=</span> <span class="op">%</span><span class="ident">key</span>, <span class="question-mark">?</span><span class="ident">slope</span>, <span class="string">&quot;Got slope for index&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Got slope for index name {} -&gt; {:?}&quot;</span>, <span class="ident">key</span>, <span class="ident">slope</span>);
 
         <span class="prelude-val">Ok</span>(<span class="ident">slope</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">trace!</span>(<span class="string">&quot;purge id2entry ...&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;purge id2entry ...&quot;</span>);
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">execute</span>(<span class="string">&quot;DELETE FROM id2entry&quot;</span>, [])
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">nsid</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
             <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SerdeCborError</span>
         })<span class="question-mark">?</span>;
@@ -2835,13 +2665,16 @@
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: ruslite error&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SqliteError</span>
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">nsid</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
             <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SerdeCborError</span>
         })<span class="question-mark">?</span>;
@@ -2856,6 +2689,7 @@
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SqliteError</span>
             })
@@ -2863,6 +2697,7 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="kw-2">&amp;</span><span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="ident">ts</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
             <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SerdeCborError</span>
         })<span class="question-mark">?</span>;
@@ -2877,11 +2712,13 @@
             )
             .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SqliteError</span>
             })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Try to get a value.</span>
         <span class="kw">let</span> <span class="ident">data</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
@@ -2890,6 +2727,7 @@
                 <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>)
             })
             .<span class="ident">optional</span>()
+            <span class="comment">// this whole `map` call is useless</span>
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e_opt</span><span class="op">|</span> {
                 <span class="comment">// If we have a row, we try to make it a sid</span>
                 <span class="ident">e_opt</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2898,10 +2736,11 @@
                 })
                 <span class="comment">// If no sid, we return none.</span>
             })
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">OperationError::SqliteError</span>)<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">data</span> {
             <span class="prelude-val">Some</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">serde_cbor::from_slice</span>(<span class="ident">d</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: Serde CBOR Error&quot;</span>);
                 <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: Serde CBOR Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SerdeCborError</span>
             })<span class="question-mark">?</span>),
@@ -2918,8 +2757,10 @@
                 <span class="kw-2">&amp;</span>[(<span class="string">&quot;:id&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">key</span>)],
                 <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>),
             )
-            .<span class="ident">unwrap_or</span>(<span class="number">0</span>)
-        <span class="comment">// The value is missing, default to 0.</span>
+            .<span class="ident">unwrap_or</span>({
+                <span class="comment">// The value is missing, default to 0.</span>
+                <span class="number">0</span>
+            })
     }
 
     <span class="kw">fn</span> <span class="ident">set_db_version_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">v</span>: <span class="ident">i64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">rusqlite::Error</span><span class="op">&gt;</span> {
@@ -2938,13 +2779,16 @@
         <span class="self">self</span>.<span class="ident">get_db_version_key</span>(<span class="ident">DBV_INDEXV</span>)
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_db_index_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">set_db_version_key</span>(<span class="ident">DBV_INDEXV</span>, <span class="ident">v</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;CRITICAL: rusqlite error&quot;</span>);
             <span class="macro">eprintln!</span>(<span class="string">&quot;CRITICAL: rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SqliteError</span>
         })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">setup</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This stores versions of components. For example:</span>
         <span class="comment">// ----------------------</span>
@@ -2967,13 +2811,11 @@
                 &quot;</span>,
                 [],
             )
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// If the table is empty, populate the versions as 0.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dbv_id2entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_version_key</span>(<span class="ident">DBV_ID2ENTRY</span>);
+        <span class="macro">trace!</span>(<span class="ident">initial</span> <span class="op">=</span> <span class="op">%</span><span class="ident">dbv_id2entry</span>, <span class="string">&quot;dbv_id2entry&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;dbv_id2entry initial == {}&quot;</span>, <span class="ident">dbv_id2entry</span>);
 
         <span class="comment">// Check db_version here.</span>
@@ -2998,12 +2840,11 @@
                         [],
                     )
                 })
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
             <span class="ident">dbv_id2entry</span> <span class="op">=</span> <span class="number">1</span>;
+
+            <span class="macro">admin_info!</span>(<span class="ident">entry</span> <span class="op">=</span> <span class="op">%</span><span class="ident">dbv_id2entry</span>, <span class="string">&quot;dbv_id2entry migrated (id2entry, db_sid)&quot;</span>);
             <span class="macro">ladmin_info!</span>(
                 <span class="ident">audit</span>,
                 <span class="string">&quot;dbv_id2entry migrated (id2entry, db_sid) -&gt; {}&quot;</span>,
@@ -3021,12 +2862,10 @@
                     &quot;</span>,
                     [],
                 )
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
             <span class="ident">dbv_id2entry</span> <span class="op">=</span> <span class="number">2</span>;
+            <span class="macro">admin_info!</span>(<span class="ident">entry</span> <span class="op">=</span> <span class="op">%</span><span class="ident">dbv_id2entry</span>, <span class="string">&quot;dbv_id2entry migrated (db_did)&quot;</span>);
             <span class="macro">ladmin_info!</span>(<span class="ident">audit</span>, <span class="string">&quot;dbv_id2entry migrated (db_did) -&gt; {}&quot;</span>, <span class="ident">dbv_id2entry</span>);
         }
         <span class="comment">//   * if v2 -&gt; add the op max ts table.</span>
@@ -3040,11 +2879,9 @@
                     &quot;</span>,
                     [],
                 )
-                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">OperationError::SqliteError</span>
-                })<span class="question-mark">?</span>;
+                .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
             <span class="ident">dbv_id2entry</span> <span class="op">=</span> <span class="number">3</span>;
+            <span class="macro">admin_info!</span>(<span class="ident">entry</span> <span class="op">=</span> <span class="op">%</span><span class="ident">dbv_id2entry</span>, <span class="string">&quot;dbv_id2entry migrated (db_op_ts)&quot;</span>);
             <span class="macro">ladmin_info!</span>(
                 <span class="ident">audit</span>,
                 <span class="string">&quot;dbv_id2entry migrated (db_op_ts) -&gt; {}&quot;</span>,
@@ -3057,6 +2894,7 @@
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">create_uuid2spn</span>(<span class="ident">audit</span>))
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">create_uuid2rdn</span>(<span class="ident">audit</span>))<span class="question-mark">?</span>;
             <span class="ident">dbv_id2entry</span> <span class="op">=</span> <span class="number">4</span>;
+            <span class="macro">admin_info!</span>(<span class="ident">entry</span> <span class="op">=</span> <span class="op">%</span><span class="ident">dbv_id2entry</span>, <span class="string">&quot;dbv_id2entry migrated (name2uuid, uuid2spn, uuid2rdn)&quot;</span>);
             <span class="macro">ladmin_info!</span>(
                 <span class="ident">audit</span>,
                 <span class="string">&quot;dbv_id2entry migrated (name2uuid, uuid2spn, uuid2rdn) -&gt; {}&quot;</span>,
@@ -3066,10 +2904,7 @@
         <span class="comment">//   * if v4 -&gt; complete.</span>
 
         <span class="self">self</span>.<span class="ident">set_db_version_key</span>(<span class="ident">DBV_ID2ENTRY</span>, <span class="ident">dbv_id2entry</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;sqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// NOTE: Indexing is configured in a different step!</span>
         <span class="comment">// Indexing uses a db version flag to represent the version</span>
@@ -3080,6 +2915,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">IdlSqlite</span> {
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">BackendConfig</span>,
@@ -3098,19 +2934,22 @@
 
         <span class="comment">// We need to run vacuum in the setup else we hit sqlite lock conditions.</span>
         <span class="kw">if</span> <span class="ident">vacuum</span> {
+            <span class="macro">admin_warn!</span>(
+                <span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>,
+                <span class="string">&quot;NOTICE: A db vacuum has been requested. This may take a long time ...&quot;</span>
+            );
             <span class="macro">limmediate_warning!</span>(
                 <span class="ident">audit</span>,
                 <span class="string">&quot;NOTICE: A db vacuum has been requested. This may take a long time ...\n&quot;</span>
             );
 
-            <span class="kw">let</span> <span class="ident">vconn</span> <span class="op">=</span> <span class="ident">Connection::open_with_flags</span>(<span class="ident">cfg</span>.<span class="ident">path</span>.<span class="ident">as_str</span>(), <span class="ident">flags</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">vconn</span> <span class="op">=</span>
+                <span class="ident">Connection::open_with_flags</span>(<span class="ident">cfg</span>.<span class="ident">path</span>.<span class="ident">as_str</span>(), <span class="ident">flags</span>).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
             <span class="ident">vconn</span>
                 .<span class="ident">execute_batch</span>(<span class="string">&quot;PRAGMA wal_checkpoint(TRUNCATE);&quot;</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite wal_checkpoint error&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite wal_checkpoint error {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::SqliteError</span>
                 })<span class="question-mark">?</span>;
@@ -3118,28 +2957,30 @@
             <span class="ident">vconn</span>
                 .<span class="ident">pragma_update</span>(<span class="prelude-val">None</span>, <span class="string">&quot;journal_mode&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;DELETE&quot;</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite journal_mode update error&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite journal_mode update error {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::SqliteError</span>
                 })<span class="question-mark">?</span>;
 
             <span class="ident">vconn</span>.<span class="ident">close</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite db close error&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite db close error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SqliteError</span>
             })<span class="question-mark">?</span>;
 
-            <span class="kw">let</span> <span class="ident">vconn</span> <span class="op">=</span> <span class="ident">Connection::open_with_flags</span>(<span class="ident">cfg</span>.<span class="ident">path</span>.<span class="ident">as_str</span>(), <span class="ident">flags</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">vconn</span> <span class="op">=</span>
+                <span class="ident">Connection::open_with_flags</span>(<span class="ident">cfg</span>.<span class="ident">path</span>.<span class="ident">as_str</span>(), <span class="ident">flags</span>).<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>)<span class="question-mark">?</span>;
 
             <span class="ident">vconn</span>
                 .<span class="ident">pragma_update</span>(<span class="prelude-val">None</span>, <span class="string">&quot;page_size&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">cfg</span>.<span class="ident">fstype</span> <span class="kw">as</span> <span class="ident">u32</span>))
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite page_size update error&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite page_size update error {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::SqliteError</span>
                 })<span class="question-mark">?</span>;
 
             <span class="ident">vconn</span>.<span class="ident">execute_batch</span>(<span class="string">&quot;VACUUM&quot;</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite vacuum error&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite vacuum error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SqliteError</span>
             })<span class="question-mark">?</span>;
@@ -3147,15 +2988,18 @@
             <span class="ident">vconn</span>
                 .<span class="ident">pragma_update</span>(<span class="prelude-val">None</span>, <span class="string">&quot;journal_mode&quot;</span>, <span class="kw-2">&amp;</span><span class="string">&quot;WAL&quot;</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite journal_mode update error&quot;</span>);
                     <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite journal_mode update error {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::SqliteError</span>
                 })<span class="question-mark">?</span>;
 
             <span class="ident">vconn</span>.<span class="ident">close</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;rusqlite db close error&quot;</span>);
                 <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;rusqlite db close error {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">OperationError::SqliteError</span>
             })<span class="question-mark">?</span>;
 
+            <span class="macro">admin_warn!</span>(<span class="ident">immediate</span> <span class="op">=</span> <span class="bool-val">true</span>, <span class="string">&quot;NOTICE: db vacuum complete&quot;</span>);
             <span class="macro">limmediate_warning!</span>(<span class="ident">audit</span>, <span class="string">&quot;NOTICE: db vacuum complete\n&quot;</span>);
         };
 
@@ -3181,6 +3025,7 @@
         <span class="kw">let</span> <span class="ident">builder2</span> <span class="op">=</span> <span class="ident">builder1</span>.<span class="ident">max_size</span>(<span class="ident">cfg</span>.<span class="ident">pool_size</span>);
         <span class="comment">// Look at max_size and thread_pool here for perf later</span>
         <span class="kw">let</span> <span class="ident">pool</span> <span class="op">=</span> <span class="ident">builder2</span>.<span class="ident">build</span>(<span class="ident">manager</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;r2d2 error&quot;</span>);
             <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;r2d2 error {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SqliteError</span>
         })<span class="question-mark">?</span>;
@@ -3188,17 +3033,16 @@
         <span class="prelude-val">Ok</span>(<span class="ident">IdlSqlite</span> { <span class="ident">pool</span> })
     }
 
+    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_allids_count</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u64</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">trace!</span>(<span class="string">&quot;Counting allids...&quot;</span>);
         <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;Counting allids...&quot;</span>);
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="self">self</span>.<span class="ident">pool</span>
             .<span class="ident">try_get</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;Unable to get connection from pool!!!&quot;</span>)
             .<span class="ident">query_row</span>(<span class="string">&quot;select count(id) from id2entry&quot;</span>, [], <span class="op">|</span><span class="ident">row</span><span class="op">|</span> <span class="ident">row</span>.<span class="ident">get</span>(<span class="number">0</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;SQLite Error {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">OperationError::SqliteError</span>
-            })
+            .<span class="ident">map_err</span>(<span class="ident">sqlite_error</span>) <span class="comment">// this was initially `ltrace`, but I think that was a mistake so I replaced it anyways.</span>
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdlSqliteReadTransaction</span> {

@@ -328,6 +328,9 @@
 <span id="326">326</span>
 <span id="327">327</span>
 <span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
 </pre><pre class="rust">
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
@@ -364,6 +367,7 @@
     <span class="ident">domain_rename_core</span>, <span class="ident">recover_account_core</span>, <span class="ident">reindex_server_core</span>, <span class="ident">restore_server_core</span>,
     <span class="ident">vacuum_server_core</span>, <span class="ident">verify_server_core</span>,
 };
+<span class="kw">use</span> <span class="ident">kanidm::tracing_tree</span>;
 <span class="kw">use</span> <span class="ident">kanidm::utils::file_permissions_readonly</span>;
 
 <span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
@@ -438,6 +442,8 @@
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
+    <span class="ident">tracing_tree::main_init</span>();
+
     <span class="comment">// Get info about who we are.</span>
     <span class="kw">let</span> <span class="ident">cuid</span> <span class="op">=</span> <span class="ident">get_current_uid</span>();
     <span class="kw">let</span> <span class="ident">ceuid</span> <span class="op">=</span> <span class="ident">get_effective_uid</span>();
