@@ -1,6 +1,7 @@
 use crate::audit::AuditScope;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
+use crate::prelude::*;
 use crate::value::{IndexType, Value};
 use crate::{admin_error, admin_info, admin_warn, filter_error, spanned};
 use hashbrown::HashMap;
