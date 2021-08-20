@@ -582,7 +582,7 @@ pub trait AccessControlsTransaction<'a> {
                                                     // add search_attrs to allowed.
                                                     Some(acs.attrs.iter().map(|s| s.as_str()))
                                                 } else {
-                                                    trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs"); // should this be `security_access`?
+                                                    trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
                                                     ltrace!(
                                                         audit,
                                                         "entry {:?} DOES NOT match acs {}",
@@ -741,73 +741,73 @@ pub trait AccessControlsTransaction<'a> {
                             "access::search_filter_entry_attributes<allowed_entries>",
                             || {
                                 entries
-                                        .into_iter()
-                                        .map(|e| {
-                                            // Get the set of attributes you can see for this entry
-                                            // this is within your related acp scope.
-                                            let allowed_attrs: BTreeSet<&str> = related_acp
-                                                .iter()
-                                                .filter_map(|(acs, f_res)| {
-                                                    if e.entry_match_no_index(&f_res) {
-                                                        security_access!(
-                                                            target = ?e.get_uuid(),
-                                                            acs = %acs.acp.name,
-                                                            "target entry matches acs",
-                                                        );
-                                                        lsecurity_access!(
-                                                            audit,
-                                                            "target entry {:?} matches acs {}",
-                                                            e.get_uuid(),
-                                                            acs.acp.name
-                                                        );
-                                                        // add search_attrs to allowed iterator
-                                                        Some(
-                                                            acs.attrs
-                                                                .iter()
-                                                                .map(|s| s.as_str())
-                                                                .filter(|s| {
-                                                                    req_attrs.as_ref().map(|r_attrs| r_attrs.contains(s)).unwrap_or(true)
-                                                                }),
-                                                        )
-                                                    } else {
-                                                        trace!(
-                                                            target = ?e.get_uuid(),
-                                                            acs = %acs.acp.name,
-                                                            "target entry DOES NOT match acs",
-                                                        );
-                                                        ltrace!(
-                                                            audit,
-                                                            "target entry {:?} DOES NOT match acs {}",
-                                                            e.get_uuid(),
-                                                            acs.acp.name
-                                                        );
-                                                        None
-                                                    }
-                                                })
-                                                .flatten()
-                                                .collect();
+                                    .into_iter()
+                                    .map(|e| {
+                                        // Get the set of attributes you can see for this entry
+                                        // this is within your related acp scope.
+                                        let allowed_attrs: BTreeSet<&str> = related_acp
+                                            .iter()
+                                            .filter_map(|(acs, f_res)| {
+                                                if e.entry_match_no_index(&f_res) {
+                                                    security_access!(
+                                                        target = ?e.get_uuid(),
+                                                        acs = %acs.acp.name,
+                                                        "target entry matches acs",
+                                                    );
+                                                    lsecurity_access!(
+                                                        audit,
+                                                        "target entry {:?} matches acs {}",
+                                                        e.get_uuid(),
+                                                        acs.acp.name
+                                                    );
+                                                    // add search_attrs to allowed iterator
+                                                    Some(
+                                                        acs.attrs
+                                                            .iter()
+                                                            .map(|s| s.as_str())
+                                                            .filter(|s| {
+                                                                req_attrs.as_ref().map(|r_attrs| r_attrs.contains(s)).unwrap_or(true)
+                                                            }),
+                                                    )
+                                                } else {
+                                                    trace!(
+                                                        target = ?e.get_uuid(),
+                                                        acs = %acs.acp.name,
+                                                        "target entry DOES NOT match acs",
+                                                    );
+                                                    ltrace!(
+                                                        audit,
+                                                        "target entry {:?} DOES NOT match acs {}",
+                                                        e.get_uuid(),
+                                                        acs.acp.name
+                                                    );
+                                                    None
+                                                }
+                                            })
+                                            .flatten()
+                                            .collect();
 
-                                            // Remove all others that are present on the entry.
-                                            security_access!(
-                                                requested = ?req_attrs,
-                                                allowed = ?allowed_attrs,
-                                                "attributes"
-                                            );
-                                            lsecurity_access!(
-                                                audit,
-                                                "requested attributes --> {:?} allowed attributes   --> {:?}",
-                                                req_attrs,
-                                                allowed_attrs
-                                            );
+                                        // Remove all others that are present on the entry.
+                                        security_access!(
+                                            requested = ?req_attrs,
+                                            allowed = ?allowed_attrs,
+                                            "attributes"
+                                        );
+                                        lsecurity_access!(
+                                            audit,
+                                            "requested attributes --> {:?} allowed attributes   --> {:?}",
+                                            req_attrs,
+                                            allowed_attrs
+                                        );
 
-                                            // Now purge the attrs that are NOT allowed.
-                                            spanned!("access::search_filter_entry_attributes<reduce_attributes>", {
-                                                lperf_trace_segment!(audit, "access::search_filter_entry_attributes<reduce_attributes>", || {
-                                                    e.reduce_attributes(&allowed_attrs)
-                                                })
+                                        // Now purge the attrs that are NOT allowed.
+                                        spanned!("access::search_filter_entry_attributes<reduce_attributes>", {
+                                            lperf_trace_segment!(audit, "access::search_filter_entry_attributes<reduce_attributes>", || {
+                                                e.reduce_attributes(&allowed_attrs)
                                             })
                                         })
-                                        .collect()
+                                    })
+                                    .collect()
                             }
                         )
                     }
@@ -885,9 +885,7 @@ pub trait AccessControlsTransaction<'a> {
                                         e
                                     })
                                     .ok()
-                                    .map(|f_res|
-                                        (acs, f_res)
-                                    )
+                                    .map(|f_res| (acs, f_res))
                             } else {
                                 None
                             }
