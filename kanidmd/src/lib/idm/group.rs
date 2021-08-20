@@ -1,4 +1,3 @@
-use crate::admin_error;
 use crate::entry::{Entry, EntryCommitted, EntryReduced, EntrySealed};
 use crate::prelude::*;
 use crate::value::PartialValue;

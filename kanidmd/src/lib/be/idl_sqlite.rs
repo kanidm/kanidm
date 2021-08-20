@@ -3,7 +3,6 @@ use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::prelude::*;
 use crate::value::{IndexType, Value};
-use crate::{admin_error, admin_info, admin_warn, filter_error, spanned};
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -22,11 +21,13 @@ use uuid::Uuid;
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
 
+#[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
 fn sqlite_error(e: rusqlite::Error) -> OperationError {
     admin_error!(?e, "SQLite Error");
     OperationError::SqliteError
 }
 
+#[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
 fn serde_cbor_error(e: serde_cbor::Error) -> OperationError {
     admin_error!(?e, "Serde CBOR Error");
     OperationError::SerdeCborError
