@@ -111,6 +111,7 @@ fn format_json(processed_logs: &TreeProcessed) -> Vec<u8> {
                     }
                 }
 
+                #[allow(clippy::expect_used)]
                 let uuid = span
                     .uuid
                     .as_deref()
@@ -135,6 +136,7 @@ fn format_json(processed_logs: &TreeProcessed) -> Vec<u8> {
 
     let mut writer = vec![];
     let mut spans = vec![];
+    #[allow(clippy::expect_used)]
     fmt_rec(&processed_logs, &mut spans, None, &mut writer).expect("Write failed");
     writer
 }
@@ -195,6 +197,7 @@ fn format_pretty(processed_logs: &TreeProcessed) -> Vec<u8> {
                 writeln!(writer)
             }
             TreeProcessed::Span(span) => {
+                #[allow(clippy::expect_used)]
                 let uuid = span
                     .uuid
                     .as_deref()
@@ -287,6 +290,7 @@ fn format_pretty(processed_logs: &TreeProcessed) -> Vec<u8> {
 
     let mut writer = vec![];
     let mut indent = vec![];
+    #[allow(clippy::expect_used)]
     fmt_rec(&processed_logs, &mut indent, None, None, &mut writer).expect("Write failed");
     writer
 }
