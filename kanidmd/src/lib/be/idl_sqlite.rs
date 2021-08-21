@@ -21,11 +21,13 @@ use uuid::Uuid;
 const DBV_ID2ENTRY: &str = "id2entry";
 const DBV_INDEXV: &str = "indexv";
 
+#[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
 fn sqlite_error(e: rusqlite::Error) -> OperationError {
     admin_error!(?e, "SQLite Error");
     OperationError::SqliteError
 }
 
+#[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
 fn serde_cbor_error(e: serde_cbor::Error) -> OperationError {
     admin_error!(?e, "Serde CBOR Error");
     OperationError::SerdeCborError

@@ -451,23 +451,10 @@ pub trait QueryServerTransaction<'a> {
                 })?;
                 let se = SearchEvent::new_internal(f_valid);
 
-                // TODO: Refactor to use this
-                // let mut vs = self.search(audit, &se)?;
-                // match vs.pop() {
-                //     Some(entry) if vs.is_empty() => Ok(entry),
-                //     _ => Err(OperationError::NoMatchingEntries),
-                // }
-                let res = self.search(audit, &se);
-                match res {
-                    Ok(vs) => {
-                        if vs.len() > 1 {
-                            return Err(OperationError::NoMatchingEntries);
-                        }
-                        vs.into_iter()
-                            .next()
-                            .ok_or(OperationError::NoMatchingEntries)
-                    }
-                    Err(e) => Err(e),
+                let mut vs = self.search(audit, &se)?;
+                match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         })
@@ -484,23 +471,11 @@ pub trait QueryServerTransaction<'a> {
             lperf_segment!(audit, "server::internal_search_ext_uuid", || {
                 let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
                 let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-                let res = self.impersonate_search_ext(audit, filter, filter_intent, event);
-                // TODO: Refactor to use this
-                // let mut vs = self.impersonate_search_ext(audit, filter, filter_intent, event)?;
-                // match vs.pop() {
-                //     Some(entry) if vs.is_empty() => Ok(entry),
-                //     _ => Err(OperationError::NoMatchingEntries),
-                // }
-                match res {
-                    Ok(vs) => {
-                        if vs.len() > 1 {
-                            return Err(OperationError::NoMatchingEntries);
-                        }
-                        vs.into_iter()
-                            .next()
-                            .ok_or(OperationError::NoMatchingEntries)
-                    }
-                    Err(e) => Err(e),
+
+                let mut vs = self.impersonate_search_ext(audit, filter, filter_intent, event)?;
+                match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         })
@@ -517,23 +492,11 @@ pub trait QueryServerTransaction<'a> {
             lperf_segment!(audit, "server::internal_search_uuid", || {
                 let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
                 let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
-                let res = self.impersonate_search(audit, filter, filter_intent, event);
-                // TODO: Refactor to use this
-                // let mut vs = self.impersonate_search(audit, filter, filter_intent, event)?;
-                // match vs.pop() {
-                //     Some(entry) if vs.is_empty() => Ok(entry),
-                //     _ => Err(OperationError::NoMatchingEntries),
-                // }
-                match res {
-                    Ok(vs) => {
-                        if vs.len() > 1 {
-                            return Err(OperationError::NoMatchingEntries);
-                        }
-                        vs.into_iter()
-                            .next()
-                            .ok_or(OperationError::NoMatchingEntries)
-                    }
-                    Err(e) => Err(e),
+
+                let mut vs = self.impersonate_search(audit, filter, filter_intent, event)?;
+                match vs.pop() {
+                    Some(entry) if vs.is_empty() => Ok(entry),
+                    _ => Err(OperationError::NoMatchingEntries),
                 }
             })
         })
@@ -767,7 +730,7 @@ pub trait QueryServerTransaction<'a> {
         } else if value.is_sshkey() {
             value
                 .get_sshkey()
-                .map(|s| s.to_string()) // TODO: Refactor in another PR
+                .map(str::to_string)
                 .ok_or(OperationError::InvalidValueState)
         } else {
             // Not? Okay, do the to string.
@@ -782,7 +745,7 @@ pub trait QueryServerTransaction<'a> {
         self.internal_search_uuid(audit, &UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_str("domain_name")
-                    .map(|s| s.to_string()) // TODO: Refactor in another PR
+                    .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
@@ -804,7 +767,7 @@ pub trait QueryServerTransaction<'a> {
                     let mut badlist_hashset = HashSet::with_capacity(badlist_entry.len());
                     badlist_entry
                         .iter()
-                        .filter_map(|e| e.as_string()) // TODO: Refactor in another PR
+                        .filter_map(Value::as_string)
                         .cloned()
                         .for_each(|s| {
                             badlist_hashset.insert(s);
@@ -1305,18 +1268,17 @@ impl<'a> QueryServerWriteTransaction<'a> {
             }
 
             // Now, delete only what you can see
-            let pre_candidates = match self.impersonate_search_valid(
-                audit,
-                de.filter.clone(),
-                de.filter_orig.clone(),
-                &de.ident,
-            ) {
-                Ok(results) => results,
-                Err(e) => {
+            let pre_candidates = self
+                .impersonate_search_valid(
+                    audit,
+                    de.filter.clone(),
+                    de.filter_orig.clone(),
+                    &de.ident,
+                )
+                .map_err(|e| {
                     ladmin_error!(audit, "delete: error in pre-candidate selection {:?}", e);
-                    return Err(e);
-                }
-            };
+                    e
+                })?;
 
             // Apply access controls to reduce the set if required.
             // delete_allow_operation
@@ -1367,7 +1329,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
-                        .map(|r| r.seal())
+                        .map(Entry::seal)
                 })
                 .collect();
 
@@ -1440,16 +1402,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 ladmin_error!(audit, "Unable to generate search cid {:?}", e);
                 e
             })?;
-            let ts = match self.internal_search(
+            let ts = self.internal_search(
                 audit,
                 filter_all!(f_and!([
                     f_eq("class", PVCLASS_TOMBSTONE.clone()),
                     f_lt("last_modified_cid", PartialValue::new_cid(cid)),
                 ])),
-            ) {
-                Ok(r) => r,
-                Err(e) => return Err(e),
-            };
+            )?;
 
             if ts.is_empty() {
                 ladmin_info!(audit, "No Tombstones present - purge operation success");
@@ -1477,16 +1436,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 ladmin_error!(audit, "Unable to generate search cid {:?}", e);
                 e
             })?;
-            let rc = match self.internal_search(
+            let rc = self.internal_search(
                 audit,
                 filter_all!(f_and!([
                     f_eq("class", PVCLASS_RECYCLED.clone()),
                     f_lt("last_modified_cid", PartialValue::new_cid(cid)),
                 ])),
-            ) {
-                Ok(r) => r,
-                Err(e) => return Err(e),
-            };
+            )?;
 
             if rc.is_empty() {
                 ladmin_info!(audit, "No recycled present - purge operation success");
@@ -1504,7 +1460,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             OperationError::SchemaViolation(e)
                         })
                         // seal if it worked.
-                        .map(|r| r.seal())
+                        .map(Entry::seal)
                 })
                 .collect();
 
@@ -1560,12 +1516,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let mut dm_mods: HashMap<Uuid, ModifyList<ModifyInvalid>> =
                 HashMap::with_capacity(revive_cands.len());
 
-            revive_cands.into_iter().for_each(|e| {
+            for e in revive_cands {
                 // Get this entries uuid.
                 let u: Uuid = *e.get_uuid();
 
                 if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
-                    riter.for_each(|g_uuid| {
+                    for g_uuid in riter {
                         dm_mods
                             .entry(*g_uuid)
                             .and_modify(|mlist| {
@@ -1582,9 +1538,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                                 );
                                 ModifyList::new_list(vec![m])
                             });
-                    });
-                };
-            });
+                    }
+                }
+            }
 
             // Now impersonate the modify
             self.impersonate_modify_valid(
@@ -1596,13 +1552,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
             )?;
             // If and only if that succeeds, apply the direct membership modifications
             // if possible.
-            let r: Result<_, _> = dm_mods.into_iter().try_for_each(|(g, mods)| {
+            for (g, mods) in dm_mods {
                 // I think the filter/filter_all shouldn't matter here because the only
                 // valid direct memberships should be still valid/live references.
                 let f = filter_all!(f_eq("uuid", PartialValue::new_uuid(g)));
-                self.internal_modify(audit, &f, &mods)
-            });
-            r
+                self.internal_modify(audit, &f, &mods)?;
+            }
+            Ok(())
         })
     }
 
@@ -1640,19 +1596,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // This is now done in the event transform
 
                 // This also checks access controls due to use of the impersonation.
-                let pre_candidates = match self.impersonate_search_valid(
-                    audit,
-                    me.filter.clone(),
-                    me.filter_orig.clone(),
-                    &me.ident,
-                ) {
-                    Ok(results) => results,
-                    Err(e) => {
+                let pre_candidates = self
+                    .impersonate_search_valid(
+                        audit,
+                        me.filter.clone(),
+                        me.filter_orig.clone(),
+                        &me.ident,
+                    )
+                    .map_err(|e| {
                         admin_error!("modify: error in pre-candidate selection {:?}", e);
                         ladmin_error!(audit, "modify: error in pre-candidate selection {:?}", e);
-                        return Err(e);
-                    }
-                };
+                        e
+                    })?;
 
                 if pre_candidates.is_empty() {
                     if me.ident.is_internal() {
@@ -1905,7 +1860,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                             ladmin_error!(audit, "Schema Violation {:?}", e);
                             OperationError::SchemaViolation(e)
                         })
-                        .map(|e| e.seal())
+                        .map(Entry::seal)
                 })
                 .collect();
 
@@ -2008,12 +1963,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
             candidates.iter_mut().for_each(|er| {
                 let opt_names: Option<BTreeSet<_>> = er.pop_ava("name").map(|vs| {
                     vs.into_iter()
-                        .filter_map(|v| v.migrate_iutf8_iname())
+                        .filter_map(Value::migrate_iutf8_iname)
                         .collect()
                 });
                 let opt_dnames: Option<BTreeSet<_>> = er.pop_ava("domain_name").map(|vs| {
                     vs.into_iter()
-                        .filter_map(|v| v.migrate_iutf8_iname())
+                        .filter_map(Value::migrate_iutf8_iname)
                         .collect()
                 });
 
@@ -2030,7 +1985,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Schema check all.
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
                 .into_iter()
-                .map(|e| e.validate(&self.schema).map(|e| e.seal()))
+                .map(|e| e.validate(&self.schema).map(Entry::seal))
                 .collect();
 
             let norm_cand: Vec<Entry<_, _>> = match res {
@@ -2227,35 +2182,29 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         ltrace!(audit, "internal_migrate_or_create search {:?}", filt);
 
-        match self.internal_search(audit, filt.clone()) {
-            Ok(results) => {
-                if results.is_empty() {
-                    // It does not exist. Create it.
-                    self.internal_create(audit, vec![e])
-                } else if results.len() == 1 {
-                    // If the thing is subset, pass
-                    match e.gen_modlist_assert(&self.schema) {
-                        Ok(modlist) => {
-                            // Apply to &results[0]
-                            ltrace!(audit, "Generated modlist -> {:?}", modlist);
-                            self.internal_modify(audit, &filt, &modlist)
-                        }
-                        Err(e) => Err(OperationError::SchemaViolation(e)),
-                    }
-                } else {
-                    ladmin_error!(
-                        audit,
-                        "Invalid Result Set - Expected One Entry for {:?} - {:?}",
-                        filt,
-                        results
-                    );
-                    Err(OperationError::InvalidDbState)
+        let results = self.internal_search(audit, filt.clone())?;
+
+        if results.is_empty() {
+            // It does not exist. Create it.
+            self.internal_create(audit, vec![e])
+        } else if results.len() == 1 {
+            // If the thing is subset, pass
+            match e.gen_modlist_assert(&self.schema) {
+                Ok(modlist) => {
+                    // Apply to &results[0]
+                    ltrace!(audit, "Generated modlist -> {:?}", modlist);
+                    self.internal_modify(audit, &filt, &modlist)
                 }
+                Err(e) => Err(OperationError::SchemaViolation(e)),
             }
-            Err(e) => {
-                // An error occured. pass it back up.
-                Err(e)
-            }
+        } else {
+            ladmin_error!(
+                audit,
+                "Invalid Result Set - Expected One Entry for {:?} - {:?}",
+                filt,
+                results
+            );
+            Err(OperationError::InvalidDbState)
         }
     }
 
@@ -2340,6 +2289,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         } else {
             ladmin_error!(audit, "initialise_schema_core -> Error {:?}", r);
         }
+        // why do we have error handling if it's always supposed to be `Ok`?
         debug_assert!(r.is_ok());
         r
     }
@@ -2380,19 +2330,19 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_NSUNIQUEID,
         ];
 
-        let r: Result<Vec<()>, _> = idm_schema
+        let r = idm_schema
             .iter()
             // Each item individually logs it's result
-            .map(|e_str| self.internal_migrate_or_create_str(audit, e_str))
-            .collect();
+            .try_for_each(|e_str| self.internal_migrate_or_create_str(audit, e_str));
+
         if r.is_ok() {
             ladmin_info!(audit, "initialise_schema_idm -> Ok!");
         } else {
             ladmin_error!(audit, "initialise_schema_idm -> Error {:?}", r);
         }
-        debug_assert!(r.is_ok());
+        debug_assert!(r.is_ok()); // why return a result if we assert it's `Ok`?
 
-        r.map(|_| ())
+        r
     }
 
     // This function is idempotent

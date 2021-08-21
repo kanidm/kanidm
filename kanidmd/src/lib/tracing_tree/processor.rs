@@ -19,6 +19,7 @@ impl ExportProcessor {
 
 impl Processor for ExportProcessor {
     fn process(&self, preprocessed: TreePreProcessed) {
+        #[allow(clippy::expect_used)]
         self.sender
             .send(preprocessed)
             .expect("Processing channel has been closed, cannot log events.");
@@ -27,6 +28,7 @@ impl Processor for ExportProcessor {
 
 impl Processor for TestProcessor {
     fn process(&self, preprocessed: TreePreProcessed) {
+        #[allow(clippy::expect_used)]
         preprocessed.process().expect("Failed to write logs");
     }
 }

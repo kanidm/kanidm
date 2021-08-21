@@ -22,7 +22,7 @@ macro_rules! try_from_account_e {
     ($au:expr, $value:expr, $qs:expr) => {{
         let name = $value
             .get_ava_single_str("name")
-            .map(|s| s.to_string()) // TODO: Refactor in another PR
+            .map(str::to_string)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
@@ -31,7 +31,6 @@ macro_rules! try_from_account_e {
 
         let upg = Group { name, uuid };
 
-        // TODO: Refactor to use `map` and `unwrap_or_else`
         let mut groups: Vec<Group> = match $value.get_ava_as_refuuid("memberof") {
             Some(riter) => {
                 // given a list of uuid, make a filter: even if this is empty, the be will

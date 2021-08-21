@@ -105,6 +105,7 @@ impl TreeSubscriber<ExportProcessor> {
         let subscriber = TreeSubscriber::new_with(fmt, log_tx);
         let logger = async move {
             while let Some(processor) = log_rx.recv().await {
+                #[allow(clippy::expect_used)]
                 processor.process().expect("Failed to write logs");
             }
         };
@@ -130,6 +131,7 @@ impl<P: Processor> TreeSubscriber<P> {
         let current = self.inner.current_span();
         // If there's no current span, we short-circuit.
         let id = current.id()?;
+        #[allow(clippy::expect_used)]
         let span = self
             .inner
             .span(id)
@@ -138,12 +140,14 @@ impl<P: Processor> TreeSubscriber<P> {
         span.scope().into_iter().find_map(|span| {
             let extensions = span.extensions();
             // If `uuid` is `None`, then we keep searching.
+            #[allow(clippy::expect_used)]
             let uuid = extensions
                 .get::<TreeSpan>()
                 .expect("Span buffer not found, this is a bug")
                 .uuid
                 .as_ref()?;
             // TODO: make spans store UUID's as a u128 or 2 u64's
+            #[allow(clippy::expect_used)]
             Some(Uuid::parse_str(uuid.as_str()).expect("Unable to parse UUID, this is a bug"))
         })
     }
@@ -204,6 +208,7 @@ impl<P: Processor> TreeLayer<P> {
     fn log_to_parent(&self, logs: Tree, parent: Option<SpanRef<Registry>>) {
         match parent {
             // The parent exists- write to them
+            #[allow(clippy::expect_used)]
             Some(span) => span
                 .extensions_mut()
                 .get_mut::<TreeSpan>()
@@ -220,6 +225,7 @@ impl<P: Processor> TreeLayer<P> {
 
 impl<P: Processor> Layer<Registry> for TreeLayer<P> {
     fn new_span(&self, attrs: &Attributes, id: &Id, ctx: Context<Registry>) {
+        #[allow(clippy::expect_used)]
         let span = ctx.span(id).expect("Span not found, this is a bug");
 
         let name = attrs.metadata().name();
@@ -261,6 +267,7 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
         if immediate {
             use super::formatter::format_immediate_event;
             let maybe_scope = ctx.event_scope(event).map(Scope::from_root);
+            #[allow(clippy::expect_used)]
             let formatted_event = format_immediate_event(&tree_event, maybe_scope)
                 .expect("Formatting immediate event failed");
             eprintln!("{}", formatted_event);
@@ -270,6 +277,7 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
     }
 
     fn on_enter(&self, id: &Id, ctx: Context<Registry>) {
+        #[allow(clippy::expect_used)]
         ctx.span(id)
             .expect("Span not found, this is a bug")
             .extensions_mut()
@@ -279,6 +287,7 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
     }
 
     fn on_exit(&self, id: &Id, ctx: Context<Registry>) {
+        #[allow(clippy::expect_used)]
         ctx.span(id)
             .expect("Span not found, this is a bug")
             .extensions_mut()
@@ -288,14 +297,17 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
     }
 
     fn on_close(&self, id: Id, ctx: Context<Registry>) {
+        #[allow(clippy::expect_used)]
         let span = ctx.span(&id).expect("Span not found, this is a bug");
 
         let mut extensions = span.extensions_mut();
 
+        #[allow(clippy::expect_used)]
         let span_buf = extensions
             .remove::<TreeSpan>()
             .expect("Span buffer not found, this is a bug");
 
+        #[allow(clippy::expect_used)]
         let duration = extensions
             .remove::<Timer>()
             .expect("Timer not found, this is a bug")
@@ -321,9 +333,9 @@ impl TreeEvent {
 
         impl Visit for Visitor {
             fn record_u64(&mut self, field: &Field, value: u64) {
-                if field.name() == "event_tag" {
+                if field.name() == "event_tag_id" {
                     let tag = EventTag::try_from(value).unwrap_or_else(|_| {
-                        panic!("Invalid `event_tag`: {}, this is a bug", value)
+                        panic!("Invalid `event_tag_id`: {}, this is a bug", value)
                     });
                     self.tag = Some(tag);
                 } else {
@@ -342,6 +354,7 @@ impl TreeEvent {
             fn record_debug(&mut self, field: &Field, value: &dyn fmt::Debug) {
                 if field.name() == "message" {
                     use fmt::Write;
+                    #[allow(clippy::expect_used)]
                     write!(self.message, "{:?}", value).expect("Write failed");
                 } else {
                     self.values.push((field.name(), format!("{:?}", value)));
@@ -491,6 +504,7 @@ impl TreeProcessed {
 pub fn operation_id() -> Option<Uuid> {
     tracing::dispatcher::get_default(|dispatch| {
         // Try to find the release subscriber
+        #[allow(clippy::expect_used)]
         dispatch
             .downcast_ref::<TreeSubscriber<ExportProcessor>>()
             .map(TreeSubscriber::<ExportProcessor>::thread_operation_id)
@@ -506,6 +520,7 @@ pub fn operation_id() -> Option<Uuid> {
 
 pub fn main_init() -> JoinHandle<()> {
     let (subscriber, logger) = TreeSubscriber::pretty();
+    #[allow(clippy::expect_used)]
     tracing::subscriber::set_global_default(subscriber)
         .expect("🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨");
     tokio::spawn(logger)

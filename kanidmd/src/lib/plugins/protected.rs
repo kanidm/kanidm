@@ -60,20 +60,17 @@ impl Plugin for Protected {
             return Ok(());
         }
 
-        cand.iter().fold(Ok(()), |acc, cand| match acc {
-            Err(_) => acc,
-            Ok(_) => {
-                if cand.attribute_equality("class", &PVCLASS_SYSTEM)
-                    || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
-                    || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                    || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                {
-                    Err(OperationError::SystemProtectedObject)
-                } else {
-                    acc
-                }
+        cand.iter().try_fold((), |(), cand| {
+            if cand.attribute_equality("class", &PVCLASS_SYSTEM)
+                || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
+                || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
+                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
+                || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+            {
+                Err(OperationError::SystemProtectedObject)
+            } else {
+                Ok(())
             }
         })
     }
@@ -93,55 +90,42 @@ impl Plugin for Protected {
             return Ok(());
         }
         // Prevent adding class: system, domain_info, tombstone, or recycled.
-        me.modlist.iter().fold(Ok(()), |acc, m| {
-            if acc.is_err() {
-                acc
-            } else {
-                match m {
-                    Modify::Present(a, v) => {
-                        // TODO: Can we avoid this clone?
-                        if a == "class"
-                            && (v == &(*VCLASS_SYSTEM)
-                                || v == &(*VCLASS_DOMAIN_INFO)
-                                || v == &(*VCLASS_SYSTEM_INFO)
-                                || v == &(*VCLASS_SYSTEM_CONFIG)
-                                || v == &(*VCLASS_TOMBSTONE)
-                                || v == &(*VCLASS_RECYCLED))
-                        {
-                            Err(OperationError::SystemProtectedObject)
-                        } else {
-                            Ok(())
-                        }
-                    }
-                    _ => Ok(()),
+        me.modlist.iter().try_fold((), |(), m| match m {
+            Modify::Present(a, v) => {
+                // TODO: Can we avoid this clone?
+                if a == "class"
+                    && (v == &(*VCLASS_SYSTEM)
+                        || v == &(*VCLASS_DOMAIN_INFO)
+                        || v == &(*VCLASS_SYSTEM_INFO)
+                        || v == &(*VCLASS_SYSTEM_CONFIG)
+                        || v == &(*VCLASS_TOMBSTONE)
+                        || v == &(*VCLASS_RECYCLED))
+                {
+                    Err(OperationError::SystemProtectedObject)
+                } else {
+                    Ok(())
                 }
             }
+            _ => Ok(()),
         })?;
 
         // HARD block mods on tombstone or recycle. We soft block on the rest as they may
         // have some allowed attrs.
-        cand.iter().fold(Ok(()), |acc, cand| match acc {
-            Err(_) => acc,
-            Ok(_) => {
-                if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                    || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                {
-                    Err(OperationError::SystemProtectedObject)
-                } else {
-                    acc
-                }
+        cand.iter().try_fold((), |(), cand| {
+            if cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+            {
+                Err(OperationError::SystemProtectedObject)
+            } else {
+                Ok(())
             }
         })?;
 
         // if class: system, check the mods are "allowed"
-        let system_pres = cand.iter().fold(false, |acc, c| {
-            if acc {
-                acc
-            } else {
-                // We don't need to check for domain info here because domain_info has a class
-                // system also. We just need to block it from being created.
-                c.attribute_equality("class", &PVCLASS_SYSTEM)
-            }
+        let system_pres = cand.iter().any(|c| {
+            // We don't need to check for domain info here because domain_info has a class
+            // system also. We just need to block it from being created.
+            c.attribute_equality("class", &PVCLASS_SYSTEM)
         });
 
         ltrace!(au, "class: system -> {}", system_pres);
@@ -151,20 +135,14 @@ impl Plugin for Protected {
         }
 
         // Something altered is system, check if it's allowed.
-        me.modlist.iter().fold(Ok(()), |acc, m| {
+        me.modlist.iter().try_fold((), |(), m| {
             // Already hit an error, move on.
-            if acc.is_err() {
-                acc
-            } else {
-                let a = match m {
-                    Modify::Present(a, _) => a,
-                    Modify::Removed(a, _) => a,
-                    Modify::Purged(a) => a,
-                };
-                match ALLOWED_ATTRS.get(a.as_str()) {
-                    Some(_) => Ok(()),
-                    None => Err(OperationError::SystemProtectedObject),
-                }
+            let a = match m {
+                Modify::Present(a, _) | Modify::Removed(a, _) | Modify::Purged(a) => a,
+            };
+            match ALLOWED_ATTRS.get(a.as_str()) {
+                Some(_) => Ok(()),
+                None => Err(OperationError::SystemProtectedObject),
             }
         })
     }
@@ -184,20 +162,17 @@ impl Plugin for Protected {
             return Ok(());
         }
 
-        cand.iter().fold(Ok(()), |acc, cand| match acc {
-            Err(_) => acc,
-            Ok(_) => {
-                if cand.attribute_equality("class", &PVCLASS_SYSTEM)
-                    || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
-                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
-                    || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
-                    || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
-                    || cand.attribute_equality("class", &PVCLASS_RECYCLED)
-                {
-                    Err(OperationError::SystemProtectedObject)
-                } else {
-                    acc
-                }
+        cand.iter().try_fold((), |(), cand| {
+            if cand.attribute_equality("class", &PVCLASS_SYSTEM)
+                || cand.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
+                || cand.attribute_equality("class", &PVCLASS_SYSTEM_INFO)
+                || cand.attribute_equality("class", &PVCLASS_SYSTEM_CONFIG)
+                || cand.attribute_equality("class", &PVCLASS_TOMBSTONE)
+                || cand.attribute_equality("class", &PVCLASS_RECYCLED)
+            {
+                Err(OperationError::SystemProtectedObject)
+            } else {
+                Ok(())
             }
         })
     }
