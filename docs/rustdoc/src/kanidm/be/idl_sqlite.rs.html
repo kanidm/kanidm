@@ -1541,6 +1541,8 @@
 <span id="1539">1539</span>
 <span id="1540">1540</span>
 <span id="1541">1541</span>
+<span id="1542">1542</span>
+<span id="1543">1543</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be</span>::{<span class="ident">BackendConfig</span>, <span class="ident">IdList</span>, <span class="ident">IdRawEntry</span>, <span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span>};
@@ -1565,11 +1567,13 @@
 <span class="kw">const</span> <span class="ident">DBV_ID2ENTRY</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;id2entry&quot;</span>;
 <span class="kw">const</span> <span class="ident">DBV_INDEXV</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;indexv&quot;</span>;
 
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span> <span class="comment">// needs to accept value from `map_err`</span>
 <span class="kw">fn</span> <span class="ident">sqlite_error</span>(<span class="ident">e</span>: <span class="ident">rusqlite::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OperationError</span> {
     <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;SQLite Error&quot;</span>);
     <span class="ident">OperationError::SqliteError</span>
 }
 
+<span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span> <span class="comment">// needs to accept value from `map_err`</span>
 <span class="kw">fn</span> <span class="ident">serde_cbor_error</span>(<span class="ident">e</span>: <span class="ident">serde_cbor::Error</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">OperationError</span> {
     <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Serde CBOR Error&quot;</span>);
     <span class="ident">OperationError::SerdeCborError</span>

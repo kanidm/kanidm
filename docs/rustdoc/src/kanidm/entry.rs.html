@@ -3191,7 +3191,7 @@
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
                     <span class="comment">// This should NOT fail - if it does, it means our schema is</span>
                     <span class="comment">// in an invalid state!</span>
-                    <span class="prelude-val">Ok</span>(<span class="ident">schema_attributes</span>.<span class="ident">get</span>(<span class="ident">s</span>).<span class="ident">ok_or</span>(<span class="ident">SchemaError::Corrupted</span>)<span class="question-mark">?</span>)
+                    <span class="ident">schema_attributes</span>.<span class="ident">get</span>(<span class="ident">s</span>).<span class="ident">ok_or</span>(<span class="ident">SchemaError::Corrupted</span>)
                 })
                 .<span class="ident">collect</span>();
 

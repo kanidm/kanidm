@@ -396,10 +396,6 @@
 <span id="394">394</span>
 <span id="395">395</span>
 <span id="396">396</span>
-<span id="397">397</span>
-<span id="398">398</span>
-<span id="399">399</span>
-<span id="400">400</span>
 </pre><pre class="rust">
 <span class="comment">// Generate and manage spn&#39;s for all entries in the domain. Also deals with</span>
 <span class="comment">// the infrequent - but possible - case where a domain is renamed.</span>
@@ -542,20 +538,16 @@
         <span class="comment">//    trigger the spn regen ... which is expensive. Future</span>
         <span class="comment">// TODO #157: will be improvements to modify on large txns.</span>
 
-        <span class="kw">let</span> <span class="ident">domain_name_changed</span> <span class="op">=</span>
-            <span class="ident">cand</span>.<span class="ident">iter</span>()
-                .<span class="ident">zip</span>(<span class="ident">pre_cand</span>.<span class="ident">iter</span>())
-                .<span class="ident">fold</span>(<span class="prelude-val">None</span>, <span class="op">|</span><span class="ident">acc</span>, (<span class="ident">post</span>, <span class="ident">pre</span>)<span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">acc</span>.<span class="ident">is_some</span>() {
-                        <span class="ident">acc</span>
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">post</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PV_UUID_DOMAIN_INFO</span>)
-                        <span class="op">&amp;&amp;</span> <span class="ident">post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;domain_name&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">pre</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;domain_name&quot;</span>)
-                    {
-                        <span class="ident">post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;domain_name&quot;</span>)
-                    } <span class="kw">else</span> {
-                        <span class="ident">acc</span>
-                    }
-                });
+        <span class="kw">let</span> <span class="ident">domain_name_changed</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">zip</span>(<span class="ident">pre_cand</span>.<span class="ident">iter</span>()).<span class="ident">find_map</span>(<span class="op">|</span>(<span class="ident">post</span>, <span class="ident">pre</span>)<span class="op">|</span> {
+            <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="ident">post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;domain_name&quot;</span>);
+            <span class="kw">if</span> <span class="ident">post</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PV_UUID_DOMAIN_INFO</span>)
+                <span class="op">&amp;&amp;</span> <span class="ident">domain_name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">pre</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;domain_name&quot;</span>)
+            {
+                <span class="ident">domain_name</span>
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            }
+        });
 
         <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">domain_name_changed</span> {
             <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,

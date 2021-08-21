@@ -426,31 +426,6 @@
 <span id="424">424</span>
 <span id="425">425</span>
 <span id="426">426</span>
-<span id="427">427</span>
-<span id="428">428</span>
-<span id="429">429</span>
-<span id="430">430</span>
-<span id="431">431</span>
-<span id="432">432</span>
-<span id="433">433</span>
-<span id="434">434</span>
-<span id="435">435</span>
-<span id="436">436</span>
-<span id="437">437</span>
-<span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
 </pre><pre class="rust">
 <span class="comment">// System protected objects. Items matching specific requirements</span>
 <span class="comment">// may only have certain modifications performed.</span>
@@ -514,20 +489,17 @@
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
 
-        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="prelude-val">Ok</span>(()), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">cand</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">acc</span> {
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_INFO</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_CONFIG</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">acc</span>
-                }
+        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">cand</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_INFO</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_CONFIG</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
+            {
+                <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">Ok</span>(())
             }
         })
     }
@@ -547,55 +519,42 @@
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
         <span class="comment">// Prevent adding class: system, domain_info, tombstone, or recycled.</span>
-        <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="prelude-val">Ok</span>(()), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">m</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">acc</span>.<span class="ident">is_err</span>() {
-                <span class="ident">acc</span>
-            } <span class="kw">else</span> {
-                <span class="kw">match</span> <span class="ident">m</span> {
-                    <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="comment">// TODO: Can we avoid this clone?</span>
-                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;class&quot;</span>
-                            <span class="op">&amp;&amp;</span> (<span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM</span>)
-                                <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_DOMAIN_INFO</span>)
-                                <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_INFO</span>)
-                                <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_CONFIG</span>)
-                                <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_TOMBSTONE</span>)
-                                <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_RECYCLED</span>))
-                        {
-                            <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-                        } <span class="kw">else</span> {
-                            <span class="prelude-val">Ok</span>(())
-                        }
-                    }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
+        <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">m</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">m</span> {
+            <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="comment">// TODO: Can we avoid this clone?</span>
+                <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;class&quot;</span>
+                    <span class="op">&amp;&amp;</span> (<span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_DOMAIN_INFO</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_INFO</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_CONFIG</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_TOMBSTONE</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_RECYCLED</span>))
+                {
+                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">Ok</span>(())
                 }
             }
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
         })<span class="question-mark">?</span>;
 
         <span class="comment">// HARD block mods on tombstone or recycle. We soft block on the rest as they may</span>
         <span class="comment">// have some allowed attrs.</span>
-        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="prelude-val">Ok</span>(()), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">cand</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">acc</span> {
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">acc</span>
-                }
+        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">cand</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
+            {
+                <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">Ok</span>(())
             }
         })<span class="question-mark">?</span>;
 
         <span class="comment">// if class: system, check the mods are &quot;allowed&quot;</span>
-        <span class="kw">let</span> <span class="ident">system_pres</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">c</span><span class="op">|</span> {
-            <span class="kw">if</span> <span class="ident">acc</span> {
-                <span class="ident">acc</span>
-            } <span class="kw">else</span> {
-                <span class="comment">// We don&#39;t need to check for domain info here because domain_info has a class</span>
-                <span class="comment">// system also. We just need to block it from being created.</span>
-                <span class="ident">c</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
-            }
+        <span class="kw">let</span> <span class="ident">system_pres</span> <span class="op">=</span> <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
+            <span class="comment">// We don&#39;t need to check for domain info here because domain_info has a class</span>
+            <span class="comment">// system also. We just need to block it from being created.</span>
+            <span class="ident">c</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
         });
 
         <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;class: system -&gt; {}&quot;</span>, <span class="ident">system_pres</span>);
@@ -605,20 +564,14 @@
         }
 
         <span class="comment">// Something altered is system, check if it&#39;s allowed.</span>
-        <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="prelude-val">Ok</span>(()), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">m</span><span class="op">|</span> {
+        <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">m</span><span class="op">|</span> {
             <span class="comment">// Already hit an error, move on.</span>
-            <span class="kw">if</span> <span class="ident">acc</span>.<span class="ident">is_err</span>() {
-                <span class="ident">acc</span>
-            } <span class="kw">else</span> {
-                <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">m</span> {
-                    <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>,
-                    <span class="ident">Modify::Removed</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>,
-                    <span class="ident">Modify::Purged</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>,
-                };
-                <span class="kw">match</span> <span class="ident">ALLOWED_ATTRS</span>.<span class="ident">get</span>(<span class="ident">a</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
-                }
+            <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">m</span> {
+                <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Removed</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Purged</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>,
+            };
+            <span class="kw">match</span> <span class="ident">ALLOWED_ATTRS</span>.<span class="ident">get</span>(<span class="ident">a</span>.<span class="ident">as_str</span>()) {
+                <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
             }
         })
     }
@@ -638,20 +591,17 @@
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
 
-        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="prelude-val">Ok</span>(()), <span class="op">|</span><span class="ident">acc</span>, <span class="ident">cand</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">acc</span> {
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_INFO</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_CONFIG</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
-                {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">acc</span>
-                }
+        <span class="ident">cand</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">cand</span><span class="op">|</span> {
+            <span class="kw">if</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_DOMAIN_INFO</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_INFO</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_SYSTEM_CONFIG</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_TOMBSTONE</span>)
+                <span class="op">|</span><span class="op">|</span> <span class="ident">cand</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_RECYCLED</span>)
+            {
+                <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">Ok</span>(())
             }
         })
     }

@@ -120,7 +120,6 @@
 <span id="118">118</span>
 <span id="119">119</span>
 <span id="120">120</span>
-<span id="121">121</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryReduced</span>, <span class="ident">EntrySealed</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
@@ -146,7 +145,7 @@
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {{
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
             .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>()) <span class="comment">// TODO: Refactor in another PR</span>
+            .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
             })<span class="question-mark">?</span>;
@@ -155,7 +154,6 @@
 
         <span class="kw">let</span> <span class="ident">upg</span> <span class="op">=</span> <span class="ident">Group</span> { <span class="ident">name</span>, <span class="ident">uuid</span> };
 
-        <span class="comment">// TODO: Refactor to use `map` and `unwrap_or_else`</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_as_refuuid</span>(<span class="string">&quot;memberof&quot;</span>) {
             <span class="prelude-val">Some</span>(<span class="ident">riter</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="comment">// given a list of uuid, make a filter: even if this is empty, the be will</span>

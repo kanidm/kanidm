@@ -2263,20 +2263,6 @@
 <span id="2261">2261</span>
 <span id="2262">2262</span>
 <span id="2263">2263</span>
-<span id="2264">2264</span>
-<span id="2265">2265</span>
-<span id="2266">2266</span>
-<span id="2267">2267</span>
-<span id="2268">2268</span>
-<span id="2269">2269</span>
-<span id="2270">2270</span>
-<span id="2271">2271</span>
-<span id="2272">2272</span>
-<span id="2273">2273</span>
-<span id="2274">2274</span>
-<span id="2275">2275</span>
-<span id="2276">2276</span>
-<span id="2277">2277</span>
 </pre><pre class="rust">
 <span class="doccomment">//! This module contains the logic to conduct an authentication of an account.</span>
 <span class="doccomment">//! Generally this has to process an authentication attempt, and validate each</span>
@@ -3237,12 +3223,7 @@
         );
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-            <span class="macro">assert!</span>(
-                <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                    <span class="ident">AuthMech::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-                })
-            );
+            <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthMech::Anonymous</span>)));
         } <span class="kw">else</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;Invalid auth state&quot;</span>)
         }
@@ -3253,12 +3234,9 @@
             .<span class="ident">expect</span>(<span class="string">&quot;Failed to select anonymous mech.&quot;</span>);
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Continue</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-            <span class="macro">assert!</span>(
-                <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                    <span class="ident">AuthAllowed::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-                })
-            );
+            <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthAllowed::Anonymous</span>)));
         } <span class="kw">else</span> {
             <span class="macro">panic!</span>(<span class="string">&quot;Invalid auth state&quot;</span>)
         }
@@ -3279,12 +3257,7 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">unwrap</span>();
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-                <span class="macro">assert!</span>(
-                    <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                        <span class="ident">AuthMech::Password</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-                    })
-                );
+                <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthMech::Password</span>)));
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>();
             }
@@ -3294,12 +3267,9 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to select anonymous mech.&quot;</span>);
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Continue</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-                <span class="macro">assert!</span>(
-                    <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                        <span class="ident">AuthAllowed::Password</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-                    })
-                );
+                <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthAllowed::Password</span>)));
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;Invalid auth state&quot;</span>)
             }
@@ -3427,12 +3397,9 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">expect</span>(<span class="string">&quot;Session was unable to be created.&quot;</span>);
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-                <span class="macro">assert!</span>(
-                    <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                        <span class="ident">AuthMech::PasswordMfa</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-                    })
-                );
+                <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>
+                    .<span class="ident">iter</span>()
+                    .<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthMech::PasswordMfa</span>)))
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>();
             }
@@ -3451,10 +3418,20 @@
                             <span class="ident">rchal</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">chal</span>.<span class="ident">clone</span>());
                             <span class="bool-val">true</span>
                         }
+                        <span class="comment">// Why does this also return `true`? If we hit this but not</span>
+                        <span class="comment">// Webauthn, then we will panic when unwrapping `rchal` later...</span>
                         <span class="ident">AuthAllowed::Totp</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
                         <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
                     })
                 );
+
+                <span class="comment">// I feel like this is what we should be doing</span>
+                <span class="comment">// assuming there will only be one `AuthAllowed::Webauthn`.</span>
+                <span class="comment">// rchal = auth_mechs.iter().find_map(|x| match x {</span>
+                <span class="comment">//     AuthAllowed::Webauthn(chal) =&gt; Some(chal),</span>
+                <span class="comment">//     _ =&gt; None,</span>
+                <span class="comment">// });</span>
+                <span class="comment">// assert!(rchal.is_some());</span>
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;Invalid auth state&quot;</span>)
             }
@@ -3721,12 +3698,7 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">unwrap</span>();
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Choose</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-                <span class="macro">assert!</span>(
-                    <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                        <span class="ident">AuthMech::Webauthn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
-                    })
-                );
+                <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">any</span>(<span class="op">|</span><span class="ident">x</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">x</span>, <span class="ident">AuthMech::Webauthn</span>)));
             } <span class="kw">else</span> {
                 <span class="macro">panic!</span>();
             }

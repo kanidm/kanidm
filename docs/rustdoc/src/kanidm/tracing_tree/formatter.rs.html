@@ -321,6 +321,10 @@
 <span id="319">319</span>
 <span id="320">320</span>
 <span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::subscriber</span>::{<span class="ident">TreeEvent</span>, <span class="ident">TreeProcessed</span>, <span class="ident">TreeSpanProcessed</span>};
 <span class="kw">use</span> <span class="kw">super</span><span class="ident">::EventTag</span>;
@@ -435,6 +439,7 @@
                     }
                 }
 
+                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                 <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">span</span>
                     .<span class="ident">uuid</span>
                     .<span class="ident">as_deref</span>()
@@ -459,6 +464,7 @@
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">writer</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">spans</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
     <span class="ident">fmt_rec</span>(<span class="kw-2">&amp;</span><span class="ident">processed_logs</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">spans</span>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">writer</span>).<span class="ident">expect</span>(<span class="string">&quot;Write failed&quot;</span>);
     <span class="ident">writer</span>
 }
@@ -519,6 +525,7 @@
                 <span class="macro">writeln!</span>(<span class="ident">writer</span>)
             }
             <span class="ident">TreeProcessed::Span</span>(<span class="ident">span</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                 <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">span</span>
                     .<span class="ident">uuid</span>
                     .<span class="ident">as_deref</span>()
@@ -611,6 +618,7 @@
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">writer</span> <span class="op">=</span> <span class="macro">vec!</span>[];
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">indent</span> <span class="op">=</span> <span class="macro">vec!</span>[];
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
     <span class="ident">fmt_rec</span>(<span class="kw-2">&amp;</span><span class="ident">processed_logs</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">indent</span>, <span class="prelude-val">None</span>, <span class="prelude-val">None</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">writer</span>).<span class="ident">expect</span>(<span class="string">&quot;Write failed&quot;</span>);
     <span class="ident">writer</span>
 }

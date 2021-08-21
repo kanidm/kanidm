@@ -526,6 +526,21 @@
 <span id="524">524</span>
 <span id="525">525</span>
 <span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::any::TypeId</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
@@ -634,6 +649,7 @@
         <span class="kw">let</span> <span class="ident">subscriber</span> <span class="op">=</span> <span class="ident">TreeSubscriber::new_with</span>(<span class="ident">fmt</span>, <span class="ident">log_tx</span>);
         <span class="kw">let</span> <span class="ident">logger</span> <span class="op">=</span> <span class="kw">async</span> <span class="kw">move</span> {
             <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">processor</span>) <span class="op">=</span> <span class="ident">log_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
+                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                 <span class="ident">processor</span>.<span class="ident">process</span>().<span class="ident">expect</span>(<span class="string">&quot;Failed to write logs&quot;</span>);
             }
         };
@@ -659,6 +675,7 @@
         <span class="kw">let</span> <span class="ident">current</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">current_span</span>();
         <span class="comment">// If there&#39;s no current span, we short-circuit.</span>
         <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">current</span>.<span class="ident">id</span>()<span class="question-mark">?</span>;
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">inner</span>
             .<span class="ident">span</span>(<span class="ident">id</span>)
@@ -667,12 +684,14 @@
         <span class="ident">span</span>.<span class="ident">scope</span>().<span class="ident">into_iter</span>().<span class="ident">find_map</span>(<span class="op">|</span><span class="ident">span</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">extensions</span>();
             <span class="comment">// If `uuid` is `None`, then we keep searching.</span>
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
             <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">extensions</span>
                 .<span class="ident">get</span>::<span class="op">&lt;</span><span class="ident">TreeSpan</span><span class="op">&gt;</span>()
                 .<span class="ident">expect</span>(<span class="string">&quot;Span buffer not found, this is a bug&quot;</span>)
                 .<span class="ident">uuid</span>
                 .<span class="ident">as_ref</span>()<span class="question-mark">?</span>;
             <span class="comment">// TODO: make spans store UUID&#39;s as a u128 or 2 u64&#39;s</span>
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
             <span class="prelude-val">Some</span>(<span class="ident">Uuid::parse_str</span>(<span class="ident">uuid</span>.<span class="ident">as_str</span>()).<span class="ident">expect</span>(<span class="string">&quot;Unable to parse UUID, this is a bug&quot;</span>))
         })
     }
@@ -733,6 +752,7 @@
     <span class="kw">fn</span> <span class="ident">log_to_parent</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">logs</span>: <span class="ident">Tree</span>, <span class="ident">parent</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SpanRef</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span><span class="op">&gt;</span>) {
         <span class="kw">match</span> <span class="ident">parent</span> {
             <span class="comment">// The parent exists- write to them</span>
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
             <span class="prelude-val">Some</span>(<span class="ident">span</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">span</span>
                 .<span class="ident">extensions_mut</span>()
                 .<span class="ident">get_mut</span>::<span class="op">&lt;</span><span class="ident">TreeSpan</span><span class="op">&gt;</span>()
@@ -749,6 +769,7 @@
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">Processor</span><span class="op">&gt;</span> <span class="ident">Layer</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TreeLayer</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">new_span</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attrs</span>: <span class="kw-2">&amp;</span><span class="ident">Attributes</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span>) {
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">span</span>(<span class="ident">id</span>).<span class="ident">expect</span>(<span class="string">&quot;Span not found, this is a bug&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">attrs</span>.<span class="ident">metadata</span>().<span class="ident">name</span>();
@@ -790,6 +811,7 @@
         <span class="kw">if</span> <span class="ident">immediate</span> {
             <span class="kw">use</span> <span class="kw">super</span><span class="ident">::formatter::format_immediate_event</span>;
             <span class="kw">let</span> <span class="ident">maybe_scope</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">event_scope</span>(<span class="ident">event</span>).<span class="ident">map</span>(<span class="ident">Scope::from_root</span>);
+            <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
             <span class="kw">let</span> <span class="ident">formatted_event</span> <span class="op">=</span> <span class="ident">format_immediate_event</span>(<span class="kw-2">&amp;</span><span class="ident">tree_event</span>, <span class="ident">maybe_scope</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Formatting immediate event failed&quot;</span>);
             <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">formatted_event</span>);
@@ -799,6 +821,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">on_enter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span>) {
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="ident">ctx</span>.<span class="ident">span</span>(<span class="ident">id</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;Span not found, this is a bug&quot;</span>)
             .<span class="ident">extensions_mut</span>()
@@ -808,6 +831,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">on_exit</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span>) {
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="ident">ctx</span>.<span class="ident">span</span>(<span class="ident">id</span>)
             .<span class="ident">expect</span>(<span class="string">&quot;Span not found, this is a bug&quot;</span>)
             .<span class="ident">extensions_mut</span>()
@@ -817,14 +841,17 @@
     }
 
     <span class="kw">fn</span> <span class="ident">on_close</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">Id</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span>) {
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">span</span>(<span class="kw-2">&amp;</span><span class="ident">id</span>).<span class="ident">expect</span>(<span class="string">&quot;Span not found, this is a bug&quot;</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">extensions</span> <span class="op">=</span> <span class="ident">span</span>.<span class="ident">extensions_mut</span>();
 
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">span_buf</span> <span class="op">=</span> <span class="ident">extensions</span>
             .<span class="ident">remove</span>::<span class="op">&lt;</span><span class="ident">TreeSpan</span><span class="op">&gt;</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;Span buffer not found, this is a bug&quot;</span>);
 
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">duration</span> <span class="op">=</span> <span class="ident">extensions</span>
             .<span class="ident">remove</span>::<span class="op">&lt;</span><span class="ident">Timer</span><span class="op">&gt;</span>()
             .<span class="ident">expect</span>(<span class="string">&quot;Timer not found, this is a bug&quot;</span>)
@@ -850,9 +877,9 @@
 
         <span class="kw">impl</span> <span class="ident">Visit</span> <span class="kw">for</span> <span class="ident">Visitor</span> {
             <span class="kw">fn</span> <span class="ident">record_u64</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">field</span>: <span class="kw-2">&amp;</span><span class="ident">Field</span>, <span class="ident">value</span>: <span class="ident">u64</span>) {
-                <span class="kw">if</span> <span class="ident">field</span>.<span class="ident">name</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;event_tag&quot;</span> {
+                <span class="kw">if</span> <span class="ident">field</span>.<span class="ident">name</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;event_tag_id&quot;</span> {
                     <span class="kw">let</span> <span class="ident">tag</span> <span class="op">=</span> <span class="ident">EventTag::try_from</span>(<span class="ident">value</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-                        <span class="macro">panic!</span>(<span class="string">&quot;Invalid `event_tag`: {}, this is a bug&quot;</span>, <span class="ident">value</span>)
+                        <span class="macro">panic!</span>(<span class="string">&quot;Invalid `event_tag_id`: {}, this is a bug&quot;</span>, <span class="ident">value</span>)
                     });
                     <span class="self">self</span>.<span class="ident">tag</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">tag</span>);
                 } <span class="kw">else</span> {
@@ -871,6 +898,7 @@
             <span class="kw">fn</span> <span class="ident">record_debug</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">field</span>: <span class="kw-2">&amp;</span><span class="ident">Field</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">fmt::Debug</span>) {
                 <span class="kw">if</span> <span class="ident">field</span>.<span class="ident">name</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;message&quot;</span> {
                     <span class="kw">use</span> <span class="ident">fmt::Write</span>;
+                    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                     <span class="macro">write!</span>(<span class="self">self</span>.<span class="ident">message</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">value</span>).<span class="ident">expect</span>(<span class="string">&quot;Write failed&quot;</span>);
                 } <span class="kw">else</span> {
                     <span class="self">self</span>.<span class="ident">values</span>.<span class="ident">push</span>((<span class="ident">field</span>.<span class="ident">name</span>(), <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">value</span>)));
@@ -1020,6 +1048,7 @@
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">operation_id</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
     <span class="ident">tracing::dispatcher::get_default</span>(<span class="op">|</span><span class="ident">dispatch</span><span class="op">|</span> {
         <span class="comment">// Try to find the release subscriber</span>
+        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="ident">dispatch</span>
             .<span class="ident">downcast_ref</span>::<span class="op">&lt;</span><span class="ident">TreeSubscriber</span><span class="op">&lt;</span><span class="ident">ExportProcessor</span><span class="op">&gt;</span><span class="op">&gt;</span>()
             .<span class="ident">map</span>(<span class="ident">TreeSubscriber</span>::<span class="op">&lt;</span><span class="ident">ExportProcessor</span><span class="op">&gt;</span><span class="ident">::thread_operation_id</span>)
@@ -1035,6 +1064,7 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">main_init</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">subscriber</span>, <span class="ident">logger</span>) <span class="op">=</span> <span class="ident">TreeSubscriber::pretty</span>();
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
     <span class="ident">tracing::subscriber::set_global_default</span>(<span class="ident">subscriber</span>)
         .<span class="ident">expect</span>(<span class="string">&quot;🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨&quot;</span>);
     <span class="ident">tokio::spawn</span>(<span class="ident">logger</span>)
