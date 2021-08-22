@@ -40,19 +40,6 @@ You will also need a config file in the volume named `server.toml` (Within the c
     # origin = "https://idm.example.com"
     origin = "https://idm.example.com:8443"
     #
-    #
-    # [online_backup]
-    #   The path to the output folder for online backups
-    # path = "/var/lib/kanidm/backups/"
-    #   The schedule to run online backups - see https://crontab.guru/
-    #   every day at 22:00 UTC (default)
-    # schedule = "00 22 * * *"
-    #    four times a day at 3 minutes past the hour, every 6th hours
-    # schedule = "03 */6 * * *"
-    #   Number of backups to keep (default 7)
-    # versions = 7
-    #
-    #
     #   The role of this server. This affects features available and how replication may interact.
     #   Valid roles are:
     #   - WriteReplica
@@ -65,6 +52,19 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #     and must have a replication agreement as a source of it's data.
     #   Defaults to "WriteReplica".
     # role = "WriteReplica"
+    #
+    # [online_backup]
+    #   The path to the output folder for online backups
+    # path = "/var/lib/kanidm/backups/"
+    #   The schedule to run online backups - see https://crontab.guru/
+    #   every day at 22:00 UTC (default)
+    # schedule = "00 22 * * *"
+    #    four times a day at 3 minutes past the hour, every 6th hours
+    # schedule = "03 */6 * * *"
+    #   Number of backups to keep (default 7)
+    # versions = 7
+    #
+
 
 An example is located in [examples/server.toml](../../examples/server.toml).
 
