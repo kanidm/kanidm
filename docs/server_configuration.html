@@ -183,19 +183,6 @@ db_path = &quot;/data/kanidm.db&quot;
 # origin = &quot;https://idm.example.com&quot;
 origin = &quot;https://idm.example.com:8443&quot;
 #
-#
-# [online_backup]
-#   The path to the output folder for online backups
-# path = &quot;/var/lib/kanidm/backups/&quot;
-#   The schedule to run online backups - see https://crontab.guru/
-#   every day at 22:00 UTC (default)
-# schedule = &quot;00 22 * * *&quot;
-#    four times a day at 3 minutes past the hour, every 6th hours
-# schedule = &quot;03 */6 * * *&quot;
-#   Number of backups to keep (default 7)
-# versions = 7
-#
-#
 #   The role of this server. This affects features available and how replication may interact.
 #   Valid roles are:
 #   - WriteReplica
@@ -208,6 +195,18 @@ origin = &quot;https://idm.example.com:8443&quot;
 #     and must have a replication agreement as a source of it's data.
 #   Defaults to &quot;WriteReplica&quot;.
 # role = &quot;WriteReplica&quot;
+#
+# [online_backup]
+#   The path to the output folder for online backups
+# path = &quot;/var/lib/kanidm/backups/&quot;
+#   The schedule to run online backups - see https://crontab.guru/
+#   every day at 22:00 UTC (default)
+# schedule = &quot;00 22 * * *&quot;
+#    four times a day at 3 minutes past the hour, every 6th hours
+# schedule = &quot;03 */6 * * *&quot;
+#   Number of backups to keep (default 7)
+# versions = 7
+#
 </code></pre>
 <p>An example is located in <a href="../../examples/server.toml">examples/server.toml</a>.</p>
 <p>Then you can setup the initial admin account and initialise the database into your volume.</p>
