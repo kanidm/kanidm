@@ -557,6 +557,8 @@
 <span id="555">555</span>
 <span id="556">556</span>
 <span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="comment">// use std::ptr;</span>
@@ -624,9 +626,11 @@
 <span class="macro">macro_rules!</span> <span class="ident">lqueue</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">tag</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> ({
         <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit</span>::{<span class="ident">LogTag</span>, <span class="ident">AUDIT_LINE_SIZE</span>};
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
-            <span class="macro">println!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>)
+        <span class="comment">/*
+        if cfg!(test) {
+            println!($($arg)*)
         }
+        */</span>
         <span class="kw">if</span> (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>.<span class="ident">level</span> <span class="op">&amp;</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">tag</span> <span class="kw">as</span> <span class="ident">u32</span>) <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">tag</span> <span class="kw">as</span> <span class="ident">u32</span> {
             <span class="kw">use</span> <span class="ident">std::fmt</span>;
             <span class="comment">// We have to buffer the string to over-alloc it.</span>
