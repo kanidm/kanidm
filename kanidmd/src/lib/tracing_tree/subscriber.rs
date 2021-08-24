@@ -230,7 +230,7 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
 
         let name = attrs.metadata().name();
         let mut uuid = None;
-        let mut out = TreeIo::Stderr;
+        let mut out = TreeIo::Stdout;
 
         attrs.record(
             &mut |field: &Field, value: &dyn fmt::Debug| match field.name() {
@@ -478,8 +478,20 @@ impl TreePreProcessed {
         let buf = &formatted_logs[..];
 
         match processed_logs.tree_io() {
-            TreeIo::Stdout => io::stdout().write_all(buf),
-            TreeIo::Stderr => io::stderr().write_all(buf),
+            TreeIo::Stdout => {
+                // BUG - we can't write to stdout/err directly because this breaks
+                // cargo test capturing of io.
+                // io::stdout().write_all(buf)
+                let s = unsafe { std::str::from_utf8_unchecked(buf) };
+                print!("{}", s);
+                Ok(())
+            }
+            TreeIo::Stderr => {
+                // io::stderr().write_all(buf)
+                let s = unsafe { std::str::from_utf8_unchecked(buf) };
+                eprint!("{}", s);
+                Ok(())
+            }
             TreeIo::File(ref path) => OpenOptions::new()
                 .create(true)
                 .append(true)
@@ -493,7 +505,7 @@ impl TreePreProcessed {
 impl TreeProcessed {
     fn tree_io(self) -> TreeIo {
         match self {
-            TreeProcessed::Event(_) => TreeIo::Stderr,
+            TreeProcessed::Event(_) => TreeIo::Stdout,
             TreeProcessed::Span(TreeSpanProcessed { out, .. }) => out,
         }
     }

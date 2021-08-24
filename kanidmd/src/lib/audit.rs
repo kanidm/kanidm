@@ -64,9 +64,11 @@ impl fmt::Display for LogTag {
 macro_rules! lqueue {
     ($audit:expr, $tag:expr, $($arg:tt)*) => ({
         use crate::audit::{LogTag, AUDIT_LINE_SIZE};
+        /*
         if cfg!(test) {
             println!($($arg)*)
         }
+        */
         if ($audit.level & $tag as u32) == $tag as u32 {
             use std::fmt;
             // We have to buffer the string to over-alloc it.
