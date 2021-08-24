@@ -482,14 +482,20 @@ impl TreePreProcessed {
                 // BUG - we can't write to stdout/err directly because this breaks
                 // cargo test capturing of io.
                 // io::stdout().write_all(buf)
-                let s = unsafe { std::str::from_utf8_unchecked(buf) };
-                print!("{}", s);
+
+                match std::str::from_utf8(buf) {
+                    Ok(s) => print!("{}", s),
+                    Err(e) => eprintln!("CRITICAL - UNABLE TO PRINT BUFFER -> {:?}", e),
+                }
                 Ok(())
             }
             TreeIo::Stderr => {
                 // io::stderr().write_all(buf)
-                let s = unsafe { std::str::from_utf8_unchecked(buf) };
-                eprint!("{}", s);
+
+                match std::str::from_utf8(buf) {
+                    Ok(s) => eprint!("{}", s),
+                    Err(e) => eprintln!("CRITICAL - UNABLE TO PRINT BUFFER -> {:?}", e),
+                }
                 Ok(())
             }
             TreeIo::File(ref path) => OpenOptions::new()
