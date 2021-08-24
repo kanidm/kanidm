@@ -1,4 +1,3 @@
-use crate::audit::AuditScope;
 use crate::be::idl_sqlite::{
     IdlSqlite, IdlSqliteReadTransaction, IdlSqliteTransaction, IdlSqliteWriteTransaction,
 };
@@ -80,7 +79,6 @@ pub struct IdlArcSqliteWriteTransaction<'a> {
 macro_rules! get_identry {
     (
         $self:expr,
-        $au:expr,
         $idl:expr,
         $is_read_op:expr
     ) => {{
@@ -101,7 +99,7 @@ macro_rules! get_identry {
 
                     if !nidl.is_empty() {
                         // Now, get anything from nidl that is needed.
-                        let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
+                        let mut db_result = $self.db.get_identry(&IdList::Partial(nidl))?;
                         // Clone everything from db_result into the cache.
                         if $is_read_op {
                             db_result.iter().for_each(|e| {
@@ -127,7 +125,7 @@ macro_rules! get_identry {
 
                     if !nidl.is_empty() {
                         // Now, get anything from nidl that is needed.
-                        let mut db_result = $self.db.get_identry($au, &IdList::Partial(nidl))?;
+                        let mut db_result = $self.db.get_identry(&IdList::Partial(nidl))?;
                         // Merge the two vecs
                         result.append(&mut db_result);
                     }
@@ -143,11 +141,10 @@ macro_rules! get_identry {
 macro_rules! get_identry_raw {
     (
         $self:expr,
-        $au:expr,
         $idl:expr
     ) => {{
         // As a cache we have no concept of this, so we just bypass to the db.
-        $self.db.get_identry_raw($au, $idl)
+        $self.db.get_identry_raw($idl)
     }};
 }
 
@@ -155,12 +152,11 @@ macro_rules! get_identry_raw {
 macro_rules! exists_idx {
     (
         $self:expr,
-        $audit:expr,
         $attr:expr,
         $itype:expr
     ) => {{
         // As a cache we have no concept of this, so we just bypass to the db.
-        $self.db.exists_idx($audit, $attr, $itype)
+        $self.db.exists_idx($attr, $itype)
     }};
 }
 
@@ -168,13 +164,11 @@ macro_rules! exists_idx {
 macro_rules! get_idl {
     (
         $self:expr,
-        $audit:expr,
         $attr:expr,
         $itype:expr,
         $idx_key:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::get_idl", {
-            lperf_trace_segment!($audit, "be::idl_arc_sqlite::get_idl", || {
                 // SEE ALSO #259: Find a way to implement borrow for this properly.
                 // I don't think this is possible. When we make this dyn, the arc
                 // needs the dyn trait to be sized so that it *could* claim a clone
@@ -202,17 +196,10 @@ macro_rules! get_idl {
                         $itype,
                         $attr,
                     );
-                    ltrace!(
-                        $audit,
-                        "Got cached idl for index {:?} {:?} -> {}",
-                        $itype,
-                        $attr,
-                        data
-                    );
                     return Ok(Some(data.as_ref().clone()));
                 }
                 // If miss, get from db *and* insert to the cache.
-                let db_r = $self.db.get_idl($audit, $attr, $itype, $idx_key)?;
+                let db_r = $self.db.get_idl($attr, $itype, $idx_key)?;
                 if let Some(ref idl) = db_r {
                     let ncache_key = IdlCacheKey {
                         a: $attr.into(),
@@ -222,7 +209,6 @@ macro_rules! get_idl {
                     $self.idl_cache.insert(ncache_key, Box::new(idl.clone()))
                 }
                 Ok(db_r)
-            })
         })
     }};
 }
@@ -231,27 +217,23 @@ macro_rules! get_idl {
 macro_rules! name2uuid {
     (
         $self:expr,
-        $audit:expr,
         $name:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::name2uuid", {
-            lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
-                let cache_key = NameCacheKey::Name2Uuid($name.to_string());
-                let cache_r = $self.name_cache.get(&cache_key);
-                if let Some(NameCacheValue::U(uuid)) = cache_r {
-                    trace!("Got cached uuid for name2uuid");
-                    ltrace!($audit, "Got cached uuid for name2uuid");
-                    return Ok(Some(uuid.clone()));
-                }
+            let cache_key = NameCacheKey::Name2Uuid($name.to_string());
+            let cache_r = $self.name_cache.get(&cache_key);
+            if let Some(NameCacheValue::U(uuid)) = cache_r {
+                trace!("Got cached uuid for name2uuid");
+                return Ok(Some(uuid.clone()));
+            }
 
-                let db_r = $self.db.name2uuid($audit, $name)?;
-                if let Some(uuid) = db_r {
-                    $self
-                        .name_cache
-                        .insert(cache_key, NameCacheValue::U(uuid.clone()))
-                }
-                Ok(db_r)
-            })
+            let db_r = $self.db.name2uuid($name)?;
+            if let Some(uuid) = db_r {
+                $self
+                    .name_cache
+                    .insert(cache_key, NameCacheValue::U(uuid.clone()))
+            }
+            Ok(db_r)
         })
     }};
 }
@@ -260,27 +242,23 @@ macro_rules! name2uuid {
 macro_rules! uuid2spn {
     (
         $self:expr,
-        $audit:expr,
         $uuid:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::uuid2spn", {
-            lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
-                let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
-                let cache_r = $self.name_cache.get(&cache_key);
-                if let Some(NameCacheValue::S(ref spn)) = cache_r {
-                    trace!("Got cached spn for uuid2spn");
-                    ltrace!($audit, "Got cached spn for uuid2spn");
-                    return Ok(Some(spn.as_ref().clone()));
-                }
+            let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
+            let cache_r = $self.name_cache.get(&cache_key);
+            if let Some(NameCacheValue::S(ref spn)) = cache_r {
+                trace!("Got cached spn for uuid2spn");
+                return Ok(Some(spn.as_ref().clone()));
+            }
 
-                let db_r = $self.db.uuid2spn($audit, $uuid)?;
-                if let Some(ref data) = db_r {
-                    $self
-                        .name_cache
-                        .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
-                }
-                Ok(db_r)
-            })
+            let db_r = $self.db.uuid2spn($uuid)?;
+            if let Some(ref data) = db_r {
+                $self
+                    .name_cache
+                    .insert(cache_key, NameCacheValue::S(Box::new(data.clone())))
+            }
+            Ok(db_r)
         })
     }};
 }
@@ -289,27 +267,23 @@ macro_rules! uuid2spn {
 macro_rules! uuid2rdn {
     (
         $self:expr,
-        $audit:expr,
         $uuid:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::uuid2rdn", {
-            lperf_trace_segment!($audit, "be::idl_arc_sqlite::name2uuid", || {
-                let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
-                let cache_r = $self.name_cache.get(&cache_key);
-                if let Some(NameCacheValue::R(ref rdn)) = cache_r {
-                    trace!("Got cached rdn for uuid2rdn");
-                    ltrace!($audit, "Got cached rdn for uuid2rdn");
-                    return Ok(Some(rdn.clone()));
-                }
+            let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
+            let cache_r = $self.name_cache.get(&cache_key);
+            if let Some(NameCacheValue::R(ref rdn)) = cache_r {
+                trace!("Got cached rdn for uuid2rdn");
+                return Ok(Some(rdn.clone()));
+            }
 
-                let db_r = $self.db.uuid2rdn($audit, $uuid)?;
-                if let Some(ref data) = db_r {
-                    $self
-                        .name_cache
-                        .insert(cache_key, NameCacheValue::R(data.clone()))
-                }
-                Ok(db_r)
-            })
+            let db_r = $self.db.uuid2rdn($uuid)?;
+            if let Some(ref data) = db_r {
+                $self
+                    .name_cache
+                    .insert(cache_key, NameCacheValue::R(data.clone()))
+            }
+            Ok(db_r)
         })
     }};
 }
@@ -317,17 +291,15 @@ macro_rules! uuid2rdn {
 // ! TRACING INTEGRATED
 macro_rules! verify {
     (
-        $self:expr,
-        $audit:expr
+        $self:expr
     ) => {{
         let mut r = $self.db.verify();
         if r.is_empty() && !$self.is_dirty() {
             // Check allids.
-            match $self.db.get_allids($audit) {
+            match $self.db.get_allids() {
                 Ok(db_allids) => {
                     if !db_allids.is_compressed() || !(*($self).allids).is_compressed() {
                         admin_warn!("Inconsistent ALLIDS compression state");
-                        ladmin_warning!($audit, "Inconsistent ALLIDS compression state");
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
                     if db_allids != (*($self).allids) {
@@ -336,18 +308,6 @@ macro_rules! verify {
                             db_allids = ?(&db_allids).andnot(&($self).allids),
                             arc_allids = ?(&(*($self).allids)).andnot(&db_allids),
                             "Inconsistent ALLIDS set"
-                        );
-
-                        ladmin_warning!($audit, "Inconsistent ALLIDS set");
-                        ladmin_warning!(
-                            $audit,
-                            "db_allids: {:?}",
-                            (&db_allids).andnot(&($self).allids)
-                        );
-                        ladmin_warning!(
-                            $audit,
-                            "arc_allids: {:?}",
-                            (&(*($self).allids)).andnot(&db_allids)
                         );
                         r.push(Err(ConsistencyError::BackendAllIdsSync))
                     }
@@ -363,29 +323,18 @@ pub trait IdlArcSqliteTransaction {
     // ! TRACING INTEGRATED
     fn get_identry(
         &mut self,
-        au: &mut AuditScope,
         idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn get_identry_raw(
-        &self,
-        au: &mut AuditScope,
-        idl: &IdList,
-    ) -> Result<Vec<IdRawEntry>, OperationError>;
+    fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn exists_idx(
-        &mut self,
-        audit: &mut AuditScope,
-        attr: &str,
-        itype: &IndexType,
-    ) -> Result<bool, OperationError>;
+    fn exists_idx(&mut self, attr: &str, itype: &IndexType) -> Result<bool, OperationError>;
 
     // ! TRACING INTEGRATED
     fn get_idl(
         &mut self,
-        audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
         idx_key: &str,
@@ -396,90 +345,62 @@ pub trait IdlArcSqliteTransaction {
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>>;
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
 
     fn is_dirty(&self) -> bool;
 
     // ! TRACING INTEGRATED
-    fn name2uuid(
-        &mut self,
-        audit: &mut AuditScope,
-        name: &str,
-    ) -> Result<Option<Uuid>, OperationError>;
+    fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn uuid2spn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<Value>, OperationError>;
+    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn uuid2rdn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<String>, OperationError>;
+    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError>;
+    fn list_idxs(&self) -> Result<Vec<String>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError>;
+    fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError>;
 
     // ! TRACING INTEGRATED
     fn list_index_content(
         &self,
-        audit: &mut AuditScope,
         index_name: &str,
     ) -> Result<Vec<(String, IDLBitRange)>, OperationError>;
 
     // ! TRACING INTEGRATED
-    fn get_id2entry(
-        &self,
-        audit: &mut AuditScope,
-        id: u64,
-    ) -> Result<(u64, String), OperationError>;
+    fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError>;
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     // ! TRACING INTEGRATED
     fn get_identry(
         &mut self,
-        au: &mut AuditScope,
         idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        get_identry!(self, au, idl, true)
+        get_identry!(self, idl, true)
     }
 
     // ! TRACING INTEGRATED
-    fn get_identry_raw(
-        &self,
-        au: &mut AuditScope,
-        idl: &IdList,
-    ) -> Result<Vec<IdRawEntry>, OperationError> {
-        get_identry_raw!(self, au, idl)
+    fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError> {
+        get_identry_raw!(self, idl)
     }
 
     // ! TRACING INTEGRATED
-    fn exists_idx(
-        &mut self,
-        audit: &mut AuditScope,
-        attr: &str,
-        itype: &IndexType,
-    ) -> Result<bool, OperationError> {
-        exists_idx!(self, audit, attr, itype)
+    fn exists_idx(&mut self, attr: &str, itype: &IndexType) -> Result<bool, OperationError> {
+        exists_idx!(self, attr, itype)
     }
 
     // ! TRACING INTEGRATED
     fn get_idl(
         &mut self,
-        audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        get_idl!(self, audit, attr, itype, idx_key)
+        get_idl!(self, attr, itype, idx_key)
     }
 
     // ! TRACING INTEGRATED
@@ -493,8 +414,8 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        verify!(self, audit)
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        verify!(self)
     }
 
     fn is_dirty(&self) -> bool {
@@ -502,62 +423,45 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    fn name2uuid(
-        &mut self,
-        audit: &mut AuditScope,
-        name: &str,
-    ) -> Result<Option<Uuid>, OperationError> {
-        name2uuid!(self, audit, name)
+    fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        name2uuid!(self, name)
     }
 
     // ! TRACING INTEGRATED
-    fn uuid2spn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<Value>, OperationError> {
-        uuid2spn!(self, audit, uuid)
+    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+        uuid2spn!(self, uuid)
     }
 
     // ! TRACING INTEGRATED
-    fn uuid2rdn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<String>, OperationError> {
-        uuid2rdn!(self, audit, uuid)
+    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+        uuid2rdn!(self, uuid)
     }
 
     // ! TRACING INTEGRATED
-    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+    fn list_idxs(&self) -> Result<Vec<String>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.list_idxs(audit)
+        self.db.list_idxs()
     }
 
     // ! TRACING INTEGRATED
-    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+    fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.list_id2entry(audit)
+        self.db.list_id2entry()
     }
 
     // ! TRACING INTEGRATED
     fn list_index_content(
         &self,
-        audit: &mut AuditScope,
         index_name: &str,
     ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.list_index_content(audit, index_name)
+        self.db.list_index_content(index_name)
     }
 
     // ! TRACING INTEGRATED
-    fn get_id2entry(
-        &self,
-        audit: &mut AuditScope,
-        id: u64,
-    ) -> Result<(u64, String), OperationError> {
+    fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.get_id2entry(audit, id)
+        self.db.get_id2entry(id)
     }
 }
 
@@ -565,40 +469,29 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     // ! TRACING INTEGRATED
     fn get_identry(
         &mut self,
-        au: &mut AuditScope,
         idl: &IdList,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
-        get_identry!(self, au, idl, false)
+        get_identry!(self, idl, false)
     }
 
     // ! TRACING INTEGRATED
-    fn get_identry_raw(
-        &self,
-        au: &mut AuditScope,
-        idl: &IdList,
-    ) -> Result<Vec<IdRawEntry>, OperationError> {
-        get_identry_raw!(self, au, idl)
+    fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError> {
+        get_identry_raw!(self, idl)
     }
 
     // ! TRACING INTEGRATED
-    fn exists_idx(
-        &mut self,
-        audit: &mut AuditScope,
-        attr: &str,
-        itype: &IndexType,
-    ) -> Result<bool, OperationError> {
-        exists_idx!(self, audit, attr, itype)
+    fn exists_idx(&mut self, attr: &str, itype: &IndexType) -> Result<bool, OperationError> {
+        exists_idx!(self, attr, itype)
     }
 
     // ! TRACING INTEGRATED
     fn get_idl(
         &mut self,
-        audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
         idx_key: &str,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        get_idl!(self, audit, attr, itype, idx_key)
+        get_idl!(self, attr, itype, idx_key)
     }
 
     // ! TRACING INTEGRATED
@@ -612,8 +505,8 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        verify!(self, audit)
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        verify!(self)
     }
 
     fn is_dirty(&self) -> bool {
@@ -621,167 +514,131 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    fn name2uuid(
-        &mut self,
-        audit: &mut AuditScope,
-        name: &str,
-    ) -> Result<Option<Uuid>, OperationError> {
-        name2uuid!(self, audit, name)
+    fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        name2uuid!(self, name)
     }
 
     // ! TRACING INTEGRATED
-    fn uuid2spn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<Value>, OperationError> {
-        uuid2spn!(self, audit, uuid)
+    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+        uuid2spn!(self, uuid)
     }
 
     // ! TRACING INTEGRATED
-    fn uuid2rdn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<String>, OperationError> {
-        uuid2rdn!(self, audit, uuid)
+    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+        uuid2rdn!(self, uuid)
     }
 
     // ! TRACING INTEGRATED
-    fn list_idxs(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
+    fn list_idxs(&self) -> Result<Vec<String>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.list_idxs(audit)
+        self.db.list_idxs()
     }
 
     // ! TRACING INTEGRATED
-    fn list_id2entry(&self, audit: &mut AuditScope) -> Result<Vec<(u64, String)>, OperationError> {
+    fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.list_id2entry(audit)
+        self.db.list_id2entry()
     }
 
     // ! TRACING INTEGRATED
     fn list_index_content(
         &self,
-        audit: &mut AuditScope,
         index_name: &str,
     ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.list_index_content(audit, index_name)
+        self.db.list_index_content(index_name)
     }
 
     // ! TRACING INTEGRATED
-    fn get_id2entry(
-        &self,
-        audit: &mut AuditScope,
-        id: u64,
-    ) -> Result<(u64, String), OperationError> {
+    fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
-        self.db.get_id2entry(audit, id)
+        self.db.get_id2entry(id)
     }
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
     // ! TRACING INTEGRATED
-    pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn commit(self) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::commit", {
-            lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit", || {
-                let IdlArcSqliteWriteTransaction {
-                    db,
-                    mut entry_cache,
-                    mut idl_cache,
-                    mut name_cache,
-                    op_ts_max,
-                    allids,
-                    maxid,
-                } = self;
+            let IdlArcSqliteWriteTransaction {
+                db,
+                mut entry_cache,
+                mut idl_cache,
+                mut name_cache,
+                op_ts_max,
+                allids,
+                maxid,
+            } = self;
 
-                // Write any dirty items to the disk.
-                spanned!("be::idl_arc_sqlite::commit<entry>", {
-                    lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit<entry>", || {
-                        entry_cache
-                            .iter_mut_mark_clean()
-                            .try_for_each(|(k, v)| match v {
-                                Some(e) => db.write_identry(audit, e),
-                                None => db.delete_identry(audit, *k),
-                            })
+            // Write any dirty items to the disk.
+            spanned!("be::idl_arc_sqlite::commit<entry>", {
+                entry_cache
+                    .iter_mut_mark_clean()
+                    .try_for_each(|(k, v)| match v {
+                        Some(e) => db.write_identry(e),
+                        None => db.delete_identry(*k),
                     })
-                })
-                .map_err(|e| {
-                    admin_error!(?e, "Failed to sync entry cache to sqlite");
-                    ladmin_error!(audit, "Failed to sync entry cache to sqlite {:?}", e);
-                    e
-                })?;
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Failed to sync entry cache to sqlite");
+                e
+            })?;
 
-                spanned!("be::idl_arc_sqlite::commit<idl>", {
-                    lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit<idl>", || {
-                        idl_cache.iter_mut_mark_clean().try_for_each(|(k, v)| {
-                            match v {
-                                Some(idl) => {
-                                    db.write_idl(audit, k.a.as_str(), &k.i, k.k.as_str(), idl)
-                                }
-                                #[allow(clippy::unreachable)]
-                                None => {
-                                    // Due to how we remove items, we always write an empty idl
-                                    // to the cache, so this should never be none.
-                                    //
-                                    // If it is none, this means we have memory corruption so we MUST
-                                    // panic.
-                                    // Why is `v` the `Option` type then?
-                                    unreachable!();
-                                }
-                            }
-                        })
+            spanned!("be::idl_arc_sqlite::commit<idl>", {
+                idl_cache.iter_mut_mark_clean().try_for_each(|(k, v)| {
+                    match v {
+                        Some(idl) => db.write_idl(k.a.as_str(), &k.i, k.k.as_str(), idl),
+                        #[allow(clippy::unreachable)]
+                        None => {
+                            // Due to how we remove items, we always write an empty idl
+                            // to the cache, so this should never be none.
+                            //
+                            // If it is none, this means we have memory corruption so we MUST
+                            // panic.
+                            // Why is `v` the `Option` type then?
+                            unreachable!();
+                        }
+                    }
+                })
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Failed to sync idl cache to sqlite");
+                e
+            })?;
+
+            spanned!("be::idl_arc_sqlite::commit<names>", {
+                name_cache
+                    .iter_mut_mark_clean()
+                    .try_for_each(|(k, v)| match (k, v) {
+                        (NameCacheKey::Name2Uuid(k), Some(NameCacheValue::U(v))) => {
+                            db.write_name2uuid_add(k, v)
+                        }
+                        (NameCacheKey::Name2Uuid(k), None) => db.write_name2uuid_rem(k),
+                        (NameCacheKey::Uuid2Spn(uuid), Some(NameCacheValue::S(v))) => {
+                            db.write_uuid2spn(uuid, Some(v))
+                        }
+                        (NameCacheKey::Uuid2Spn(uuid), None) => db.write_uuid2spn(uuid, None),
+                        (NameCacheKey::Uuid2Rdn(uuid), Some(NameCacheValue::R(v))) => {
+                            db.write_uuid2rdn(uuid, Some(v))
+                        }
+                        (NameCacheKey::Uuid2Rdn(uuid), None) => db.write_uuid2rdn(uuid, None),
+
+                        _ => Err(OperationError::InvalidCacheState),
                     })
-                })
-                .map_err(|e| {
-                    admin_error!(?e, "Failed to sync idl cache to sqlite");
-                    ladmin_error!(audit, "Failed to sync idl cache to sqlite {:?}", e);
-                    e
-                })?;
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Failed to sync name cache to sqlite");
+                e
+            })?;
 
-                spanned!("be::idl_arc_sqlite::commit<names>", {
-                    lperf_trace_segment!(audit, "be::idl_arc_sqlite::commit<names>", || {
-                        name_cache
-                            .iter_mut_mark_clean()
-                            .try_for_each(|(k, v)| match (k, v) {
-                                (NameCacheKey::Name2Uuid(k), Some(NameCacheValue::U(v))) => {
-                                    db.write_name2uuid_add(audit, k, v)
-                                }
-                                (NameCacheKey::Name2Uuid(k), None) => {
-                                    db.write_name2uuid_rem(audit, k)
-                                }
-                                (NameCacheKey::Uuid2Spn(uuid), Some(NameCacheValue::S(v))) => {
-                                    db.write_uuid2spn(audit, uuid, Some(v))
-                                }
-                                (NameCacheKey::Uuid2Spn(uuid), None) => {
-                                    db.write_uuid2spn(audit, uuid, None)
-                                }
-                                (NameCacheKey::Uuid2Rdn(uuid), Some(NameCacheValue::R(v))) => {
-                                    db.write_uuid2rdn(audit, uuid, Some(v))
-                                }
-                                (NameCacheKey::Uuid2Rdn(uuid), None) => {
-                                    db.write_uuid2rdn(audit, uuid, None)
-                                }
-
-                                _ => Err(OperationError::InvalidCacheState),
-                            })
-                    })
-                })
-                .map_err(|e| {
-                    admin_error!(?e, "Failed to sync name cache to sqlite");
-                    ladmin_error!(audit, "Failed to sync name cache to sqlite {:?}", e);
-                    e
-                })?;
-
-                // Undo the caches in the reverse order.
-                db.commit(audit).map(|()| {
-                    op_ts_max.commit();
-                    name_cache.commit();
-                    idl_cache.commit();
-                    entry_cache.commit();
-                    allids.commit();
-                    maxid.commit();
-                })
+            // Undo the caches in the reverse order.
+            db.commit().map(|()| {
+                op_ts_max.commit();
+                name_cache.commit();
+                idl_cache.commit();
+                entry_cache.commit();
+                allids.commit();
+                maxid.commit();
             })
         })
     }
@@ -796,38 +653,27 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    pub fn write_identries<'b, I>(
-        &'b mut self,
-        au: &mut AuditScope,
-        mut entries: I,
-    ) -> Result<(), OperationError>
+    pub fn write_identries<'b, I>(&'b mut self, mut entries: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
     {
         spanned!("be::idl_arc_sqlite::write_identries", {
-            lperf_trace_segment!(au, "be::idl_arc_sqlite::write_identries", || {
-                entries.try_for_each(|e| {
-                    trace!("Inserting {:?} to cache", e.get_id());
-                    ltrace!(au, "Inserting {:?} to cache", e.get_id());
-                    if e.get_id() == 0 {
-                        Err(OperationError::InvalidEntryId)
-                    } else {
-                        (*self.allids).insert_id(e.get_id());
-                        self.entry_cache
-                            .insert_dirty(e.get_id(), Box::new(e.clone()));
-                        Ok(())
-                    }
-                })
+            entries.try_for_each(|e| {
+                trace!("Inserting {:?} to cache", e.get_id());
+                if e.get_id() == 0 {
+                    Err(OperationError::InvalidEntryId)
+                } else {
+                    (*self.allids).insert_id(e.get_id());
+                    self.entry_cache
+                        .insert_dirty(e.get_id(), Box::new(e.clone()));
+                    Ok(())
+                }
             })
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn write_identries_raw<I>(
-        &mut self,
-        audit: &mut AuditScope,
-        entries: I,
-    ) -> Result<(), OperationError>
+    pub fn write_identries_raw<I>(&mut self, entries: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = IdRawEntry>,
     {
@@ -835,8 +681,8 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.entry_cache.clear();
         // Write the raw ents
         self.db
-            .write_identries_raw(audit, entries)
-            .and_then(|()| self.db.get_allids(audit))
+            .write_identries_raw(entries)
+            .and_then(|()| self.db.get_allids())
             .map(|mut ids| {
                 // Update allids since we cleared them and need to reset it in the cache.
                 std::mem::swap(self.allids.deref_mut(), &mut ids);
@@ -844,27 +690,20 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    pub fn delete_identry<I>(
-        &mut self,
-        au: &mut AuditScope,
-        mut idl: I,
-    ) -> Result<(), OperationError>
+    pub fn delete_identry<I>(&mut self, mut idl: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = u64>,
     {
         spanned!("be::idl_arc_sqlite::delete_identry", {
-            lperf_trace_segment!(au, "be::idl_arc_sqlite::delete_identry", || {
-                idl.try_for_each(|i| {
-                    trace!("Removing {:?} from cache", i);
-                    ltrace!(au, "Removing {:?} from cache", i);
-                    if i == 0 {
-                        Err(OperationError::InvalidEntryId)
-                    } else {
-                        (*self.allids).remove_id(i);
-                        self.entry_cache.remove_dirty(i);
-                        Ok(())
-                    }
-                })
+            idl.try_for_each(|i| {
+                trace!("Removing {:?} from cache", i);
+                if i == 0 {
+                    Err(OperationError::InvalidEntryId)
+                } else {
+                    (*self.allids).remove_id(i);
+                    self.entry_cache.remove_dirty(i);
+                    Ok(())
+                }
             })
         })
     }
@@ -872,62 +711,51 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     // ! TRACING INTEGRATED
     pub fn write_idl(
         &mut self,
-        audit: &mut AuditScope,
         attr: &str,
         itype: &IndexType,
         idx_key: &str,
         idl: &IDLBitRange,
     ) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_idl", {
-            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_idl", || {
-                let cache_key = IdlCacheKey {
-                    a: attr.into(),
-                    i: itype.clone(),
-                    k: idx_key.into(),
-                };
-                // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
-                // but we can cache this as a new empty IdList instead, so that we can avoid the
-                // db lookup on this idl.
-                if idl.is_empty() {
-                    self.idl_cache
-                        .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
-                } else {
-                    self.idl_cache
-                        .insert_dirty(cache_key, Box::new(idl.clone()));
-                }
-                // self.db.write_idl(audit, attr, itype, idx_key, idl)
-                Ok(())
-            })
+            let cache_key = IdlCacheKey {
+                a: attr.into(),
+                i: itype.clone(),
+                k: idx_key.into(),
+            };
+            // On idl == 0 the db will remove this, and synthesise an empty IdList on a miss
+            // but we can cache this as a new empty IdList instead, so that we can avoid the
+            // db lookup on this idl.
+            if idl.is_empty() {
+                self.idl_cache
+                    .insert_dirty(cache_key, Box::new(IDLBitRange::new()));
+            } else {
+                self.idl_cache
+                    .insert_dirty(cache_key, Box::new(idl.clone()));
+            }
+            // self.db.write_idl(audit, attr, itype, idx_key, idl)
+            Ok(())
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn optimise_dirty_idls(&mut self, audit: &mut AuditScope) {
+    pub fn optimise_dirty_idls(&mut self) {
         self.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
             if let Some(idl) = maybe_idl {
                 if idl.maybe_compress() {
                     filter_info!(?k, "Compressed idl");
-                    lfilter_info!(audit, "Compressed idl -> {:?} ", k);
                 }
             }
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn is_idx_slopeyness_generated(
-        &self,
-        audit: &mut AuditScope,
-    ) -> Result<bool, OperationError> {
-        self.db.is_idx_slopeyness_generated(audit)
+    pub fn is_idx_slopeyness_generated(&self) -> Result<bool, OperationError> {
+        self.db.is_idx_slopeyness_generated()
     }
 
     // ! TRACING INTEGRATED
-    pub fn get_idx_slope(
-        &self,
-        audit: &mut AuditScope,
-        ikey: &IdxKey,
-    ) -> Result<Option<IdxSlope>, OperationError> {
-        self.db.get_idx_slope(audit, ikey)
+    pub fn get_idx_slope(&self, ikey: &IdxKey) -> Result<Option<IdxSlope>, OperationError> {
+        self.db.get_idx_slope(ikey)
     }
 
     /// Index Slope Analysis. For the purpose of external modules you can consider this as a
@@ -938,7 +766,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     /// be better than class=*, but comparing name=foo to spn=foo is "much over muchness" since
     /// both are really fast.
     // ! TRACING INTEGRATED
-    pub fn analyse_idx_slopes(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn analyse_idx_slopes(&mut self) -> Result<(), OperationError> {
         /*
          * Inside of this analysis there are two major factors we need to understand
          *
@@ -1120,9 +948,8 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             })
             .collect();
         trace!(?slopes, "Generated slopes");
-        ltrace!(audit, "Generated slopes -> {:?}", slopes);
         // Write the data down
-        self.db.store_idx_slope_analysis(audit, &slopes)
+        self.db.store_idx_slope_analysis(&slopes)
     }
 
     fn calculate_sd_slope(data: Vec<f64>) -> IdxSlope {
@@ -1174,148 +1001,94 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    pub fn create_name2uuid(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.create_name2uuid(audit)
+    pub fn create_name2uuid(&self) -> Result<(), OperationError> {
+        self.db.create_name2uuid()
     }
 
     // ! TRACING INTEGRATED
     pub fn write_name2uuid_add(
         &mut self,
-        audit: &mut AuditScope,
         uuid: &Uuid,
         add: BTreeSet<String>,
     ) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_name2uuid_add", {
-            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
-                /*
-                self.db
-                    .write_name2uuid_add(audit, uuid, &add)
-                    .and_then(|_| {
-                */
-
-                // why not just a for loop here...
-                add.into_iter().for_each(|k| {
-                    let cache_key = NameCacheKey::Name2Uuid(k);
-                    let cache_value = NameCacheValue::U(*uuid);
-                    self.name_cache.insert_dirty(cache_key, cache_value)
-                });
-                Ok(())
-                /*
-                    })
-                */
-            })
+            add.into_iter().for_each(|k| {
+                let cache_key = NameCacheKey::Name2Uuid(k);
+                let cache_value = NameCacheValue::U(*uuid);
+                self.name_cache.insert_dirty(cache_key, cache_value)
+            });
+            Ok(())
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn write_name2uuid_rem(
-        &mut self,
-        audit: &mut AuditScope,
-        rem: BTreeSet<String>,
-    ) -> Result<(), OperationError> {
+    pub fn write_name2uuid_rem(&mut self, rem: BTreeSet<String>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_name2uuid_rem", {
-            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_name2uuid_add", || {
-                // self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
-                rem.into_iter().for_each(|k| {
-                    // why not just a for loop here...
-                    let cache_key = NameCacheKey::Name2Uuid(k);
-                    self.name_cache.remove_dirty(cache_key)
-                });
-                Ok(())
-                // })
-            })
+            // self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
+            rem.into_iter().for_each(|k| {
+                // why not just a for loop here...
+                let cache_key = NameCacheKey::Name2Uuid(k);
+                self.name_cache.remove_dirty(cache_key)
+            });
+            Ok(())
+            // })
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn create_uuid2spn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.create_uuid2spn(audit)
+    pub fn create_uuid2spn(&self) -> Result<(), OperationError> {
+        self.db.create_uuid2spn()
     }
 
     // ! TRACING INTEGRATED
-    pub fn write_uuid2spn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-        k: Option<Value>,
-    ) -> Result<(), OperationError> {
+    pub fn write_uuid2spn(&mut self, uuid: &Uuid, k: Option<Value>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_uuid2spn", {
-            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2spn", || {
-                /*
-                self.db
-                    .write_uuid2spn(audit, uuid, k.as_ref())
-                    .and_then(|_| {
-                */
-                let cache_key = NameCacheKey::Uuid2Spn(*uuid);
-                match k {
-                    Some(v) => self
-                        .name_cache
-                        .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
-                    None => self.name_cache.remove_dirty(cache_key),
-                }
-                Ok(())
-                /*
-                    })
-                */
-            })
+            let cache_key = NameCacheKey::Uuid2Spn(*uuid);
+            match k {
+                Some(v) => self
+                    .name_cache
+                    .insert_dirty(cache_key, NameCacheValue::S(Box::new(v))),
+                None => self.name_cache.remove_dirty(cache_key),
+            }
+            Ok(())
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn create_uuid2rdn(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.create_uuid2rdn(audit)
+    pub fn create_uuid2rdn(&self) -> Result<(), OperationError> {
+        self.db.create_uuid2rdn()
     }
 
     // ! TRACING INTEGRATED
-    pub fn write_uuid2rdn(
-        &mut self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-        k: Option<String>,
-    ) -> Result<(), OperationError> {
+    pub fn write_uuid2rdn(&mut self, uuid: &Uuid, k: Option<String>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_uuid2rdn", {
-            lperf_trace_segment!(audit, "be::idl_arc_sqlite::write_uuid2rdn", || {
-                /*
-                self.db
-                    .write_uuid2rdn(audit, uuid, k.as_ref())
-                    .and_then(|_| {
-                */
-                let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
-                match k {
-                    Some(s) => self
-                        .name_cache
-                        .insert_dirty(cache_key, NameCacheValue::R(s)),
-                    None => self.name_cache.remove_dirty(cache_key),
-                }
-                Ok(())
-                /*
-                    })
-                */
-            })
+            let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
+            match k {
+                Some(s) => self
+                    .name_cache
+                    .insert_dirty(cache_key, NameCacheValue::R(s)),
+                None => self.name_cache.remove_dirty(cache_key),
+            }
+            Ok(())
         })
     }
 
     // ! TRACING INTEGRATED
-    pub fn create_idx(
-        &self,
-        audit: &mut AuditScope,
-        attr: &str,
-        itype: &IndexType,
-    ) -> Result<(), OperationError> {
+    pub fn create_idx(&self, attr: &str, itype: &IndexType) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
-        self.db.create_idx(audit, attr, itype)
+        self.db.create_idx(attr, itype)
     }
 
     // ! TRACING INTEGRATED
-    pub unsafe fn purge_idxs(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_idxs(audit).map(|()| {
+    pub unsafe fn purge_idxs(&mut self) -> Result<(), OperationError> {
+        self.db.purge_idxs().map(|()| {
             self.idl_cache.clear();
         })
     }
 
     // ! TRACING INTEGRATED
-    pub unsafe fn purge_id2entry(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        self.db.purge_id2entry(audit).map(|()| {
+    pub unsafe fn purge_id2entry(&mut self) -> Result<(), OperationError> {
+        self.db.purge_id2entry().map(|()| {
             let mut ids = IDLBitRange::new();
             ids.compress();
             std::mem::swap(self.allids.deref_mut(), &mut ids);
@@ -1356,10 +1129,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    pub fn setup(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn setup(&mut self) -> Result<(), OperationError> {
         self.db
-            .setup(audit)
-            .and_then(|()| self.db.get_allids(audit))
+            .setup()
+            .and_then(|()| self.db.get_allids())
             .map(|mut ids| {
                 std::mem::swap(self.allids.deref_mut(), &mut ids);
             })
@@ -1372,18 +1145,14 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 
 impl IdlArcSqlite {
     // ! TRACING INTEGRATED
-    pub fn new(
-        audit: &mut AuditScope,
-        cfg: &BackendConfig,
-        vacuum: bool,
-    ) -> Result<Self, OperationError> {
-        let db = IdlSqlite::new(audit, cfg, vacuum)?;
+    pub fn new(cfg: &BackendConfig, vacuum: bool) -> Result<Self, OperationError> {
+        let db = IdlSqlite::new(cfg, vacuum)?;
 
         // Autotune heuristic.
         let mut cache_size = cfg.arcsize.unwrap_or_else(|| {
             // For now I've noticed about 20% of the number of entries
             // works well, but it may not be perfect ...
-            db.get_allids_count(audit)
+            db.get_allids_count()
                 .map(|c| {
                     let tmpsize = (c / 5) as usize;
                     // if our calculation's too small anyway, just set it to the minimum target
@@ -1397,12 +1166,6 @@ impl IdlArcSqlite {
                 old = cache_size,
                 new = DEFAULT_CACHE_TARGET,
                 "Configured Arc Cache size too low, increasing..."
-            );
-            ladmin_warning!(
-                audit,
-                "Configured Arc Cache size too low {} - setting to {} ...",
-                &cache_size,
-                DEFAULT_CACHE_TARGET
             );
             cache_size = DEFAULT_CACHE_TARGET; // this being above the log was an uncaught bug
         }

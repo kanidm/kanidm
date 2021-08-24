@@ -286,12 +286,12 @@ pub trait QueryServerTransaction<'a> {
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
     // ! TRACING INTEGRATED
-    fn name_to_uuid(&self, audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
+    fn name_to_uuid(&self, _audit: &mut AuditScope, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
             let lname = name.to_lowercase();
             self.get_be_txn()
-                .name2uuid(audit, lname.as_str())?
+                .name2uuid(lname.as_str())?
                 .ok_or(OperationError::NoMatchingEntries) // should we log this?
         })
     }
@@ -299,10 +299,10 @@ pub trait QueryServerTransaction<'a> {
     // ! TRACING INTEGRATED
     fn uuid_to_spn(
         &self,
-        audit: &mut AuditScope,
+        _audit: &mut AuditScope,
         uuid: &Uuid,
     ) -> Result<Option<Value>, OperationError> {
-        let r = self.get_be_txn().uuid2spn(audit, uuid)?;
+        let r = self.get_be_txn().uuid2spn(uuid)?;
 
         if let Some(ref n) = r {
             // Shouldn't we be doing more graceful error handling here?
@@ -314,10 +314,10 @@ pub trait QueryServerTransaction<'a> {
     }
 
     // ! TRACING INTEGRATED
-    fn uuid_to_rdn(&self, audit: &mut AuditScope, uuid: &Uuid) -> Result<String, OperationError> {
+    fn uuid_to_rdn(&self, _audit: &mut AuditScope, uuid: &Uuid) -> Result<String, OperationError> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
-            .uuid2rdn(audit, uuid)
+            .uuid2rdn(uuid)
             .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.to_hyphenated_ref())))
     }
 
@@ -844,7 +844,7 @@ impl<'a> QueryServerReadTransaction<'a> {
         // If we fail after backend, we need to return NOW because we can't
         // assert any other faith in the DB states.
         //  * backend
-        let be_errs = self.get_be_txn().verify(audit);
+        let be_errs = self.get_be_txn().verify();
 
         if !be_errs.is_empty() {
             return be_errs;

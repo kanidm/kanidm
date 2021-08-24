@@ -125,29 +125,23 @@ pub struct BackendWriteTransaction<'a> {
 
 impl IdRawEntry {
     // ! TRACING INTEGRATED
-    fn into_dbentry(self, audit: &mut AuditScope) -> Result<(u64, DbEntry), OperationError> {
+    fn into_dbentry(self) -> Result<(u64, DbEntry), OperationError> {
         serde_cbor::from_slice(self.data.as_slice())
             .map_err(|e| {
                 admin_error!(?e, "Serde CBOR Error");
-                ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
                 OperationError::SerdeCborError
             })
             .map(|dbe| (self.id, dbe))
     }
 
     // ! TRACING INTEGRATED
-    fn into_entry(
-        self,
-        audit: &mut AuditScope,
-    ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+    fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice()).map_err(|e| {
             admin_error!(?e, "Serde CBOR Error");
-            ladmin_error!(audit, "Serde CBOR Error -> {:?}", e);
             OperationError::SerdeCborError
         })?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
-        Entry::from_dbentry(audit, db_e, self.id)
-            .map_err(|_| OperationError::CorruptedEntry(self.id))
+        Entry::from_dbentry(db_e, self.id).ok_or_else(|| OperationError::CorruptedEntry(self.id))
     }
 }
 
@@ -177,7 +171,7 @@ pub trait BackendTransaction {
                     // Get the idl for this
                     match self
                         .get_idlayer()
-                        .get_idl(au, attr, &IndexType::Equality, &idx_key)?
+                        .get_idl(attr, &IndexType::Equality, &idx_key)?
                     {
                         Some(idl) => (
                             IdList::Indexed(idl),
@@ -197,7 +191,7 @@ pub trait BackendTransaction {
                     // Get the idl for this
                     match self
                         .get_idlayer()
-                        .get_idl(au, attr, &IndexType::SubString, &idx_key)?
+                        .get_idl(attr, &IndexType::SubString, &idx_key)?
                     {
                         Some(idl) => (
                             IdList::Indexed(idl),
@@ -214,7 +208,6 @@ pub trait BackendTransaction {
                 if idx.is_some() {
                     // Get the idl for this
                     match self.get_idlayer().get_idl(
-                        au,
                         attr,
                         &IndexType::Presence,
                         &"_".to_string(),
@@ -609,7 +602,7 @@ pub trait BackendTransaction {
                 }
             };
 
-            let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+            let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
                 admin_error!(?e, "get_identry failed");
                 ladmin_error!(au, "get_identry failed {:?}", e);
                 e
@@ -725,7 +718,7 @@ pub trait BackendTransaction {
                 match &idl {
                     IdList::Indexed(idl) => Ok(!idl.is_empty()),
                     _ => {
-                        let entries = self.get_idlayer().get_identry(au, &idl).map_err(|e| {
+                        let entries = self.get_idlayer().get_identry(&idl).map_err(|e| {
                             admin_error!(?e, "get_identry failed");
                             ladmin_error!(au, "get_identry failed {:?}", e);
                             e
@@ -754,8 +747,8 @@ pub trait BackendTransaction {
     }
 
     // ! TRACING INTEGRATED
-    fn verify(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
-        self.get_idlayer().verify(audit)
+    fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
+        self.get_idlayer().verify()
     }
 
     // ! TRACING INTEGRATED
@@ -780,8 +773,9 @@ pub trait BackendTransaction {
             };
 
             // If the set.len > 1, check each item.
-            n2u_set.iter().try_for_each(|name| {
-                match self.get_idlayer().name2uuid(audit, name) {
+            n2u_set
+                .iter()
+                .try_for_each(|name| match self.get_idlayer().name2uuid(name) {
                     Ok(Some(idx_uuid)) => {
                         if &idx_uuid == e_uuid {
                             Ok(())
@@ -799,11 +793,10 @@ pub trait BackendTransaction {
                         ladmin_error!(audit, "Invalid name2uuid state -> {:?}", r);
                         Err(ConsistencyError::BackendIndexSync)
                     }
-                }
-            })?;
+                })?;
 
             let spn = e.get_uuid2spn();
-            match self.get_idlayer().uuid2spn(audit, &e_uuid) {
+            match self.get_idlayer().uuid2spn(&e_uuid) {
                 Ok(Some(idx_spn)) => {
                     if spn != idx_spn {
                         admin_error!("Invalid uuid2spn state -> incorrect idx spn value");
@@ -819,7 +812,7 @@ pub trait BackendTransaction {
             };
 
             let rdn = e.get_uuid2rdn();
-            match self.get_idlayer().uuid2rdn(audit, &e_uuid) {
+            match self.get_idlayer().uuid2rdn(&e_uuid) {
                 Ok(Some(idx_rdn)) => {
                     if rdn != idx_rdn {
                         admin_error!("Invalid uuid2rdn state -> incorrect idx rdn value");
@@ -847,7 +840,7 @@ pub trait BackendTransaction {
     // ! TRACING INTEGRATED
     fn verify_indexes(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
         let idl = IdList::AllIds;
-        let entries = match self.get_idlayer().get_identry(audit, &idl) {
+        let entries = match self.get_idlayer().get_identry(&idl) {
             Ok(s) => s,
             Err(e) => {
                 admin_error!(?e, "get_identry failure");
@@ -872,7 +865,7 @@ pub trait BackendTransaction {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
-        let raw_entries: Vec<IdRawEntry> = self.get_idlayer().get_identry_raw(audit, &idl)?;
+        let raw_entries: Vec<IdRawEntry> = self.get_idlayer().get_identry_raw(&idl)?;
 
         let entries: Result<Vec<DbEntry>, _> = raw_entries
             .iter()
@@ -900,30 +893,18 @@ pub trait BackendTransaction {
     }
 
     // ! TRACING INTEGRATED
-    fn name2uuid(
-        &self,
-        audit: &mut AuditScope,
-        name: &str,
-    ) -> Result<Option<Uuid>, OperationError> {
-        self.get_idlayer().name2uuid(audit, name)
+    fn name2uuid(&self, name: &str) -> Result<Option<Uuid>, OperationError> {
+        self.get_idlayer().name2uuid(name)
     }
 
     // ! TRACING INTEGRATED
-    fn uuid2spn(
-        &self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<Value>, OperationError> {
-        self.get_idlayer().uuid2spn(audit, uuid)
+    fn uuid2spn(&self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+        self.get_idlayer().uuid2spn(uuid)
     }
 
     // ! TRACING INTEGRATED
-    fn uuid2rdn(
-        &self,
-        audit: &mut AuditScope,
-        uuid: &Uuid,
-    ) -> Result<Option<String>, OperationError> {
-        self.get_idlayer().uuid2rdn(audit, uuid)
+    fn uuid2rdn(&self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+        self.get_idlayer().uuid2rdn(uuid)
     }
 }
 
@@ -953,34 +934,26 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 
 impl<'a> BackendReadTransaction<'a> {
     // ! TRACING INTEGRATED
-    pub fn list_indexes(&self, audit: &mut AuditScope) -> Result<Vec<String>, OperationError> {
-        self.get_idlayer().list_idxs(audit)
+    pub fn list_indexes(&self) -> Result<Vec<String>, OperationError> {
+        self.get_idlayer().list_idxs()
     }
 
     // ! TRACING INTEGRATED
-    pub fn list_id2entry(
-        &self,
-        audit: &mut AuditScope,
-    ) -> Result<Vec<(u64, String)>, OperationError> {
-        self.get_idlayer().list_id2entry(audit)
+    pub fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
+        self.get_idlayer().list_id2entry()
     }
 
     // ! TRACING INTEGRATED
     pub fn list_index_content(
         &self,
-        audit: &mut AuditScope,
         index_name: &str,
     ) -> Result<Vec<(String, IDLBitRange)>, OperationError> {
-        self.get_idlayer().list_index_content(audit, index_name)
+        self.get_idlayer().list_index_content(index_name)
     }
 
     // ! TRACING INTEGRATED
-    pub fn get_id2entry(
-        &self,
-        audit: &mut AuditScope,
-        id: u64,
-    ) -> Result<(u64, String), OperationError> {
-        self.get_idlayer().get_id2entry(audit, id)
+    pub fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError> {
+        self.get_idlayer().get_id2entry(id)
     }
 }
 
@@ -1025,7 +998,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 })
                 .collect();
 
-            idlayer.write_identries(au, c_entries.iter())?;
+            idlayer.write_identries(c_entries.iter())?;
 
             idlayer.set_id2entry_max_id(id_max);
 
@@ -1087,8 +1060,7 @@ impl<'a> BackendWriteTransaction<'a> {
             */
 
             // Now, given the list of id's, update them
-            self.get_idlayer()
-                .write_identries(au, post_entries.iter())?;
+            self.get_idlayer().write_identries(post_entries.iter())?;
 
             // Finally, we now reindex all the changed entries. We do this by iterating and zipping
             // over the set, because we know the list is in the same order.
@@ -1117,7 +1089,7 @@ impl<'a> BackendWriteTransaction<'a> {
             let id_list = entries.iter().map(|e| e.get_id());
 
             // Now, given the list of id's, delete them.
-            self.get_idlayer().delete_identry(au, id_list)?;
+            self.get_idlayer().delete_identry(id_list)?;
 
             // Finally, purge the indexes from the entries we removed.
             entries
@@ -1131,7 +1103,7 @@ impl<'a> BackendWriteTransaction<'a> {
         audit: &mut AuditScope,
         idxkeys: Vec<IdxKey>,
     ) -> Result<(), OperationError> {
-        if self.is_idx_slopeyness_generated(audit)? {
+        if self.is_idx_slopeyness_generated()? {
             ltrace!(audit, "Indexing slopes available");
         } else {
             ladmin_warning!(
@@ -1227,19 +1199,19 @@ impl<'a> BackendWriteTransaction<'a> {
 
             // Write the changes out to the backend
             if let Some(rem) = n2u_rem {
-                idlayer.write_name2uuid_rem(audit, rem)?
+                idlayer.write_name2uuid_rem(rem)?
             }
 
             match u2s_act {
                 None => {}
-                Some(Ok(k)) => idlayer.write_uuid2spn(audit, uuid, Some(k))?,
-                Some(Err(_)) => idlayer.write_uuid2spn(audit, uuid, None)?,
+                Some(Ok(k)) => idlayer.write_uuid2spn(uuid, Some(k))?,
+                Some(Err(_)) => idlayer.write_uuid2spn(uuid, None)?,
             }
 
             match u2r_act {
                 None => {}
-                Some(Ok(k)) => idlayer.write_uuid2rdn(audit, uuid, Some(k))?,
-                Some(Err(_)) => idlayer.write_uuid2rdn(audit, uuid, None)?,
+                Some(Ok(k)) => idlayer.write_uuid2rdn(uuid, Some(k))?,
+                Some(Err(_)) => idlayer.write_uuid2rdn(uuid, None)?,
             }
             // Return none, mask_pre is now completed.
             None
@@ -1261,22 +1233,22 @@ impl<'a> BackendWriteTransaction<'a> {
 
         // Write the changes out to the backend
         if let Some(add) = n2u_add {
-            idlayer.write_name2uuid_add(audit, e_uuid, add)?
+            idlayer.write_name2uuid_add(e_uuid, add)?
         }
         if let Some(rem) = n2u_rem {
-            idlayer.write_name2uuid_rem(audit, rem)?
+            idlayer.write_name2uuid_rem(rem)?
         }
 
         match u2s_act {
             None => {}
-            Some(Ok(k)) => idlayer.write_uuid2spn(audit, e_uuid, Some(k))?,
-            Some(Err(_)) => idlayer.write_uuid2spn(audit, e_uuid, None)?,
+            Some(Ok(k)) => idlayer.write_uuid2spn(e_uuid, Some(k))?,
+            Some(Err(_)) => idlayer.write_uuid2spn(e_uuid, None)?,
         }
 
         match u2r_act {
             None => {}
-            Some(Ok(k)) => idlayer.write_uuid2rdn(audit, e_uuid, Some(k))?,
-            Some(Err(_)) => idlayer.write_uuid2rdn(audit, e_uuid, None)?,
+            Some(Ok(k)) => idlayer.write_uuid2rdn(e_uuid, Some(k))?,
+            Some(Err(_)) => idlayer.write_uuid2rdn(e_uuid, None)?,
         }
 
         // Extremely Cursed - Okay, we know that self.idxmeta will NOT be changed
@@ -1294,10 +1266,10 @@ impl<'a> BackendWriteTransaction<'a> {
                 match act {
                     Ok((attr, itype, idx_key)) => {
                         ltrace!(audit, "Adding {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
-                        match idlayer.get_idl(audit, attr, itype, idx_key)? {
+                        match idlayer.get_idl(attr, itype, idx_key)? {
                             Some(mut idl) => {
                                 idl.insert_id(e_id);
-                                idlayer.write_idl(audit, attr, itype, idx_key, &idl)
+                                idlayer.write_idl(attr, itype, idx_key, &idl)
                             }
                             None => {
                                 ladmin_error!(
@@ -1311,10 +1283,10 @@ impl<'a> BackendWriteTransaction<'a> {
                     }
                     Err((attr, itype, idx_key)) => {
                         ltrace!(audit, "Removing {:?} idx -> {:?}: {:?}", itype, attr, idx_key);
-                        match idlayer.get_idl(audit, attr, itype, idx_key)? {
+                        match idlayer.get_idl(attr, itype, idx_key)? {
                             Some(mut idl) => {
                                 idl.remove_id(e_id);
-                                idlayer.write_idl(audit, attr, itype, idx_key, &idl)
+                                idlayer.write_idl(attr, itype, idx_key, &idl)
                             }
                             None => {
                                 ladmin_error!(
@@ -1336,7 +1308,7 @@ impl<'a> BackendWriteTransaction<'a> {
         &self,
         audit: &mut AuditScope,
     ) -> Result<Vec<(AttrString, IndexType)>, OperationError> {
-        let idx_table_list = self.get_idlayer().list_idxs(audit)?;
+        let idx_table_list = self.get_idlayer().list_idxs()?;
 
         // Turn the vec to a real set
         let idx_table_set: HashSet<_> = idx_table_list.into_iter().collect();
@@ -1364,18 +1336,18 @@ impl<'a> BackendWriteTransaction<'a> {
         let idlayer = self.get_idlayer();
         // Create name2uuid and uuid2name
         ltrace!(audit, "Creating index -> name2uuid");
-        idlayer.create_name2uuid(audit)?;
+        idlayer.create_name2uuid()?;
 
         ltrace!(audit, "Creating index -> uuid2spn");
-        idlayer.create_uuid2spn(audit)?;
+        idlayer.create_uuid2spn()?;
 
         ltrace!(audit, "Creating index -> uuid2rdn");
-        idlayer.create_uuid2rdn(audit)?;
+        idlayer.create_uuid2rdn()?;
 
         self.idxmeta
             .idxkeys
             .keys()
-            .try_for_each(|ikey| idlayer.create_idx(audit, &ikey.attr, &ikey.itype))
+            .try_for_each(|ikey| idlayer.create_idx(&ikey.attr, &ikey.itype))
     }
 
     pub fn upgrade_reindex(&self, audit: &mut AuditScope, v: i64) -> Result<(), OperationError> {
@@ -1397,7 +1369,7 @@ impl<'a> BackendWriteTransaction<'a> {
     pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
         let idlayer = self.get_idlayer();
         // Purge the idxs
-        unsafe { idlayer.purge_idxs(audit)? };
+        unsafe { idlayer.purge_idxs()? };
 
         // Using the index metadata on the txn, create all our idx tables
         self.create_idxs(audit)?;
@@ -1406,7 +1378,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Future idea: Do this in batches of X amount to limit memory
         // consumption.
         let idl = IdList::AllIds;
-        let entries = idlayer.get_identry(audit, &idl).map_err(|e| {
+        let entries = idlayer.get_identry(&idl).map_err(|e| {
             ladmin_error!(audit, "get_identry failure {:?}", e);
             e
         })?;
@@ -1430,10 +1402,10 @@ impl<'a> BackendWriteTransaction<'a> {
             })?;
         limmediate_warning!(audit, " reindexed {} entries ✅\n", count);
         limmediate_warning!(audit, "Optimising Indexes ... ");
-        idlayer.optimise_dirty_idls(audit);
+        idlayer.optimise_dirty_idls();
         limmediate_warning!(audit, "done ✅\n");
         limmediate_warning!(audit, "Calculating Index Optimisation Slopes ... ");
-        idlayer.analyse_idx_slopes(audit).map_err(|e| {
+        idlayer.analyse_idx_slopes().map_err(|e| {
             ladmin_error!(audit, "index optimisation failed -> {:?}", e);
             e
         })?;
@@ -1442,23 +1414,22 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[cfg(test)]
-    pub fn purge_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        unsafe { self.get_idlayer().purge_idxs(audit) }
+    pub fn purge_idxs(&self) -> Result<(), OperationError> {
+        unsafe { self.get_idlayer().purge_idxs() }
     }
 
     #[cfg(test)]
     pub fn load_test_idl(
         &self,
-        audit: &mut AuditScope,
         attr: &String,
         itype: &IndexType,
         idx_key: &String,
     ) -> Result<Option<IDLBitRange>, OperationError> {
-        self.get_idlayer().get_idl(audit, attr, itype, idx_key)
+        self.get_idlayer().get_idl(attr, itype, idx_key)
     }
 
-    fn is_idx_slopeyness_generated(&self, audit: &mut AuditScope) -> Result<bool, OperationError> {
-        self.get_idlayer().is_idx_slopeyness_generated(audit)
+    fn is_idx_slopeyness_generated(&self) -> Result<bool, OperationError> {
+        self.get_idlayer().is_idx_slopeyness_generated()
     }
 
     fn get_idx_slope(
@@ -1469,7 +1440,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Do we have the slopeyness?
         let slope = self
             .get_idlayer()
-            .get_idx_slope(audit, ikey)?
+            .get_idx_slope(ikey)?
             .unwrap_or_else(|| get_idx_slope_default(ikey));
         ltrace!(audit, "index slope - {:?} -> {:?}", ikey, slope);
         Ok(slope)
@@ -1484,7 +1455,7 @@ impl<'a> BackendWriteTransaction<'a> {
             OperationError::FsError
         })?;
 
-        unsafe { idlayer.purge_id2entry(audit) }.map_err(|e| {
+        unsafe { idlayer.purge_id2entry() }.map_err(|e| {
             ladmin_error!(audit, "purge_id2entry failed {:?}", e);
             e
         })?;
@@ -1508,12 +1479,12 @@ impl<'a> BackendWriteTransaction<'a> {
             })
             .collect();
 
-        idlayer.write_identries_raw(audit, identries?.into_iter())?;
+        idlayer.write_identries_raw(identries?.into_iter())?;
 
         // Reindex now we are loaded.
         self.reindex(audit)?;
 
-        let vr = self.verify(audit);
+        let vr = self.verify();
         if vr.is_empty() {
             Ok(())
         } else {
@@ -1521,7 +1492,7 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    pub fn commit(self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn commit(self, _audit: &mut AuditScope) -> Result<(), OperationError> {
         let BackendWriteTransaction {
             idlayer,
             idxmeta: _,
@@ -1531,7 +1502,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // Unwrap the Cell we have finished with it.
         let idlayer = idlayer.into_inner();
 
-        idlayer.commit(audit).map(|()| {
+        idlayer.commit().map(|()| {
             idxmeta_wr.commit();
         })
     }
@@ -1644,7 +1615,7 @@ impl Backend {
 
         // this has a ::memory() type, but will path == "" work?
         lperf_trace_segment!(audit, "be::new", || {
-            let idlayer = Arc::new(IdlArcSqlite::new(audit, &cfg, vacuum)?);
+            let idlayer = Arc::new(IdlArcSqlite::new(&cfg, vacuum)?);
             let be = Backend {
                 cfg,
                 idlayer,
@@ -1657,7 +1628,7 @@ impl Backend {
             // the indexing subsystem here.
             let r = {
                 let mut idl_write = be.idlayer.write();
-                idl_write.setup(audit).and_then(|_| idl_write.commit(audit))
+                idl_write.setup().and_then(|_| idl_write.commit())
             };
 
             ltrace!(audit, "be new setup: {:?}", r);
@@ -1731,14 +1702,7 @@ mod tests {
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
-            use env_logger;
-            ::std::env::set_var("RUST_LOG", "kanidm=debug");
-            let _ = env_logger::builder()
-                .format_timestamp(None)
-                .format_level(false)
-                .is_test(true)
-                .try_init();
-
+            let _ = crate::tracing_tree::test_init();
             let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
             // This is a demo idxmeta, purely for testing.
@@ -1818,9 +1782,9 @@ mod tests {
     }
 
     macro_rules! idl_state {
-        ($audit:expr, $be:expr, $attr:expr, $itype:expr, $idx_key:expr, $expect:expr) => {{
+        ($be:expr, $attr:expr, $itype:expr, $idx_key:expr, $expect:expr) => {{
             let t_idl = $be
-                .load_test_idl($audit, &$attr.to_string(), &$itype, &$idx_key.to_string())
+                .load_test_idl(&$attr.to_string(), &$itype, &$idx_key.to_string())
                 .expect("IdList Load failed");
             let t = $expect.map(|v: Vec<u64>| IDLBitRange::from_iter(v));
             assert_eq!(t_idl, t);
@@ -2071,7 +2035,7 @@ mod tests {
             be.restore(audit, DB_BACKUP_FILE_NAME)
                 .expect("Restore failed!");
 
-            assert!(be.verify(audit).len() == 0);
+            assert!(be.verify().len() == 0);
         });
     }
 
@@ -2130,7 +2094,7 @@ mod tests {
             be.restore(audit, DB_BACKUP2_FILE_NAME)
                 .expect("Restore failed!");
 
-            assert!(be.verify(audit).len() == 0);
+            assert!(be.verify().len() == 0);
         });
     }
 
@@ -2179,7 +2143,7 @@ mod tests {
             be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();
 
             // purge indexes
-            be.purge_idxs(audit).unwrap();
+            be.purge_idxs().unwrap();
             // Check they are gone
             let missing = be.missing_idxs(audit).unwrap();
             assert!(missing.len() == 7);
@@ -2189,35 +2153,13 @@ mod tests {
             assert!(missing.is_empty());
             // check name and uuid ids on eq, sub, pres
 
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "william",
-                Some(vec![1])
-            );
+            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
+
+            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
+
+            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1, 2]));
 
             idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "claire",
-                Some(vec![2])
-            );
-
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Presence,
-                "_",
-                Some(vec![1, 2])
-            );
-
-            idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2226,7 +2168,6 @@ mod tests {
             );
 
             idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2234,19 +2175,11 @@ mod tests {
                 Some(vec![2])
             );
 
-            idl_state!(
-                audit,
-                be,
-                "uuid",
-                IndexType::Presence,
-                "_",
-                Some(vec![1, 2])
-            );
+            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1, 2]));
 
             // Show what happens with empty
 
             idl_state!(
-                audit,
                 be,
                 "name",
                 IndexType::Equality,
@@ -2255,7 +2188,6 @@ mod tests {
             );
 
             idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2265,7 +2197,6 @@ mod tests {
 
             let uuid_p_idl = be
                 .load_test_idl(
-                    audit,
                     &"not_indexed".to_string(),
                     &IndexType::Presence,
                     &"_".to_string(),
@@ -2277,15 +2208,15 @@ mod tests {
             let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
 
-            assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
-            assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
-            assert!(be.name2uuid(audit, "db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
+            assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
+            assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
+            assert!(be.name2uuid("db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
             // check uuid2spn
-            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::new_iname("claire"))));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::new_iname("william"))));
+            assert!(be.uuid2spn(&claire_uuid) == Ok(Some(Value::new_iname("claire"))));
+            assert!(be.uuid2spn(&william_uuid) == Ok(Some(Value::new_iname("william"))));
             // check uuid2rdn
-            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));
+            assert!(be.uuid2rdn(&claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=william".to_string())));
         });
     }
 
@@ -2303,19 +2234,11 @@ mod tests {
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
 
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "william",
-                Some(vec![1])
-            );
+            idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
 
-            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
 
             idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2323,36 +2246,21 @@ mod tests {
                 Some(vec![1])
             );
 
-            idl_state!(audit, be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
 
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
-            assert!(be.name2uuid(audit, "william") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("william"))));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=william".to_string())));
+            assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
+            assert!(be.uuid2spn(&william_uuid) == Ok(Some(Value::from("william"))));
+            assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=william".to_string())));
 
             // == Now we delete, and assert we removed the items.
             be.delete(audit, &rset).unwrap();
 
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "william",
-                Some(Vec::new())
-            );
+            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
+
+            idl_state!(be, "name", IndexType::Presence, "_", Some(Vec::new()));
 
             idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Presence,
-                "_",
-                Some(Vec::new())
-            );
-
-            idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2360,18 +2268,11 @@ mod tests {
                 Some(Vec::new())
             );
 
-            idl_state!(
-                audit,
-                be,
-                "uuid",
-                IndexType::Presence,
-                "_",
-                Some(Vec::new())
-            );
+            idl_state!(be, "uuid", IndexType::Presence, "_", Some(Vec::new()));
 
-            assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
+            assert!(be.name2uuid("william") == Ok(None));
+            assert!(be.uuid2spn(&william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(&william_uuid) == Ok(None));
         })
     }
 
@@ -2406,19 +2307,11 @@ mod tests {
             // Now remove e1, e3.
             be.delete(audit, &rset).unwrap();
 
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "claire",
-                Some(vec![2])
-            );
+            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
 
-            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![2]));
 
             idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2426,23 +2319,23 @@ mod tests {
                 Some(vec![2])
             );
 
-            idl_state!(audit, be, "uuid", IndexType::Presence, "_", Some(vec![2]));
+            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![2]));
 
             let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             let lucy_uuid = Uuid::parse_str("7b23c99d-c06b-4a9a-a958-3afa56383e1d").unwrap();
 
-            assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
-            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
+            assert!(be.uuid2spn(&claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(&claire_uuid) == Ok(Some("name=claire".to_string())));
 
-            assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
+            assert!(be.name2uuid("william") == Ok(None));
+            assert!(be.uuid2spn(&william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(&william_uuid) == Ok(None));
 
-            assert!(be.name2uuid(audit, "lucy") == Ok(None));
-            assert!(be.uuid2spn(audit, &lucy_uuid) == Ok(None));
-            assert!(be.uuid2rdn(audit, &lucy_uuid) == Ok(None));
+            assert!(be.name2uuid("lucy") == Ok(None));
+            assert!(be.uuid2spn(&lucy_uuid) == Ok(None));
+            assert!(be.uuid2rdn(&lucy_uuid) == Ok(None));
         })
     }
 
@@ -2475,27 +2368,20 @@ mod tests {
             be.modify(audit, &rset, &vec![ce1]).unwrap();
 
             // Now check the idls
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "claire",
-                Some(vec![1])
-            );
+            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
 
-            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
 
-            idl_state!(audit, be, "tb", IndexType::Equality, "test", Some(vec![1]));
+            idl_state!(be, "tb", IndexType::Equality, "test", Some(vec![1]));
 
-            idl_state!(audit, be, "ta", IndexType::Equality, "test", Some(vec![]));
+            idl_state!(be, "ta", IndexType::Equality, "test", Some(vec![]));
 
             // let claire_uuid = Uuid::parse_str("bd651620-00dd-426b-aaa0-4494f7b7906f").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
-            assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.name2uuid(audit, "claire") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.name2uuid("william") == Ok(None));
+            assert!(be.name2uuid("claire") == Ok(Some(william_uuid)));
+            assert!(be.uuid2spn(&william_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
 
@@ -2522,17 +2408,9 @@ mod tests {
 
             be.modify(audit, &rset, &vec![ce1]).unwrap();
 
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "claire",
-                Some(vec![1])
-            );
+            idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
 
             idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
@@ -2540,34 +2418,26 @@ mod tests {
                 Some(vec![1])
             );
 
-            idl_state!(audit, be, "name", IndexType::Presence, "_", Some(vec![1]));
-            idl_state!(audit, be, "uuid", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(be, "name", IndexType::Presence, "_", Some(vec![1]));
+            idl_state!(be, "uuid", IndexType::Presence, "_", Some(vec![1]));
 
             idl_state!(
-                audit,
                 be,
                 "uuid",
                 IndexType::Equality,
                 "db237e8a-0079-4b8c-8a56-593b22aa44d1",
                 Some(Vec::new())
             );
-            idl_state!(
-                audit,
-                be,
-                "name",
-                IndexType::Equality,
-                "william",
-                Some(Vec::new())
-            );
+            idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
 
             let claire_uuid = Uuid::parse_str("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8").unwrap();
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
-            assert!(be.name2uuid(audit, "william") == Ok(None));
-            assert!(be.name2uuid(audit, "claire") == Ok(Some(claire_uuid)));
-            assert!(be.uuid2spn(audit, &william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(audit, &william_uuid) == Ok(None));
-            assert!(be.uuid2spn(audit, &claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(audit, &claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.name2uuid("william") == Ok(None));
+            assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
+            assert!(be.uuid2spn(&william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(&william_uuid) == Ok(None));
+            assert!(be.uuid2spn(&claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(&claire_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
 
@@ -2867,7 +2737,7 @@ mod tests {
         run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
             // Test where the index is in schema but not created (purge idxs)
             // should fall back to an empty set because we can't satisfy the term
-            be.purge_idxs(audit).unwrap();
+            be.purge_idxs().unwrap();
             debug!("{:?}", be.missing_idxs(audit).unwrap());
             let f_eq =
                 unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
@@ -2913,7 +2783,7 @@ mod tests {
 
             // If the slopes haven't been generated yet, there are some hardcoded values
             // that we can use instead. They aren't generated until a first re-index.
-            assert!(!be.is_idx_slopeyness_generated(audit).unwrap());
+            assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
                 .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))
@@ -2947,7 +2817,7 @@ mod tests {
             // Now check slope generation for the values. Today these are calculated
             // at reindex time, so we now perform the re-index.
             assert!(be.reindex(audit).is_ok());
-            assert!(be.is_idx_slopeyness_generated(audit).unwrap());
+            assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
                 .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))

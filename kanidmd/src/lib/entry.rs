@@ -1294,9 +1294,7 @@ impl Entry<EntrySealed, EntryCommitted> {
     }
 
     // ! TRACING INTEGRATED
-    // Why is this returning a `Result<Self, ()>` when we could just do `Option<Self>`
-    // How did this even pass clippy?
-    pub fn from_dbentry(au: &mut AuditScope, db_e: DbEntry, id: u64) -> Result<Self, ()> {
+    pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
         let r_attrs: Result<Map<AttrString, ValueSet>, ()> = match db_e.ent {
             DbEntryVers::V1(v1) => v1
@@ -1309,7 +1307,6 @@ impl Entry<EntrySealed, EntryCommitted> {
                         Ok(vv) => Ok((k, vv)),
                         Err(()) => {
                             admin_error!(value = ?k, "from_dbentry failed");
-                            ladmin_error!(au, "from_dbentry failed on value {:?}", k);
                             Err(())
                         }
                     }
@@ -1317,18 +1314,15 @@ impl Entry<EntrySealed, EntryCommitted> {
                 .collect(),
         };
 
-        let attrs = r_attrs?;
+        let attrs = r_attrs.ok()?;
 
         let uuid: Uuid = *match attrs.get("uuid") {
             Some(vs) => vs.iter().take(1).next(),
             None => None,
         }
-        .ok_or(())?
-        // Now map value -> uuid
-        .to_uuid()
-        .ok_or(())?;
+        .and_then(|v| v.to_uuid())?;
 
-        Ok(Entry {
+        Some(Entry {
             valid: EntrySealed { uuid },
             state: EntryCommitted { id },
             attrs,
