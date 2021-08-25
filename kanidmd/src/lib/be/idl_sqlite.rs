@@ -577,7 +577,7 @@ impl IdlSqliteWriteTransaction {
     // ! TRACING INTEGRATED
     pub fn commit(mut self) -> Result<(), OperationError> {
         spanned!("be::idl_sqlite::commit", {
-            // ltrace!(audit, "Commiting BE WR txn");
+            trace!("Commiting BE WR txn");
             assert!(!self.committed);
             self.committed = true;
 
