@@ -2577,12 +2577,6 @@
 <span id="2575">2575</span>
 <span id="2576">2576</span>
 <span id="2577">2577</span>
-<span id="2578">2578</span>
-<span id="2579">2579</span>
-<span id="2580">2580</span>
-<span id="2581">2581</span>
-<span id="2582">2582</span>
-<span id="2583">2583</span>
 </pre><pre class="rust">
 <span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
@@ -3880,9 +3874,7 @@
     }
 
     <span class="comment">// ! TRACING INTEGRATED</span>
-    <span class="comment">// Why is this returning a `Result&lt;Self, ()&gt;` when we could just do `Option&lt;Self&gt;`</span>
-    <span class="comment">// How did this even pass clippy?</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbentry</span>(<span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">db_e</span>: <span class="ident">DbEntry</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_dbentry</span>(<span class="ident">db_e</span>: <span class="ident">DbEntry</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span> {
         <span class="comment">// Convert attrs from db format to value</span>
         <span class="kw">let</span> <span class="ident">r_attrs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">db_e</span>.<span class="ident">ent</span> {
             <span class="ident">DbEntryVers::V1</span>(<span class="ident">v1</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v1</span>
@@ -3895,7 +3887,6 @@
                         <span class="prelude-val">Ok</span>(<span class="ident">vv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">k</span>, <span class="ident">vv</span>)),
                         <span class="prelude-val">Err</span>(()) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="macro">admin_error!</span>(<span class="ident">value</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">k</span>, <span class="string">&quot;from_dbentry failed&quot;</span>);
-                            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;from_dbentry failed on value {:?}&quot;</span>, <span class="ident">k</span>);
                             <span class="prelude-val">Err</span>(())
                         }
                     }
@@ -3903,18 +3894,15 @@
                 .<span class="ident">collect</span>(),
         };
 
-        <span class="kw">let</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">r_attrs</span><span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">r_attrs</span>.<span class="ident">ok</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="kw">match</span> <span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
             <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>(),
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
         }
-        .<span class="ident">ok_or</span>(())<span class="question-mark">?</span>
-        <span class="comment">// Now map value -&gt; uuid</span>
-        .<span class="ident">to_uuid</span>()
-        .<span class="ident">ok_or</span>(())<span class="question-mark">?</span>;
+        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_uuid</span>())<span class="question-mark">?</span>;
 
-        <span class="prelude-val">Ok</span>(<span class="ident">Entry</span> {
+        <span class="prelude-val">Some</span>(<span class="ident">Entry</span> {
             <span class="ident">valid</span>: <span class="ident">EntrySealed</span> { <span class="ident">uuid</span> },
             <span class="ident">state</span>: <span class="ident">EntryCommitted</span> { <span class="ident">id</span> },
             <span class="ident">attrs</span>,
