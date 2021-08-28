@@ -15,7 +15,7 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
-use tide_rustls::TlsListener;
+use tide_openssl::TlsListener;
 
 use crate::tracing_tree::TreeMiddleware;
 use tracing::{error, info};
