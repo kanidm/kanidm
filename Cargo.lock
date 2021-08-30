@@ -1809,6 +1809,7 @@ dependencies = [
  "chrono",
  "concread",
  "criterion",
+ "either",
  "env_logger",
  "fernet",
  "filetime",
@@ -1838,6 +1839,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "smartstring",
+ "smolset",
  "sshkeys",
  "structopt",
  "tide",
@@ -3201,6 +3203,15 @@ checksum = "baaf55266b953d41d45fc7c4d3ff756490c5666a2af64f77aeb95d0ffadb91de"
 dependencies = [
  "serde",
  "static_assertions",
+]
+
+[[package]]
+name = "smolset"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8d372e8fe15dc5229e7d6c65f5810849385e79e24f9d9d64263e132879c7be0"
+dependencies = [
+ "smallvec",
 ]
 
 [[package]]

@@ -222,7 +222,7 @@ impl Plugin for Spn {
             match e.get_ava_single("spn") {
                 Some(r_spn) => {
                     ltrace!(au, "verify spn: s {:?} == ex {:?} ?", r_spn, g_spn);
-                    if *r_spn != g_spn {
+                    if r_spn != g_spn {
                         ladmin_error!(
                             au,
                             "Entry {:?} SPN does not match expected s {:?} != ex {:?}",
@@ -371,7 +371,7 @@ mod tests {
                 .expect("must not fail");
 
             let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
-            assert!(*e_pre_spn == ex1);
+            assert!(e_pre_spn == ex1);
 
             // trigger the domain_name change (this will be a cli option to the server
             // in the final version), but it will still call the same qs function to perform the
@@ -388,7 +388,7 @@ mod tests {
             let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
             debug!("{:?}", e_post_spn);
             debug!("{:?}", ex2);
-            assert!(*e_post_spn == ex2);
+            assert!(e_post_spn == ex2);
 
             server_txn.commit(au).expect("Must not fail");
         });

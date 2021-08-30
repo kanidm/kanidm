@@ -15,7 +15,6 @@ use crate::idm::event::{
     CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
     UnixUserAuthEvent, UnixUserTokenEvent,
 };
-use crate::value::PartialValue;
 use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
@@ -894,11 +893,7 @@ impl QueryServerReadV1 {
                                 // From the entry, turn it into the value
                                 e.get_ava_set("ssh_publickey").and_then(|vs| {
                                     // Get the one tagged value
-                                    let pv = PartialValue::new_sshkey_tag(tag);
-                                    vs.get(&pv)
-                                        // Now turn that value to a pub key.
-                                        .and_then(|v| v.get_sshkey())
-                                        .map(|s| s.to_string())
+                                    vs.get_ssh_tag(&tag).map(str::to_string)
                                 })
                             })
                             .unwrap_or_else(|| {

@@ -1837,33 +1837,37 @@ mod tests {
             assert!(cr.is_ok());
 
             // Resolving most times should yield expected results
-            let t1 = Value::new_utf8s("teststring");
-            let r1 = server_txn.resolve_value(audit, &t1);
-            assert!(r1 == Ok("teststring".to_string()));
+            let t1 = ValueSet::new(Value::new_utf8s("teststring"));
+            let r1 = server_txn.resolve_valueset(audit, &t1);
+            assert!(r1 == Ok(vec!["teststring".to_string()]));
 
             // Resolve UUID with matching spn
-            let t_uuid = Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap();
-            let r_uuid = server_txn.resolve_value(audit, &t_uuid);
+            let t_uuid =
+                ValueSet::new(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
+            let r_uuid = server_txn.resolve_valueset(audit, &t_uuid);
             debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok("testperson1@example.com".to_string()));
+            assert!(r_uuid == Ok(vec!["testperson1@example.com".to_string()]));
 
             // Resolve UUID with matching name
-            let t_uuid = Value::new_refer_s("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap();
-            let r_uuid = server_txn.resolve_value(audit, &t_uuid);
+            let t_uuid =
+                ValueSet::new(Value::new_refer_s("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap());
+            let r_uuid = server_txn.resolve_valueset(audit, &t_uuid);
             debug!("{:?}", r_uuid);
-            assert!(r_uuid == Ok("testperson2".to_string()));
+            assert!(r_uuid == Ok(vec!["testperson2".to_string()]));
 
             // Resolve UUID non-exist
-            let t_uuid_non = Value::new_refer_s("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap();
-            let r_uuid_non = server_txn.resolve_value(audit, &t_uuid_non);
+            let t_uuid_non =
+                ValueSet::new(Value::new_refer_s("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap());
+            let r_uuid_non = server_txn.resolve_valueset(audit, &t_uuid_non);
             debug!("{:?}", r_uuid_non);
-            assert!(r_uuid_non == Ok("b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()));
+            assert!(r_uuid_non == Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()]));
 
             // Resolve UUID to tombstone/recycled (same an non-exst)
-            let t_uuid_ts = Value::new_refer_s("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap();
-            let r_uuid_ts = server_txn.resolve_value(audit, &t_uuid_ts);
+            let t_uuid_ts =
+                ValueSet::new(Value::new_refer_s("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap());
+            let r_uuid_ts = server_txn.resolve_valueset(audit, &t_uuid_ts);
             debug!("{:?}", r_uuid_ts);
-            assert!(r_uuid_ts == Ok("9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()));
+            assert!(r_uuid_ts == Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()]));
         })
     }
 

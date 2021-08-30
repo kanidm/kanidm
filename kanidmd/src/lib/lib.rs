@@ -2,7 +2,7 @@
 //! which is used to process authentication, store identities and enforce access controls.
 
 #![recursion_limit = "512"]
-#![deny(warnings)]
+// #![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -18,6 +18,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 #[macro_use]
 extern crate log;
+
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
@@ -84,6 +85,7 @@ pub mod prelude {
         QueryServerWriteTransaction,
     };
     pub use crate::value::{IndexType, PartialValue, SyntaxType, Value};
+    pub use crate::valueset::ValueSet;
     pub use crate::{
         admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace, filter_warn,
         perf_trace, request_error, request_info, request_trace, request_warn, security_access,

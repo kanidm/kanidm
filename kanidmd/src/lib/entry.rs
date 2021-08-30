@@ -37,6 +37,7 @@ use crate::valueset::ValueSet;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
+use tracing::trace;
 
 use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 use crate::be::{IdxKey, IdxSlope};
@@ -230,14 +231,7 @@ impl<STATE> std::fmt::Display for Entry<EntryInit, STATE> {
 impl<STATE> Entry<EntryInit, STATE> {
     /// Get the uuid of this entry.
     pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
-        match self.attrs.get("uuid") {
-            Some(vs) => match vs.iter().take(1).next() {
-                // Uv is a value that might contain uuid - we hope it does!
-                Some(uv) => uv.to_uuid(),
-                _ => None,
-            },
-            None => None,
-        }
+        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 }
 
@@ -265,6 +259,7 @@ impl Entry<EntryInit, EntryNew> {
         e: &ProtoEntry,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
+        trace!("from_proto_entry");
         // Why not the trait? In the future we may want to extend
         // this with server aware functions for changes of the
         // incoming data.
@@ -274,10 +269,14 @@ impl Entry<EntryInit, EntryNew> {
         let map2: Result<Map<AttrString, ValueSet>, OperationError> = e
             .attrs
             .iter()
+            .filter(|(_, v)| !v.is_empty())
             .map(|(k, v)| {
+                trace!(?k, ?v, "k, v");
                 let nk = qs.get_schema().normalise_attr_name(k);
-                let nv: Result<ValueSet, _> =
-                    v.iter().map(|vr| qs.clone_value(audit, &nk, vr)).collect();
+                let nv = ValueSet::from_result_value_iter(
+                    v.iter().map(|vr| qs.clone_value(audit, &nk, vr)),
+                );
+                trace!(?nv, "nv");
                 match nv {
                     Ok(nvi) => Ok((nk, nvi)),
                     Err(e) => Err(e),
@@ -303,6 +302,7 @@ impl Entry<EntryInit, EntryNew> {
         es: &str,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
+        trace!("from_proto_entry_str");
         if cfg!(test) {
             if es.len() > 256 {
                 let (dsp_es, _) = es.split_at(255);
@@ -314,6 +314,7 @@ impl Entry<EntryInit, EntryNew> {
         // str -> Proto entry
         let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
             ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
+            admin_error!(?e, "SerdeJson Failure");
             OperationError::SerdeJsonError
         })?;
         // now call from_proto_entry
@@ -327,97 +328,116 @@ impl Entry<EntryInit, EntryNew> {
         let pe: ProtoEntry = serde_json::from_str(es).expect("Invalid Proto Entry");
         // use a const map to convert str -> ava
         let x: Map<AttrString, ValueSet> = pe.attrs.into_iter()
-            .map(|(k, vs)| {
+            .filter_map(|(k, vs)| {
+                if vs.is_empty() {
+                    None
+                } else {
                 let attr = AttrString::from(k.to_lowercase());
                 let vv: ValueSet = match attr.as_str() {
                     "attributename" | "classname" | "domain" => {
-                        vs.into_iter().map(|v| Value::new_iutf8(&v)).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_iutf8(&v)).collect();
+                        vs.unwrap()
                     }
                     "name" | "domain_name" => {
-                        vs.into_iter().map(|v| Value::new_iname(&v)).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_iname(&v)).collect();
+                        vs.unwrap()
                     }
                     "userid" | "uidnumber" => {
                         warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
-                        vs.into_iter().map(|v| Value::new_iutf8(&v)).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_iutf8(&v)).collect();
+                        vs.unwrap()
                     }
                     "class" | "acp_create_class" | "acp_modify_class"  => {
-                        vs.into_iter().map(|v| Value::new_class(v.as_str())).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_class(v.as_str())).collect();
+                        vs.unwrap()
                     }
                     "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
                     "systemmay" | "may" | "systemmust" | "must"
                     => {
-                        vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect();
+                        vs.unwrap()
                     }
                     "uuid" | "domain_uuid" => {
-                        vs.into_iter().map(|v| Value::new_uuids(v.as_str())
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_uuids(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect()
+                        ).collect();
+                        vs.unwrap()
                     }
                     "member" | "memberof" | "directmemberof" => {
-                        vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() ).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() ).collect();
+                        vs.unwrap()
                     }
                     "acp_enable" | "multivalue" | "unique" => {
-                        vs.into_iter().map(|v| Value::new_bools(v.as_str())
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_bools(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                            ).collect()
+                            ).collect();
+                        vs.unwrap()
                     }
                     "syntax" => {
-                        vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect()
+                        ).collect();
+                        vs.unwrap()
                     }
                     "index" => {
-                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_indexs(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect()
+                        ).collect();
+                        vs.unwrap()
                     }
                     "acp_targetscope" | "acp_receiver" => {
-                        vs.into_iter().map(|v| Value::new_json_filter(v.as_str())
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect()
+                        ).collect();
+                        vs.unwrap()
                     }
                     "displayname" | "description" => {
-                        vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_utf8(v)).collect();
+                        vs.unwrap()
                     }
                     "spn" => {
-                        vs.into_iter().map(|v| {
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| {
                             Value::new_spn_parse(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        }).collect()
+                        }).collect();
+                        vs.unwrap()
                     }
                     "gidnumber" | "version" => {
-                        vs.into_iter().map(|v| {
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| {
                             Value::new_uint32_str(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        }).collect()
+                        }).collect();
+                        vs.unwrap()
                     }
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
-                        vs.into_iter().map(|v| Value::new_utf8(v)).collect()
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_utf8(v)).collect();
+                        vs.unwrap()
                     }
                 };
-                (attr, vv)
+                Some((attr, vv))
+                }
             })
             .collect();
 
@@ -508,19 +528,16 @@ impl Entry<EntryInit, EntryNew> {
     {
         self.set_ava_int(attr, iter)
     }
+
+    pub fn get_ava_mut(&mut self, attr: &str) -> Option<&mut ValueSet> {
+        self.attrs.get_mut(attr)
+    }
 }
 
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
     pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
-        match self.attrs.get("uuid") {
-            Some(vs) => match vs.iter().take(1).next() {
-                // Uv is a value that might contain uuid - we hope it does!
-                Some(uv) => uv.to_uuid(),
-                _ => None,
-            },
-            None => None,
-        }
+        self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 
     /// Validate that this entry and it's attribute-value sets are conformant to the systems
@@ -532,16 +549,15 @@ impl<STATE> Entry<EntryInvalid, STATE> {
         let schema_classes = schema.get_classes();
         let schema_attributes = schema.get_attributes();
 
-        let uuid: Uuid = match &self.attrs.get("uuid") {
-            Some(vs) => match vs.iter().take(1).next() {
-                Some(uuid_v) => match uuid_v.to_uuid() {
-                    Some(uuid) => *uuid,
-                    None => return Err(SchemaError::InvalidAttribute("uuid".to_string())),
-                },
-                None => return Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()])),
-            },
-            None => return Err(SchemaError::MissingMustAttribute(vec!["uuid".to_string()])),
-        };
+        let uuid: Uuid = self
+            .attrs
+            .get("uuid")
+            .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            .and_then(|vs| {
+                vs.to_uuid_single()
+                    .copied()
+                    .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
+            })?;
 
         // Build the new valid entry ...
         let ne = Entry {
@@ -553,6 +569,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             attrs: self.attrs,
         };
         // Now validate it!
+        trace!(?ne.attrs, "Entry::validate -> target");
 
         // We scope here to limit the time of borrow of ne.
         {
@@ -569,17 +586,14 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             let mut invalid_classes = Vec::with_capacity(0);
 
             let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
-            entry_classes.iter().for_each(|c: &Value| {
-                // we specify types here to help me clarify a few things in the
-                // development process :)
-                match c.to_str() {
-                    Some(s) => match schema_classes.get(s) {
-                        Some(x) => classes.push(x),
-                        None => invalid_classes.push(s.to_string()),
-                    },
-                    None => invalid_classes.push("corrupt classname".to_string()),
-                }
-            });
+
+            match entry_classes.as_classname_iter() {
+                Some(cls_iter) => cls_iter.for_each(|s| match schema_classes.get(s) {
+                    Some(x) => classes.push(x),
+                    None => invalid_classes.push(s.to_string()),
+                }),
+                None => invalid_classes.push("corrupt class attribute".to_string()),
+            };
 
             if !invalid_classes.is_empty() {
                 // lrequest_error!("Class on entry not found in schema?");
@@ -615,7 +629,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             //   for each attr in must, check it's present on our ent
             let mut missing_must = Vec::with_capacity(0);
             must.iter().for_each(|attr| {
-                let avas = ne.get_ava(&attr.name);
+                let avas = ne.get_ava_set(&attr.name);
                 if avas.is_none() {
                     missing_must.push(attr.name.to_string());
                 }
@@ -647,6 +661,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         }
                         None => {
                             // lrequest_error!("Invalid Attribute {} for extensible object", attr_name);
+                            trace!(?attr_name, "extensible -> SchemaError::InvalidAttribute");
                             Err(SchemaError::InvalidAttribute(attr_name.to_string()))
                         }
                     }
@@ -696,6 +711,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
                         }
                         None => {
                             // lrequest_error!("Invalid Attribute {} for may+must set", attr_name);
+                            trace!(?attr_name, "SchemaError::InvalidAttribute");
                             Err(SchemaError::InvalidAttribute(attr_name.to_string()))
                         }
                     }
@@ -909,7 +925,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                     .attrs
                     .iter()
                     .map(|(k, vs)| {
-                        let dbvs: Vec<_> = vs.iter().map(|v| v.to_db_valuev1()).collect();
+                        let dbvs: Vec<_> = vs.to_db_valuev1_iter().collect();
                         (k.clone(), dbvs)
                     })
                     .collect(),
@@ -929,11 +945,7 @@ impl Entry<EntrySealed, EntryCommitted> {
         let cands = ["spn", "name", "gidnumber"];
         cands
             .iter()
-            .filter_map(|c| {
-                self.attrs
-                    .get(*c)
-                    .map(|avs| avs.iter().map(|v| v.to_proto_string_clone()))
-            })
+            .filter_map(|c| self.attrs.get(*c).map(|vs| vs.to_proto_string_clone_iter()))
             .flatten()
             .collect()
     }
@@ -944,12 +956,8 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub(crate) fn get_uuid2spn(&self) -> Value {
         self.attrs
             .get("spn")
-            .and_then(|vs| vs.iter().take(1).next().cloned())
-            .or_else(|| {
-                self.attrs
-                    .get("name")
-                    .and_then(|vs| vs.iter().take(1).next().cloned())
-            })
+            .and_then(|vs| vs.to_value_single())
+            .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
             .unwrap_or_else(|| Value::new_uuidr(self.get_uuid()))
     }
 
@@ -958,19 +966,11 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub(crate) fn get_uuid2rdn(&self) -> String {
         self.attrs
             .get("spn")
-            .and_then(|vs| {
-                vs.iter()
-                    .take(1)
-                    .next()
-                    .map(|v| format!("spn={}", v.to_proto_string_clone()))
-            })
+            .and_then(|vs| vs.to_proto_string_single().map(|v| format!("spn={}", v)))
             .or_else(|| {
-                self.attrs.get("name").and_then(|vs| {
-                    vs.iter()
-                        .take(1)
-                        .next()
-                        .map(|v| format!("name={}", v.to_proto_string_clone()))
-                })
+                self.attrs
+                    .get("name")
+                    .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={}", v)))
             })
             .unwrap_or_else(|| format!("uuid={}", self.get_uuid().to_hyphenated_ref()))
     }
@@ -1120,19 +1120,16 @@ impl Entry<EntrySealed, EntryCommitted> {
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
-                        match pre_e.get_ava(ikey.attr.as_str()) {
+                        match pre_e.get_ava_set(ikey.attr.as_str()) {
                             None => Vec::new(),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::Equality => {
-                                        vs.flat_map(|v| {
-                                            // Turn each idx_key to the tuple of
-                                            // changes.
-                                            v.generate_idx_eq_keys().into_iter().map(|idx_key| {
-                                                Err((&ikey.attr, &ikey.itype, idx_key))
-                                            })
-                                        })
-                                        .collect()
+                                        // We generate these keys out of the valueset now.
+                                        vs.generate_idx_eq_keys()
+                                            .into_iter()
+                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .collect()
                                     }
                                     IndexType::Presence => {
                                         vec![Err((&ikey.attr, &ikey.itype, "_".to_string()))]
@@ -1150,20 +1147,15 @@ impl Entry<EntrySealed, EntryCommitted> {
                 idxmeta
                     .keys()
                     .flat_map(|ikey| {
-                        match post_e.get_ava(ikey.attr.as_str()) {
+                        match post_e.get_ava_set(ikey.attr.as_str()) {
                             None => Vec::new(),
                             Some(vs) => {
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
-                                    IndexType::Equality => {
-                                        vs.flat_map(|v| {
-                                            // Turn each idx_key to the tuple of
-                                            // changes.
-                                            v.generate_idx_eq_keys().into_iter().map(|idx_key| {
-                                                Ok((&ikey.attr, &ikey.itype, idx_key))
-                                            })
-                                        })
-                                        .collect()
-                                    }
+                                    IndexType::Equality => vs
+                                        .generate_idx_eq_keys()
+                                        .into_iter()
+                                        .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                        .collect(),
                                     IndexType::Presence => {
                                         vec![Ok((&ikey.attr, &ikey.itype, "_".to_string()))]
                                     }
@@ -1194,17 +1186,12 @@ impl Entry<EntrySealed, EntryCommitted> {
                                 // It existed before, but not anymore
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::Equality => {
+                                        // Turn each idx_key to the tuple of
+                                        // changes.
                                         pre_vs
-                                            .iter()
-                                            .flat_map(|v| {
-                                                // Turn each idx_key to the tuple of
-                                                // changes.
-                                                v.generate_idx_eq_keys().into_iter().map(
-                                                    |idx_key| {
-                                                        Err((&ikey.attr, &ikey.itype, idx_key))
-                                                    },
-                                                )
-                                            })
+                                            .generate_idx_eq_keys()
+                                            .into_iter()
+                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
@@ -1218,17 +1205,12 @@ impl Entry<EntrySealed, EntryCommitted> {
                                 // It was added now.
                                 let changes: Vec<Result<_, _>> = match ikey.itype {
                                     IndexType::Equality => {
+                                        // Turn each idx_key to the tuple of
+                                        // changes.
                                         post_vs
-                                            .iter()
-                                            .flat_map(|v| {
-                                                // Turn each idx_key to the tuple of
-                                                // changes.
-                                                v.generate_idx_eq_keys().into_iter().map(
-                                                    |idx_key| {
-                                                        Ok((&ikey.attr, &ikey.itype, idx_key))
-                                                    },
-                                                )
-                                            })
+                                            .generate_idx_eq_keys()
+                                            .into_iter()
+                                            .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
                                             .collect()
                                     }
                                     IndexType::Presence => {
@@ -1240,50 +1222,42 @@ impl Entry<EntrySealed, EntryCommitted> {
                             }
                             (Some(pre_vs), Some(post_vs)) => {
                                 // it exists in both, we need to work out the differents within the attr.
-                                pre_vs
-                                    .difference(&post_vs)
-                                    .map(|pre_v| {
-                                        // Was in pre, now not in post
-                                        match ikey.itype {
-                                            IndexType::Equality => {
-                                                // Remove the v
-                                                pre_v
-                                                    .generate_idx_eq_keys()
-                                                    .into_iter()
-                                                    .map(|idx_key| {
-                                                        Err((&ikey.attr, &ikey.itype, idx_key))
-                                                    })
-                                                    .collect()
-                                            }
-                                            IndexType::Presence => {
-                                                // No action - we still are "present", so nothing to do!
-                                                Vec::new()
-                                            }
-                                            IndexType::SubString => Vec::new(),
+                                let removed_vs = pre_vs.idx_eq_key_difference(&post_vs);
+                                let added_vs = post_vs.idx_eq_key_difference(&pre_vs);
+
+                                let mut diff = Vec::with_capacity(
+                                    removed_vs.as_ref().map(|v| v.len()).unwrap_or(0)
+                                        + added_vs.as_ref().map(|v| v.len()).unwrap_or(0),
+                                );
+
+                                match ikey.itype {
+                                    IndexType::Equality => {
+                                        if let Some(removed_vs) = removed_vs {
+                                            removed_vs
+                                                .generate_idx_eq_keys()
+                                                .into_iter()
+                                                .map(|idx_key| {
+                                                    Err((&ikey.attr, &ikey.itype, idx_key))
+                                                })
+                                                .for_each(|v| diff.push(v));
                                         }
-                                    })
-                                    .chain(post_vs.difference(&pre_vs).map(|post_v| {
-                                        // is in post, but not in pre (add)
-                                        match ikey.itype {
-                                            IndexType::Equality => {
-                                                // Remove the v
-                                                post_v
-                                                    .generate_idx_eq_keys()
-                                                    .into_iter()
-                                                    .map(|idx_key| {
-                                                        Ok((&ikey.attr, &ikey.itype, idx_key))
-                                                    })
-                                                    .collect()
-                                            }
-                                            IndexType::Presence => {
-                                                // No action - we still are "present", so nothing to do!
-                                                Vec::new()
-                                            }
-                                            IndexType::SubString => Vec::new(),
+                                        if let Some(added_vs) = added_vs {
+                                            added_vs
+                                                .generate_idx_eq_keys()
+                                                .into_iter()
+                                                .map(|idx_key| {
+                                                    Ok((&ikey.attr, &ikey.itype, idx_key))
+                                                })
+                                                .for_each(|v| diff.push(v));
                                         }
-                                    }))
-                                    .flatten() // flatten all the inner vecs
-                                    .collect() // now collect to an array of changes.
+                                    }
+                                    IndexType::Presence => {
+                                        // No action - we still are "present", so nothing to do!
+                                    }
+                                    IndexType::SubString => {}
+                                };
+                                // Return the diff
+                                diff
                             }
                         }
                     })
@@ -1301,11 +1275,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                 .attrs
                 .into_iter()
                 .map(|(k, vs)| {
-                    let vv: Result<ValueSet, ()> =
+                    let vv: Result<Option<ValueSet>, ()> =
                         vs.into_iter().map(Value::from_db_valuev1).collect();
                     match vv {
-                        Ok(vv) => Ok((k, vv)),
-                        Err(()) => {
+                        Ok(Some(vv)) => Ok((k, vv)),
+                        _ => {
                             admin_error!(value = ?k, "from_dbentry failed");
                             Err(())
                         }
@@ -1316,11 +1290,9 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         let attrs = r_attrs.ok()?;
 
-        let uuid: Uuid = *match attrs.get("uuid") {
-            Some(vs) => vs.iter().take(1).next(),
-            None => None,
-        }
-        .and_then(|v| v.to_uuid())?;
+        let uuid = attrs
+            .get("uuid")
+            .and_then(|vs| vs.to_uuid_single().copied())?;
 
         Some(Entry {
             valid: EntrySealed { uuid },
@@ -1380,14 +1352,15 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Convert this recycled entry, into a tombstone ready for reaping.
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
         // Duplicate this to a tombstone entry
-        let class_ava = valueset![Value::new_class("object"), Value::new_class("tombstone")];
-        let last_mod_ava = valueset![Value::new_cid(cid.clone())];
+        let class_ava =
+            unsafe { valueset![Value::new_class("object"), Value::new_class("tombstone")] };
+        let last_mod_ava = ValueSet::new(Value::new_cid(cid.clone()));
 
         let mut attrs_new: Map<AttrString, ValueSet> = Map::new();
 
         attrs_new.insert(
             AttrString::from("uuid"),
-            valueset![Value::new_uuidr(&self.get_uuid())],
+            ValueSet::new(Value::new_uuidr(&self.get_uuid())),
         );
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
@@ -1486,10 +1459,8 @@ impl Entry<EntryReduced, EntryCommitted> {
             .attrs
             .iter()
             .map(|(k, vs)| {
-                let pvs: Result<Vec<String>, _> =
-                    vs.iter().map(|v| qs.resolve_value(audit, v)).collect();
-                let pvs = pvs?;
-                Ok((k.to_string(), pvs))
+                qs.resolve_valueset(audit, vs)
+                    .map(|pvs| (k.to_string(), pvs))
             })
             .collect();
         Ok(ProtoEntry { attrs: attrs? })
@@ -1519,11 +1490,8 @@ impl Entry<EntryReduced, EntryCommitted> {
             .attrs
             .iter()
             .map(|(k, vs)| {
-                let pvs: Result<Vec<String>, _> = vs
-                    .iter()
-                    .map(|v| qs.resolve_value_ldap(audit, v, basedn))
-                    .collect();
-                pvs.map(|pvs| (k.as_str(), pvs))
+                qs.resolve_valueset_ldap(audit, vs, basedn)
+                    .map(|pvs| (k.as_str(), pvs))
             })
             .collect();
 
@@ -1576,12 +1544,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// This internally adds an AVA to the entry.
     fn add_ava_int(&mut self, attr: &str, value: Value) {
         // How do we make this turn into an ok / err?
-        let v = self
-            .attrs
-            .entry(AttrString::from(attr))
-            .or_insert_with(ValueSet::new);
-        // Here we need to actually do a check/binary search ...
-        v.insert(value);
+
+        if let Some(vs) = self.attrs.get_mut(attr) {
+            let r = vs.insert_checked(value);
+            debug_assert!(r.is_ok());
+        } else {
+            self.attrs
+                .insert(AttrString::from(attr), ValueSet::new(value));
+        }
         // Doesn't matter if it already exists, equality will replace.
     }
 
@@ -1592,8 +1562,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         T: IntoIterator<Item = Value>,
     {
         // Overwrite the existing value, build a tree from the list.
-        let values = iter.into_iter().collect();
-        let _ = self.attrs.insert(AttrString::from(attr), values);
+        let values: Option<ValueSet> = iter.into_iter().collect();
+        if let Some(vs) = values {
+            let _ = self.attrs.insert(AttrString::from(attr), vs);
+        } else {
+            self.attrs.remove(attr);
+        }
     }
 
     /// Update the last_changed flag of this entry to the given change identifier.
@@ -1609,11 +1583,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.keys().map(|a| a.as_str())
     }
 
+    /*
     #[inline(always)]
     /// Get an iterator over the current set of values for an attribute name.
     pub fn get_ava(&self, attr: &str) -> Option<impl Iterator<Item = &Value>> {
         self.attrs.get(attr).map(|vs| vs.iter())
     }
+    */
 
     #[inline(always)]
     /// Return a reference to the current set of values that are associated to this attribute.
@@ -1624,21 +1600,21 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
     pub fn get_ava_as_str(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
-        self.get_ava(attr).map(|i| i.filter_map(|s| s.to_str()))
+        self.get_ava_set(attr).and_then(|vs| vs.as_str_iter())
     }
 
     #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&Uuid`.
     pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<impl Iterator<Item = &Uuid>> {
         // If any value is NOT a reference, it's filtered out.
-        self.get_ava(attr)
-            .map(|i| i.filter_map(|v| v.to_ref_uuid()))
+        self.get_ava_set(attr).and_then(|vs| vs.as_ref_uuid_iter())
     }
 
     #[inline(always)]
     /// If possible, return an iterator over the set of ssh key values transformed into a `&str`.
     pub fn get_ava_iter_sshpubkeys(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
-        self.get_ava(attr).map(|i| i.filter_map(|v| v.get_sshkey()))
+        self.get_ava_set(attr)
+            .and_then(|vs| vs.as_sshpubkey_str_iter())
     }
 
     // These are special types to allow returning typed values from
@@ -1651,86 +1627,84 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     /// However, the converstion to IndexType is fallaible, so in case of a failure
     /// to convert, an Err is returned.
     #[inline(always)]
-    // TODO: Can tis be an iterator?
-    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Result<Vec<&IndexType>, ()> {
-        match self.attrs.get(attr) {
-            Some(av) => {
-                let r: Result<Vec<_>, _> = av.iter().map(|v| v.to_indextype().ok_or(())).collect();
-                r
-            }
-            None => Ok(Vec::new()),
+    pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Option<Vec<IndexType>> {
+        if let Some(vs) = self.get_ava_set(attr) {
+            vs.as_indextype_set().map(|i| i.cloned().collect())
+        } else {
+            // Empty, but consider as valid.
+            Some(vec![])
         }
     }
 
     /// Return a single value of this attributes name, or `None` if it is NOT present, or
     /// there are multiple values present (ambiguous).
     #[inline(always)]
-    pub fn get_ava_single(&self, attr: &str) -> Option<&Value> {
-        match self.attrs.get(attr) {
-            Some(vs) => {
-                if vs.len() != 1 {
-                    None
-                } else {
-                    vs.iter().take(1).next()
-                }
-            }
-            None => None,
-        }
+    pub fn get_ava_single(&self, attr: &str) -> Option<Value> {
+        self.attrs.get(attr).and_then(|vs| vs.to_value_single())
     }
 
     #[inline(always)]
     /// Return a single bool, if valid to transform this value into a boolean.
     pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
-        self.get_ava_single(attr).and_then(|a| a.to_bool())
+        self.attrs.get(attr).and_then(|vs| vs.to_bool_single())
     }
 
     #[inline(always)]
     /// Return a single uint32, if valid to transform this value.
     pub fn get_ava_single_uint32(&self, attr: &str) -> Option<u32> {
-        self.get_ava_single(attr).and_then(|a| a.to_uint32())
+        self.attrs.get(attr).and_then(|vs| vs.to_uint32_single())
     }
 
     #[inline(always)]
     /// Return a single syntax type, if valid to transform this value.
     pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
-        self.get_ava_single(attr).and_then(|a| a.to_syntaxtype())
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_syntaxtype_single())
     }
 
     #[inline(always)]
     /// Return a single credential, if valid to transform this value.
     pub fn get_ava_single_credential(&self, attr: &str) -> Option<&Credential> {
-        self.get_ava_single(attr).and_then(|a| a.to_credential())
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_credential_single())
     }
 
     #[inline(always)]
     /// Return a single secret value, if valid to transform this value.
     pub fn get_ava_single_secret(&self, attr: &str) -> Option<&str> {
-        self.get_ava_single(attr).and_then(|a| a.get_secret_str())
+        self.attrs.get(attr).and_then(|vs| vs.to_secret_single())
     }
 
     #[inline(always)]
     /// Return a single datetime, if valid to transform this value.
     pub fn get_ava_single_datetime(&self, attr: &str) -> Option<OffsetDateTime> {
-        self.get_ava_single(attr).and_then(|a| a.to_datetime())
+        self.attrs.get(attr).and_then(|vs| vs.to_datetime_single())
     }
 
     #[inline(always)]
     /// Return a single `&str`, if valid to transform this value.
     pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
-        self.get_ava_single(attr).and_then(|v| v.to_str())
+        self.attrs.get(attr).and_then(|vs| vs.to_str_single())
     }
 
     #[inline(always)]
     /// Return a single `&Url`, if valid to transform this value.
     pub fn get_ava_single_url(&self, attr: &str) -> Option<&Url> {
-        self.get_ava_single(attr).and_then(|v| v.to_url())
+        self.attrs.get(attr).and_then(|vs| vs.to_url_single())
+    }
+
+    pub fn get_ava_single_uuid(&self, attr: &str) -> Option<&Uuid> {
+        self.attrs.get(attr).and_then(|vs| vs.to_uuid_single())
     }
 
     #[inline(always)]
     /// Return a single protocol filter, if valid to transform this value.
     pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<&ProtoFilter> {
-        self.get_ava_single(attr)
-            .and_then(|v: &Value| v.as_json_filter())
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_json_filter_single())
     }
 
     #[inline(always)]
@@ -1836,15 +1810,13 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
         // Take name: (a, b), name: (c, d) -> (name, a), (name, b), (name, c), (name, d)
 
-        let mut pairs: Vec<(&str, &Value)> = Vec::new();
+        let mut pairs: Vec<(&str, PartialValue)> = Vec::new();
 
         for attr in attrs {
             match self.attrs.get(attr) {
-                Some(values) => {
-                    for v in values {
-                        pairs.push((attr, v))
-                    }
-                }
+                Some(values) => values
+                    .to_partialvalue_iter()
+                    .for_each(|pv| pairs.push((attr, pv))),
                 None => return None,
             }
         }
@@ -1852,9 +1824,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         Some(filter_all!(f_and(
             pairs
                 .into_iter()
-                .map(|(attr, value)| {
+                .map(|(attr, pv)| {
                     // We use FC directly here instead of f_eq to avoid an excess clone.
-                    FC::Eq(attr, value.to_partialvalue())
+                    FC::Eq(attr, pv)
                 })
                 .collect()
         )))
@@ -1902,7 +1874,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 // A schema error happened, fail the whole operation.
                 Err(e) => return Err(e),
             }
-            for v in vs {
+            for v in vs.to_value_iter() {
                 mods.push_mod(Modify::Present(k.clone(), v.clone()));
             }
         }
@@ -1926,6 +1898,18 @@ where
         self.add_ava_int(attr, value)
     }
 
+    /// Merge an existing value set into this attributes value set. If they are not
+    /// the same type, an error is returned. If no attribute exists, then this valueset is
+    /// cloned "as is".
+    pub fn merge_ava(&mut self, attr: &str, valueset: &ValueSet) -> Result<(), OperationError> {
+        if let Some(vs) = self.attrs.get_mut(attr) {
+            vs.merge(valueset)
+        } else {
+            self.attrs.insert(AttrString::from(attr), valueset.clone());
+            Ok(())
+        }
+    }
+
     /// Remove an attribute-value pair from this entry.
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         // It would be great to remove these extra allocations, but they
@@ -1938,9 +1922,9 @@ where
 
     // Need something that can remove by difference?
     pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
-        if let Some(set) = self.attrs.get_mut(attr) {
+        if let Some(vs) = self.attrs.get_mut(attr) {
             values.iter().for_each(|k| {
-                set.remove(k);
+                vs.remove(k);
             })
         }
     }
@@ -1962,6 +1946,10 @@ where
         T: IntoIterator<Item = Value>,
     {
         self.set_ava_int(attr, iter)
+    }
+
+    pub fn get_ava_mut(&mut self, attr: &str) -> Option<&mut ValueSet> {
+        self.attrs.get_mut(attr)
     }
 
     /*
@@ -2008,17 +1996,16 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid_v = valueset![Value::new_uuidr(&s.uuid)];
+        let uuid_v = ValueSet::new(Value::new_uuidr(&s.uuid));
+        let name_v = ValueSet::new(Value::new_iutf8(s.name.as_str()));
+        let desc_v = ValueSet::new(Value::new_utf8(s.description.clone()));
 
-        let name_v = valueset![Value::new_iutf8(s.name.as_str())];
-        let desc_v = valueset![Value::new_utf8(s.description.clone())];
+        let multivalue_v = ValueSet::new(Value::from(s.multivalue));
+        let unique_v = ValueSet::new(Value::from(s.unique));
 
-        let multivalue_v = valueset![Value::from(s.multivalue)];
-        let unique_v = valueset![Value::from(s.unique)];
+        let index_v: Option<ValueSet> = s.index.iter().cloned().map(Value::from).collect();
 
-        let index_v: ValueSet = s.index.iter().cloned().map(Value::from).collect();
-
-        let syntax_v = valueset![Value::from(s.syntax.clone())];
+        let syntax_v = ValueSet::new(Value::from(s.syntax.clone()));
 
         // Build the Map of the attributes relevant
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
@@ -2028,16 +2015,17 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
         attrs.insert(AttrString::from("uuid"), uuid_v);
         attrs.insert(AttrString::from("multivalue"), multivalue_v);
         attrs.insert(AttrString::from("unique"), unique_v);
-        attrs.insert(AttrString::from("index"), index_v);
+        if let Some(vs) = index_v {
+            attrs.insert(AttrString::from("index"), vs);
+        }
         attrs.insert(AttrString::from("syntax"), syntax_v);
-        attrs.insert(
-            AttrString::from("class"),
+        attrs.insert(AttrString::from("class"), unsafe {
             valueset![
                 Value::new_class("object"),
                 Value::new_class("system"),
                 Value::new_class("attributetype")
-            ],
-        );
+            ]
+        });
 
         // Insert stuff.
 
@@ -2051,43 +2039,39 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
 
 impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid_v = valueset![Value::new_uuidr(&s.uuid)];
-
-        let name_v = valueset![Value::new_iutf8(s.name.as_str())];
-        let desc_v = valueset![Value::new_utf8(s.description.clone())];
+        let uuid_v = ValueSet::new(Value::new_uuidr(&s.uuid));
+        let name_v = ValueSet::new(Value::new_iutf8(s.name.as_str()));
+        let desc_v = ValueSet::new(Value::new_utf8(s.description.clone()));
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
-        attrs.insert(
-            AttrString::from("class"),
+        attrs.insert(AttrString::from("class"), unsafe {
             valueset![
                 Value::new_class("object"),
                 Value::new_class("system"),
                 Value::new_class("classtype")
-            ],
-        );
+            ]
+        });
 
-        if !s.systemmay.is_empty() {
-            attrs.insert(
-                AttrString::from("systemmay"),
-                s.systemmay
-                    .iter()
-                    .map(|sm| Value::new_attr(sm.as_str()))
-                    .collect(),
-            );
+        let vs_systemmay: Option<ValueSet> = s
+            .systemmay
+            .iter()
+            .map(|sm| Value::new_attr(sm.as_str()))
+            .collect();
+        if let Some(vs) = vs_systemmay {
+            attrs.insert(AttrString::from("systemmay"), vs);
         }
 
-        if !s.systemmust.is_empty() {
-            attrs.insert(
-                AttrString::from("systemmust"),
-                s.systemmust
-                    .iter()
-                    .map(|sm| Value::new_attr(sm.as_str()))
-                    .collect(),
-            );
+        let vs_systemmust: Option<ValueSet> = s
+            .systemmust
+            .iter()
+            .map(|sm| Value::new_attr(sm.as_str()))
+            .collect();
+        if let Some(vs) = vs_systemmust {
+            attrs.insert(AttrString::from("systemmust"), vs);
         }
 
         Entry {
