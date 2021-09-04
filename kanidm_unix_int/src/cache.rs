@@ -81,7 +81,7 @@ impl CacheLayer {
         }
 
         if pam_allow_groups.len() == 0 {
-            eprintln!("Will not be able to authenticate users, pam_allow_groups config is null.");
+            eprintln!("Will not be able to authenticate users, pam_allow_groups config is not configured.");
         }
 
         // We assume we are offline at start up, and we mark the next "online check" as
