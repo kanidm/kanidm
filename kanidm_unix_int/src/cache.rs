@@ -80,6 +80,10 @@ impl CacheLayer {
             dbtxn.commit()?;
         }
 
+        if pam_allow_groups.len() == 0 {
+            eprintln!("Will not be able to authenticate users, pam_allow_groups config is null.");
+        }
+
         // We assume we are offline at start up, and we mark the next "online check" as
         // being valid from "now".
         Ok(CacheLayer {
@@ -858,26 +862,30 @@ impl CacheLayer {
     pub async fn pam_account_allowed(&self, account_id: &str) -> Result<Option<bool>, ()> {
         let token = self.get_usertoken(Id::Name(account_id.to_string())).await?;
 
-        Ok(token.map(|tok| {
-            let user_set: BTreeSet<_> = tok
-                .groups
-                .iter()
-                .map(|g| vec![g.name.clone(), g.spn.clone(), g.uuid.clone()])
-                .flatten()
-                .collect();
+        if self.pam_allow_groups.len() == 0 {
+            // can't allow anything if the group list is zero...
+            eprintln!("Cannot authenticate users, no allowed groups in configuration!");
+            Ok(Some(false))
+        } else {
+            Ok(token.map(|tok| {
+                let user_set: BTreeSet<_> = tok
+                    .groups
+                    .iter()
+                    .map(|g| vec![g.name.clone(), g.spn.clone(), g.uuid.clone()])
+                    .flatten()
+                    .collect();
 
-            debug!(
-                "Checking if user is in allowed groups ({:?}) -> {:?}",
-                self.pam_allow_groups, user_set,
-            );
-            debug!(
-                "Number of intersecting groups: {}",
-                user_set.intersection(&self.pam_allow_groups).count()
-            );
-            debug!("User has valid token: {}", tok.valid);
+                debug!(
+                    "Checking if user is in allowed groups ({:?}) -> {:?}",
+                    self.pam_allow_groups, user_set,
+                );
+                let intersection_count = user_set.intersection(&self.pam_allow_groups).count();
+                debug!("Number of intersecting groups: {}", intersection_count);
+                debug!("User has valid token: {}", tok.valid);
 
-            user_set.intersection(&self.pam_allow_groups).count() > 0 && tok.valid
-        }))
+                intersection_count > 0 && tok.valid
+            }))
+        }
     }
 
     pub async fn pam_account_authenticate(
