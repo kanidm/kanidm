@@ -241,6 +241,35 @@ edit the content.
 
 ## Troubleshooting
 
+### Check POSIX-status of group and config
+
+If authentication is failing via PAM, make sure that a list of groups is configured in `/etc/kanidm/unixd`:
+
+```
+pam_allowed_login_groups = ["example_group"]
+```
+
+Check the status of the group with `kanidm group posix show example_group`. If you get something similar to the below:
+
+```shell
+> kanidm group posix show example_group
+Using cached token for name idm_admin
+Error -> Http(500, Some(InvalidAccountState("Missing class: account && posixaccount OR group && posixgroup")), "b71f137e-39f3-4368-9e58-21d26671ae24")
+```
+
+POSIX-enable the group with `kanidm group posix set example_group`. You should get a result similar to this when you search for your group name:
+
+```shell
+> kanidm group posix show example_group
+[ spn: example_group@kanidm.example.com, gidnumber: 3443347205 name: example_group, uuid: b71f137e-39f3-4368-9e58-21d26671ae24 ]
+```
+
+Also, ensure the target user is in the group by running:
+
+```
+>  kanidm group list_members example_group
+```
+
 ### Increase logging
 
 For the unixd daemon, you can increase the logging with:
@@ -262,10 +291,10 @@ To debug the pam module interactions add `debug` to the module arguments such as
 
 ### Check the socket permissions
 
-Check that the /var/run/kanidm-unixd/sock is 777, and that non-root readers can see it with
+Check that the `/var/run/kanidm-unixd/sock` is 777, and that non-root readers can see it with
 ls or other tools.
 
-Ensure that /var/run/kanidm-unixd/task_sock is 700, and that it is owned by the kanidm unixd
+Ensure that `/var/run/kanidm-unixd/task_sock` is 700, and that it is owned by the kanidm unixd
 process user.
 
 ### Check you can access the kanidm server
@@ -279,6 +308,15 @@ You can check this with the client tools:
 You should have:
 
     /usr/lib64/libnss_kanidm.so.2
+    /usr/lib64/security/pam_kanidm.so
+
+The exact path *may* change depending on your distribution, `pam_unixd.so` should be co-located with pam_kanidm.so so looking for it findable with:
+
+```
+find /usr/ -name 'pam_unix.so'
+```
+
+For example, on a Debian machine, it's located in `/usr/lib/x86_64-linux-gnu/security/`.
 
 ### Increase connection timeout
 
