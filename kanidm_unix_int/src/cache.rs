@@ -870,6 +870,11 @@ impl CacheLayer {
                 "Checking if user is in allowed groups ({:?}) -> {:?}",
                 self.pam_allow_groups, user_set,
             );
+            debug!(
+                "Number of intersecting groups: {}",
+                user_set.intersection(&self.pam_allow_groups).count()
+            );
+            debug!("User has valid token: {}", tok.valid);
 
             user_set.intersection(&self.pam_allow_groups).count() > 0 && tok.valid
         }))
