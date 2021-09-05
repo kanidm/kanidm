@@ -94,31 +94,42 @@ impl PamHooks for PamKanidm {
         match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
             Ok(r) => match r {
                 ClientResponse::PamStatus(Some(true)) => {
-                    // println!("PAM_SUCCESS");
+                    if opts.debug {
+                        println!("PamResultCode::PAM_SUCCESS");
+                    }
                     PamResultCode::PAM_SUCCESS
                 }
                 ClientResponse::PamStatus(Some(false)) => {
                     // println!("PAM_IGNORE");
+                    if opts.debug {
+                        println!("PamResultCode::PAM_AUTH_ERR");
+                    }
                     PamResultCode::PAM_AUTH_ERR
                 }
                 ClientResponse::PamStatus(None) => {
                     if opts.ignore_unknown_user {
+                        if opts.debug {
+                            println!("PamResultCode::PAM_IGNORE");
+                        }
                         PamResultCode::PAM_IGNORE
                     } else {
+                        if opts.debug {
+                            println!("PamResultCode::PAM_USER_UNKNOWN");
+                        }
                         PamResultCode::PAM_USER_UNKNOWN
                     }
                 }
                 _ => {
                     // unexpected response.
                     if opts.debug {
-                        println!("PAM_IGNORE -> {:?}", r);
+                        println!("PamResultCode::PAM_IGNORE -> {:?}", r);
                     }
                     PamResultCode::PAM_IGNORE
                 }
             },
             Err(e) => {
                 if opts.debug {
-                    println!("PAM_IGNORE  -> {:?}", e);
+                    println!("PamResultCode::PAM_IGNORE  -> {:?}", e);
                 }
                 PamResultCode::PAM_IGNORE
             }
