@@ -1433,6 +1433,22 @@ session     required                                     pam_unix.so
 session     optional                                     pam_kanidm.so debug
 </code></pre>
 <h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
+<h3 id="check-posix-status-of-group-and-config"><a class="header" href="#check-posix-status-of-group-and-config">Check POSIX-status of group and config</a></h3>
+<p>If authentication is failing via PAM, make sure that a list of groups is configured in <code>/etc/kanidm/unixd</code>:</p>
+<pre><code>pam_allowed_login_groups = [&quot;example_group&quot;]
+</code></pre>
+<p>Check the status of the group with <code>kanidm group posix show example_group</code>. If you get something similar to the below:</p>
+<pre><code class="language-shell">&gt; kanidm group posix show example_group
+Using cached token for name idm_admin
+Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)), &quot;b71f137e-39f3-4368-9e58-21d26671ae24&quot;)
+</code></pre>
+<p>POSIX-enable the group with <code>kanidm group posix set example_group</code>. You should get a result similar to this when you search for your group name:</p>
+<pre><code class="language-shell">&gt; kanidm group posix show example_group
+[ spn: example_group@kanidm.example.com, gidnumber: 3443347205 name: example_group, uuid: b71f137e-39f3-4368-9e58-21d26671ae24 ]
+</code></pre>
+<p>Also, ensure the target user is in the group by running:</p>
+<pre><code>&gt;  kanidm group list_members example_group
+</code></pre>
 <h3 id="increase-logging"><a class="header" href="#increase-logging">Increase logging</a></h3>
 <p>For the unixd daemon, you can increase the logging with:</p>
 <pre><code>systemctl edit kanidm-unixd.service
@@ -1447,9 +1463,9 @@ Environment=&quot;RUST_LOG=kanidm=debug&quot;
 <pre><code>auth sufficient pam_kanidm.so debug
 </code></pre>
 <h3 id="check-the-socket-permissions"><a class="header" href="#check-the-socket-permissions">Check the socket permissions</a></h3>
-<p>Check that the /var/run/kanidm-unixd/sock is 777, and that non-root readers can see it with
+<p>Check that the <code>/var/run/kanidm-unixd/sock</code> is 777, and that non-root readers can see it with
 ls or other tools.</p>
-<p>Ensure that /var/run/kanidm-unixd/task_sock is 700, and that it is owned by the kanidm unixd
+<p>Ensure that <code>/var/run/kanidm-unixd/task_sock</code> is 700, and that it is owned by the kanidm unixd
 process user.</p>
 <h3 id="check-you-can-access-the-kanidm-server"><a class="header" href="#check-you-can-access-the-kanidm-server">Check you can access the kanidm server</a></h3>
 <p>You can check this with the client tools:</p>
@@ -1458,7 +1474,12 @@ process user.</p>
 <h3 id="ensure-the-libraries-are-correct"><a class="header" href="#ensure-the-libraries-are-correct">Ensure the libraries are correct.</a></h3>
 <p>You should have:</p>
 <pre><code>/usr/lib64/libnss_kanidm.so.2
+/usr/lib64/security/pam_kanidm.so
 </code></pre>
+<p>The exact path <em>may</em> change depending on your distribution, <code>pam_unixd.so</code> should be co-located with pam_kanidm.so so looking for it findable with:</p>
+<pre><code>find /usr/ -name 'pam_unix.so'
+</code></pre>
+<p>For example, on a Debian machine, it's located in <code>/usr/lib/x86_64-linux-gnu/security/</code>.</p>
 <h3 id="increase-connection-timeout"><a class="header" href="#increase-connection-timeout">Increase connection timeout</a></h3>
 <p>In some high latency environments, you may need to increase the connection timeout. We set
 this low to improve response on LANs, but over the internet this may need to be increased.
