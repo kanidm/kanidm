@@ -939,10 +939,6 @@ impl ValueSet {
     }
 
     pub fn to_str_single(&self) -> Option<&str> {
-        tracing::event!(
-            tracing::Level::TRACE,
-            valueset = tracing::field::debug(&self.inner)
-        );
         match &self.inner {
             I::Utf8(set) | I::Iutf8(set) | I::Iname(set) => {
                 if set.len() == 1 {
@@ -995,10 +991,6 @@ impl ValueSet {
     }
 
     pub fn as_classname_iter(&self) -> Option<impl Iterator<Item = &str>> {
-        tracing::event!(
-            tracing::Level::TRACE,
-            valueset = tracing::field::debug(&self.inner)
-        );
         match &self.inner {
             I::Iutf8(set) => Some(set.iter().map(|s| s.as_str())),
             _ => None,
@@ -1006,10 +998,6 @@ impl ValueSet {
     }
 
     pub fn as_indextype_set(&self) -> Option<impl Iterator<Item = &IndexType>> {
-        tracing::event!(
-            tracing::Level::TRACE,
-            valueset = tracing::field::debug(&self.inner)
-        );
         match &self.inner {
             I::Index(set) => Some(set.iter()),
             _ => None,
@@ -1146,18 +1134,10 @@ impl ValueSet {
             return Err(OperationError::InvalidValueState);
         };
 
-        tracing::event!(
-            tracing::Level::TRACE,
-            initvalue = tracing::field::debug(&init)
-        );
         let init = init?;
         let mut vs = ValueSet::new(init);
 
         while let Some(maybe_v) = iter.next() {
-            tracing::event!(
-                tracing::Level::TRACE,
-                maybe_v = tracing::field::debug(&maybe_v)
-            );
             let v = maybe_v?;
             // Need to error if wrong type
             vs.insert_checked(v)?;
@@ -1251,11 +1231,7 @@ impl ValueSet {
         if let Some(mut ninner) = ninner {
             std::mem::swap(&mut ninner, &mut self.inner);
         }
-        //trace
-        tracing::event!(
-            tracing::Level::TRACE,
-            valueset = tracing::field::debug(&self.inner)
-        );
+        trace!(valueset = tracing::field::debug(&self.inner));
 
         Ok(())
     }
