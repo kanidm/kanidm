@@ -113,7 +113,6 @@ impl ValueSet {
                 PartialValue::Url(u) => I::Url(smolset![u]),
             },
         };
-        trace!(?vs, "ValueSet::new");
         vs
     }
 
@@ -170,7 +169,6 @@ impl ValueSet {
 
     // insert
     pub unsafe fn insert(&mut self, value: Value) -> bool {
-        trace!("ValueSet::insert");
         self.insert_checked(value).unwrap_or(false)
     }
 
