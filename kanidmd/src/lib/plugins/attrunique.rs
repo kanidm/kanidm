@@ -167,6 +167,8 @@ impl Plugin for AttrUnique {
             Err(e) => return vec![e],
         };
 
+        let all_cand: Vec<_> = all_cand.into_iter().map(|e| e.as_ref().clone()).collect();
+
         let uniqueattrs = {
             let schema = qs.get_schema();
             schema.get_attributes_unique()

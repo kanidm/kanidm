@@ -98,7 +98,7 @@ pub struct QueryServerWriteTransaction<'a> {
 
 pub(crate) struct ModifyPartial<'a> {
     norm_cand: Vec<Entry<EntrySealed, EntryCommitted>>,
-    pre_candidates: Vec<Entry<EntrySealed, EntryCommitted>>,
+    pre_candidates: Vec<Arc<Entry<EntrySealed, EntryCommitted>>>,
     me: &'a ModifyEvent,
 }
 
@@ -172,7 +172,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         spanned!("server::search", {
             lperf_segment!(audit, "server::search", || {
                 if se.ident.is_internal() {
@@ -346,7 +346,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         filter: Filter<FilterInvalid>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         spanned!("server::internal_search", {
             lperf_segment!(audit, "server::internal_search", || {
                 let f_valid = filter
@@ -365,7 +365,7 @@ pub trait QueryServerTransaction<'a> {
         f_valid: Filter<FilterValid>,
         f_intent_valid: Filter<FilterValid>,
         event: &Identity,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         spanned!("server::internal_search_valid", {
             lperf_segment!(audit, "server::internal_search_valid", || {
                 let se = SearchEvent::new_impersonate(event, f_valid, f_intent_valid);
@@ -395,7 +395,7 @@ pub trait QueryServerTransaction<'a> {
         filter: Filter<FilterInvalid>,
         filter_intent: Filter<FilterInvalid>,
         event: &Identity,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let f_valid = filter
             .validate(self.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -433,7 +433,7 @@ pub trait QueryServerTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         uuid: &Uuid,
-    ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
         spanned!("server::internal_search_uuid", {
             lperf_segment!(audit, "server::internal_search_uuid", || {
                 let filter = filter!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
@@ -486,7 +486,7 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
         uuid: &Uuid,
         event: &Identity,
-    ) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
+    ) -> Result<Arc<EntrySealedCommitted>, OperationError> {
         spanned!("server::internal_search_uuid", {
             lperf_segment!(audit, "server::internal_search_uuid", || {
                 let filter_intent = filter_all!(f_eq("uuid", PartialValue::new_uuid(*uuid)));
@@ -788,7 +788,7 @@ pub trait QueryServerTransaction<'a> {
     fn get_oauth2rs_set(
         &self,
         audit: &mut AuditScope,
-    ) -> Result<Vec<EntrySealedCommitted>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(
             audit,
             filter!(f_eq(
@@ -1303,7 +1303,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
                 .iter()
                 // Invalidate and assign change id's
-                .map(|er| er.clone().invalidate(self.cid.clone()))
+                .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
                 .collect();
 
             ltrace!(audit, "delete: candidates -> {:?}", candidates);
@@ -1655,7 +1655,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 // and the new modified ents.
                 let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
                     .iter()
-                    .map(|er| er.clone().invalidate(self.cid.clone()))
+                    .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
                     .collect();
 
                 candidates
@@ -1740,17 +1740,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // schema or acp requires reload. Remember, this is a modify, so we need to check
             // pre and post cands.
             if !self.changed_schema.get() {
-                self.changed_schema
-                    .set(norm_cand.iter().chain(pre_candidates.iter()).any(|e| {
-                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-                    }))
+                self.changed_schema.set(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                        .any(|e| {
+                            e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                                || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                        }),
+                )
             }
             if !self.changed_acp.get() {
                 self.changed_acp.set(
                     norm_cand
                         .iter()
-                        .chain(pre_candidates.iter())
+                        .chain(pre_candidates.iter().map(|e| e.as_ref()))
                         .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
@@ -1758,7 +1762,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 self.changed_oauth2.set(
                     norm_cand
                         .iter()
-                        .chain(pre_candidates.iter())
+                        .chain(pre_candidates.iter().map(|e| e.as_ref()))
                         .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
                 )
             }
@@ -1768,8 +1772,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 (*cu).extend(
                     norm_cand
                         .iter()
-                        .chain(pre_candidates.iter())
-                        .map(|e| e.get_uuid()),
+                        .map(|e| e.get_uuid())
+                        .chain(pre_candidates.iter().map(|e| e.get_uuid())),
                 );
             }
 
@@ -1822,7 +1826,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             self.search(audit, &se).map(|vs| {
                 vs.into_iter()
                     .map(|e| {
-                        let writeable = e.clone().invalidate(self.cid.clone());
+                        let writeable = e.as_ref().clone().invalidate(self.cid.clone());
                         (e, writeable)
                     })
                     .collect()
@@ -1839,7 +1843,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
     pub(crate) fn internal_batch_modify(
         &self,
         audit: &mut AuditScope,
-        pre_candidates: Vec<Entry<EntrySealed, EntryCommitted>>,
+        pre_candidates: Vec<Arc<EntrySealedCommitted>>,
         candidates: Vec<Entry<EntryInvalid, EntryCommitted>>,
     ) -> Result<(), OperationError> {
         lperf_segment!(audit, "server::internal_batch_modify", || {
@@ -1890,17 +1894,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 })?;
 
             if !self.changed_schema.get() {
-                self.changed_schema
-                    .set(norm_cand.iter().chain(pre_candidates.iter()).any(|e| {
-                        e.attribute_equality("class", &PVCLASS_CLASSTYPE)
-                            || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
-                    }))
+                self.changed_schema.set(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                        .any(|e| {
+                            e.attribute_equality("class", &PVCLASS_CLASSTYPE)
+                                || e.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE)
+                        }),
+                )
             }
             if !self.changed_acp.get() {
                 self.changed_acp.set(
                     norm_cand
                         .iter()
-                        .chain(pre_candidates.iter())
+                        .chain(pre_candidates.iter().map(|e| e.as_ref()))
                         .any(|e| e.attribute_equality("class", &PVCLASS_ACP)),
                 )
             }
@@ -1916,8 +1924,8 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 (*cu).extend(
                     norm_cand
                         .iter()
-                        .chain(pre_candidates.iter())
-                        .map(|e| e.get_uuid()),
+                        .map(|e| e.get_uuid())
+                        .chain(pre_candidates.iter().map(|e| e.get_uuid())),
                 );
             }
             ltrace!(
@@ -1958,7 +1966,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // Change the value type.
             let mut candidates: Vec<Entry<EntryInvalid, EntryCommitted>> = pre_candidates
                 .iter()
-                .map(|er| er.clone().invalidate(self.cid.clone()))
+                .map(|er| er.as_ref().clone().invalidate(self.cid.clone()))
                 .collect();
 
             candidates.iter_mut().try_for_each(|er| {
@@ -2772,6 +2780,7 @@ mod tests {
     use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use kanidm_proto::v1::SchemaError;
+    use std::sync::Arc;
     use std::time::Duration;
 
     #[test]
@@ -2810,7 +2819,7 @@ mod tests {
             debug!("--> {:?}", r2);
             assert!(r2.len() == 1);
 
-            let expected = unsafe { vec![e.into_sealed_committed()] };
+            let expected = unsafe { vec![Arc::new(e.into_sealed_committed())] };
 
             assert_eq!(r2, expected);
 

@@ -7,6 +7,7 @@ use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntryNew, EntrySealed};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::prelude::*;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::sync::Arc;
 use tracing::trace_span;
 
 mod attrunique;
@@ -79,7 +80,7 @@ trait Plugin {
         au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
@@ -350,7 +351,7 @@ impl Plugins {
     pub fn run_post_modify(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {

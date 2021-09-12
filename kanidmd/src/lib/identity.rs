@@ -6,6 +6,7 @@
 use crate::prelude::*;
 use kanidm_proto::v1::UserAuthToken;
 use std::hash::Hash;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 /// Limits on the resources a single event can consume. These are defined per-event
@@ -41,7 +42,7 @@ impl Limits {
 #[derive(Debug, Clone)]
 /// Metadata and the entry of the current Identity which is an external account/user.
 pub struct IdentUser {
-    pub entry: Entry<EntrySealed, EntryCommitted>,
+    pub entry: Arc<Entry<EntrySealed, EntryCommitted>>,
     // IpAddr?
     // Other metadata?
 }
@@ -105,7 +106,7 @@ impl Identity {
     }
 
     #[cfg(test)]
-    pub fn from_impersonate_entry(entry: Entry<EntrySealed, EntryCommitted>) -> Self {
+    pub fn from_impersonate_entry(entry: Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         Identity {
             origin: IdentType::User(IdentUser { entry }),
             limits: Limits::unlimited(),
@@ -115,7 +116,7 @@ impl Identity {
     #[cfg(test)]
     pub unsafe fn from_impersonate_entry_ser(e: &str) -> Self {
         let ei: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(e);
-        Self::from_impersonate_entry(ei.into_sealed_committed())
+        Self::from_impersonate_entry(Arc::new(ei.into_sealed_committed()))
     }
 
     pub fn from_impersonate(ident: &Self) -> Self {

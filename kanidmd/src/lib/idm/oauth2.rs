@@ -12,6 +12,7 @@ use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use url::{Origin, Url};
 use webauthn_rs::base64_data::Base64UrlSafeData;
@@ -146,10 +147,10 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, Oauth2RSInner>,
 }
 
-impl TryFrom<Vec<EntrySealedCommitted>> for Oauth2ResourceServers {
+impl TryFrom<Vec<Arc<EntrySealedCommitted>>> for Oauth2ResourceServers {
     type Error = OperationError;
 
-    fn try_from(value: Vec<EntrySealedCommitted>) -> Result<Self, Self::Error> {
+    fn try_from(value: Vec<Arc<EntrySealedCommitted>>) -> Result<Self, Self::Error> {
         let fernet =
             Fernet::new(&Fernet::generate_key()).ok_or(OperationError::CryptographyError)?;
         let oauth2rs = Oauth2ResourceServers {
@@ -181,7 +182,7 @@ impl Oauth2ResourceServers {
 }
 
 impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
-    pub fn reload(&mut self, value: Vec<EntrySealedCommitted>) -> Result<(), OperationError> {
+    pub fn reload(&mut self, value: Vec<Arc<EntrySealedCommitted>>) -> Result<(), OperationError> {
         let rs_set: Result<HashMap<_, _>, _> = value
             .into_iter()
             .map(|ent| {

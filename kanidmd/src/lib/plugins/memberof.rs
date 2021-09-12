@@ -10,7 +10,7 @@
 // As a result, we first need to run refint to clean up all dangling references, then memberof
 // fixes the graph of memberships
 
-use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntrySealed};
+use crate::entry::{Entry, EntryCommitted, EntryInvalid, EntrySealed, EntryTuple};
 use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
@@ -19,6 +19,7 @@ use crate::valueset::ValueSet;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
 
 use hashbrown::HashMap;
+use std::sync::Arc;
 use uuid::Uuid;
 
 lazy_static! {
@@ -27,10 +28,6 @@ lazy_static! {
 }
 
 pub struct MemberOf;
-
-type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
-type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
-type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
 
 fn do_memberof(
     au: &mut AuditScope,
@@ -239,7 +236,7 @@ impl Plugin for MemberOf {
     fn post_modify(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {

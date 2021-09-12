@@ -20,6 +20,7 @@ use crate::filter::f_eq;
 use crate::modify::Modify;
 use crate::schema::SchemaTransaction;
 use kanidm_proto::v1::{ConsistencyError, PluginError};
+use std::sync::Arc;
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -125,7 +126,7 @@ impl Plugin for ReferentialIntegrity {
     fn post_modify(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        _pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {

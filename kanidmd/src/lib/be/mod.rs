@@ -542,7 +542,7 @@ pub trait BackendTransaction {
         au: &mut AuditScope,
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         let _entered = trace_span!("be::search").entered();
         // Unlike DS, even if we don't get the index back, we can just pass
         // to the in-memory filter test and be done.
@@ -1014,7 +1014,7 @@ impl<'a> BackendWriteTransaction<'a> {
     pub fn modify(
         &self,
         au: &mut AuditScope,
-        pre_entries: &[Entry<EntrySealed, EntryCommitted>],
+        pre_entries: &[Arc<EntrySealedCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
         lperf_trace_segment!(au, "be::modify", || {
@@ -1067,14 +1067,14 @@ impl<'a> BackendWriteTransaction<'a> {
             pre_entries
                 .iter()
                 .zip(post_entries.iter())
-                .try_for_each(|(pre, post)| self.entry_index(au, Some(pre), Some(post)))
+                .try_for_each(|(pre, post)| self.entry_index(au, Some(pre.as_ref()), Some(post)))
         })
     }
 
     pub fn delete(
         &self,
         au: &mut AuditScope,
-        entries: &[Entry<EntrySealed, EntryCommitted>],
+        entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<(), OperationError> {
         lperf_trace_segment!(au, "be::delete", || {
             if entries.is_empty() {
@@ -1688,6 +1688,7 @@ mod tests {
     use idlset::v2::IDLBitRange;
     use std::fs;
     use std::iter::FromIterator;
+    use std::sync::Arc;
     use uuid::Uuid;
 
     use super::super::audit::AuditScope;
@@ -1874,20 +1875,22 @@ mod tests {
             let r1 = results.remove(0);
             let r2 = results.remove(0);
 
-            let mut r1 = unsafe { r1.into_invalid() };
-            let mut r2 = unsafe { r2.into_invalid() };
+            let mut r1 = unsafe { r1.as_ref().clone().into_invalid() };
+            let mut r2 = unsafe { r2.as_ref().clone().into_invalid() };
 
             // Modify no id (err)
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
             let ue1 = unsafe { e1.clone().into_sealed_committed() };
-            assert!(be.modify(audit, &vec![ue1.clone()], &vec![ue1]).is_err());
+            assert!(be
+                .modify(audit, &vec![Arc::new(ue1.clone())], &vec![ue1])
+                .is_err());
             // Modify none
             assert!(be.modify(audit, &vec![], &vec![]).is_err());
 
             // Make some changes to r1, r2.
-            let pre1 = unsafe { r1.clone().into_sealed_committed() };
-            let pre2 = unsafe { r2.clone().into_sealed_committed() };
+            let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
+            let pre2 = unsafe { Arc::new(r2.clone().into_sealed_committed()) };
             r1.add_ava("desc", Value::from("modified"));
             r2.add_ava("desc", Value::from("modified"));
 
@@ -1908,7 +1911,7 @@ mod tests {
             assert!(be
                 .modify(
                     audit,
-                    &vec![vr1.clone(), pre2.clone()],
+                    &vec![Arc::new(vr1.clone()), pre2.clone()],
                     &vec![vr1.clone(), vr2.clone()]
                 )
                 .is_ok());
@@ -1958,7 +1961,7 @@ mod tests {
 
             // Delete one
             assert!(be.delete(audit, &vec![r1.clone()]).is_ok());
-            assert!(!entry_exists!(audit, be, r1));
+            assert!(!entry_exists!(audit, be, r1.as_ref()));
 
             // delete none (no match filter)
             assert!(be.delete(audit, &vec![]).is_err());
@@ -1970,18 +1973,18 @@ mod tests {
             e4.add_ava("userid", Value::from("amy"));
             e4.add_ava("uuid", Value::from("21d816b5-1f6a-4696-b7c1-6ed06d22ed81"));
 
-            let ve4 = unsafe { e4.clone().into_sealed_committed() };
+            let ve4 = unsafe { Arc::new(e4.clone().into_sealed_committed()) };
 
             assert!(be.delete(audit, &vec![ve4]).is_err());
 
-            assert!(entry_exists!(audit, be, r2));
-            assert!(entry_exists!(audit, be, r3));
+            assert!(entry_exists!(audit, be, r2.as_ref()));
+            assert!(entry_exists!(audit, be, r3.as_ref()));
 
             // delete batch
             assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
 
-            assert!(!entry_exists!(audit, be, r2));
-            assert!(!entry_exists!(audit, be, r3));
+            assert!(!entry_exists!(audit, be, r2.as_ref()));
+            assert!(!entry_exists!(audit, be, r3.as_ref()));
 
             // delete none (no entries left)
             // see fn delete for why this is ok, not err
@@ -2233,6 +2236,7 @@ mod tests {
             let e1 = unsafe { e1.into_sealed_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
+            let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
 
             idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
 
@@ -2303,6 +2307,7 @@ mod tests {
                 .create(audit, vec![e1.clone(), e2.clone(), e3.clone()])
                 .unwrap();
             rset.remove(1);
+            let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
 
             // Now remove e1, e3.
             be.delete(audit, &rset).unwrap();
@@ -2353,8 +2358,9 @@ mod tests {
             let e1 = unsafe { e1.into_sealed_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
+            let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].clone().into_invalid() };
+            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
             // add something.
             ce1.add_ava("tb", Value::from("test"));
             // remove something.
@@ -2398,8 +2404,9 @@ mod tests {
             let e1 = unsafe { e1.into_sealed_new() };
 
             let rset = be.create(audit, vec![e1.clone()]).unwrap();
+            let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
-            let mut ce1 = unsafe { rset[0].clone().into_invalid() };
+            let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
             ce1.purge_ava("name");
             ce1.purge_ava("uuid");
             ce1.add_ava("name", Value::from("claire"));

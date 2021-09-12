@@ -36,6 +36,9 @@ use std::collections::BTreeSet;
 use std::time::Duration;
 use uuid::Uuid;
 
+#[cfg(test)]
+use std::sync::Arc;
+
 #[derive(Debug)]
 pub struct SearchResult {
     entries: Vec<ProtoEntry>,
@@ -224,7 +227,7 @@ impl SearchEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntrySealed, EntryCommitted>,
+        e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
@@ -251,7 +254,7 @@ impl SearchEvent {
     #[cfg(test)]
     /* Impersonate a request for recycled objects */
     pub unsafe fn new_rec_impersonate_entry(
-        e: Entry<EntrySealed, EntryCommitted>,
+        e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         let filter_orig = filter.into_valid();
@@ -267,7 +270,7 @@ impl SearchEvent {
     #[cfg(test)]
     /* Impersonate an external request AKA filter ts + recycle */
     pub unsafe fn new_ext_impersonate_entry(
-        e: Entry<EntrySealed, EntryCommitted>,
+        e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         SearchEvent {
@@ -457,7 +460,7 @@ impl DeleteEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntrySealed, EntryCommitted>,
+        e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         DeleteEvent {
@@ -646,7 +649,7 @@ impl ModifyEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntrySealed, EntryCommitted>,
+        e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
         modlist: ModifyList<ModifyInvalid>,
     ) -> Self {
@@ -954,7 +957,7 @@ impl ReviveRecycledEvent {
 
     #[cfg(test)]
     pub unsafe fn new_impersonate_entry(
-        e: Entry<EntrySealed, EntryCommitted>,
+        e: Arc<Entry<EntrySealed, EntryCommitted>>,
         filter: Filter<FilterInvalid>,
     ) -> Self {
         ReviveRecycledEvent {

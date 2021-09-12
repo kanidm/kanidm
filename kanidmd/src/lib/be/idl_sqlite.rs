@@ -11,6 +11,7 @@ use rusqlite::Connection;
 use rusqlite::OpenFlags;
 use rusqlite::OptionalExtension;
 use std::convert::{TryFrom, TryInto};
+use std::sync::Arc;
 use std::time::Duration;
 use tracing::trace;
 use uuid::Uuid;
@@ -113,14 +114,11 @@ pub trait IdlSqliteTransaction {
     fn get_conn(&self) -> &r2d2::PooledConnection<r2d2_sqlite::SqliteConnectionManager>;
 
     // ! TRACING INTEGRATED
-    fn get_identry(
-        &self,
-        idl: &IdList,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    fn get_identry(&self, idl: &IdList) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         spanned!("be::idl_sqlite::get_identry", {
             self.get_identry_raw(idl)?
                 .into_iter()
-                .map(|ide| ide.into_entry())
+                .map(|ide| ide.into_entry().map(|e| Arc::new(e)))
                 .collect()
         })
     }

@@ -45,7 +45,10 @@ macro_rules! try_from_account_e {
                     e
                 })?;
                 // Now convert the group entries to groups.
-                let groups: Result<Vec<_>, _> = ges.iter().map(Group::try_from_entry).collect();
+                let groups: Result<Vec<_>, _> = ges
+                    .iter()
+                    .map(|e| Group::try_from_entry(e.as_ref()))
+                    .collect();
                 groups.map_err(|e| {
                     admin_error!(?e, "failed to transform group entries to groups");
                     e

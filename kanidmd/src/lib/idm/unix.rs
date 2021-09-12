@@ -389,7 +389,7 @@ macro_rules! try_from_account_group_e {
                 ]));
                 let ges: Vec<_> = $qs.internal_search($au, f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))
-                    .chain(ges.iter().map(UnixGroup::try_from_entry))
+                    .chain(ges.iter().map(|e| UnixGroup::try_from_entry(e.as_ref())))
                     .collect();
                 groups
             }
