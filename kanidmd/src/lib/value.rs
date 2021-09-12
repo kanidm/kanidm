@@ -1483,7 +1483,10 @@ impl Value {
     }
 
     pub fn to_sshkey(self) -> Option<(String, String)> {
-        unimplemented!();
+        match (self.pv, self.data.map(|b| (*b).clone())) {
+            (PartialValue::SshKey(tag), Some(DataValue::SshKey(k))) => Some((tag, k)),
+            _ => None,
+        }
     }
 
     pub fn to_spn(self) -> Option<(String, String)> {

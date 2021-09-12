@@ -1274,6 +1274,8 @@ impl Entry<EntrySealed, EntryCommitted> {
             DbEntryVers::V1(v1) => v1
                 .attrs
                 .into_iter()
+                // Skip anything empty as new VS can't deal with it.
+                .filter(|(_k, vs)| !vs.is_empty())
                 .map(|(k, vs)| {
                     let vv: Result<Option<ValueSet>, ()> =
                         vs.into_iter().map(Value::from_db_valuev1).collect();
