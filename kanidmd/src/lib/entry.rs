@@ -1222,8 +1222,8 @@ impl Entry<EntrySealed, EntryCommitted> {
                             }
                             (Some(pre_vs), Some(post_vs)) => {
                                 // it exists in both, we need to work out the differents within the attr.
-                                let removed_vs = pre_vs.idx_eq_key_difference(&post_vs);
-                                let added_vs = post_vs.idx_eq_key_difference(&pre_vs);
+                                let removed_vs = pre_vs.idx_eq_key_difference(post_vs);
+                                let added_vs = post_vs.idx_eq_key_difference(pre_vs);
 
                                 let mut diff = Vec::with_capacity(
                                     removed_vs.as_ref().map(|v| v.len()).unwrap_or(0)
@@ -1360,7 +1360,7 @@ impl Entry<EntrySealed, EntryCommitted> {
 
         attrs_new.insert(
             AttrString::from("uuid"),
-            ValueSet::new(Value::new_uuidr(&self.get_uuid())),
+            ValueSet::new(Value::new_uuidr(self.get_uuid())),
         );
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);

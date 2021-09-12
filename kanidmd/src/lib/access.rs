@@ -571,7 +571,7 @@ pub trait AccessControlsTransaction<'a> {
                                             .iter()
                                             .filter_map(|(acs, f_res)| {
                                                 // if it applies
-                                                if e.entry_match_no_index(&f_res) {
+                                                if e.entry_match_no_index(f_res) {
                                                     security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
                                                     lsecurity_access!(
                                                         audit,
@@ -748,7 +748,7 @@ pub trait AccessControlsTransaction<'a> {
                                         let allowed_attrs: BTreeSet<&str> = related_acp
                                             .iter()
                                             .filter_map(|(acs, f_res)| {
-                                                if e.entry_match_no_index(&f_res) {
+                                                if e.entry_match_no_index(f_res) {
                                                     security_access!(
                                                         target = ?e.get_uuid(),
                                                         acs = %acs.acp.name,
@@ -967,7 +967,7 @@ pub trait AccessControlsTransaction<'a> {
                 let scoped_acp: Vec<&AccessControlModify> = related_acp
                     .iter()
                     .filter_map(|(acm, f_res)| {
-                        if e.entry_match_no_index(&f_res) {
+                        if e.entry_match_no_index(f_res) {
                             Some(*acm)
                         } else {
                             None
@@ -1107,7 +1107,7 @@ pub trait AccessControlsTransaction<'a> {
 
                 related_acp.iter().any(|(accr, f_res)| {
                     // Check to see if allowed.
-                    if e.entry_match_no_index(&f_res) {
+                    if e.entry_match_no_index(f_res) {
                         lsecurity_access!(audit, "entry {:?} matches acs {:?}", e, accr);
                         // It matches, so now we have to check attrs and classes.
                         // Remember, we have to match ALL requested attrs
@@ -1227,7 +1227,7 @@ pub trait AccessControlsTransaction<'a> {
             // For each entry
             let r = entries.iter().all(|e| {
                 related_acp.iter().any(|(acd, f_res)| {
-                    if e.entry_match_no_index(&f_res) {
+                    if e.entry_match_no_index(f_res) {
                         lsecurity_access!(
                             audit,
                             "entry {:?} matches acs {}",

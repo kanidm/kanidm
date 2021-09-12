@@ -141,7 +141,7 @@ impl IdRawEntry {
             OperationError::SerdeCborError
         })?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
-        Entry::from_dbentry(db_e, self.id).ok_or_else(|| OperationError::CorruptedEntry(self.id))
+        Entry::from_dbentry(db_e, self.id).ok_or(OperationError::CorruptedEntry(self.id))
     }
 }
 
@@ -613,7 +613,7 @@ pub trait BackendTransaction {
                     lperf_segment!(au, "be::search<entry::ftest::allids>", || {
                         entries
                             .into_iter()
-                            .filter(|e| e.entry_match_no_index(&filt))
+                            .filter(|e| e.entry_match_no_index(filt))
                             .collect()
                     })
                 }),
@@ -622,7 +622,7 @@ pub trait BackendTransaction {
                         lperf_segment!(au, "be::search<entry::ftest::partial>", || {
                             entries
                                 .into_iter()
-                                .filter(|e| e.entry_match_no_index(&filt))
+                                .filter(|e| e.entry_match_no_index(filt))
                                 .collect()
                         })
                     })
@@ -632,7 +632,7 @@ pub trait BackendTransaction {
                         lperf_trace_segment!(au, "be::search<entry::ftest::thresh>", || {
                             entries
                                 .into_iter()
-                                .filter(|e| e.entry_match_no_index(&filt))
+                                .filter(|e| e.entry_match_no_index(filt))
                                 .collect()
                         })
                     }),
@@ -733,7 +733,7 @@ pub trait BackendTransaction {
                                     || {
                                         entries
                                             .into_iter()
-                                            .filter(|e| e.entry_match_no_index(&filt))
+                                            .filter(|e| e.entry_match_no_index(filt))
                                             .collect()
                                     }
                                 )
@@ -761,7 +761,7 @@ pub trait BackendTransaction {
         if e.mask_recycled_ts().is_some() {
             let e_uuid = e.get_uuid();
             // We only check these on live entries.
-            let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(&e));
+            let (n2u_add, n2u_rem) = Entry::idx_name2uuid_diff(None, Some(e));
 
             let n2u_set = match (n2u_add, n2u_rem) {
                 (Some(set), None) => set,
@@ -796,7 +796,7 @@ pub trait BackendTransaction {
                 })?;
 
             let spn = e.get_uuid2spn();
-            match self.get_idlayer().uuid2spn(&e_uuid) {
+            match self.get_idlayer().uuid2spn(e_uuid) {
                 Ok(Some(idx_spn)) => {
                     if spn != idx_spn {
                         admin_error!("Invalid uuid2spn state -> incorrect idx spn value");
@@ -812,7 +812,7 @@ pub trait BackendTransaction {
             };
 
             let rdn = e.get_uuid2rdn();
-            match self.get_idlayer().uuid2rdn(&e_uuid) {
+            match self.get_idlayer().uuid2rdn(e_uuid) {
                 Ok(Some(idx_rdn)) => {
                     if rdn != idx_rdn {
                         admin_error!("Invalid uuid2rdn state -> incorrect idx rdn value");

@@ -113,8 +113,7 @@ impl Record {
                             Some(Entity::Group(_g)) => {
                                 // This could be better! It's quite an evil method at the moment...
                                 let m = rng.gen_range(0..max_m);
-                                let ngrp =
-                                    (&exists).choose_multiple(&mut rng, m).cloned().collect();
+                                let ngrp = exists.choose_multiple(&mut rng, m).cloned().collect();
                                 (*id, Change::Group(ngrp))
                             }
                             None => {

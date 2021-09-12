@@ -625,7 +625,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), &value)
+                            .validate_partialvalue(attr_norm.as_str(), value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::Eq(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -640,7 +640,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), &value)
+                            .validate_partialvalue(attr_norm.as_str(), value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::Sub(attr_norm, value.clone()))
                         // On error, pass the error back out.
@@ -666,7 +666,7 @@ impl FilterComp {
                 match schema_attributes.get(&attr_norm) {
                     Some(schema_a) => {
                         schema_a
-                            .validate_partialvalue(attr_norm.as_str(), &value)
+                            .validate_partialvalue(attr_norm.as_str(), value)
                             // Okay, it worked, transform to a filter component
                             .map(|_| FilterComp::LessThan(attr_norm, value.clone()))
                         // On error, pass the error back out.

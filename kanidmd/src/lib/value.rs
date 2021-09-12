@@ -601,7 +601,7 @@ impl PartialValue {
 
     pub fn to_url(&self) -> Option<&Url> {
         match self {
-            PartialValue::Url(u) => Some(&u),
+            PartialValue::Url(u) => Some(u),
             _ => None,
         }
     }
@@ -1014,7 +1014,7 @@ impl Value {
         match &self.pv {
             PartialValue::Cred(_) => match &self.data {
                 Some(dv) => match dv.as_ref() {
-                    DataValue::Cred(c) => Some(&c),
+                    DataValue::Cred(c) => Some(c),
                     _ => None,
                 },
                 None => None,
@@ -1383,7 +1383,7 @@ impl Value {
 
     pub fn to_url(&self) -> Option<&Url> {
         match &self.pv {
-            PartialValue::Url(u) => Some(&u),
+            PartialValue::Url(u) => Some(u),
             _ => None,
         }
     }
@@ -1401,28 +1401,28 @@ impl Value {
     // in refint plugin.
     pub fn to_ref_uuid(&self) -> Option<&Uuid> {
         match &self.pv {
-            PartialValue::Refer(u) => Some(&u),
+            PartialValue::Refer(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn to_uuid(&self) -> Option<&Uuid> {
         match &self.pv {
-            PartialValue::Uuid(u) => Some(&u),
+            PartialValue::Uuid(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn to_indextype(&self) -> Option<&IndexType> {
         match &self.pv {
-            PartialValue::Index(i) => Some(&i),
+            PartialValue::Index(i) => Some(i),
             _ => None,
         }
     }
 
     pub fn to_syntaxtype(&self) -> Option<&SyntaxType> {
         match &self.pv {
-            PartialValue::Syntax(s) => Some(&s),
+            PartialValue::Syntax(s) => Some(s),
             _ => None,
         }
     }

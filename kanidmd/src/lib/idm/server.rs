@@ -367,7 +367,7 @@ pub trait IdmServerTransaction<'a> {
             token
                 .ok_or(OperationError::NotAuthenticated)
                 .and_then(|token| {
-                    bref.verify(&token).map_err(|e| {
+                    bref.verify(token).map_err(|e| {
                         security_info!(?e, "Unable to verify token");
                         lsecurity!(audit, "Unable to verify token - {:?}", e);
                         OperationError::NotAuthenticated

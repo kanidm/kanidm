@@ -1812,7 +1812,7 @@ mod tests {
             syntax: SyntaxType::SYNTAX_ID,
         };
 
-        let rvs = unsafe { valueset![Value::new_syntaxs("UTF8STRING").unwrap()] };
+        let rvs = ValueSet::new(Value::new_syntaxs("UTF8STRING").unwrap());
         let r6 = single_value_syntax.validate_ava("sv_syntax", &rvs);
         assert_eq!(r6, Ok(()));
 

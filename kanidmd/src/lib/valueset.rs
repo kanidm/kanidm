@@ -5,6 +5,7 @@ use either::Either::{Left, Right};
 use kanidm_proto::v1::Filter as ProtoFilter;
 use smolset::{SmolSet, SmolSetIter};
 use sshkeys::PublicKey as SshPublicKey;
+use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, BTreeSet};
 use std::iter::FromIterator;
 use time::OffsetDateTime;
@@ -81,7 +82,7 @@ impl ValueSet {
     pub fn new(value: Value) -> Self {
         let Value { pv, data } = value;
 
-        let vs = ValueSet {
+        ValueSet {
             inner: match pv {
                 PartialValue::Utf8(s) => I::Utf8(btreeset![s]),
                 PartialValue::Iutf8(s) => I::Iutf8(btreeset![s]),
@@ -112,8 +113,7 @@ impl ValueSet {
                 PartialValue::EmailAddress(e) => I::EmailAddress(btreeset![e]),
                 PartialValue::Url(u) => I::Url(smolset![u]),
             },
-        };
-        vs
+        }
     }
 
     pub fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
@@ -133,23 +133,29 @@ impl ValueSet {
             (I::Refer(set), PartialValue::Refer(u)) => Ok(set.insert(u)),
             (I::JsonFilt(set), PartialValue::JsonFilt(f)) => Ok(set.insert(f)),
             (I::Cred(map), PartialValue::Cred(t)) => {
-                if map.contains_key(&t) {
-                    Ok(false)
-                } else {
+                if let BTreeEntry::Vacant(e) = map.entry(t) {
                     match data.map(|b| (*b).clone()) {
-                        Some(DataValue::Cred(c)) => Ok(map.insert(t, c).is_none()),
+                        Some(DataValue::Cred(c)) => Ok({
+                            e.insert(c);
+                            true
+                        }),
                         _ => Err(OperationError::InvalidValueState),
                     }
+                } else {
+                    Ok(false)
                 }
             }
             (I::SshKey(map), PartialValue::SshKey(t)) => {
-                if map.contains_key(&t) {
-                    Ok(false)
-                } else {
+                if let BTreeEntry::Vacant(e) = map.entry(t) {
                     match data.map(|b| (*b).clone()) {
-                        Some(DataValue::SshKey(k)) => Ok(map.insert(t, k).is_none()),
+                        Some(DataValue::SshKey(k)) => Ok({
+                            e.insert(k);
+                            true
+                        }),
                         _ => Err(OperationError::InvalidValueState),
                     }
+                } else {
+                    Ok(false)
                 }
             }
             (I::SecretValue(set), PartialValue::SecretValue) => match data.map(|b| (*b).clone()) {
@@ -167,7 +173,10 @@ impl ValueSet {
         }
     }
 
-    // insert
+    /// # Safety
+    /// This is unsafe as you are unable to distinguish the case between
+    /// the value already existing, OR the value being an incorrect type to add
+    /// to the set.
     pub unsafe fn insert(&mut self, value: Value) -> bool {
         self.insert_checked(value).unwrap_or(false)
     }
@@ -423,7 +432,9 @@ impl ValueSet {
             (I::SshKey(map), PartialValue::SshKey(t)) => {
                 map.remove(t);
             }
-            (I::SecretValue(set), PartialValue::SecretValue) => {}
+            (I::SecretValue(_set), PartialValue::SecretValue) => {
+                debug_assert!(false)
+            }
             (I::Spn(set), PartialValue::Spn(n, d)) => {
                 set.remove(&(n.to_string(), d.to_string()));
             }
@@ -445,7 +456,9 @@ impl ValueSet {
             (I::Url(set), PartialValue::Url(u)) => {
                 set.remove(u);
             }
-            (_, _) => {}
+            (_, _) => {
+                debug_assert!(false)
+            }
         };
         true
     }
@@ -455,24 +468,24 @@ impl ValueSet {
             (I::Utf8(set), PartialValue::Utf8(s)) => set.contains(s.as_str()),
             (I::Iutf8(set), PartialValue::Iutf8(s)) => set.contains(s.as_str()),
             (I::Iname(set), PartialValue::Iname(s)) => set.contains(s.as_str()),
-            (I::Uuid(set), PartialValue::Uuid(u)) => set.contains(&u),
-            (I::Bool(set), PartialValue::Bool(b)) => set.contains(&b),
-            (I::Syntax(set), PartialValue::Syntax(s)) => set.contains(&s),
-            (I::Index(set), PartialValue::Index(i)) => set.contains(&i),
-            (I::Refer(set), PartialValue::Refer(u)) => set.contains(&u),
-            (I::JsonFilt(set), PartialValue::JsonFilt(f)) => set.contains(&f),
+            (I::Uuid(set), PartialValue::Uuid(u)) => set.contains(u),
+            (I::Bool(set), PartialValue::Bool(b)) => set.contains(b),
+            (I::Syntax(set), PartialValue::Syntax(s)) => set.contains(s),
+            (I::Index(set), PartialValue::Index(i)) => set.contains(i),
+            (I::Refer(set), PartialValue::Refer(u)) => set.contains(u),
+            (I::JsonFilt(set), PartialValue::JsonFilt(f)) => set.contains(f),
             (I::Cred(map), PartialValue::Cred(t)) => map.contains_key(t.as_str()),
             (I::SshKey(map), PartialValue::SshKey(t)) => map.contains_key(t.as_str()),
-            (I::SecretValue(set), PartialValue::SecretValue) => false,
+            (I::SecretValue(_set), PartialValue::SecretValue) => false,
             // Borrowing into a &(&string, &string) doesn't work here, and spn is small so we iterate
             // instead.
             (I::Spn(set), PartialValue::Spn(n, d)) => set.iter().any(|(a, b)| a == n && b == d),
-            (I::Uint32(set), PartialValue::Uint32(i)) => set.contains(&i),
-            (I::Cid(set), PartialValue::Cid(c)) => set.contains(&c),
+            (I::Uint32(set), PartialValue::Uint32(i)) => set.contains(i),
+            (I::Cid(set), PartialValue::Cid(c)) => set.contains(c),
             (I::Nsuniqueid(set), PartialValue::Nsuniqueid(u)) => set.contains(u.as_str()),
-            (I::DateTime(set), PartialValue::DateTime(dt)) => set.contains(&dt),
+            (I::DateTime(set), PartialValue::DateTime(dt)) => set.contains(dt),
             (I::EmailAddress(set), PartialValue::EmailAddress(e)) => set.contains(e.as_str()),
-            (I::Url(set), PartialValue::Url(u)) => set.contains(&u),
+            (I::Url(set), PartialValue::Url(u)) => set.contains(u),
             (_, _) => false,
         }
     }
@@ -548,10 +561,10 @@ impl ValueSet {
                 .collect(),
             I::Cred(map) => map.keys().cloned().collect(),
             I::SshKey(map) => map.keys().cloned().collect(),
-            I::SecretValue(set) => vec![],
+            I::SecretValue(_set) => vec![],
             I::Spn(set) => set.iter().map(|(n, d)| format!("{}@{}", n, d)).collect(),
             I::Uint32(set) => set.iter().map(|u| u.to_string()).collect(),
-            I::Cid(set) => vec![],
+            I::Cid(_set) => vec![],
             I::Nsuniqueid(set) => set.iter().cloned().collect(),
             I::DateTime(set) => set
                 .iter()
@@ -1025,7 +1038,7 @@ impl ValueSet {
         }
     }
 
-    pub fn to_proto_string_clone_iter<'a>(&'a self) -> ProtoIter<'a> {
+    pub fn to_proto_string_clone_iter(&self) -> ProtoIter<'_> {
         // to_proto_string_clone
         match &self.inner {
             I::Utf8(set) => ProtoIter::Utf8(set.iter()),
@@ -1050,7 +1063,7 @@ impl ValueSet {
         }
     }
 
-    pub fn to_db_valuev1_iter<'a>(&'a self) -> DbValueV1Iter<'a> {
+    pub fn to_db_valuev1_iter(&self) -> DbValueV1Iter<'_> {
         match &self.inner {
             I::Utf8(set) => DbValueV1Iter::Utf8(set.iter()),
             I::Iutf8(set) => DbValueV1Iter::Iutf8(set.iter()),
@@ -1074,7 +1087,7 @@ impl ValueSet {
         }
     }
 
-    pub fn to_partialvalue_iter<'a>(&'a self) -> PartialValueIter<'a> {
+    pub fn to_partialvalue_iter(&self) -> PartialValueIter<'_> {
         match &self.inner {
             I::Utf8(set) => PartialValueIter::Utf8(set.iter()),
             I::Iutf8(set) => PartialValueIter::Iutf8(set.iter()),
@@ -1098,7 +1111,7 @@ impl ValueSet {
         }
     }
 
-    pub fn to_value_iter<'a>(&'a self) -> ValueIter<'a> {
+    pub fn to_value_iter(&self) -> ValueIter<'_> {
         match &self.inner {
             I::Utf8(set) => ValueIter::Utf8(set.iter()),
             I::Iutf8(set) => ValueIter::Iutf8(set.iter()),
@@ -1135,7 +1148,7 @@ impl ValueSet {
         let init = init?;
         let mut vs = ValueSet::new(init);
 
-        while let Some(maybe_v) = iter.next() {
+        for maybe_v in iter {
             let v = maybe_v?;
             // Need to error if wrong type
             vs.insert_checked(v)?;
@@ -1329,9 +1342,10 @@ impl<'a> Iterator for ValueIter<'a> {
             ValueIter::Iutf8(iter) => iter.next().map(|i| Value::new_iutf8(i.as_str())),
             ValueIter::Iname(iter) => iter.next().map(|i| Value::new_iname(i.as_str())),
             ValueIter::Uuid(iter) => iter.next().map(|i| Value::new_uuidr(i)),
-            ValueIter::Bool(iter) => iter.next().map(|i|
+            ValueIter::Bool(iter) => iter.next().map(
                 // Use the from bool impl.
-                Value::from(i)),
+                Value::from,
+            ),
             ValueIter::Syntax(iter) => iter.next().map(|i|
                 // Uses the "from syntax type" impl.
                 Value::from(i.clone())),
@@ -1350,12 +1364,12 @@ impl<'a> Iterator for ValueIter<'a> {
             ValueIter::Spn(iter) => iter
                 .next()
                 .map(|(n, d)| Value::new_spn_str(n.as_str(), d.as_str())),
-            ValueIter::Uint32(iter) => iter.next().map(|i| Value::from(i.clone())),
+            ValueIter::Uint32(iter) => iter.next().copied().map(Value::from),
             ValueIter::Cid(iter) => iter.next().map(|i| Value::new_cid(i.clone())),
             ValueIter::Nsuniqueid(iter) => {
                 iter.next().map(|i| Value::new_email_address_s(i.as_str()))
             }
-            ValueIter::DateTime(iter) => iter.next().map(|i| Value::from(i.clone())),
+            ValueIter::DateTime(iter) => iter.next().copied().map(Value::from),
             ValueIter::EmailAddress(iter) => {
                 iter.next().map(|i| Value::new_email_address_s(i.as_str()))
             }
@@ -1401,9 +1415,10 @@ impl<'a> Iterator for PartialValueIter<'a> {
                 iter.next().map(|i| PartialValue::new_iname(i.as_str()))
             }
             PartialValueIter::Uuid(iter) => iter.next().map(|i| PartialValue::new_uuidr(i)),
-            PartialValueIter::Bool(iter) => iter.next().map(|i|
+            PartialValueIter::Bool(iter) => iter.next().map(
                 // Use the from bool impl.
-                PartialValue::from(i)),
+                PartialValue::from,
+            ),
             PartialValueIter::Syntax(iter) => iter.next().map(|i|
                 // Uses the "from syntax type" impl.
                 PartialValue::from(i.clone())),
@@ -1414,22 +1429,22 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::JsonFilt(iter) => iter.next().map(|i| PartialValue::from(i.clone())),
             PartialValueIter::Cred(iter) => iter
                 .next()
-                .map(|(tag, cred)| PartialValue::new_credential_tag(tag.as_str())),
+                .map(|(tag, _cred)| PartialValue::new_credential_tag(tag.as_str())),
             PartialValueIter::SshKey(iter) => iter
                 .next()
-                .map(|(tag, key)| PartialValue::new_sshkey_tag_s(tag.as_str())),
+                .map(|(tag, _key)| PartialValue::new_sshkey_tag_s(tag.as_str())),
             PartialValueIter::SecretValue(iter) => {
                 iter.next().map(|_| PartialValue::new_secret_str())
             }
             PartialValueIter::Spn(iter) => iter
                 .next()
                 .map(|(n, d)| PartialValue::new_spn_nrs(n.as_str(), d.as_str())),
-            PartialValueIter::Uint32(iter) => iter.next().map(|i| PartialValue::from(i.clone())),
-            PartialValueIter::Cid(iter) => iter.next().map(|i| PartialValue::new_cid(i.clone())),
+            PartialValueIter::Uint32(iter) => iter.next().copied().map(PartialValue::from),
+            PartialValueIter::Cid(iter) => iter.next().cloned().map(PartialValue::new_cid),
             PartialValueIter::Nsuniqueid(iter) => iter
                 .next()
                 .map(|i| PartialValue::new_email_address_s(i.as_str())),
-            PartialValueIter::DateTime(iter) => iter.next().map(|i| PartialValue::from(i.clone())),
+            PartialValueIter::DateTime(iter) => iter.next().copied().map(PartialValue::from),
             PartialValueIter::EmailAddress(iter) => iter
                 .next()
                 .map(|i| PartialValue::new_email_address_s(i.as_str())),
@@ -1547,9 +1562,9 @@ impl<'a> Iterator for ProtoIter<'a> {
 
     fn next(&mut self) -> Option<String> {
         match self {
-            ProtoIter::Utf8(iter) => iter.next().map(|i| i.clone()),
-            ProtoIter::Iutf8(iter) => iter.next().map(|i| i.clone()),
-            ProtoIter::Iname(iter) => iter.next().map(|i| i.clone()),
+            ProtoIter::Utf8(iter) => iter.next().cloned(),
+            ProtoIter::Iutf8(iter) => iter.next().cloned(),
+            ProtoIter::Iname(iter) => iter.next().cloned(),
             ProtoIter::Uuid(iter) => iter.next().map(ValueSet::uuid_to_proto_string),
 
             ProtoIter::Bool(iter) => iter.next().map(|i| i.to_string()),
@@ -1560,7 +1575,7 @@ impl<'a> Iterator for ProtoIter<'a> {
                 #[allow(clippy::expect_used)]
                 serde_json::to_string(i).expect("A json filter value was corrupted during run-time")
             }),
-            ProtoIter::Cred(iter) => iter.next().map(|(tag, cred)|
+            ProtoIter::Cred(iter) => iter.next().map(|(tag, _cred)|
                 // You can't actually read the credential values because we only display the
                 // tag to the proto side. The credentials private data is stored seperately.
                 tag.to_string()),
@@ -1580,12 +1595,12 @@ impl<'a> Iterator for ProtoIter<'a> {
             ProtoIter::Cid(iter) => iter
                 .next()
                 .map(|c| format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid)),
-            ProtoIter::Nsuniqueid(iter) => iter.next().map(|i| i.clone()),
+            ProtoIter::Nsuniqueid(iter) => iter.next().cloned(),
             ProtoIter::DateTime(iter) => iter.next().map(|odt| {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 odt.format(time::Format::Rfc3339)
             }),
-            ProtoIter::EmailAddress(iter) => iter.next().map(|i| i.clone()),
+            ProtoIter::EmailAddress(iter) => iter.next().cloned(),
             ProtoIter::Url(iter) => iter.next().map(|i| i.to_string()),
         }
     }
