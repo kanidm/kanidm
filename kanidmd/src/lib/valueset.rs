@@ -52,9 +52,7 @@ macro_rules! mergesets {
         $b:expr
     ) => {{
         $b.iter().for_each(|v| {
-            if !$a.contains(v) {
-                $a.insert(v.clone());
-            }
+            $a.insert(v.clone());
         });
         Ok(())
     }};
@@ -486,7 +484,7 @@ impl ValueSet {
             (I::DateTime(set), PartialValue::DateTime(dt)) => set.contains(dt),
             (I::EmailAddress(set), PartialValue::EmailAddress(e)) => set.contains(e.as_str()),
             (I::Url(set), PartialValue::Url(u)) => set.contains(u),
-            (_, _) => false,
+            _ => false,
         }
     }
 

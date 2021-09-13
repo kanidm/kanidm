@@ -271,12 +271,12 @@ impl Entry<EntryInit, EntryNew> {
             .iter()
             .filter(|(_, v)| !v.is_empty())
             .map(|(k, v)| {
-                trace!(?k, ?v, "k, v");
+                trace!(?k, ?v, "attribute");
                 let nk = qs.get_schema().normalise_attr_name(k);
                 let nv = ValueSet::from_result_value_iter(
                     v.iter().map(|vr| qs.clone_value(audit, &nk, vr)),
                 );
-                trace!(?nv, "nv");
+                trace!(?nv, "new valueset transform");
                 match nv {
                     Ok(nvi) => Ok((nk, nvi)),
                     Err(e) => Err(e),
@@ -302,23 +302,24 @@ impl Entry<EntryInit, EntryNew> {
         es: &str,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        trace!("from_proto_entry_str");
-        if cfg!(test) {
-            if es.len() > 256 {
-                let (dsp_es, _) = es.split_at(255);
-                ltrace!(audit, "Parsing -> {}...", dsp_es);
-            } else {
-                ltrace!(audit, "Parsing -> {}", es);
+        spanned!("from_proto_entry_str", {
+            if cfg!(test) {
+                if es.len() > 256 {
+                    let (dsp_es, _) = es.split_at(255);
+                    ltrace!(audit, "Parsing -> {}...", dsp_es);
+                } else {
+                    ltrace!(audit, "Parsing -> {}", es);
+                }
             }
-        }
-        // str -> Proto entry
-        let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
-            ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
-            admin_error!(?e, "SerdeJson Failure");
-            OperationError::SerdeJsonError
-        })?;
-        // now call from_proto_entry
-        Self::from_proto_entry(audit, &pe, qs)
+            // str -> Proto entry
+            let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
+                ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
+                admin_error!(?e, "SerdeJson Failure");
+                OperationError::SerdeJsonError
+            })?;
+            // now call from_proto_entry
+            Self::from_proto_entry(audit, &pe, qs)
+        })
     }
 
     #[cfg(test)]

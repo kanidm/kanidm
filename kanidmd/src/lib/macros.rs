@@ -593,7 +593,7 @@ macro_rules! smolset {
         x
     });
     ($e:expr,) => ({
-        btreeset!($e)
+        smolset!($e)
     });
     ($e:expr, $($item:expr),*) => ({
         use smolset::SmolSet;
