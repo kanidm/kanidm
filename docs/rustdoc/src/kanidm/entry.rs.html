@@ -1,6 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/src/lib/entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings"></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg">
-<link rel="alternate icon" type="image/png" href="../../favicon-16x16.png">
-<link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img src="../../brush.svg" width="18" height="18" alt="Pick another theme!"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img src="../../wheel.svg" width="18" height="18" alt="Change settings"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd&#x2F;src&#x2F;lib&#x2F;entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input"name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -2564,19 +2562,6 @@
 <span id="2562">2562</span>
 <span id="2563">2563</span>
 <span id="2564">2564</span>
-<span id="2565">2565</span>
-<span id="2566">2566</span>
-<span id="2567">2567</span>
-<span id="2568">2568</span>
-<span id="2569">2569</span>
-<span id="2570">2570</span>
-<span id="2571">2571</span>
-<span id="2572">2572</span>
-<span id="2573">2573</span>
-<span id="2574">2574</span>
-<span id="2575">2575</span>
-<span id="2576">2576</span>
-<span id="2577">2577</span>
 </pre><pre class="rust">
 <span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
@@ -2617,6 +2602,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">SchemaError</span>};
+<span class="kw">use</span> <span class="ident">tracing::trace</span>;
 
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be::dbentry</span>::{<span class="ident">DbEntry</span>, <span class="ident">DbEntryV1</span>, <span class="ident">DbEntryVers</span>};
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::be</span>::{<span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span>};
@@ -2810,14 +2796,7 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">STATE</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">STATE</span><span class="op">&gt;</span> {
     <span class="doccomment">/// Get the uuid of this entry.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>() {
-                <span class="comment">// Uv is a value that might contain uuid - we hope it does!</span>
-                <span class="prelude-val">Some</span>(<span class="ident">uv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">uv</span>.<span class="ident">to_uuid</span>(),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-            },
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-        }
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_uuid_single</span>())
     }
 }
 
@@ -2845,6 +2824,7 @@
         <span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoEntry</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">trace!</span>(<span class="string">&quot;from_proto_entry&quot;</span>);
         <span class="comment">// Why not the trait? In the future we may want to extend</span>
         <span class="comment">// this with server aware functions for changes of the</span>
         <span class="comment">// incoming data.</span>
@@ -2854,10 +2834,14 @@
         <span class="kw">let</span> <span class="ident">map2</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">e</span>
             .<span class="ident">attrs</span>
             .<span class="ident">iter</span>()
+            .<span class="ident">filter</span>(<span class="op">|</span>(<span class="kw">_</span>, <span class="ident">v</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">v</span>.<span class="ident">is_empty</span>())
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">v</span>)<span class="op">|</span> {
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">k</span>, <span class="question-mark">?</span><span class="ident">v</span>, <span class="string">&quot;attribute&quot;</span>);
                 <span class="kw">let</span> <span class="ident">nk</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>().<span class="ident">normalise_attr_name</span>(<span class="ident">k</span>);
-                <span class="kw">let</span> <span class="ident">nv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
-                    <span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">vr</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">nk</span>, <span class="ident">vr</span>)).<span class="ident">collect</span>();
+                <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="ident">ValueSet::from_result_value_iter</span>(
+                    <span class="ident">v</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">vr</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">nk</span>, <span class="ident">vr</span>)),
+                );
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">nv</span>, <span class="string">&quot;new valueset transform&quot;</span>);
                 <span class="kw">match</span> <span class="ident">nv</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">nvi</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">nk</span>, <span class="ident">nvi</span>)),
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
@@ -2883,21 +2867,24 @@
         <span class="ident">es</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
-            <span class="kw">if</span> <span class="ident">es</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">256</span> {
-                <span class="kw">let</span> (<span class="ident">dsp_es</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">es</span>.<span class="ident">split_at</span>(<span class="number">255</span>);
-                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Parsing -&gt; {}...&quot;</span>, <span class="ident">dsp_es</span>);
-            } <span class="kw">else</span> {
-                <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Parsing -&gt; {}&quot;</span>, <span class="ident">es</span>);
+        <span class="macro">spanned!</span>(<span class="string">&quot;from_proto_entry_str&quot;</span>, {
+            <span class="kw">if</span> <span class="macro">cfg!</span>(<span class="ident">test</span>) {
+                <span class="kw">if</span> <span class="ident">es</span>.<span class="ident">len</span>() <span class="op">&gt;</span> <span class="number">256</span> {
+                    <span class="kw">let</span> (<span class="ident">dsp_es</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">es</span>.<span class="ident">split_at</span>(<span class="number">255</span>);
+                    <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Parsing -&gt; {}...&quot;</span>, <span class="ident">dsp_es</span>);
+                } <span class="kw">else</span> {
+                    <span class="macro">ltrace!</span>(<span class="ident">audit</span>, <span class="string">&quot;Parsing -&gt; {}&quot;</span>, <span class="ident">es</span>);
+                }
             }
-        }
-        <span class="comment">// str -&gt; Proto entry</span>
-        <span class="kw">let</span> <span class="ident">pe</span>: <span class="ident">ProtoEntry</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>(<span class="ident">es</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SerdeJson Failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::SerdeJsonError</span>
-        })<span class="question-mark">?</span>;
-        <span class="comment">// now call from_proto_entry</span>
-        <span class="self">Self</span><span class="ident">::from_proto_entry</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">pe</span>, <span class="ident">qs</span>)
+            <span class="comment">// str -&gt; Proto entry</span>
+            <span class="kw">let</span> <span class="ident">pe</span>: <span class="ident">ProtoEntry</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>(<span class="ident">es</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">ladmin_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;SerdeJson Failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;SerdeJson Failure&quot;</span>);
+                <span class="ident">OperationError::SerdeJsonError</span>
+            })<span class="question-mark">?</span>;
+            <span class="comment">// now call from_proto_entry</span>
+            <span class="self">Self</span><span class="ident">::from_proto_entry</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">pe</span>, <span class="ident">qs</span>)
+        })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
@@ -2907,97 +2894,116 @@
         <span class="kw">let</span> <span class="ident">pe</span>: <span class="ident">ProtoEntry</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>(<span class="ident">es</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid Proto Entry&quot;</span>);
         <span class="comment">// use a const map to convert str -&gt; ava</span>
         <span class="kw">let</span> <span class="ident">x</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">pe</span>.<span class="ident">attrs</span>.<span class="ident">into_iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
+            .<span class="ident">filter_map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
+                <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() {
+                    <span class="prelude-val">None</span>
+                } <span class="kw">else</span> {
                 <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="ident">AttrString::from</span>(<span class="ident">k</span>.<span class="ident">to_lowercase</span>());
                 <span class="kw">let</span> <span class="ident">vv</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">attr</span>.<span class="ident">as_str</span>() {
                     <span class="string">&quot;attributename&quot;</span> <span class="op">|</span> <span class="string">&quot;classname&quot;</span> <span class="op">|</span> <span class="string">&quot;domain&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iutf8</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iutf8</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;name&quot;</span> <span class="op">|</span> <span class="string">&quot;domain_name&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iname</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iname</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;userid&quot;</span> <span class="op">|</span> <span class="string">&quot;uidnumber&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Use of unstabilised attributes userid/uidnumber&quot;</span>);
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iutf8</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_iutf8</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;class&quot;</span> <span class="op">|</span> <span class="string">&quot;acp_create_class&quot;</span> <span class="op">|</span> <span class="string">&quot;acp_modify_class&quot;</span>  <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_class</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_class</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;acp_create_attr&quot;</span> <span class="op">|</span> <span class="string">&quot;acp_search_attr&quot;</span> <span class="op">|</span> <span class="string">&quot;acp_modify_removedattr&quot;</span> <span class="op">|</span> <span class="string">&quot;acp_modify_presentattr&quot;</span> <span class="op">|</span>
                     <span class="string">&quot;systemmay&quot;</span> <span class="op">|</span> <span class="string">&quot;may&quot;</span> <span class="op">|</span> <span class="string">&quot;systemmust&quot;</span> <span class="op">|</span> <span class="string">&quot;must&quot;</span>
                     <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_attr</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_attr</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;uuid&quot;</span> <span class="op">|</span> <span class="string">&quot;domain_uuid&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_uuids</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_uuids</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                        ).<span class="ident">collect</span>()
+                        ).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;member&quot;</span> <span class="op">|</span> <span class="string">&quot;memberof&quot;</span> <span class="op">|</span> <span class="string">&quot;directmemberof&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_refer_s</span>(<span class="ident">v</span>.<span class="ident">as_str</span>()).<span class="ident">unwrap</span>() ).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_refer_s</span>(<span class="ident">v</span>.<span class="ident">as_str</span>()).<span class="ident">unwrap</span>() ).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;acp_enable&quot;</span> <span class="op">|</span> <span class="string">&quot;multivalue&quot;</span> <span class="op">|</span> <span class="string">&quot;unique&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_bools</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_bools</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                            ).<span class="ident">collect</span>()
+                            ).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;syntax&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_syntaxs</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_syntaxs</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                        ).<span class="ident">collect</span>()
+                        ).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;index&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_indexs</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_indexs</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                        ).<span class="ident">collect</span>()
+                        ).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;acp_targetscope&quot;</span> <span class="op">|</span> <span class="string">&quot;acp_receiver&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_json_filter</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_json_filter_s</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                        ).<span class="ident">collect</span>()
+                        ).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;displayname&quot;</span> <span class="op">|</span> <span class="string">&quot;description&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;spn&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
                             <span class="ident">Value::new_spn_parse</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                        }).<span class="ident">collect</span>()
+                        }).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="string">&quot;gidnumber&quot;</span> <span class="op">|</span> <span class="string">&quot;version&quot;</span> <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
                             <span class="ident">Value::new_uint32_str</span>(<span class="ident">v</span>.<span class="ident">as_str</span>())
                             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string&quot;</span>);
                                 <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)
                             })
-                        }).<span class="ident">collect</span>()
+                        }).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="ident">ia</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="macro">warn!</span>(<span class="string">&quot;WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!&quot;</span>, <span class="ident">ia</span>);
-                        <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)).<span class="ident">collect</span>()
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_utf8</span>(<span class="ident">v</span>)).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                 };
-                (<span class="ident">attr</span>, <span class="ident">vv</span>)
+                <span class="prelude-val">Some</span>((<span class="ident">attr</span>, <span class="ident">vv</span>))
+                }
             })
             .<span class="ident">collect</span>();
 
@@ -3088,19 +3094,16 @@
     {
         <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">iter</span>)
     }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ValueSet</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>)
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">STATE</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">STATE</span><span class="op">&gt;</span> {
     <span class="comment">// This is only used in tests today, but I don&#39;t want to cfg test it.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>() {
-                <span class="comment">// Uv is a value that might contain uuid - we hope it does!</span>
-                <span class="prelude-val">Some</span>(<span class="ident">uv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">uv</span>.<span class="ident">to_uuid</span>(),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-            },
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-        }
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_uuid_single</span>())
     }
 
     <span class="doccomment">/// Validate that this entry and it&#39;s attribute-value sets are conformant to the systems</span>
@@ -3112,16 +3115,15 @@
         <span class="kw">let</span> <span class="ident">schema_classes</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_classes</span>();
         <span class="kw">let</span> <span class="ident">schema_attributes</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_attributes</span>();
 
-        <span class="kw">let</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">uuid_v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">uuid_v</span>.<span class="ident">to_uuid</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">uuid</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">uuid</span>,
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SchemaError::InvalidAttribute</span>(<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>())),
-                },
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SchemaError::MissingMustAttribute</span>(<span class="macro">vec!</span>[<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>()])),
-            },
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">SchemaError::MissingMustAttribute</span>(<span class="macro">vec!</span>[<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>()])),
-        };
+        <span class="kw">let</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="self">self</span>
+            .<span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>)
+            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">SchemaError::MissingMustAttribute</span>(<span class="macro">vec!</span>[<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>()]))
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
+                <span class="ident">vs</span>.<span class="ident">to_uuid_single</span>()
+                    .<span class="ident">copied</span>()
+                    .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">SchemaError::MissingMustAttribute</span>(<span class="macro">vec!</span>[<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>()]))
+            })<span class="question-mark">?</span>;
 
         <span class="comment">// Build the new valid entry ...</span>
         <span class="kw">let</span> <span class="ident">ne</span> <span class="op">=</span> <span class="ident">Entry</span> {
@@ -3133,6 +3135,7 @@
             <span class="ident">attrs</span>: <span class="self">self</span>.<span class="ident">attrs</span>,
         };
         <span class="comment">// Now validate it!</span>
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">ne</span>.<span class="ident">attrs</span>, <span class="string">&quot;Entry::validate -&gt; target&quot;</span>);
 
         <span class="comment">// We scope here to limit the time of borrow of ne.</span>
         {
@@ -3149,17 +3152,14 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">invalid_classes</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">0</span>);
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">classes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SchemaClass</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="ident">entry_classes</span>.<span class="ident">len</span>());
-            <span class="ident">entry_classes</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">|</span> {
-                <span class="comment">// we specify types here to help me clarify a few things in the</span>
-                <span class="comment">// development process :)</span>
-                <span class="kw">match</span> <span class="ident">c</span>.<span class="ident">to_str</span>() {
-                    <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">schema_classes</span>.<span class="ident">get</span>(<span class="ident">s</span>) {
-                        <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">classes</span>.<span class="ident">push</span>(<span class="ident">x</span>),
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">invalid_classes</span>.<span class="ident">push</span>(<span class="ident">s</span>.<span class="ident">to_string</span>()),
-                    },
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">invalid_classes</span>.<span class="ident">push</span>(<span class="string">&quot;corrupt classname&quot;</span>.<span class="ident">to_string</span>()),
-                }
-            });
+
+            <span class="kw">match</span> <span class="ident">entry_classes</span>.<span class="ident">as_classname_iter</span>() {
+                <span class="prelude-val">Some</span>(<span class="ident">cls_iter</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cls_iter</span>.<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">schema_classes</span>.<span class="ident">get</span>(<span class="ident">s</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">classes</span>.<span class="ident">push</span>(<span class="ident">x</span>),
+                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">invalid_classes</span>.<span class="ident">push</span>(<span class="ident">s</span>.<span class="ident">to_string</span>()),
+                }),
+                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">invalid_classes</span>.<span class="ident">push</span>(<span class="string">&quot;corrupt class attribute&quot;</span>.<span class="ident">to_string</span>()),
+            };
 
             <span class="kw">if</span> <span class="op">!</span><span class="ident">invalid_classes</span>.<span class="ident">is_empty</span>() {
                 <span class="comment">// lrequest_error!(&quot;Class on entry not found in schema?&quot;);</span>
@@ -3195,7 +3195,7 @@
             <span class="comment">//   for each attr in must, check it&#39;s present on our ent</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">missing_must</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">0</span>);
             <span class="ident">must</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">avas</span> <span class="op">=</span> <span class="ident">ne</span>.<span class="ident">get_ava</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">name</span>);
+                <span class="kw">let</span> <span class="ident">avas</span> <span class="op">=</span> <span class="ident">ne</span>.<span class="ident">get_ava_set</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>.<span class="ident">name</span>);
                 <span class="kw">if</span> <span class="ident">avas</span>.<span class="ident">is_none</span>() {
                     <span class="ident">missing_must</span>.<span class="ident">push</span>(<span class="ident">attr</span>.<span class="ident">name</span>.<span class="ident">to_string</span>());
                 }
@@ -3227,6 +3227,7 @@
                         }
                         <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="comment">// lrequest_error!(&quot;Invalid Attribute {} for extensible object&quot;, attr_name);</span>
+                            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">attr_name</span>, <span class="string">&quot;extensible -&gt; SchemaError::InvalidAttribute&quot;</span>);
                             <span class="prelude-val">Err</span>(<span class="ident">SchemaError::InvalidAttribute</span>(<span class="ident">attr_name</span>.<span class="ident">to_string</span>()))
                         }
                     }
@@ -3276,6 +3277,7 @@
                         }
                         <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="comment">// lrequest_error!(&quot;Invalid Attribute {} for may+must set&quot;, attr_name);</span>
+                            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">attr_name</span>, <span class="string">&quot;SchemaError::InvalidAttribute&quot;</span>);
                             <span class="prelude-val">Err</span>(<span class="ident">SchemaError::InvalidAttribute</span>(<span class="ident">attr_name</span>.<span class="ident">to_string</span>()))
                         }
                     }
@@ -3489,7 +3491,7 @@
                     .<span class="ident">attrs</span>
                     .<span class="ident">iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
-                        <span class="kw">let</span> <span class="ident">dbvs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_db_valuev1</span>()).<span class="ident">collect</span>();
+                        <span class="kw">let</span> <span class="ident">dbvs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">to_db_valuev1_iter</span>().<span class="ident">collect</span>();
                         (<span class="ident">k</span>.<span class="ident">clone</span>(), <span class="ident">dbvs</span>)
                     })
                     .<span class="ident">collect</span>(),
@@ -3509,11 +3511,7 @@
         <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> [<span class="string">&quot;spn&quot;</span>, <span class="string">&quot;name&quot;</span>, <span class="string">&quot;gidnumber&quot;</span>];
         <span class="ident">cands</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">attrs</span>
-                    .<span class="ident">get</span>(<span class="kw-2">*</span><span class="ident">c</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">avs</span><span class="op">|</span> <span class="ident">avs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()))
-            })
+            .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="kw-2">*</span><span class="ident">c</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_proto_string_clone_iter</span>()))
             .<span class="ident">flatten</span>()
             .<span class="ident">collect</span>()
     }
@@ -3524,12 +3522,8 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Value</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>
             .<span class="ident">get</span>(<span class="string">&quot;spn&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>().<span class="ident">cloned</span>())
-            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">attrs</span>
-                    .<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>)
-                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>().<span class="ident">cloned</span>())
-            })
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_value_single</span>())
+            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_value_single</span>()))
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Value::new_uuidr</span>(<span class="self">self</span>.<span class="ident">get_uuid</span>()))
     }
 
@@ -3538,19 +3532,11 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>
             .<span class="ident">get</span>(<span class="string">&quot;spn&quot;</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
-                <span class="ident">vs</span>.<span class="ident">iter</span>()
-                    .<span class="ident">take</span>(<span class="number">1</span>)
-                    .<span class="ident">next</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;spn={}&quot;</span>, <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()))
-            })
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_proto_string_single</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;spn={}&quot;</span>, <span class="ident">v</span>)))
             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
-                    <span class="ident">vs</span>.<span class="ident">iter</span>()
-                        .<span class="ident">take</span>(<span class="number">1</span>)
-                        .<span class="ident">next</span>()
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;name={}&quot;</span>, <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()))
-                })
+                <span class="self">self</span>.<span class="ident">attrs</span>
+                    .<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>)
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_proto_string_single</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;name={}&quot;</span>, <span class="ident">v</span>)))
             })
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="self">self</span>.<span class="ident">get_uuid</span>().<span class="ident">to_hyphenated_ref</span>()))
     }
@@ -3700,19 +3686,16 @@
                 <span class="ident">idxmeta</span>
                     .<span class="ident">keys</span>()
                     .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">ikey</span><span class="op">|</span> {
-                        <span class="kw">match</span> <span class="ident">pre_e</span>.<span class="ident">get_ava</span>(<span class="ident">ikey</span>.<span class="ident">attr</span>.<span class="ident">as_str</span>()) {
+                        <span class="kw">match</span> <span class="ident">pre_e</span>.<span class="ident">get_ava_set</span>(<span class="ident">ikey</span>.<span class="ident">attr</span>.<span class="ident">as_str</span>()) {
                             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
                             <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="kw">let</span> <span class="ident">changes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
                                     <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                        <span class="ident">vs</span>.<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                                            <span class="comment">// Turn each idx_key to the tuple of</span>
-                                            <span class="comment">// changes.</span>
-                                            <span class="ident">v</span>.<span class="ident">generate_idx_eq_keys</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
-                                                <span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
-                                            })
-                                        })
-                                        .<span class="ident">collect</span>()
+                                        <span class="comment">// We generate these keys out of the valueset now.</span>
+                                        <span class="ident">vs</span>.<span class="ident">generate_idx_eq_keys</span>()
+                                            .<span class="ident">into_iter</span>()
+                                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> <span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>)))
+                                            .<span class="ident">collect</span>()
                                     }
                                     <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
                                         <span class="macro">vec!</span>[<span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="string">&quot;_&quot;</span>.<span class="ident">to_string</span>()))]
@@ -3730,20 +3713,15 @@
                 <span class="ident">idxmeta</span>
                     .<span class="ident">keys</span>()
                     .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">ikey</span><span class="op">|</span> {
-                        <span class="kw">match</span> <span class="ident">post_e</span>.<span class="ident">get_ava</span>(<span class="ident">ikey</span>.<span class="ident">attr</span>.<span class="ident">as_str</span>()) {
+                        <span class="kw">match</span> <span class="ident">post_e</span>.<span class="ident">get_ava_set</span>(<span class="ident">ikey</span>.<span class="ident">attr</span>.<span class="ident">as_str</span>()) {
                             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
                             <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="kw">let</span> <span class="ident">changes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
-                                    <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                        <span class="ident">vs</span>.<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                                            <span class="comment">// Turn each idx_key to the tuple of</span>
-                                            <span class="comment">// changes.</span>
-                                            <span class="ident">v</span>.<span class="ident">generate_idx_eq_keys</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
-                                                <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
-                                            })
-                                        })
-                                        .<span class="ident">collect</span>()
-                                    }
+                                    <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">vs</span>
+                                        .<span class="ident">generate_idx_eq_keys</span>()
+                                        .<span class="ident">into_iter</span>()
+                                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>)))
+                                        .<span class="ident">collect</span>(),
                                     <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
                                         <span class="macro">vec!</span>[<span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="string">&quot;_&quot;</span>.<span class="ident">to_string</span>()))]
                                     }
@@ -3774,17 +3752,12 @@
                                 <span class="comment">// It existed before, but not anymore</span>
                                 <span class="kw">let</span> <span class="ident">changes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
                                     <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                        <span class="comment">// Turn each idx_key to the tuple of</span>
+                                        <span class="comment">// changes.</span>
                                         <span class="ident">pre_vs</span>
-                                            .<span class="ident">iter</span>()
-                                            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                                                <span class="comment">// Turn each idx_key to the tuple of</span>
-                                                <span class="comment">// changes.</span>
-                                                <span class="ident">v</span>.<span class="ident">generate_idx_eq_keys</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(
-                                                    <span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
-                                                        <span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
-                                                    },
-                                                )
-                                            })
+                                            .<span class="ident">generate_idx_eq_keys</span>()
+                                            .<span class="ident">into_iter</span>()
+                                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> <span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>)))
                                             .<span class="ident">collect</span>()
                                     }
                                     <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -3798,17 +3771,12 @@
                                 <span class="comment">// It was added now.</span>
                                 <span class="kw">let</span> <span class="ident">changes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
                                     <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                        <span class="comment">// Turn each idx_key to the tuple of</span>
+                                        <span class="comment">// changes.</span>
                                         <span class="ident">post_vs</span>
-                                            .<span class="ident">iter</span>()
-                                            .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                                                <span class="comment">// Turn each idx_key to the tuple of</span>
-                                                <span class="comment">// changes.</span>
-                                                <span class="ident">v</span>.<span class="ident">generate_idx_eq_keys</span>().<span class="ident">into_iter</span>().<span class="ident">map</span>(
-                                                    <span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
-                                                        <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
-                                                    },
-                                                )
-                                            })
+                                            .<span class="ident">generate_idx_eq_keys</span>()
+                                            .<span class="ident">into_iter</span>()
+                                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>)))
                                             .<span class="ident">collect</span>()
                                     }
                                     <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -3820,50 +3788,42 @@
                             }
                             (<span class="prelude-val">Some</span>(<span class="ident">pre_vs</span>), <span class="prelude-val">Some</span>(<span class="ident">post_vs</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                                 <span class="comment">// it exists in both, we need to work out the differents within the attr.</span>
-                                <span class="ident">pre_vs</span>
-                                    .<span class="ident">difference</span>(<span class="kw-2">&amp;</span><span class="ident">post_vs</span>)
-                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pre_v</span><span class="op">|</span> {
-                                        <span class="comment">// Was in pre, now not in post</span>
-                                        <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
-                                            <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                                <span class="comment">// Remove the v</span>
-                                                <span class="ident">pre_v</span>
-                                                    .<span class="ident">generate_idx_eq_keys</span>()
-                                                    .<span class="ident">into_iter</span>()
-                                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
-                                                        <span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
-                                                    })
-                                                    .<span class="ident">collect</span>()
-                                            }
-                                            <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                                <span class="comment">// No action - we still are &quot;present&quot;, so nothing to do!</span>
-                                                <span class="ident">Vec::new</span>()
-                                            }
-                                            <span class="ident">IndexType::SubString</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
+                                <span class="kw">let</span> <span class="ident">removed_vs</span> <span class="op">=</span> <span class="ident">pre_vs</span>.<span class="ident">idx_eq_key_difference</span>(<span class="ident">post_vs</span>);
+                                <span class="kw">let</span> <span class="ident">added_vs</span> <span class="op">=</span> <span class="ident">post_vs</span>.<span class="ident">idx_eq_key_difference</span>(<span class="ident">pre_vs</span>);
+
+                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">diff</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(
+                                    <span class="ident">removed_vs</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">len</span>()).<span class="ident">unwrap_or</span>(<span class="number">0</span>)
+                                        <span class="op">+</span> <span class="ident">added_vs</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">len</span>()).<span class="ident">unwrap_or</span>(<span class="number">0</span>),
+                                );
+
+                                <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
+                                    <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">removed_vs</span>) <span class="op">=</span> <span class="ident">removed_vs</span> {
+                                            <span class="ident">removed_vs</span>
+                                                .<span class="ident">generate_idx_eq_keys</span>()
+                                                .<span class="ident">into_iter</span>()
+                                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
+                                                    <span class="prelude-val">Err</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
+                                                })
+                                                .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">diff</span>.<span class="ident">push</span>(<span class="ident">v</span>));
                                         }
-                                    })
-                                    .<span class="ident">chain</span>(<span class="ident">post_vs</span>.<span class="ident">difference</span>(<span class="kw-2">&amp;</span><span class="ident">pre_vs</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">post_v</span><span class="op">|</span> {
-                                        <span class="comment">// is in post, but not in pre (add)</span>
-                                        <span class="kw">match</span> <span class="ident">ikey</span>.<span class="ident">itype</span> {
-                                            <span class="ident">IndexType::Equality</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                                <span class="comment">// Remove the v</span>
-                                                <span class="ident">post_v</span>
-                                                    .<span class="ident">generate_idx_eq_keys</span>()
-                                                    .<span class="ident">into_iter</span>()
-                                                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
-                                                        <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
-                                                    })
-                                                    .<span class="ident">collect</span>()
-                                            }
-                                            <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
-                                                <span class="comment">// No action - we still are &quot;present&quot;, so nothing to do!</span>
-                                                <span class="ident">Vec::new</span>()
-                                            }
-                                            <span class="ident">IndexType::SubString</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
+                                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">added_vs</span>) <span class="op">=</span> <span class="ident">added_vs</span> {
+                                            <span class="ident">added_vs</span>
+                                                .<span class="ident">generate_idx_eq_keys</span>()
+                                                .<span class="ident">into_iter</span>()
+                                                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">idx_key</span><span class="op">|</span> {
+                                                    <span class="prelude-val">Ok</span>((<span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">attr</span>, <span class="kw-2">&amp;</span><span class="ident">ikey</span>.<span class="ident">itype</span>, <span class="ident">idx_key</span>))
+                                                })
+                                                .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">diff</span>.<span class="ident">push</span>(<span class="ident">v</span>));
                                         }
-                                    }))
-                                    .<span class="ident">flatten</span>() <span class="comment">// flatten all the inner vecs</span>
-                                    .<span class="ident">collect</span>() <span class="comment">// now collect to an array of changes.</span>
+                                    }
+                                    <span class="ident">IndexType::Presence</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                        <span class="comment">// No action - we still are &quot;present&quot;, so nothing to do!</span>
+                                    }
+                                    <span class="ident">IndexType::SubString</span> <span class="op">=</span><span class="op">&gt;</span> {}
+                                };
+                                <span class="comment">// Return the diff</span>
+                                <span class="ident">diff</span>
                             }
                         }
                     })
@@ -3880,12 +3840,14 @@
             <span class="ident">DbEntryVers::V1</span>(<span class="ident">v1</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v1</span>
                 .<span class="ident">attrs</span>
                 .<span class="ident">into_iter</span>()
+                <span class="comment">// Skip anything empty as new VS can&#39;t deal with it.</span>
+                .<span class="ident">filter</span>(<span class="op">|</span>(<span class="ident">_k</span>, <span class="ident">vs</span>)<span class="op">|</span> <span class="op">!</span><span class="ident">vs</span>.<span class="ident">is_empty</span>())
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">vv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ValueSet</span>, ()<span class="op">&gt;</span> <span class="op">=</span>
+                    <span class="kw">let</span> <span class="ident">vv</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> <span class="op">=</span>
                         <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Value::from_db_valuev1</span>).<span class="ident">collect</span>();
                     <span class="kw">match</span> <span class="ident">vv</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">vv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">k</span>, <span class="ident">vv</span>)),
-                        <span class="prelude-val">Err</span>(()) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">vv</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">k</span>, <span class="ident">vv</span>)),
+                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="macro">admin_error!</span>(<span class="ident">value</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">k</span>, <span class="string">&quot;from_dbentry failed&quot;</span>);
                             <span class="prelude-val">Err</span>(())
                         }
@@ -3896,11 +3858,9 @@
 
         <span class="kw">let</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">r_attrs</span>.<span class="ident">ok</span>()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="kw">match</span> <span class="ident">attrs</span>.<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>(),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-        }
-        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_uuid</span>())<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="string">&quot;uuid&quot;</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_uuid_single</span>().<span class="ident">copied</span>())<span class="question-mark">?</span>;
 
         <span class="prelude-val">Some</span>(<span class="ident">Entry</span> {
             <span class="ident">valid</span>: <span class="ident">EntrySealed</span> { <span class="ident">uuid</span> },
@@ -3960,14 +3920,15 @@
     <span class="doccomment">/// Convert this recycled entry, into a tombstone ready for reaping.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_tombstone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cid</span>: <span class="ident">Cid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span> {
         <span class="comment">// Duplicate this to a tombstone entry</span>
-        <span class="kw">let</span> <span class="ident">class_ava</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>), <span class="ident">Value::new_class</span>(<span class="string">&quot;tombstone&quot;</span>)];
-        <span class="kw">let</span> <span class="ident">last_mod_ava</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">class_ava</span> <span class="op">=</span>
+            <span class="kw">unsafe</span> { <span class="macro">valueset!</span>[<span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>), <span class="ident">Value::new_class</span>(<span class="string">&quot;tombstone&quot;</span>)] };
+        <span class="kw">let</span> <span class="ident">last_mod_ava</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>.<span class="ident">clone</span>()));
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs_new</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
 
         <span class="ident">attrs_new</span>.<span class="ident">insert</span>(
             <span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>),
-            <span class="macro">valueset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">get_uuid</span>())],
+            <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_uuidr</span>(<span class="self">self</span>.<span class="ident">get_uuid</span>())),
         );
         <span class="ident">attrs_new</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>), <span class="ident">class_ava</span>);
         <span class="ident">attrs_new</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;last_modified_cid&quot;</span>), <span class="ident">last_mod_ava</span>);
@@ -4066,10 +4027,8 @@
             .<span class="ident">attrs</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">pvs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span>
-                    <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">resolve_value</span>(<span class="ident">audit</span>, <span class="ident">v</span>)).<span class="ident">collect</span>();
-                <span class="kw">let</span> <span class="ident">pvs</span> <span class="op">=</span> <span class="ident">pvs</span><span class="question-mark">?</span>;
-                <span class="prelude-val">Ok</span>((<span class="ident">k</span>.<span class="ident">to_string</span>(), <span class="ident">pvs</span>))
+                <span class="ident">qs</span>.<span class="ident">resolve_valueset</span>(<span class="ident">audit</span>, <span class="ident">vs</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pvs</span><span class="op">|</span> (<span class="ident">k</span>.<span class="ident">to_string</span>(), <span class="ident">pvs</span>))
             })
             .<span class="ident">collect</span>();
         <span class="prelude-val">Ok</span>(<span class="ident">ProtoEntry</span> { <span class="ident">attrs</span>: <span class="ident">attrs</span><span class="question-mark">?</span> })
@@ -4099,11 +4058,8 @@
             .<span class="ident">attrs</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">vs</span>)<span class="op">|</span> {
-                <span class="kw">let</span> <span class="ident">pvs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">qs</span>.<span class="ident">resolve_value_ldap</span>(<span class="ident">audit</span>, <span class="ident">v</span>, <span class="ident">basedn</span>))
-                    .<span class="ident">collect</span>();
-                <span class="ident">pvs</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">pvs</span><span class="op">|</span> (<span class="ident">k</span>.<span class="ident">as_str</span>(), <span class="ident">pvs</span>))
+                <span class="ident">qs</span>.<span class="ident">resolve_valueset_ldap</span>(<span class="ident">audit</span>, <span class="ident">vs</span>, <span class="ident">basedn</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pvs</span><span class="op">|</span> (<span class="ident">k</span>.<span class="ident">as_str</span>(), <span class="ident">pvs</span>))
             })
             .<span class="ident">collect</span>();
 
@@ -4156,12 +4112,14 @@
     <span class="doccomment">/// This internally adds an AVA to the entry.</span>
     <span class="kw">fn</span> <span class="ident">add_ava_int</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
         <span class="comment">// How do we make this turn into an ok / err?</span>
-        <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">attrs</span>
-            .<span class="ident">entry</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>))
-            .<span class="ident">or_insert_with</span>(<span class="ident">ValueSet::new</span>);
-        <span class="comment">// Here we need to actually do a check/binary search ...</span>
-        <span class="ident">v</span>.<span class="ident">insert</span>(<span class="ident">value</span>);
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
+            <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">insert_checked</span>(<span class="ident">value</span>);
+            <span class="macro">debug_assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
+        } <span class="kw">else</span> {
+            <span class="self">self</span>.<span class="ident">attrs</span>
+                .<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">ValueSet::new</span>(<span class="ident">value</span>));
+        }
         <span class="comment">// Doesn&#39;t matter if it already exists, equality will replace.</span>
     }
 
@@ -4172,8 +4130,12 @@
         <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
     {
         <span class="comment">// Overwrite the existing value, build a tree from the list.</span>
-        <span class="kw">let</span> <span class="ident">values</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">values</span>);
+        <span class="kw">let</span> <span class="ident">values</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">values</span> {
+            <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">vs</span>);
+        } <span class="kw">else</span> {
+            <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>);
+        }
     }
 
     <span class="doccomment">/// Update the last_changed flag of this entry to the given change identifier.</span>
@@ -4189,11 +4151,13 @@
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">keys</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">as_str</span>())
     }
 
-    <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="doccomment">/// Get an iterator over the current set of values for an attribute name.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">iter</span>())
+    <span class="comment">/*
+    #[inline(always)]
+    /// Get an iterator over the current set of values for an attribute name.
+    pub fn get_ava(&amp;self, attr: &amp;str) -&gt; Option&lt;impl Iterator&lt;Item = &amp;Value&gt;&gt; {
+        self.attrs.get(attr).map(|vs| vs.iter())
     }
+    */</span>
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a reference to the current set of values that are associated to this attribute.</span>
@@ -4204,21 +4168,21 @@
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// If possible, return an iterator over the set of values transformed into a `&amp;str`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_as_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava</span>(<span class="ident">attr</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_str</span>()))
+        <span class="self">self</span>.<span class="ident">get_ava_set</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_str_iter</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// If possible, return an iterator over the set of values transformed into a `&amp;Uuid`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_as_refuuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">Uuid</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// If any value is NOT a reference, it&#39;s filtered out.</span>
-        <span class="self">self</span>.<span class="ident">get_ava</span>(<span class="ident">attr</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_ref_uuid</span>()))
+        <span class="self">self</span>.<span class="ident">get_ava_set</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_ref_uuid_iter</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// If possible, return an iterator over the set of ssh key values transformed into a `&amp;str`.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_iter_sshpubkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw">impl</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava</span>(<span class="ident">attr</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">get_sshkey</span>()))
+        <span class="self">self</span>.<span class="ident">get_ava_set</span>(<span class="ident">attr</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_sshpubkey_str_iter</span>())
     }
 
     <span class="comment">// These are special types to allow returning typed values from</span>
@@ -4231,86 +4195,84 @@
     <span class="doccomment">/// However, the converstion to IndexType is fallaible, so in case of a failure</span>
     <span class="doccomment">/// to convert, an Err is returned.</span>
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="comment">// TODO: Can tis be an iterator?</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_ava_opt_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">IndexType</span><span class="op">&gt;</span>, ()<span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">av</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">av</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_indextype</span>().<span class="ident">ok_or</span>(())).<span class="ident">collect</span>();
-                <span class="ident">r</span>
-            }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Vec::new</span>()),
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_ava_opt_index</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IndexType</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_ava_set</span>(<span class="ident">attr</span>) {
+            <span class="ident">vs</span>.<span class="ident">as_indextype_set</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">cloned</span>().<span class="ident">collect</span>())
+        } <span class="kw">else</span> {
+            <span class="comment">// Empty, but consider as valid.</span>
+            <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[])
         }
     }
 
     <span class="doccomment">/// Return a single value of this attributes name, or `None` if it is NOT present, or</span>
     <span class="doccomment">/// there are multiple values present (ambiguous).</span>
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">&gt;</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">len</span>() <span class="op">!</span><span class="op">=</span> <span class="number">1</span> {
-                    <span class="prelude-val">None</span>
-                } <span class="kw">else</span> {
-                    <span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">take</span>(<span class="number">1</span>).<span class="ident">next</span>()
-                }
-            }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-        }
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_value_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single bool, if valid to transform this value into a boolean.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_bool</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">to_bool</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_bool_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single uint32, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_uint32</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">to_uint32</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_uint32_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single syntax type, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_syntax</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SyntaxType</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">to_syntaxtype</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="ident">attr</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_syntaxtype_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single credential, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_credential</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Credential</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">to_credential</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="ident">attr</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_credential_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single secret value, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_secret</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">get_secret_str</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_secret_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single datetime, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_datetime</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> <span class="ident">a</span>.<span class="ident">to_datetime</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_datetime_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single `&amp;str`, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_str</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_str_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single `&amp;Url`, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_url</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Url</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">to_url</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_url_single</span>())
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_uuid_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
     <span class="doccomment">/// Return a single protocol filter, if valid to transform this value.</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_single_protofilter</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">ProtoFilter</span><span class="op">&gt;</span> {
-        <span class="self">self</span>.<span class="ident">get_ava_single</span>(<span class="ident">attr</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">v</span>: <span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_json_filter</span>())
+        <span class="self">self</span>.<span class="ident">attrs</span>
+            .<span class="ident">get</span>(<span class="ident">attr</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_json_filter_single</span>())
     }
 
     <span class="attribute">#[<span class="ident">inline</span>(<span class="ident">always</span>)]</span>
@@ -4416,15 +4378,13 @@
 
         <span class="comment">// Take name: (a, b), name: (c, d) -&gt; (name, a), (name, b), (name, c), (name, d)</span>
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pairs</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="kw-2">&amp;</span><span class="ident">Value</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pairs</span>: <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">PartialValue</span>)<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
 
         <span class="kw">for</span> <span class="ident">attr</span> <span class="kw">in</span> <span class="ident">attrs</span> {
             <span class="kw">match</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">values</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">values</span> {
-                        <span class="ident">pairs</span>.<span class="ident">push</span>((<span class="ident">attr</span>, <span class="ident">v</span>))
-                    }
-                }
+                <span class="prelude-val">Some</span>(<span class="ident">values</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">values</span>
+                    .<span class="ident">to_partialvalue_iter</span>()
+                    .<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">pv</span><span class="op">|</span> <span class="ident">pairs</span>.<span class="ident">push</span>((<span class="ident">attr</span>, <span class="ident">pv</span>))),
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">None</span>,
             }
         }
@@ -4432,9 +4392,9 @@
         <span class="prelude-val">Some</span>(<span class="macro">filter_all!</span>(<span class="ident">f_and</span>(
             <span class="ident">pairs</span>
                 .<span class="ident">into_iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">attr</span>, <span class="ident">value</span>)<span class="op">|</span> {
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">attr</span>, <span class="ident">pv</span>)<span class="op">|</span> {
                     <span class="comment">// We use FC directly here instead of f_eq to avoid an excess clone.</span>
-                    <span class="ident">FC::Eq</span>(<span class="ident">attr</span>, <span class="ident">value</span>.<span class="ident">to_partialvalue</span>())
+                    <span class="ident">FC::Eq</span>(<span class="ident">attr</span>, <span class="ident">pv</span>)
                 })
                 .<span class="ident">collect</span>()
         )))
@@ -4482,7 +4442,7 @@
                 <span class="comment">// A schema error happened, fail the whole operation.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             }
-            <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">vs</span> {
+            <span class="kw">for</span> <span class="ident">v</span> <span class="kw">in</span> <span class="ident">vs</span>.<span class="ident">to_value_iter</span>() {
                 <span class="ident">mods</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Present</span>(<span class="ident">k</span>.<span class="ident">clone</span>(), <span class="ident">v</span>.<span class="ident">clone</span>()));
             }
         }
@@ -4506,6 +4466,18 @@
         <span class="self">self</span>.<span class="ident">add_ava_int</span>(<span class="ident">attr</span>, <span class="ident">value</span>)
     }
 
+    <span class="doccomment">/// Merge an existing value set into this attributes value set. If they are not</span>
+    <span class="doccomment">/// the same type, an error is returned. If no attribute exists, then this valueset is</span>
+    <span class="doccomment">/// cloned &quot;as is&quot;.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">valueset</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
+            <span class="ident">vs</span>.<span class="ident">merge</span>(<span class="ident">valueset</span>)
+        } <span class="kw">else</span> {
+            <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">valueset</span>.<span class="ident">clone</span>());
+            <span class="prelude-val">Ok</span>(())
+        }
+    }
+
     <span class="doccomment">/// Remove an attribute-value pair from this entry.</span>
     <span class="kw">fn</span> <span class="ident">remove_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) {
         <span class="comment">// It would be great to remove these extra allocations, but they</span>
@@ -4518,9 +4490,9 @@
 
     <span class="comment">// Need something that can remove by difference?</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">remove_avas</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">values</span>: <span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>) {
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">set</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
             <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
-                <span class="ident">set</span>.<span class="ident">remove</span>(<span class="ident">k</span>);
+                <span class="ident">vs</span>.<span class="ident">remove</span>(<span class="ident">k</span>);
             })
         }
     }
@@ -4542,6 +4514,10 @@
         <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">iter</span>)
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ValueSet</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>)
     }
 
     <span class="comment">/*
@@ -4588,17 +4564,16 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaAttribute</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="comment">// Convert an Attribute to an entry ... make it good!</span>
-        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>)];
+        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>));
+        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()));
+        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>()));
 
-        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())];
-        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">multivalue_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">multivalue</span>));
+        <span class="kw">let</span> <span class="ident">unique_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">unique</span>));
 
-        <span class="kw">let</span> <span class="ident">multivalue_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">multivalue</span>)];
-        <span class="kw">let</span> <span class="ident">unique_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">unique</span>)];
+        <span class="kw">let</span> <span class="ident">index_v</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">index</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Value::from</span>).<span class="ident">collect</span>();
 
-        <span class="kw">let</span> <span class="ident">index_v</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="ident">s</span>.<span class="ident">index</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">map</span>(<span class="ident">Value::from</span>).<span class="ident">collect</span>();
-
-        <span class="kw">let</span> <span class="ident">syntax_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">syntax</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">syntax_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::from</span>(<span class="ident">s</span>.<span class="ident">syntax</span>.<span class="ident">clone</span>()));
 
         <span class="comment">// Build the Map of the attributes relevant</span>
         <span class="comment">// let mut attrs: Map&lt;AttrString, Set&lt;Value&gt;&gt; = Map::with_capacity(8);</span>
@@ -4608,16 +4583,17 @@
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>), <span class="ident">uuid_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;multivalue&quot;</span>), <span class="ident">multivalue_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;unique&quot;</span>), <span class="ident">unique_v</span>);
-        <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;index&quot;</span>), <span class="ident">index_v</span>);
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">index_v</span> {
+            <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;index&quot;</span>), <span class="ident">vs</span>);
+        }
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;syntax&quot;</span>), <span class="ident">syntax_v</span>);
-        <span class="ident">attrs</span>.<span class="ident">insert</span>(
-            <span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>),
+        <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>), <span class="kw">unsafe</span> {
             <span class="macro">valueset!</span>[
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;system&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;attributetype&quot;</span>)
-            ],
-        );
+            ]
+        });
 
         <span class="comment">// Insert stuff.</span>
 
@@ -4631,43 +4607,39 @@
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">SchemaClass</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">SchemaClass</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>)];
-
-        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())];
-        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>())];
+        <span class="kw">let</span> <span class="ident">uuid_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>.<span class="ident">uuid</span>));
+        <span class="kw">let</span> <span class="ident">name_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_iutf8</span>(<span class="ident">s</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()));
+        <span class="kw">let</span> <span class="ident">desc_v</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="ident">Value::new_utf8</span>(<span class="ident">s</span>.<span class="ident">description</span>.<span class="ident">clone</span>()));
 
         <span class="comment">// let mut attrs: Map&lt;AttrString, Set&lt;Value&gt;&gt; = Map::with_capacity(8);</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span>: <span class="ident">Map</span><span class="op">&lt;</span><span class="ident">AttrString</span>, <span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Map::new</span>();
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;classname&quot;</span>), <span class="ident">name_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;description&quot;</span>), <span class="ident">desc_v</span>);
         <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>), <span class="ident">uuid_v</span>);
-        <span class="ident">attrs</span>.<span class="ident">insert</span>(
-            <span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>),
+        <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;class&quot;</span>), <span class="kw">unsafe</span> {
             <span class="macro">valueset!</span>[
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;system&quot;</span>),
                 <span class="ident">Value::new_class</span>(<span class="string">&quot;classtype&quot;</span>)
-            ],
-        );
+            ]
+        });
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">s</span>.<span class="ident">systemmay</span>.<span class="ident">is_empty</span>() {
-            <span class="ident">attrs</span>.<span class="ident">insert</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;systemmay&quot;</span>),
-                <span class="ident">s</span>.<span class="ident">systemmay</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">sm</span><span class="op">|</span> <span class="ident">Value::new_attr</span>(<span class="ident">sm</span>.<span class="ident">as_str</span>()))
-                    .<span class="ident">collect</span>(),
-            );
+        <span class="kw">let</span> <span class="ident">vs_systemmay</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>
+            .<span class="ident">systemmay</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">sm</span><span class="op">|</span> <span class="ident">Value::new_attr</span>(<span class="ident">sm</span>.<span class="ident">as_str</span>()))
+            .<span class="ident">collect</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">vs_systemmay</span> {
+            <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;systemmay&quot;</span>), <span class="ident">vs</span>);
         }
 
-        <span class="kw">if</span> <span class="op">!</span><span class="ident">s</span>.<span class="ident">systemmust</span>.<span class="ident">is_empty</span>() {
-            <span class="ident">attrs</span>.<span class="ident">insert</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;systemmust&quot;</span>),
-                <span class="ident">s</span>.<span class="ident">systemmust</span>
-                    .<span class="ident">iter</span>()
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">sm</span><span class="op">|</span> <span class="ident">Value::new_attr</span>(<span class="ident">sm</span>.<span class="ident">as_str</span>()))
-                    .<span class="ident">collect</span>(),
-            );
+        <span class="kw">let</span> <span class="ident">vs_systemmust</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">s</span>
+            .<span class="ident">systemmust</span>
+            .<span class="ident">iter</span>()
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">sm</span><span class="op">|</span> <span class="ident">Value::new_attr</span>(<span class="ident">sm</span>.<span class="ident">as_str</span>()))
+            .<span class="ident">collect</span>();
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">vs_systemmust</span> {
+            <span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;systemmust&quot;</span>), <span class="ident">vs</span>);
         }
 
         <span class="ident">Entry</span> {
@@ -5156,4 +5128,6 @@
     }
 }
 </pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div><script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script></body></html>
+</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
+    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script>
+</body></html>
