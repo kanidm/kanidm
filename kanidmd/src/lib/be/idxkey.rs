@@ -122,7 +122,7 @@ impl IdlCacheKeyToRef for IdlCacheKey {
         IdlCacheKeyRef {
             a: self.a.as_str(),
             i: &self.i,
-            k: &self.k.as_str(),
+            k: self.k.as_str(),
         }
     }
 }

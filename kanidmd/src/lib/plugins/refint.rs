@@ -26,36 +26,18 @@ use kanidm_proto::v1::{ConsistencyError, PluginError};
 pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
-    fn check_uuids_exist<'a, I>(
+    fn check_uuids_exist(
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
-        ref_iter: I,
-    ) -> Result<(), OperationError>
-    where
-        I: Iterator<Item = &'a Value>,
-    {
-        let inner: Result<Vec<_>, _> = ref_iter
-            .map(|uuid_value| {
-                uuid_value
-                    .to_ref_uuid()
-                    .map(|uuid| f_eq("uuid", PartialValue::new_uuid(*uuid)))
-                    .ok_or_else(|| {
-                        ladmin_error!(au, "reference value could not convert to reference uuid.");
-                        ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
-                        OperationError::InvalidAttribute(
-                            "uuid could not become reference value".to_string(),
-                        )
-                    })
-            })
-            .collect();
-
-        let inner = inner?;
-
+        inner: Vec<PartialValue>,
+    ) -> Result<(), OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
             ladmin_info!(au, "no reference types modified, skipping check");
             return Ok(());
         }
+
+        let inner = inner.into_iter().map(|pv| f_eq("uuid", pv)).collect();
 
         // F_inc(lusion). All items of inner must be 1 or more, or the filter
         // will fail. This will return the union of the inclusion after the
@@ -110,15 +92,32 @@ impl Plugin for ReferentialIntegrity {
         let ref_types = schema.get_reference_types();
 
         // Fast Path
-        let i = cand
+        let mut vsiter = cand
             .iter()
             .map(|c| {
                 ref_types
                     .values()
-                    .filter_map(move |rtype| c.get_ava(&rtype.name))
+                    .filter_map(move |rtype| c.get_ava_set(&rtype.name))
             })
-            .flatten()
             .flatten();
+
+        // Could check len first?
+        let mut i = Vec::new();
+
+        vsiter.try_for_each(|vs| {
+            if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
+                uuid_iter.for_each(|u| {
+                    i.push(PartialValue::new_uuid(*u))
+                });
+                Ok(())
+            } else {
+                ladmin_error!(au, "reference value could not convert to reference uuid.");
+                ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                Err(OperationError::InvalidAttribute(
+                    "uuid could not become reference value".to_string(),
+                ))
+            }
+        })?;
 
         Self::check_uuids_exist(au, qs, i)
     }
@@ -133,7 +132,7 @@ impl Plugin for ReferentialIntegrity {
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
 
-        let i = me.modlist.into_iter().filter_map(|modify| {
+        let i: Result<Vec<PartialValue>, _> = me.modlist.into_iter().filter_map(|modify| {
             if let Modify::Present(a, v) = &modify {
                 if ref_types.get(a).is_some() {
                     Some(v)
@@ -143,7 +142,22 @@ impl Plugin for ReferentialIntegrity {
             } else {
                 None
             }
-        });
+        })
+        .map(|v| {
+            v.to_ref_uuid()
+                .map(|uuid| PartialValue::new_uuid(*uuid))
+                .ok_or_else(|| {
+                    ladmin_error!(au, "reference value could not convert to reference uuid.");
+                    ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                    OperationError::InvalidAttribute(
+                        "uuid could not become reference value".to_string(),
+                    )
+                })
+
+        })
+        .collect();
+
+        let i = i?;
 
         Self::check_uuids_exist(au, qs, i)
     }
@@ -229,19 +243,19 @@ impl Plugin for ReferentialIntegrity {
             // For all reference in each cand.
             for rtype in ref_types.values() {
                 // If the attribute is present
-                if let Some(vs) = c.get_ava(&rtype.name) {
+                if let Some(vs) = c.get_ava_set(&rtype.name) {
                     // For each value in the set.
-                    for v in vs {
-                        match v.to_ref_uuid() {
-                            Some(vu) => {
+                    match vs.as_ref_uuid_iter() {
+                        Some(uuid_iter) => {
+                            for vu in uuid_iter {
                                 if acu_map.get(vu).is_none() {
                                     res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
                                 }
                             }
-                            None => res.push(Err(ConsistencyError::InvalidAttributeType(
-                                "A non-value-ref type was found.".to_string(),
-                            ))),
                         }
+                        None => res.push(Err(ConsistencyError::InvalidAttributeType(
+                            "A non-value-ref type was found.".to_string(),
+                        ))),
                     }
                 }
             }

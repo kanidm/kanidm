@@ -192,7 +192,7 @@ impl Password {
             Kdf::SSHA512(salt, key) => {
                 let mut hasher = Sha512::new();
                 hasher.update(cleartext.as_bytes());
-                hasher.update(&salt);
+                hasher.update(salt);
                 let r = hasher.finish();
                 Ok(key == &(r.to_vec()))
             }
@@ -803,7 +803,7 @@ impl Credential {
             CredentialType::PasswordMfa(pw, totp, wan, opt_backup_codes) => {
                 match opt_backup_codes {
                     Some(mut backup_codes) => {
-                        backup_codes.remove(&code_to_remove);
+                        backup_codes.remove(code_to_remove);
                         Ok(Credential {
                             type_: CredentialType::PasswordMfa(pw, totp, wan, Some(backup_codes)),
                             claims: self.claims.clone(),

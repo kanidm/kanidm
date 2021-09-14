@@ -6,6 +6,7 @@ macro_rules! setup_test {
         use env_logger;
 
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
@@ -35,6 +36,7 @@ macro_rules! setup_test {
         use env_logger;
 
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
@@ -75,6 +77,7 @@ macro_rules! run_test_no_init {
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
@@ -119,6 +122,7 @@ macro_rules! run_test {
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
@@ -174,6 +178,7 @@ macro_rules! run_idm_test_inner {
 
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
+        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
@@ -564,10 +569,7 @@ macro_rules! btreeset {
         x
     });
     ($e:expr,) => ({
-        use std::collections::BTreeSet;
-        let mut x: BTreeSet<_> = BTreeSet::new();
-        assert!(x.insert($e));
-        x
+        btreeset!($e)
     });
     ($e:expr, $($item:expr),*) => ({
         use std::collections::BTreeSet;
@@ -580,23 +582,73 @@ macro_rules! btreeset {
 
 #[allow(unused_macros)]
 #[macro_export]
+macro_rules! smolset {
+    () => (
+        compile_error!("SmolSet needs at least 1 element")
+    );
+    ($e:expr) => ({
+        use smolset::SmolSet;
+        let mut x: SmolSet<_> = SmolSet::new();
+        assert!(x.insert($e));
+        x
+    });
+    ($e:expr,) => ({
+        smolset!($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        use smolset::SmolSet;
+        let mut x: SmolSet<_> = SmolSet::new();
+        assert!(x.insert($e));
+        $(assert!(x.insert($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! btreemap {
+    () => (
+        compile_error!("BTreeSet needs at least 1 element")
+    );
+    ($e:expr) => ({
+        use std::collections::BTreeMap;
+        let mut x: BTreeMap<_, _> = BTreeMap::new();
+        let (a, b) = $e;
+        x.insert(a, b);
+        x
+    });
+    ($e:expr,) => ({
+        btreemap!($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        use std::collections::BTreeMap;
+        let mut x: BTreeMap<_, _> = BTreeMap::new();
+        let (a, b) = $e;
+        x.insert(a, b);
+        $(
+            let (a, b) = $item;
+            x.insert(a, b);
+        )*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
 macro_rules! valueset {
     () => (
         compile_error!("ValueSet needs at least 1 element")
     );
     ($e:expr) => ({
         use crate::valueset::ValueSet;
-        let mut x: ValueSet = ValueSet::new();
-        assert!(x.insert($e));
-        x
+        ValueSet::new($e)
     });
     ($e:expr,) => ({
         valueset!($e)
     });
     ($e:expr, $($item:expr),*) => ({
         use crate::valueset::ValueSet;
-        let mut x: ValueSet = ValueSet::new();
-        assert!(x.insert($e));
+        let mut x: ValueSet = ValueSet::new($e);
         $(assert!(x.insert($item));)*
         x
     });

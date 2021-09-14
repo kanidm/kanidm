@@ -111,7 +111,7 @@ mod tests {
         let e = qs_write.internal_search_uuid(au, &u).unwrap();
         let gidnumber = e.get_ava_single("gidnumber").unwrap();
         let ex_gid = Value::new_uint32(gid);
-        assert!(&ex_gid == gidnumber);
+        assert!(ex_gid == gidnumber);
     }
 
     #[test]

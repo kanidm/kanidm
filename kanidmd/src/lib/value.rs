@@ -299,6 +299,54 @@ pub enum PartialValue {
     Url(Url),
 }
 
+impl From<SyntaxType> for PartialValue {
+    fn from(s: SyntaxType) -> Self {
+        PartialValue::Syntax(s)
+    }
+}
+
+impl From<IndexType> for PartialValue {
+    fn from(i: IndexType) -> Self {
+        PartialValue::Index(i)
+    }
+}
+
+impl From<bool> for PartialValue {
+    fn from(b: bool) -> Self {
+        PartialValue::Bool(b)
+    }
+}
+
+impl From<&bool> for PartialValue {
+    fn from(b: &bool) -> Self {
+        PartialValue::Bool(*b)
+    }
+}
+
+impl From<ProtoFilter> for PartialValue {
+    fn from(i: ProtoFilter) -> Self {
+        PartialValue::JsonFilt(i)
+    }
+}
+
+impl From<u32> for PartialValue {
+    fn from(i: u32) -> Self {
+        PartialValue::Uint32(i)
+    }
+}
+
+impl From<OffsetDateTime> for PartialValue {
+    fn from(i: OffsetDateTime) -> Self {
+        PartialValue::DateTime(i)
+    }
+}
+
+impl From<Url> for PartialValue {
+    fn from(i: Url) -> Self {
+        PartialValue::Url(i)
+    }
+}
+
 impl PartialValue {
     pub fn new_utf8(s: String) -> Self {
         PartialValue::Utf8(s)
@@ -417,7 +465,7 @@ impl PartialValue {
         matches!(self, PartialValue::Syntax(_))
     }
 
-    pub fn new_json_filter(s: &str) -> Option<Self> {
+    pub fn new_json_filter_s(s: &str) -> Option<Self> {
         let pf: ProtoFilter = match serde_json::from_str(s) {
             Ok(pf) => pf,
             Err(_) => return None,
@@ -553,7 +601,7 @@ impl PartialValue {
 
     pub fn to_url(&self) -> Option<&Url> {
         match self {
-            PartialValue::Url(u) => Some(&u),
+            PartialValue::Url(u) => Some(u),
             _ => None,
         }
     }
@@ -684,6 +732,42 @@ impl From<IndexType> for Value {
     fn from(i: IndexType) -> Self {
         Value {
             pv: PartialValue::Index(i),
+            data: None,
+        }
+    }
+}
+
+impl From<ProtoFilter> for Value {
+    fn from(i: ProtoFilter) -> Self {
+        Value {
+            pv: PartialValue::JsonFilt(i),
+            data: None,
+        }
+    }
+}
+
+impl From<OffsetDateTime> for Value {
+    fn from(i: OffsetDateTime) -> Self {
+        Value {
+            pv: PartialValue::DateTime(i),
+            data: None,
+        }
+    }
+}
+
+impl From<u32> for Value {
+    fn from(i: u32) -> Self {
+        Value {
+            pv: PartialValue::Uint32(i),
+            data: None,
+        }
+    }
+}
+
+impl From<Url> for Value {
+    fn from(i: Url) -> Self {
+        Value {
+            pv: PartialValue::Url(i),
             data: None,
         }
     }
@@ -836,6 +920,13 @@ impl Value {
         })
     }
 
+    pub fn new_syntax(s: SyntaxType) -> Self {
+        Value {
+            pv: PartialValue::Syntax(s),
+            data: None,
+        }
+    }
+
     pub fn is_syntax(&self) -> bool {
         matches!(self.pv, PartialValue::Syntax(_))
     }
@@ -845,6 +936,13 @@ impl Value {
             pv: PartialValue::new_indexs(s)?,
             data: None,
         })
+    }
+
+    pub fn new_index(i: IndexType) -> Self {
+        Value {
+            pv: PartialValue::Index(i),
+            data: None,
+        }
     }
 
     pub fn is_index(&self) -> bool {
@@ -876,11 +974,18 @@ impl Value {
         matches!(self.pv, PartialValue::Refer(_))
     }
 
-    pub fn new_json_filter(s: &str) -> Option<Self> {
+    pub fn new_json_filter_s(s: &str) -> Option<Self> {
         Some(Value {
-            pv: PartialValue::new_json_filter(s)?,
+            pv: PartialValue::new_json_filter_s(s)?,
             data: None,
         })
+    }
+
+    pub fn new_json_filter(f: ProtoFilter) -> Self {
+        Value {
+            pv: PartialValue::JsonFilt(f),
+            data: None,
+        }
     }
 
     pub fn is_json_filter(&self) -> bool {
@@ -909,7 +1014,7 @@ impl Value {
         match &self.pv {
             PartialValue::Cred(_) => match &self.data {
                 Some(dv) => match dv.as_ref() {
-                    DataValue::Cred(c) => Some(&c),
+                    DataValue::Cred(c) => Some(c),
                     _ => None,
                 },
                 None => None,
@@ -1039,6 +1144,13 @@ impl Value {
         PartialValue::new_datetime_s(s).map(|pv| Value { pv, data: None })
     }
 
+    pub fn new_datetime(dt: OffsetDateTime) -> Self {
+        Value {
+            pv: PartialValue::DateTime(dt),
+            data: None,
+        }
+    }
+
     pub fn to_datetime(&self) -> Option<OffsetDateTime> {
         match &self.pv {
             PartialValue::DateTime(odt) => {
@@ -1066,6 +1178,13 @@ impl Value {
 
     pub fn new_url_s(s: &str) -> Option<Self> {
         PartialValue::new_url_s(s).map(|pv| Value { pv, data: None })
+    }
+
+    pub fn new_url(u: Url) -> Self {
+        Value {
+            pv: PartialValue::Url(u),
+            data: None,
+        }
     }
 
     pub fn is_url(&self) -> bool {
@@ -1123,7 +1242,7 @@ impl Value {
                 data: None,
             }),
             DbValueV1::JsonFilter(s) => Ok(Value {
-                pv: match PartialValue::new_json_filter(s.as_str()) {
+                pv: match PartialValue::new_json_filter_s(s.as_str()) {
                     Some(pv) => pv,
                     None => return Err(()),
                 },
@@ -1264,7 +1383,7 @@ impl Value {
 
     pub fn to_url(&self) -> Option<&Url> {
         match &self.pv {
-            PartialValue::Url(u) => Some(&u),
+            PartialValue::Url(u) => Some(u),
             _ => None,
         }
     }
@@ -1282,28 +1401,28 @@ impl Value {
     // in refint plugin.
     pub fn to_ref_uuid(&self) -> Option<&Uuid> {
         match &self.pv {
-            PartialValue::Refer(u) => Some(&u),
+            PartialValue::Refer(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn to_uuid(&self) -> Option<&Uuid> {
         match &self.pv {
-            PartialValue::Uuid(u) => Some(&u),
+            PartialValue::Uuid(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn to_indextype(&self) -> Option<&IndexType> {
         match &self.pv {
-            PartialValue::Index(i) => Some(&i),
+            PartialValue::Index(i) => Some(i),
             _ => None,
         }
     }
 
     pub fn to_syntaxtype(&self) -> Option<&SyntaxType> {
         match &self.pv {
-            PartialValue::Syntax(s) => Some(&s),
+            PartialValue::Syntax(s) => Some(s),
             _ => None,
         }
     }
@@ -1326,6 +1445,76 @@ impl Value {
     pub fn to_partialvalue(&self) -> PartialValue {
         // Match on self to become a partialvalue.
         self.pv.clone()
+    }
+
+    pub fn to_utf8(self) -> Option<String> {
+        match self.pv {
+            PartialValue::Utf8(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_iutf8(self) -> Option<String> {
+        match self.pv {
+            PartialValue::Iutf8(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_iname(self) -> Option<String> {
+        match self.pv {
+            PartialValue::Iname(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_jsonfilt(self) -> Option<ProtoFilter> {
+        match self.pv {
+            PartialValue::JsonFilt(f) => Some(f),
+            _ => None,
+        }
+    }
+
+    pub fn to_cred(self) -> Option<(String, Credential)> {
+        match (self.pv, self.data.map(|b| (*b).clone())) {
+            (PartialValue::Cred(tag), Some(DataValue::Cred(c))) => Some((tag, c)),
+            _ => None,
+        }
+    }
+
+    pub fn to_sshkey(self) -> Option<(String, String)> {
+        match (self.pv, self.data.map(|b| (*b).clone())) {
+            (PartialValue::SshKey(tag), Some(DataValue::SshKey(k))) => Some((tag, k)),
+            _ => None,
+        }
+    }
+
+    pub fn to_spn(self) -> Option<(String, String)> {
+        match self.pv {
+            PartialValue::Spn(n, d) => Some((n, d)),
+            _ => None,
+        }
+    }
+
+    pub fn to_cid(self) -> Option<Cid> {
+        match self.pv {
+            PartialValue::Cid(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_nsuniqueid(self) -> Option<String> {
+        match self.pv {
+            PartialValue::Nsuniqueid(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_emailaddress(self) -> Option<String> {
+        match self.pv {
+            PartialValue::EmailAddress(s) => Some(s),
+            _ => None,
+        }
     }
 
     pub fn migrate_iutf8_iname(self) -> Option<Self> {

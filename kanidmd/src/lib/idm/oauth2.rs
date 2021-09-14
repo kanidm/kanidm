@@ -209,7 +209,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .get_ava_single_secret("oauth2_rs_basic_token_key")
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key| {
-                            Fernet::new(&key).ok_or(OperationError::CryptographyError)
+                            Fernet::new(key).ok_or(OperationError::CryptographyError)
                         })?;
 
                     // Currently unsure if this is how I want to handle this.

@@ -80,7 +80,7 @@ impl Plugin for Base {
         }
 
         // Now, every cand has a UUID - create a cand uuid set from it.
-        let mut cand_uuid: BTreeSet<&Uuid> = BTreeSet::new();
+        let mut cand_uuid: BTreeSet<Uuid> = BTreeSet::new();
 
         // As we insert into the set, if a duplicate is found, return an error
         // that a duplicate exists.
@@ -88,10 +88,9 @@ impl Plugin for Base {
         // Remember, we have to use the ava here, not the get_uuid types because
         // we may not have filled in the uuid field yet.
         for entry in cand.iter() {
-            let uuid_ref: &Uuid = entry
-                .get_ava_single("uuid")
-                .ok_or(OperationError::InvalidEntryState)?
-                .to_uuid()
+            let uuid_ref: Uuid = entry
+                .get_ava_single_uuid("uuid")
+                .copied()
                 .ok_or_else(|| OperationError::InvalidAttribute("uuid".to_string()))?;
             ltrace!(au, "Entry valid UUID: {:?}", entry);
             if !cand_uuid.insert(uuid_ref) {
@@ -144,8 +143,8 @@ impl Plugin for Base {
         // IMPORTANT: We don't exclude recycled or tombstones here!
         let filt_in = filter_all!(FC::Or(
             cand_uuid
-                .iter()
-                .map(|u| FC::Eq("uuid", PartialValue::new_uuid(**u)))
+                .into_iter()
+                .map(|u| FC::Eq("uuid", PartialValue::new_uuid(u)))
                 .collect(),
         ));
 
@@ -337,17 +336,20 @@ mod tests {
     fn test_pre_create_uuid_empty() {
         let preload: Vec<Entry<EntryInit, EntryNew>> = Vec::new();
 
-        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+        let mut e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
             r#"{
             "attrs": {
                 "class": ["person"],
                 "name": ["testperson"],
                 "description": ["testperson"],
                 "displayname": ["testperson"],
-                "uuid": []
+                "uuid": ["79724141-3603-4060-b6bb-35c72772611d"]
             }
         }"#,
         );
+
+        let vs = e.get_ava_mut("uuid").unwrap();
+        vs.clear();
 
         let create = vec![e.clone()];
 

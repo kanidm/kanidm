@@ -31,9 +31,9 @@ fn get_cand_attr_set<VALID, STATE>(
             };
             // Get the value and uuid
             //for each value in the ava.
-            e.get_ava(attr)
+            e.get_ava_set(attr)
                 .map(|vs| {
-                    vs.map(|v| v.to_partialvalue()).try_for_each(|v| {
+                    vs.to_partialvalue_iter().try_for_each(|v| {
                         match cand_attr.insert(v, uuid.clone()) {
                             None => Ok(()),
                             Some(vr) => {

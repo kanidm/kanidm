@@ -21,6 +21,7 @@ use crate::be::IdxKey;
 use crate::prelude::*;
 use crate::valueset::ValueSet;
 use kanidm_proto::v1::{ConsistencyError, OperationError, SchemaError};
+use tracing::trace;
 
 use hashbrown::{HashMap, HashSet};
 use std::borrow::Borrow;
@@ -148,15 +149,12 @@ impl SchemaAttribute {
         })?;
         let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
         // index vec
-        // even if empty, it SHOULD be present ... (is that value to put an empty set?)
+        // even if empty, it SHOULD be present ... (is that valid to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
-        let index = value
-            .get_ava_opt_index("index")
-            .map(|vv: Vec<&IndexType>| vv.into_iter().cloned().collect())
-            .map_err(|_| {
-                ladmin_error!(audit, "invalid index - {}", name);
-                OperationError::InvalidSchemaState("Invalid index".to_string())
-            })?;
+        let index = value.get_ava_opt_index("index").ok_or_else(|| {
+            ladmin_error!(audit, "invalid index - {}", name);
+            OperationError::InvalidSchemaState("invalid index".to_string())
+        })?;
         // syntax type
         let syntax = value
             .get_ava_single_syntax("syntax")
@@ -224,7 +222,7 @@ impl SchemaAttribute {
     }
 
     pub fn validate_ava(&self, a: &str, ava: &ValueSet) -> Result<(), SchemaError> {
-        // ltrace!("Checking for valid {:?} -> {:?}", self.name, ava);
+        trace!("Checking for valid {:?} -> {:?}", self.name, ava);
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
             // lrequest_error!("Ava len > 1 on single value attribute!");
@@ -232,29 +230,30 @@ impl SchemaAttribute {
         };
         // If syntax, check the type is correct
         let valid = match self.syntax {
-            SyntaxType::Boolean => ava.iter().all(Value::is_bool),
-            SyntaxType::SYNTAX_ID => ava.iter().all(Value::is_syntax),
-            SyntaxType::Uuid => ava.iter().all(Value::is_uuid),
-            SyntaxType::REFERENCE_UUID => ava.iter().all(Value::is_refer),
-            SyntaxType::INDEX_ID => ava.iter().all(Value::is_index),
-            SyntaxType::Utf8StringInsensitive => ava.iter().all(Value::is_insensitive_utf8),
-            SyntaxType::Utf8StringIname => ava.iter().all(Value::is_iname),
-            SyntaxType::UTF8STRING => ava.iter().all(Value::is_utf8),
-            SyntaxType::JSON_FILTER => ava.iter().all(Value::is_json_filter),
-            SyntaxType::Credential => ava.iter().all(Value::is_credential),
-            SyntaxType::SecretUtf8String => ava.iter().all(Value::is_secret_string),
-            SyntaxType::SshKey => ava.iter().all(Value::is_sshkey),
-            SyntaxType::SecurityPrincipalName => ava.iter().all(Value::is_spn),
-            SyntaxType::UINT32 => ava.iter().all(Value::is_uint32),
-            SyntaxType::Cid => ava.iter().all(Value::is_cid),
-            SyntaxType::NsUniqueId => ava.iter().all(Value::is_nsuniqueid),
-            SyntaxType::DateTime => ava.iter().all(Value::is_datetime),
-            SyntaxType::EmailAddress => ava.iter().all(Value::is_email_address),
-            SyntaxType::Url => ava.iter().all(Value::is_url),
+            SyntaxType::Boolean => ava.is_bool(),
+            SyntaxType::SYNTAX_ID => ava.is_syntax(),
+            SyntaxType::Uuid => ava.is_uuid(),
+            SyntaxType::REFERENCE_UUID => ava.is_refer(),
+            SyntaxType::INDEX_ID => ava.is_index(),
+            SyntaxType::Utf8StringInsensitive => ava.is_insensitive_utf8(),
+            SyntaxType::Utf8StringIname => ava.is_iname(),
+            SyntaxType::UTF8STRING => ava.is_utf8(),
+            SyntaxType::JSON_FILTER => ava.is_json_filter(),
+            SyntaxType::Credential => ava.is_credential(),
+            SyntaxType::SecretUtf8String => ava.is_secret_string(),
+            SyntaxType::SshKey => ava.is_sshkey(),
+            SyntaxType::SecurityPrincipalName => ava.is_spn(),
+            SyntaxType::UINT32 => ava.is_uint32(),
+            SyntaxType::Cid => ava.is_cid(),
+            SyntaxType::NsUniqueId => ava.is_nsuniqueid(),
+            SyntaxType::DateTime => ava.is_datetime(),
+            SyntaxType::EmailAddress => ava.is_email_address(),
+            SyntaxType::Url => ava.is_url(),
         };
         if valid {
             Ok(())
         } else {
+            trace!(?a, "InvalidAttributeSyntax");
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -1741,10 +1740,8 @@ mod tests {
             single_value_string.validate_ava("single_value", &valueset![Value::new_iutf8("test")]);
         assert_eq!(r1, Ok(()));
 
-        let r2 = single_value_string.validate_ava(
-            "single_value",
-            &valueset![Value::new_iutf8("test1"), Value::new_iutf8("test2")],
-        );
+        let rvs = unsafe { valueset![Value::new_iutf8("test1"), Value::new_iutf8("test2")] };
+        let r2 = single_value_string.validate_ava("single_value", &rvs);
         assert_eq!(
             r2,
             Err(SchemaError::InvalidAttributeSyntax(
@@ -1766,10 +1763,8 @@ mod tests {
             syntax: SyntaxType::UTF8STRING,
         };
 
-        let r5 = multi_value_string.validate_ava(
-            "mv_string",
-            &valueset![Value::new_utf8s("test1"), Value::new_utf8s("test2")],
-        );
+        let rvs = unsafe { valueset![Value::new_utf8s("test1"), Value::new_utf8s("test2")] };
+        let r5 = multi_value_string.validate_ava("mv_string", &rvs);
         assert_eq!(r5, Ok(()));
 
         let multi_value_boolean = SchemaAttribute {
@@ -1784,23 +1779,24 @@ mod tests {
             syntax: SyntaxType::Boolean,
         };
 
-        let r3 = multi_value_boolean.validate_ava(
-            "mv_bool",
-            &valueset![
+        // Since valueset now disallows such shenangians at a type level, this can't occur
+        /*
+        let rvs = unsafe {
+            valueset![
                 Value::new_bool(true),
                 Value::new_iutf8("test1"),
                 Value::new_iutf8("test2")
-            ],
-        );
+            ]
+        };
+        let r3 = multi_value_boolean.validate_ava("mv_bool", &rvs);
         assert_eq!(
             r3,
             Err(SchemaError::InvalidAttributeSyntax("mv_bool".to_string()))
         );
+        */
 
-        let r4 = multi_value_boolean.validate_ava(
-            "mv_bool",
-            &valueset![Value::new_bool(true), Value::new_bool(false)],
-        );
+        let rvs = unsafe { valueset![Value::new_bool(true), Value::new_bool(false)] };
+        let r4 = multi_value_boolean.validate_ava("mv_bool", &rvs);
         assert_eq!(r4, Ok(()));
 
         // syntax_id and index_type values
@@ -1816,14 +1812,14 @@ mod tests {
             syntax: SyntaxType::SYNTAX_ID,
         };
 
-        let r6 = single_value_syntax.validate_ava(
-            "sv_syntax",
-            &valueset![Value::new_syntaxs("UTF8STRING").unwrap()],
-        );
+        let rvs = ValueSet::new(Value::new_syntaxs("UTF8STRING").unwrap());
+        let r6 = single_value_syntax.validate_ava("sv_syntax", &rvs);
         assert_eq!(r6, Ok(()));
 
-        let r7 = single_value_syntax
-            .validate_ava("sv_syntax", &valueset![Value::new_utf8s("thaeountaheu")]);
+        let r7 = single_value_syntax.validate_ava(
+            "sv_syntax",
+            &ValueSet::new(Value::new_utf8s("thaeountaheu")),
+        );
         assert_eq!(
             r7,
             Err(SchemaError::InvalidAttributeSyntax("sv_syntax".to_string()))
@@ -1843,12 +1839,12 @@ mod tests {
         //
         let r8 = single_value_index.validate_ava(
             "sv_index",
-            &valueset![Value::new_indexs("EQUALITY").unwrap()],
+            &ValueSet::new(Value::new_indexs("EQUALITY").unwrap()),
         );
         assert_eq!(r8, Ok(()));
 
         let r9 = single_value_index
-            .validate_ava("sv_index", &valueset![Value::new_utf8s("thaeountaheu")]);
+            .validate_ava("sv_index", &ValueSet::new(Value::new_utf8s("thaeountaheu")));
         assert_eq!(
             r9,
             Err(SchemaError::InvalidAttributeSyntax("sv_index".to_string()))

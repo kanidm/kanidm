@@ -880,7 +880,7 @@ impl IdlSqliteWriteTransaction {
             Some(k) => self
                 .conn
                 .prepare("INSERT OR REPLACE INTO idx_uuid2rdn (uuid, rdn) VALUES(:uuid, :rdn)")
-                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids), (":rdn", &k)]))
+                .and_then(|mut stmt| stmt.execute(&[(":uuid", &uuids), (":rdn", k)]))
                 .map(|_| ())
                 .map_err(sqlite_error),
             None => self

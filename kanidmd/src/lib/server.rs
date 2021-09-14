@@ -7,7 +7,6 @@ use async_std::task;
 use concread::arcache::{ARCache, ARCacheReadTxn};
 use hashbrown::{HashMap, HashSet};
 use std::cell::Cell;
-use std::collections::BTreeSet;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{Semaphore, SemaphorePermit};
@@ -259,7 +258,7 @@ pub trait QueryServerTransaction<'a> {
 
                 let lims = ee.get_limits();
 
-                self.get_be_txn().exists(audit, &lims, &vfr).map_err(|e| {
+                self.get_be_txn().exists(audit, lims, &vfr).map_err(|e| {
                     admin_error!(?e, "backend failure");
                     ladmin_error!(audit, "backend failure -> {:?}", e);
                     OperationError::Backend
@@ -560,7 +559,7 @@ pub trait QueryServerTransaction<'a> {
                             // I think this is unreachable due to how the .or_else works.
                             .ok_or_else(|| OperationError::InvalidAttribute("Invalid Reference syntax".to_string()))
                     }
-                    SyntaxType::JSON_FILTER => Value::new_json_filter(value)
+                    SyntaxType::JSON_FILTER => Value::new_json_filter_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Filter syntax".to_string())),
                     SyntaxType::Credential => Err(OperationError::InvalidAttribute("Credentials can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::SecretUtf8String => Err(OperationError::InvalidAttribute("Radius secrets can not be supplied through modification - please use the IDM api".to_string())),
@@ -657,7 +656,7 @@ pub trait QueryServerTransaction<'a> {
                             })
                     }
                     SyntaxType::JSON_FILTER => {
-                        PartialValue::new_json_filter(value).ok_or_else(|| {
+                        PartialValue::new_json_filter_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
                         })
                     }
@@ -699,42 +698,51 @@ pub trait QueryServerTransaction<'a> {
 
     // In the opposite direction, we can resolve values for presentation
     // ! TRACING INTEGRATED
-    fn resolve_value(
+    fn resolve_valueset(
         &self,
         audit: &mut AuditScope,
-        value: &Value,
-    ) -> Result<String, OperationError> {
-        // Are we a reference type? Try and resolve.
-        if let Some(ur) = value.to_ref_uuid() {
-            let nv = self.uuid_to_spn(audit, ur)?;
-            return match nv {
-                Some(v) => Ok(v.to_proto_string_clone()),
-                None => Ok(value.to_proto_string_clone()),
-            };
+        value: &ValueSet,
+    ) -> Result<Vec<String>, OperationError> {
+        if let Some(r_set) = value.as_refer_set() {
+            let v: Result<Vec<_>, _> = r_set
+                .iter()
+                .map(|ur| {
+                    let nv = self.uuid_to_spn(audit, ur)?;
+                    match nv {
+                        Some(v) => Ok(v.to_proto_string_clone()),
+                        None => Ok(ValueSet::uuid_to_proto_string(ur)),
+                    }
+                })
+                .collect();
+            v
+        } else {
+            let v: Vec<_> = value.to_proto_string_clone_iter().collect();
+            Ok(v)
         }
-
-        // Not? Okay, do the to string.
-        Ok(value.to_proto_string_clone())
     }
 
     // ! TRACING INTEGRATED
-    fn resolve_value_ldap(
+    fn resolve_valueset_ldap(
         &self,
         audit: &mut AuditScope,
-        value: &Value,
+        value: &ValueSet,
         basedn: &str,
-    ) -> Result<String, OperationError> {
-        if let Some(ur) = value.to_ref_uuid() {
-            let rdn = self.uuid_to_rdn(audit, ur)?;
-            Ok(format!("{},{}", rdn, basedn))
-        } else if value.is_sshkey() {
-            value
-                .get_sshkey()
-                .map(str::to_string)
-                .ok_or(OperationError::InvalidValueState)
+    ) -> Result<Vec<String>, OperationError> {
+        if let Some(r_set) = value.as_refer_set() {
+            let v: Result<Vec<_>, _> = r_set
+                .iter()
+                .map(|ur| {
+                    let rdn = self.uuid_to_rdn(audit, ur)?;
+                    Ok(format!("{},{}", rdn, basedn))
+                })
+                .collect();
+            v
+        } else if let Some(k_set) = value.as_sshkey_map() {
+            let v: Vec<_> = k_set.values().cloned().collect();
+            Ok(v)
         } else {
-            // Not? Okay, do the to string.
-            Ok(value.to_proto_string_clone())
+            let v: Vec<_> = value.to_proto_string_clone_iter().collect();
+            Ok(v)
         }
     }
 
@@ -762,16 +770,9 @@ pub trait QueryServerTransaction<'a> {
         audit: &mut AuditScope,
     ) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(audit, &UUID_SYSTEM_CONFIG)
-            .and_then(|e| match e.get_ava_set("badlist_password") {
-                Some(badlist_entry) => {
-                    let mut badlist_hashset = HashSet::with_capacity(badlist_entry.len());
-                    badlist_entry
-                        .iter()
-                        .filter_map(Value::as_string)
-                        .cloned()
-                        .for_each(|s| {
-                            badlist_hashset.insert(s);
-                        });
+            .and_then(|e| match e.get_ava_as_str("badlist_password") {
+                Some(vs_str_iter) => {
+                    let badlist_hashset: HashSet<_> = vs_str_iter.map(str::to_string).collect();
                     Ok(badlist_hashset)
                 }
                 None => Err(OperationError::InvalidEntryState),
@@ -1960,27 +1961,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .map(|er| er.clone().invalidate(self.cid.clone()))
                 .collect();
 
-            candidates.iter_mut().for_each(|er| {
-                let opt_names: Option<BTreeSet<_>> = er.pop_ava("name").map(|vs| {
-                    vs.into_iter()
-                        .filter_map(Value::migrate_iutf8_iname)
-                        .collect()
-                });
-                let opt_dnames: Option<BTreeSet<_>> = er.pop_ava("domain_name").map(|vs| {
-                    vs.into_iter()
-                        .filter_map(Value::migrate_iutf8_iname)
-                        .collect()
-                });
-
-                ltrace!(audit, "{:?}", opt_names);
-                ltrace!(audit, "{:?}", opt_dnames);
-                if let Some(v) = opt_names {
-                    er.set_ava("name", v)
+            candidates.iter_mut().try_for_each(|er| {
+                if let Some(vs) = er.get_ava_mut("name") {
+                    vs.migrate_iutf8_iname()?
                 };
-                if let Some(v) = opt_dnames {
-                    er.set_ava("domain_name", v)
+                if let Some(vs) = er.get_ava_mut("domain_name") {
+                    vs.migrate_iutf8_iname()?
                 };
-            });
+                Ok(())
+            })?;
 
             // Schema check all.
             let res: Result<Vec<Entry<EntrySealed, EntryCommitted>>, SchemaError> = candidates
@@ -2151,6 +2140,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 .and_then(|e: Entry<EntryInit, EntryNew>| self.internal_migrate_or_create(audit, e))
         });
         ltrace!(audit, "internal_migrate_or_create_str -> result {:?}", res);
+        trace!(?res, "internal_migrate_or_create_str -> result");
         debug_assert!(res.is_ok());
         res
     }
@@ -2282,12 +2272,15 @@ impl<'a> QueryServerWriteTransaction<'a> {
         // internal_migrate_or_create.
         let r: Result<_, _> = entries.into_iter().try_for_each(|e| {
             ltrace!(audit, "init schema -> {}", e);
+            trace!(?e, "init schema entry");
             self.internal_migrate_or_create(audit, e)
         });
         if r.is_ok() {
             ladmin_info!(audit, "initialise_schema_core -> Ok!");
+            admin_info!("initialise_schema_core -> Ok!");
         } else {
             ladmin_error!(audit, "initialise_schema_core -> Error {:?}", r);
+            admin_info!(?r, "initialise_schema_core -> Error");
         }
         // why do we have error handling if it's always supposed to be `Ok`?
         debug_assert!(r.is_ok());
@@ -4212,15 +4205,12 @@ mod tests {
                 .internal_search_uuid(audit, &UUID_DOMAIN_INFO)
                 .expect("failed");
             // ++ assert all names are iname
-            domain
-                .get_ava("name")
-                .expect("no name?")
-                .for_each(|v| assert!(v.is_iname()));
+            assert!(domain.get_ava_set("name").expect("no name?").is_iname());
             // ++ assert all domain/domain_name are iname
-            domain
-                .get_ava("domain_name")
+            assert!(domain
+                .get_ava_set("domain_name")
                 .expect("no domain_name?")
-                .for_each(|v| assert!(v.is_iname()));
+                .is_iname());
             assert!(server_txn.commit(audit).is_ok());
         })
     }

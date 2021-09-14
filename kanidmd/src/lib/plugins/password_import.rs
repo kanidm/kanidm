@@ -30,12 +30,8 @@ impl Plugin for PasswordImport {
                 if vs.len() > 1 {
                     return Err(OperationError::Plugin(PluginError::PasswordImport("multiple password_imports specified".to_string())))
                 }
-                // Until upstream btreeset supports first(), we need to convert to a vec.
-                let vs: Vec<_> = vs.into_iter().collect();
 
-                debug_assert!(!vs.is_empty());
-                let im_pw = vs.first()
-                    .and_then(|v| v.to_str())
+                let im_pw = vs.to_str_single()
                     .ok_or_else(|| OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
 
                 // convert the import_password to a cred
@@ -79,11 +75,8 @@ impl Plugin for PasswordImport {
                     "multiple password_imports specified".to_string(),
                 )));
             }
-            // Until upstream btreeset supports first(), we need to convert to a vec.
-            let vs: Vec<_> = vs.into_iter().collect();
 
-            debug_assert!(!vs.is_empty());
-            let im_pw = vs.first().and_then(|v| v.to_str()).ok_or_else(|| {
+            let im_pw = vs.to_str_single().ok_or_else(|| {
                 OperationError::Plugin(PluginError::PasswordImport(
                     "password_import has incorrect value type".to_string(),
                 ))

@@ -59,33 +59,36 @@ fn do_memberof(
     tgte.pop_ava("memberof");
     tgte.pop_ava("directmemberof");
     // Add all the direct mo's and mos.
-    groups.iter().for_each(|g| {
+    let r: Result<(), _> = groups.iter().try_for_each(|g| {
         // TODO: Change add_ava to remove this alloc/clone.
         let dmo = Value::new_refer(*g.get_uuid());
         tgte.add_ava("directmemberof", dmo.clone());
         tgte.add_ava("memberof", dmo);
 
-        if let Some(miter) = g.get_ava("memberof") {
-            miter.for_each(|mo| {
-                tgte.add_ava("memberof", mo.clone());
-            })
-        };
+        if let Some(vs) = g.get_ava_set("memberof") {
+            tgte.merge_ava("memberof", vs)
+        } else {
+            Ok(())
+        }
     });
 
-    ltrace!(
-        au,
-        "Updating {:?} to be dir mo {:?}",
-        uuid,
-        tgte.get_ava_set("directmemberof")
-    );
-    ltrace!(
-        au,
-        "Updating {:?} to be mo {:?}",
-        uuid,
-        tgte.get_ava_set("memberof")
-    );
-
-    Ok(())
+    if r.is_err() {
+        ladmin_error!(au, "Invalid valueset type -> {:?}", r);
+    } else {
+        ltrace!(
+            au,
+            "Updating {:?} to be dir mo {:?}",
+            uuid,
+            tgte.get_ava_set("directmemberof")
+        );
+        ltrace!(
+            au,
+            "Updating {:?} to be mo {:?}",
+            uuid,
+            tgte.get_ava_set("memberof")
+        );
+    }
+    r
 }
 
 #[allow(clippy::cognitive_complexity)]
@@ -350,16 +353,10 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: ValueSet = direct_memberof
+            let d_groups_set: Option<ValueSet> = direct_memberof
                 .iter()
                 .map(|e| Value::new_refer(*e.get_uuid()))
                 .collect();
-
-            let d_groups_set = if d_groups_set.is_empty() {
-                None
-            } else {
-                Some(d_groups_set)
-            };
 
             ltrace!(
                 au,
@@ -370,15 +367,28 @@ impl Plugin for MemberOf {
 
             match (e.get_ava_set("directmemberof"), d_groups_set) {
                 (Some(edmos), Some(dmos)) => {
-                    let diff: Vec<_> = dmos.symmetric_difference(edmos).collect();
-                    if !diff.is_empty() {
-                        ladmin_error!(
-                            au,
-                            "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
-                            e,
-                            diff
-                        );
-                        r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
+                    // Can they both be reference sets?
+                    match (edmos.as_refer_set(), dmos.as_refer_set()) {
+                        (Some(a), Some(b)) => {
+                            let diff: Vec<_> = a.symmetric_difference(b).collect();
+                            if !diff.is_empty() {
+                                ladmin_error!(
+                                    au,
+                                    "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
+                                    e,
+                                    diff
+                                );
+                                r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
+                            }
+                        }
+                        _ => {
+                            ladmin_error!(
+                                au,
+                                "MemberOfInvalid: Entry {}, DMO has incorrect syntax",
+                                e,
+                            );
+                            r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
+                        }
                     }
                 }
                 (None, None) => {
