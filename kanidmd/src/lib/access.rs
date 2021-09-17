@@ -23,6 +23,7 @@ use std::collections::BTreeSet;
 // use hashbrown::HashSet;
 use std::cell::Cell;
 use std::ops::DerefMut;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::entry::{Entry, EntryCommitted, EntryInit, EntryNew, EntryReduced, EntrySealed};
@@ -498,8 +499,8 @@ pub trait AccessControlsTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
-        entries: Vec<Entry<EntrySealed, EntryCommitted>>,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+        entries: Vec<Arc<EntrySealedCommitted>>,
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         // If this is an internal search, return our working set.
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
             IdentType::Internal => {
@@ -556,7 +557,7 @@ pub trait AccessControlsTransaction<'a> {
                 let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
                 // For each entry
-                let allowed_entries: Vec<Entry<EntrySealed, EntryCommitted>> = spanned!(
+                let allowed_entries: Vec<Arc<EntrySealedCommitted>> = spanned!(
                     "access::search_filter_entries<allowed_entries>",
                     {
                         lperf_segment!(
@@ -640,7 +641,7 @@ pub trait AccessControlsTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         se: &SearchEvent,
-        entries: Vec<Entry<EntrySealed, EntryCommitted>>,
+        entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
         // If this is an internal search, do nothing. This can occur in some test cases ONLY
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
@@ -651,7 +652,7 @@ pub trait AccessControlsTransaction<'a> {
                     // In tests we just push everything back.
                     return Ok(entries
                         .into_iter()
-                        .map(|e| unsafe { e.into_reduced() })
+                        .map(|e| unsafe { e.as_ref().clone().into_reduced() })
                         .collect());
                 } else {
                     // In production we can't risk leaking data here, so we return
@@ -838,7 +839,7 @@ pub trait AccessControlsTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         me: &ModifyEvent,
-        entries: &[Entry<EntrySealed, EntryCommitted>],
+        entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.ident.origin {
             IdentType::Internal => {
@@ -1164,7 +1165,7 @@ pub trait AccessControlsTransaction<'a> {
         &self,
         audit: &mut AuditScope,
         de: &DeleteEvent,
-        entries: &[Entry<EntrySealed, EntryCommitted>],
+        entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.ident.origin {
             IdentType::Internal => {
@@ -1478,6 +1479,7 @@ mod tests {
     };
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
+    use std::sync::Arc;
 
     macro_rules! acp_from_entry_err {
         (
@@ -1945,8 +1947,8 @@ mod tests {
         );
         let ev1 = unsafe { e1.into_sealed_committed() };
 
-        let expect = vec![ev1.clone()];
-        let entries = vec![ev1];
+        let expect = vec![Arc::new(ev1.clone())];
+        let entries = vec![Arc::new(ev1)];
 
         // This acp basically is "allow access to stuff, but not this".
         test_acp_search!(
@@ -1974,12 +1976,12 @@ mod tests {
         let e2: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON2);
         let ev2 = unsafe { e2.into_sealed_committed() };
 
-        let r_set = vec![ev1.clone(), ev2.clone()];
+        let r_set = vec![Arc::new(ev1.clone()), Arc::new(ev2.clone())];
 
         let se_admin = unsafe {
             SearchEvent::new_impersonate_entry_ser(JSON_ADMIN_V1, filter_all!(f_pres("name")))
         };
-        let ex_admin = vec![ev1.clone()];
+        let ex_admin = vec![Arc::new(ev1.clone())];
 
         let se_anon = unsafe {
             SearchEvent::new_impersonate_entry_ser(JSON_ANONYMOUS_V1, filter_all!(f_pres("name")))
@@ -2057,7 +2059,7 @@ mod tests {
         // class and uuid being present.
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
-        let r_set = vec![ev1.clone()];
+        let r_set = vec![Arc::new(ev1.clone())];
 
         let ex1: Entry<EntryInit, EntryNew> =
             Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
@@ -2096,7 +2098,7 @@ mod tests {
         // class and uuid being present.
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
-        let r_set = vec![ev1.clone()];
+        let r_set = vec![Arc::new(ev1.clone())];
 
         let ex1: Entry<EntryInit, EntryNew> =
             Entry::unsafe_from_entry_str(JSON_TESTPERSON1_REDUCED);
@@ -2159,7 +2161,7 @@ mod tests {
     fn test_access_enforce_modify() {
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
-        let r_set = vec![ev1.clone()];
+        let r_set = vec![Arc::new(ev1.clone())];
 
         // Name present
         let me_pres = unsafe {
@@ -2443,7 +2445,7 @@ mod tests {
     fn test_access_enforce_delete() {
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
-        let r_set = vec![ev1.clone()];
+        let r_set = vec![Arc::new(ev1.clone())];
 
         let de_admin = unsafe {
             DeleteEvent::new_impersonate_entry_ser(

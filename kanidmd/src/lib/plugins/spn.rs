@@ -9,6 +9,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::value::PartialValue;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::sync::Arc;
 
 pub struct Spn {}
 
@@ -131,7 +132,7 @@ impl Plugin for Spn {
         au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
-        pre_cand: &[Entry<EntrySealed, EntryCommitted>],
+        pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {

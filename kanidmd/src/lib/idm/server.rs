@@ -541,7 +541,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // typing and functionality so we can assess what auth types can
                 // continue, and helps to keep non-needed entry specific data
                 // out of the session tree.
-                let account = Account::try_from_entry_ro(au, &entry, &mut self.qs_read)?;
+                let account = Account::try_from_entry_ro(au, entry.as_ref(), &mut self.qs_read)?;
 
                 // Check the credential that the auth_session will attempt to
                 // use.
@@ -766,7 +766,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             .qs_read
             .internal_search_uuid(au, &uae.target)
             .and_then(|account_entry| {
-                UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)
+                UnixUserAccount::try_from_entry_ro(au, account_entry.as_ref(), &mut self.qs_read)
             })
             .map_err(|e| {
                 admin_error!("Failed to start auth unix -> {:?}", e);
@@ -850,7 +850,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
         // if anonymous
         if lae.target == *UUID_ANONYMOUS {
-            let account = Account::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
+            let account =
+                Account::try_from_entry_ro(au, account_entry.as_ref(), &mut self.qs_read)?;
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
                 lsecurity!(au, "Account is not within valid time period");
@@ -871,7 +872,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             }))
         } else {
             let account =
-                UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)?;
+                UnixUserAccount::try_from_entry_ro(au, account_entry.as_ref(), &mut self.qs_read)?;
 
             if !account.is_within_valid_time(ct) {
                 lsecurity!(au, "Account is not within valid time period");
@@ -917,7 +918,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             e
                         })?;
                     let anon_account =
-                        Account::try_from_entry_ro(au, &anon_entry, &mut self.qs_read)?;
+                        Account::try_from_entry_ro(au, anon_entry.as_ref(), &mut self.qs_read)?;
 
                     Ok(Some(LdapBoundToken {
                         spn: account.spn,

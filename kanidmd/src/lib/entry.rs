@@ -49,6 +49,7 @@ use std::collections::BTreeSet;
 // use hashbrown::HashMap as Map;
 use hashbrown::HashMap;
 use smartstring::alias::String as AttrString;
+use std::sync::Arc;
 use time::OffsetDateTime;
 use uuid::Uuid;
 
@@ -90,7 +91,7 @@ lazy_static! {
 
 pub type EntrySealedCommitted = Entry<EntrySealed, EntryCommitted>;
 pub type EntryInvalidCommitted = Entry<EntryInvalid, EntryCommitted>;
-pub type EntryTuple = (EntrySealedCommitted, EntryInvalidCommitted);
+pub type EntryTuple = (Arc<EntrySealedCommitted>, EntryInvalidCommitted);
 
 // Entry should have a lifecycle of types. This is Raw (modifiable) and Entry (verified).
 // This way, we can move between them, but only certain actions are possible on either
@@ -1323,31 +1324,30 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Given a set of attributes that are allowed to be seen on this entry, process and remove
     /// all other values that are NOT allowed in this query.
     pub fn reduce_attributes(
-        self,
+        &self,
         allowed_attrs: &BTreeSet<&str>,
     ) -> Entry<EntryReduced, EntryCommitted> {
         // Remove all attrs from our tree that are NOT in the allowed set.
-
-        let Entry {
-            valid: s_valid,
-            state: s_state,
-            attrs: s_attrs,
-        } = self;
-
-        let f_attrs: Map<_, _> = s_attrs
-            .into_iter()
+        let f_attrs: Map<_, _> = self
+            .attrs
+            .iter()
             .filter_map(|(k, v)| {
                 if allowed_attrs.contains(k.as_str()) {
-                    Some((k, v))
+                    Some((k.clone(), v.clone()))
                 } else {
                     None
                 }
             })
             .collect();
 
+        let valid = EntryReduced {
+            uuid: self.valid.uuid,
+        };
+        let state = self.state.clone();
+
         Entry {
-            valid: EntryReduced { uuid: s_valid.uuid },
-            state: s_state,
+            valid,
+            state,
             attrs: f_attrs,
         }
     }

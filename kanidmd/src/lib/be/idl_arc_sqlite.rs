@@ -18,6 +18,7 @@ use hashbrown::HashMap;
 use std::collections::BTreeSet;
 use std::convert::TryInto;
 use std::ops::DerefMut;
+use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 
@@ -49,7 +50,7 @@ enum NameCacheValue {
 
 pub struct IdlArcSqlite {
     db: IdlSqlite,
-    entry_cache: ARCache<u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    entry_cache: ARCache<u64, Arc<EntrySealedCommitted>>,
     idl_cache: ARCache<IdlCacheKey, Box<IDLBitRange>>,
     name_cache: ARCache<NameCacheKey, NameCacheValue>,
     op_ts_max: CowCell<Option<Duration>>,
@@ -59,7 +60,7 @@ pub struct IdlArcSqlite {
 
 pub struct IdlArcSqliteReadTransaction<'a> {
     db: IdlSqliteReadTransaction,
-    entry_cache: ARCacheReadTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    entry_cache: ARCacheReadTxn<'a, u64, Arc<EntrySealedCommitted>>,
     idl_cache: ARCacheReadTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
     name_cache: ARCacheReadTxn<'a, NameCacheKey, NameCacheValue>,
     allids: CowCellReadTxn<IDLBitRange>,
@@ -67,7 +68,7 @@ pub struct IdlArcSqliteReadTransaction<'a> {
 
 pub struct IdlArcSqliteWriteTransaction<'a> {
     db: IdlSqliteWriteTransaction,
-    entry_cache: ARCacheWriteTxn<'a, u64, Box<Entry<EntrySealed, EntryCommitted>>>,
+    entry_cache: ARCacheWriteTxn<'a, u64, Arc<EntrySealedCommitted>>,
     idl_cache: ARCacheWriteTxn<'a, IdlCacheKey, Box<IDLBitRange>>,
     name_cache: ARCacheWriteTxn<'a, NameCacheKey, NameCacheValue>,
     op_ts_max: CowCellWriteTxn<'a, Option<Duration>>,
@@ -83,7 +84,7 @@ macro_rules! get_identry {
         $is_read_op:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::get_identry", {
-            let mut result: Vec<Entry<_, _>> = Vec::new();
+            let mut result: Vec<Arc<EntrySealedCommitted>> = Vec::new();
             match $idl {
                 IdList::Partial(idli) | IdList::PartialThreshold(idli) | IdList::Indexed(idli) => {
                     let mut nidl = IDLBitRange::new();
@@ -92,7 +93,7 @@ macro_rules! get_identry {
                         // For all the id's in idl.
                         // is it in the cache?
                         match $self.entry_cache.get(&i) {
-                            Some(eref) => result.push(eref.as_ref().clone()),
+                            Some(eref) => result.push(eref.clone()),
                             None => unsafe { nidl.push_id(i) },
                         }
                     });
@@ -103,7 +104,7 @@ macro_rules! get_identry {
                         // Clone everything from db_result into the cache.
                         if $is_read_op {
                             db_result.iter().for_each(|e| {
-                                $self.entry_cache.insert(e.get_id(), Box::new(e.clone()));
+                                $self.entry_cache.insert(e.get_id(), e.clone());
                             });
                         }
                         // Merge the two vecs
@@ -119,7 +120,7 @@ macro_rules! get_identry {
                     (&idli)
                         .into_iter()
                         .for_each(|i| match $self.entry_cache.get(&i) {
-                            Some(eref) => result.push(eref.as_ref().clone()),
+                            Some(eref) => result.push(eref.clone()),
                             None => unsafe { nidl.push_id(i) },
                         });
 
@@ -324,7 +325,7 @@ pub trait IdlArcSqliteTransaction {
     fn get_identry(
         &mut self,
         idl: &IdList,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError>;
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError>;
 
     // ! TRACING INTEGRATED
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError>;
@@ -379,7 +380,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
     fn get_identry(
         &mut self,
         idl: &IdList,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         get_identry!(self, idl, true)
     }
 
@@ -470,7 +471,7 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
     fn get_identry(
         &mut self,
         idl: &IdList,
-    ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
+    ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         get_identry!(self, idl, false)
     }
 
@@ -665,7 +666,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                 } else {
                     (*self.allids).insert_id(e.get_id());
                     self.entry_cache
-                        .insert_dirty(e.get_id(), Box::new(e.clone()));
+                        .insert_dirty(e.get_id(), Arc::new(e.clone()));
                     Ok(())
                 }
             })
