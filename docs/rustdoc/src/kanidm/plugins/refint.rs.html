@@ -709,6 +709,7 @@
 <span id="709">709</span>
 <span id="710">710</span>
 <span id="711">711</span>
+<span id="712">712</span>
 </pre><pre class="rust">
 <span class="comment">// Referential Integrity</span>
 <span class="comment">//</span>
@@ -732,6 +733,7 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::modify::Modify</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::schema::SchemaTransaction</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">PluginError</span>};
+<span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="comment">// NOTE: This *must* be after base.rs!!!</span>
 
@@ -837,7 +839,7 @@
     <span class="kw">fn</span> <span class="ident">post_modify</span>(
         <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-        <span class="ident">_pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
+        <span class="ident">_pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {

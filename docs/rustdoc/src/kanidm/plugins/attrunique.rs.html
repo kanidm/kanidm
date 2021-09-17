@@ -345,6 +345,8 @@
 <span id="345">345</span>
 <span id="346">346</span>
 <span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
 </pre><pre class="rust">
 <span class="comment">// Attribute uniqueness plugin. We read the schema and determine if the</span>
 <span class="comment">// value should be unique, and how to handle if it is not. This will</span>
@@ -514,6 +516,8 @@
             <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
         };
+
+        <span class="kw">let</span> <span class="ident">all_cand</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">all_cand</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()).<span class="ident">collect</span>();
 
         <span class="kw">let</span> <span class="ident">uniqueattrs</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
