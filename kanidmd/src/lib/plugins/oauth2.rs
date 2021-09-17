@@ -12,7 +12,6 @@ pub struct Oauth2Secrets {}
 
 macro_rules! oauth2_transform {
     (
-        $au:expr,
         $e:expr
     ) => {{
         if $e.attribute_equality("class", &CLASS_OAUTH2_BASIC) {
@@ -38,21 +37,19 @@ impl Plugin for Oauth2Secrets {
     }
 
     fn pre_create_transform(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| oauth2_transform!(au, e))
+        cand.iter_mut().try_for_each(|e| oauth2_transform!(e))
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        cand.iter_mut().try_for_each(|e| oauth2_transform!(au, e))
+        cand.iter_mut().try_for_each(|e| oauth2_transform!(e))
     }
 }
 
@@ -85,9 +82,9 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(au, &uuid)
+                    .internal_search_uuid(&uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_basic_token_key"));
@@ -124,9 +121,9 @@ mod tests {
                 Modify::Purged(AttrString::from("oauth2_rs_basic_token_key"),)
             ]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let e = qs
-                    .internal_search_uuid(au, &uuid)
+                    .internal_search_uuid(&uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_basic_token_key"));

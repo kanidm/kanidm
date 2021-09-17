@@ -37,7 +37,6 @@ impl Plugin for Base {
     // TODO: Can this be improved?
     #[allow(clippy::cognitive_complexity)]
     fn pre_create_transform(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
@@ -149,7 +148,7 @@ impl Plugin for Base {
         // internal exists is actually a wrapper around a search for uuid internally
         //
         // But does it add value? How many people will try to custom define/add uuid?
-        let r = qs.internal_exists(au, filt_in);
+        let r = qs.internal_exists(filt_in);
 
         match r {
             Ok(b) => {
@@ -170,7 +169,6 @@ impl Plugin for Base {
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
@@ -189,12 +187,9 @@ impl Plugin for Base {
         Ok(())
     }
 
-    fn verify(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Search for class = *
-        let entries = match qs.internal_search(au, filter!(f_pres("class"))) {
+        let entries = match qs.internal_search(filter!(f_pres("class"))) {
             Ok(v) => v,
             Err(e) => {
                 admin_error!("Internal Search Failure: {:?}", e);
@@ -284,12 +279,9 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(
-                        au,
-                        filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-                    )
+                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testperson"))))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_pres("uuid"));
@@ -321,7 +313,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -354,7 +346,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -382,12 +374,9 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(
-                        au,
-                        filter!(f_eq("name", PartialValue::new_iname("testperson"))),
-                    )
+                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testperson"))))
                     .expect("Internal search failure");
                 let ue = cands.first().expect("No cand");
                 assert!(ue.attribute_equality(
@@ -423,7 +412,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -459,7 +448,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -501,7 +490,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -531,7 +520,7 @@ mod tests {
                 Value::from("f15a7219-1d15-44e3-a7b4-bec899c07788")
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -560,7 +549,7 @@ mod tests {
                 PartialValue::new_uuids("f15a7219-1d15-44e3-a7b4-bec899c07788").unwrap()
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -586,7 +575,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("uuid"))]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -620,7 +609,7 @@ mod tests {
             preload,
             create,
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -650,7 +639,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 }

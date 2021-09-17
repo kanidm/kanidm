@@ -47,7 +47,6 @@ pub struct SearchResult {
 impl SearchResult {
     // ! TRACING INTEGRATED
     pub fn new(
-        audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
         entries: &[Entry<EntryReduced, EntryCommitted>],
     ) -> Result<Self, OperationError> {
@@ -57,7 +56,7 @@ impl SearchResult {
                 // All the needed transforms for this result are done
                 // in search_ext. This is just an entry -> protoentry
                 // step.
-                e.to_pe(audit, qs)
+                e.to_pe(qs)
             })
             .collect();
         Ok(SearchResult { entries: entries? })
@@ -89,12 +88,11 @@ pub struct SearchEvent {
 impl SearchEvent {
     // ! TRACING INTEGRATED
     pub fn from_message(
-        audit: &mut AuditScope,
         ident: Identity,
         req: &SearchRequest,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let f = Filter::from_ro(audit, &ident, &req.filter, qs)?;
+        let f = Filter::from_ro(&ident, &req.filter, qs)?;
         // We do need to do this twice to account for the ignore_hidden
         // changes.
         let filter_orig = f
@@ -112,7 +110,6 @@ impl SearchEvent {
     }
 
     pub fn from_internal_message(
-        audit: &mut AuditScope,
         ident: Identity,
         filter: &Filter<FilterInvalid>,
         attrs: Option<&[String]>,
@@ -146,7 +143,6 @@ impl SearchEvent {
     }
 
     pub fn from_internal_recycle_message(
-        _audit: &mut AuditScope,
         ident: Identity,
         filter: &Filter<FilterInvalid>,
         attrs: Option<&[String]>,
@@ -179,7 +175,6 @@ impl SearchEvent {
     }
 
     pub fn from_whoami_request(
-        _audit: &mut AuditScope,
         ident: Identity,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -197,7 +192,6 @@ impl SearchEvent {
     }
 
     pub fn from_target_uuid_request(
-        _audit: &mut AuditScope,
         ident: Identity,
         target_uuid: Uuid,
         qs: &QueryServerReadTransaction,
@@ -282,14 +276,13 @@ impl SearchEvent {
     }
 
     pub(crate) fn new_ext_impersonate_uuid(
-        audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
         ident: Identity,
         lf: &LdapFilter,
         attrs: Option<BTreeSet<AttrString>>,
     ) -> Result<Self, OperationError> {
         // Kanidm Filter from LdapFilter
-        let f = Filter::from_ldap_ro(audit, &ident, lf, qs)?;
+        let f = Filter::from_ldap_ro(&ident, lf, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -341,7 +334,6 @@ pub struct CreateEvent {
 
 impl CreateEvent {
     pub fn from_message(
-        audit: &mut AuditScope,
         ident: Identity,
         req: &CreateRequest,
         qs: &QueryServerWriteTransaction,
@@ -349,7 +341,7 @@ impl CreateEvent {
         let rentries: Result<Vec<_>, _> = req
             .entries
             .iter()
-            .map(|e| Entry::from_proto_entry(audit, e, qs))
+            .map(|e| Entry::from_proto_entry(e, qs))
             .collect();
         // From ProtoEntry -> Entry
         // What is the correct consuming iterator here? Can we
@@ -424,12 +416,11 @@ pub struct DeleteEvent {
 
 impl DeleteEvent {
     pub fn from_message(
-        audit: &mut AuditScope,
         ident: Identity,
         req: &DeleteRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let f = Filter::from_rw(audit, &ident, &req.filter, qs)?;
+        let f = Filter::from_rw(&ident, &req.filter, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -442,7 +433,6 @@ impl DeleteEvent {
     }
 
     pub fn from_parts(
-        _audit: &mut AuditScope,
         ident: Identity,
         f: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,
@@ -509,13 +499,12 @@ pub struct ModifyEvent {
 
 impl ModifyEvent {
     pub fn from_message(
-        audit: &mut AuditScope,
         ident: Identity,
         req: &ModifyRequest,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let f = Filter::from_rw(audit, &ident, &req.filter, qs)?;
-        let m = ModifyList::from(audit, &req.modlist, qs)?;
+        let f = Filter::from_rw(&ident, &req.filter, qs)?;
+        let m = ModifyList::from(&req.modlist, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -532,7 +521,6 @@ impl ModifyEvent {
     }
 
     pub fn from_parts(
-        audit: &mut AuditScope,
         ident: Identity,
         target_uuid: Uuid,
         proto_ml: &ProtoModifyList,
@@ -543,7 +531,7 @@ impl ModifyEvent {
         // Add any supplemental conditions we have.
         let f = Filter::join_parts_and(f_uuid, filter);
 
-        let m = ModifyList::from(audit, proto_ml, qs)?;
+        let m = ModifyList::from(proto_ml, qs)?;
         let filter_orig = f
             .validate(qs.get_schema())
             .map_err(OperationError::SchemaViolation)?;
@@ -561,7 +549,6 @@ impl ModifyEvent {
     }
 
     pub fn from_internal_parts(
-        _audit: &mut AuditScope,
         ident: Identity,
         ml: &ModifyList<ModifyInvalid>,
         filter: &Filter<FilterInvalid>,
@@ -584,7 +571,6 @@ impl ModifyEvent {
     }
 
     pub fn from_target_uuid_attr_purge(
-        _audit: &mut AuditScope,
         ident: Identity,
         target_uuid: Uuid,
         attr: &str,
@@ -848,13 +834,12 @@ pub struct WhoamiResult {
 
 impl WhoamiResult {
     pub fn new(
-        audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
         e: &Entry<EntryReduced, EntryCommitted>,
         uat: UserAuthToken,
     ) -> Result<Self, OperationError> {
         Ok(WhoamiResult {
-            youare: e.to_pe(audit, qs)?,
+            youare: e.to_pe(qs)?,
             uat,
         })
     }
@@ -943,7 +928,6 @@ pub struct ReviveRecycledEvent {
 
 impl ReviveRecycledEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         ident: Identity,
         filter: &Filter<FilterInvalid>,
         qs: &QueryServerWriteTransaction,

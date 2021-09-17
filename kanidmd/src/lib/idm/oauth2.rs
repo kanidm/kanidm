@@ -248,7 +248,6 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 impl Oauth2ResourceServersReadTransaction {
     pub fn check_oauth2_authorisation(
         &self,
-        audit: &mut AuditScope,
         ident: &Identity,
         uat: &UserAuthToken,
         auth_req: &AuthorisationRequest,
@@ -326,7 +325,6 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn check_oauth2_authorise_permit(
         &self,
-        audit: &mut AuditScope,
         ident: &Identity,
         uat: &UserAuthToken,
         consent_token: &str,
@@ -394,7 +392,6 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn check_oauth2_token_exchange(
         &self,
-        audit: &mut AuditScope,
         client_authz: &str,
         token_req: &AccessTokenRequest,
         ct: Duration,
@@ -542,7 +539,6 @@ mod tests {
 
     macro_rules! good_authorisation_request {
         (
-            $audit:expr,
             $idms_prox_read:expr,
             $ident:expr,
             $uat:expr,
@@ -560,14 +556,13 @@ mod tests {
             };
 
             $idms_prox_read
-                .check_oauth2_authorisation($audit, $ident, $uat, &auth_req, $ct)
+                .check_oauth2_authorisation($ident, $uat, &auth_req, $ct)
                 .expect("Oauth2 authorisation failed")
         }};
     }
 
     // setup an oauth2 instance.
     fn setup_oauth2_resource_server(
-        audit: &mut AuditScope,
         idms: &IdmServer,
         ct: Duration,
     ) -> (String, UserAuthToken, Identity) {
@@ -587,11 +582,11 @@ mod tests {
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
-        assert!(idms_prox_write.qs_write.create(audit, &ce).is_ok());
+        assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(audit, &uuid)
+            .internal_search_uuid(&uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
             .get_ava_single_str("oauth2_rs_basic_secret")
@@ -600,17 +595,17 @@ mod tests {
 
         // Setup the uat we'll be using.
         let account = idms_prox_write
-            .target_to_account(audit, &UUID_ADMIN)
+            .target_to_account(&UUID_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
             .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(audit, &uat, ct)
+            .process_uat_to_identity(&uat, ct)
             .expect("Unable to process uat");
 
-        idms_prox_write.commit(audit).expect("failed to commit");
+        idms_prox_write.commit().expect("failed to commit");
 
         (secret, uat, ident)
     }
@@ -619,10 +614,9 @@ mod tests {
     fn test_idm_oauth2_basic_function() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -631,24 +625,12 @@ mod tests {
             // == Setup the authorisation request
             let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request = good_authorisation_request!(
-                audit,
-                idms_prox_read,
-                &ident,
-                &uat,
-                ct,
-                code_challenge
-            );
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
             // == Manually submit the consent token to the permit for the permit_success
             let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(
-                    audit,
-                    &ident,
-                    &uat,
-                    &consent_request.consent_token,
-                    ct,
-                )
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
                 .expect("Failed to perform oauth2 permit");
 
             // Check we are reflecting the CSRF properly.
@@ -667,7 +649,7 @@ mod tests {
             };
 
             let token_response = idms_prox_read
-                .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                 .expect("Failed to perform oauth2 token exchange");
 
             // 🎉 We got a token! In the future we can then check introspection from this point.
@@ -679,11 +661,10 @@ mod tests {
     fn test_idm_oauth2_invalid_authorisation_requests() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -702,7 +683,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorisation(audit, &ident, &uat, &auth_req, ct)
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::UnsupportedResponseType
             );
@@ -720,7 +701,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorisation(audit, &ident, &uat, &auth_req, ct)
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -738,7 +719,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorisation(audit, &ident, &uat, &auth_req, ct)
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -749,23 +730,22 @@ mod tests {
     fn test_idm_oauth2_invalid_authorisation_permit_requests() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
                 let account = idms_prox_write
-                    .target_to_account(audit, &UUID_IDM_ADMIN)
+                    .target_to_account(&UUID_IDM_ADMIN)
                     .expect("account must exist");
                 let session_id = uuid::Uuid::new_v4();
                 let uat2 = account
                     .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
                     .expect("Unable to create uat");
                 let ident2 = idms_prox_write
-                    .process_uat_to_identity(audit, &uat2, ct)
+                    .process_uat_to_identity(&uat2, ct)
                     .expect("Unable to process uat");
                 (uat2, ident2)
             };
@@ -774,21 +754,14 @@ mod tests {
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request = good_authorisation_request!(
-                audit,
-                idms_prox_read,
-                &ident,
-                &uat,
-                ct,
-                code_challenge
-            );
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
             // Invalid permits
             //  * expired token, aka past ttl.
             assert!(
                 idms_prox_read
                     .check_oauth2_authorise_permit(
-                        audit,
                         &ident,
                         &uat,
                         &consent_request.consent_token,
@@ -805,7 +778,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_authorise_permit(
-                        audit,
                         &ident2,
                         &uat,
                         &consent_request.consent_token,
@@ -819,7 +791,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_authorise_permit(
-                        audit,
                         &ident,
                         &uat2,
                         &consent_request.consent_token,
@@ -835,10 +806,9 @@ mod tests {
     fn test_idm_oauth2_invalid_token_exchange_requests() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, mut uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
             // allows all our other tests to pass, but it means when we specifically put the
@@ -856,24 +826,12 @@ mod tests {
 
             // == Setup the authorisation request
             let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-            let consent_request = good_authorisation_request!(
-                audit,
-                idms_prox_read,
-                &ident,
-                &uat,
-                ct,
-                code_challenge
-            );
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
             // == Manually submit the consent token to the permit for the permit_success
             let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(
-                    audit,
-                    &ident,
-                    &uat,
-                    &consent_request.consent_token,
-                    ct,
-                )
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
                 .expect("Failed to perform oauth2 permit");
 
             // == Submit the token exchange code.
@@ -891,7 +849,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, "not base64", &token_req, ct)
+                    .check_oauth2_token_exchange("not base64", &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -900,7 +858,7 @@ mod tests {
             let client_authz = base64::encode(format!("test_resource_server {}", secret));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -909,7 +867,7 @@ mod tests {
             let client_authz = base64::encode(format!("NOT A REAL SERVER:{}", secret));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -918,7 +876,7 @@ mod tests {
             let client_authz = base64::encode("test_resource_server:12345");
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -929,7 +887,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_token_exchange(
-                        audit,
                         &client_authz,
                         &token_req,
                         ct + Duration::from_secs(TOKEN_EXPIRE)
@@ -943,7 +900,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_token_exchange(
-                        audit,
                         &client_authz,
                         &token_req,
                         ct + Duration::from_secs(UAT_EXPIRE)
@@ -962,7 +918,7 @@ mod tests {
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -977,7 +933,7 @@ mod tests {
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -992,7 +948,7 @@ mod tests {
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );

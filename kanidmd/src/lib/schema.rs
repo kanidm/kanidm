@@ -16,7 +16,6 @@
 //! [`Attributes`]: struct.SchemaAttribute.html
 //! [`Classes`]: struct.SchemaClass.html
 
-use crate::audit::AuditScope;
 use crate::be::IdxKey;
 use crate::prelude::*;
 use crate::valueset::ValueSet;
@@ -103,10 +102,7 @@ pub struct SchemaAttribute {
 }
 
 impl SchemaAttribute {
-    pub fn try_from(
-        audit: &mut AuditScope,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
+    pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
         trace!("Converting -> {:?}", value);
 
@@ -291,10 +287,7 @@ pub struct SchemaClass {
 }
 
 impl SchemaClass {
-    pub fn try_from(
-        audit: &mut AuditScope,
-        value: &Entry<EntrySealed, EntryCommitted>,
-    ) -> Result<Self, OperationError> {
+    pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
         trace!("Converting {:?}", value);
         // uuid
         let uuid = *value.get_uuid();
@@ -360,7 +353,7 @@ pub trait SchemaTransaction {
     fn get_attributes_unique(&self) -> &Vec<AttrString>;
     fn get_reference_types(&self) -> &HashMap<AttrString, SchemaAttribute>;
 
-    fn validate(&self, _audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+    fn validate(&self) -> Vec<Result<(), ConsistencyError>> {
         let mut res = Vec::new();
 
         let class_snapshot = self.get_classes();
@@ -524,7 +517,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             .collect()
     }
 
-    pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn generate_in_memory(&mut self) -> Result<(), OperationError> {
         spanned!("schema::generate_in_memory", {
             //
             self.classes.clear();
@@ -1343,7 +1336,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 },
             );
 
-            let r = self.validate(audit);
+            let r = self.validate();
             if r.is_empty() {
                 admin_info!("schema validate -> passed");
                 Ok(())
@@ -1392,7 +1385,7 @@ impl SchemaTransaction for SchemaReadTransaction {
 }
 
 impl Schema {
-    pub fn new(audit: &mut AuditScope) -> Result<Self, OperationError> {
+    pub fn new() -> Result<Self, OperationError> {
         let s = Schema {
             classes: CowCell::new(HashMap::with_capacity(128)),
             attributes: CowCell::new(HashMap::with_capacity(128)),
@@ -1401,7 +1394,7 @@ impl Schema {
         };
         // let mut sw = task::block_on(s.write());
         let mut sw = s.write();
-        let r1 = sw.generate_in_memory(audit);
+        let r1 = sw.generate_in_memory();
         debug_assert!(r1.is_ok());
         r1?;
         let r2 = sw.commit().map(|_| s);
@@ -1459,46 +1452,43 @@ mod tests {
     // use crate::proto_v1::Filter as ProtoFilter;
 
     macro_rules! validate_schema {
-        ($sch:ident, $au:expr) => {{
+        ($sch:ident) => {{
             // Turns into a result type
-            let r: Result<Vec<()>, ConsistencyError> = $sch.validate($au).into_iter().collect();
+            let r: Result<Vec<()>, ConsistencyError> = $sch.validate().into_iter().collect();
             assert!(r.is_ok());
         }};
     }
 
     macro_rules! sch_from_entry_ok {
         (
-            $audit:expr,
             $e:expr,
             $type:ty
         ) => {{
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.into_sealed_committed() };
 
-            let r1 = <$type>::try_from($audit, &ev1);
+            let r1 = <$type>::try_from(&ev1);
             assert!(r1.is_ok());
         }};
     }
 
     macro_rules! sch_from_entry_err {
         (
-            $audit:expr,
             $e:expr,
             $type:ty
         ) => {{
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.into_sealed_committed() };
 
-            let r1 = <$type>::try_from($audit, &ev1);
+            let r1 = <$type>::try_from(&ev1);
             assert!(r1.is_err());
         }};
     }
 
     #[test]
     fn test_schema_attribute_from_entry() {
-        run_test!(|_qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|_qs: &QueryServer| {
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1511,7 +1501,6 @@ mod tests {
             );
 
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1527,7 +1516,6 @@ mod tests {
             );
 
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1544,7 +1532,6 @@ mod tests {
             );
 
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1561,7 +1548,6 @@ mod tests {
             );
 
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1579,7 +1565,6 @@ mod tests {
 
             // Index is allowed to be empty
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1596,7 +1581,6 @@ mod tests {
 
             // Index present
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "attributetype"],
@@ -1616,9 +1600,8 @@ mod tests {
 
     #[test]
     fn test_schema_class_from_entry() {
-        run_test!(|_qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|_qs: &QueryServer| {
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
@@ -1630,7 +1613,6 @@ mod tests {
             );
 
             sch_from_entry_err!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object"],
@@ -1644,7 +1626,6 @@ mod tests {
 
             // Classes can be valid with no attributes provided.
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
@@ -1658,7 +1639,6 @@ mod tests {
 
             // Classes with various may/must
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
@@ -1672,7 +1652,6 @@ mod tests {
             );
 
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
@@ -1686,7 +1665,6 @@ mod tests {
             );
 
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
@@ -1701,7 +1679,6 @@ mod tests {
             );
 
             sch_from_entry_ok!(
-                audit,
                 r#"{
                     "attrs": {
                         "class": ["object", "classtype"],
@@ -1853,18 +1830,16 @@ mod tests {
 
     #[test]
     fn test_schema_simple() {
-        let mut audit = AuditScope::new("test_schema_simple", uuid::Uuid::new_v4(), None);
-        let schema = Schema::new(&mut audit).expect("failed to create schema");
+        let schema = Schema::new().expect("failed to create schema");
         let schema_ro = schema.read();
-        validate_schema!(schema_ro, &mut audit);
+        validate_schema!(schema_ro);
     }
 
     #[test]
     fn test_schema_entries() {
         // Given an entry, assert it's schema is valid
         // We do
-        let mut audit = AuditScope::new("test_schema_entries", uuid::Uuid::new_v4(), None);
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         let e_no_uuid: Entry<EntryInvalid, EntryNew> = unsafe {
             Entry::unsafe_from_entry_str(
@@ -2016,8 +1991,7 @@ mod tests {
     #[test]
     fn test_schema_entry_validate() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new("test_schema_entry_validate", uuid::Uuid::new_v4(), None);
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.write_blocking();
 
         // Check syntax to upper
@@ -2061,8 +2035,7 @@ mod tests {
 
     #[test]
     fn test_schema_extensible() {
-        let mut audit = AuditScope::new("test_schema_extensible", uuid::Uuid::new_v4(), None);
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         // Just because you are extensible, doesn't mean you can be lazy
 
@@ -2124,9 +2097,7 @@ mod tests {
 
     #[test]
     fn test_schema_filter_validation() {
-        let mut audit =
-            AuditScope::new("test_schema_filter_validation", uuid::Uuid::new_v4(), None);
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let schema_outer = Schema::new().expect("failed to create schema");
         let schema = schema_outer.read();
         // Test non existant attr name
         let f_mixed = filter_all!(f_eq("nonClAsS", PartialValue::new_class("attributetype")));
@@ -2190,15 +2161,10 @@ mod tests {
     #[test]
     fn test_schema_class_phantom_reject() {
         // Check that entries can be normalised and validated sanely
-        let mut audit = AuditScope::new(
-            "test_schema_class_phantom_reject",
-            uuid::Uuid::new_v4(),
-            None,
-        );
-        let schema_outer = Schema::new(&mut audit).expect("failed to create schema");
+        let schema_outer = Schema::new().expect("failed to create schema");
         let mut schema = schema_outer.write_blocking();
 
-        assert!(schema.validate(&mut audit).len() == 0);
+        assert!(schema.validate().len() == 0);
 
         // Attempt to create a class with a phantom attribute, should be refused.
         let class = SchemaClass {
@@ -2213,6 +2179,6 @@ mod tests {
 
         assert!(schema.update_classes(vec![class]).is_ok());
 
-        assert!(schema.validate(&mut audit).len() == 1);
+        assert!(schema.validate().len() == 1);
     }
 }

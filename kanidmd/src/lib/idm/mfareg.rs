@@ -1,4 +1,3 @@
-use crate::audit::AuditScope;
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::identity::IdentityId;
@@ -162,7 +161,6 @@ impl MfaRegSession {
     }
 
     pub fn webauthn_new(
-        au: &mut AuditScope,
         origin: IdentityId,
         account: Account,
         label: String,
@@ -188,7 +186,6 @@ impl MfaRegSession {
 
     pub fn webauthn_step(
         &mut self,
-        au: &mut AuditScope,
         origin: &IdentityId,
         target: &Uuid,
         chal: &RegisterPublicKeyCredential,

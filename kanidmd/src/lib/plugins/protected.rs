@@ -46,7 +46,6 @@ impl Plugin for Protected {
     }
 
     fn pre_create(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         cand: &[Entry<EntrySealed, EntryNew>],
@@ -73,7 +72,6 @@ impl Plugin for Protected {
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // Should these be EntrySealed?
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -142,7 +140,6 @@ impl Plugin for Protected {
     }
 
     fn pre_delete(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // Should these be EntrySealed
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
@@ -227,7 +224,7 @@ mod tests {
             preload,
             create,
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -257,7 +254,7 @@ mod tests {
                 m_pres("displayname", &Value::new_utf8s("system test")),
             ]),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -287,7 +284,7 @@ mod tests {
                 m_pres("must", &Value::new_iutf8("name")),
             ]),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -313,7 +310,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -350,7 +347,7 @@ mod tests {
                 m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -379,7 +376,7 @@ mod tests {
             preload,
             create,
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -411,7 +408,7 @@ mod tests {
                 PartialValue::new_iname("domain_example.net.au")
             )),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 }

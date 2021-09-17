@@ -1,8 +1,6 @@
 //! An actor that shows the servers current status and statistics. (TODO).
 
-use crate::audit::AuditScope;
 use crate::prelude::*;
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 
 pub struct StatusRequestEvent {
@@ -23,7 +21,7 @@ impl StatusActor {
         unsafe { &(*x_ptr) }
     }
 
-    pub async fn handle_request(&self, event: StatusRequestEvent) -> bool {
+    pub async fn handle_request(&self, _event: StatusRequestEvent) -> bool {
         admin_info!("status handler complete");
         true
     }

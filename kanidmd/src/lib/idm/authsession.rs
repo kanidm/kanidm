@@ -94,11 +94,7 @@ impl CredHandler {
     /// that will be used for this session. This credential handler is a "self contained"
     /// unit that defines what is possible to use during this authentication session to prevent
     /// inconsistency.
-    fn try_from(
-        au: &mut AuditScope,
-        c: &Credential,
-        webauthn: &Webauthn<WebauthnDomainConfig>,
-    ) -> Result<Self, ()> {
+    fn try_from(c: &Credential, webauthn: &Webauthn<WebauthnDomainConfig>) -> Result<Self, ()> {
         match &c.type_ {
             CredentialType::Password(pw) => Ok(CredHandler::Password(pw.clone(), false)),
             CredentialType::GeneratedPassword(pw) => Ok(CredHandler::Password(pw.clone(), true)),
@@ -152,12 +148,10 @@ impl CredHandler {
 }
 
 impl CredHandler {
-    // ! TRACING INTEGRATED
     /// Determine if this password factor requires an upgrade of it's cryptographic type. If
     /// so, send an asynchronous event into the queue that will allow the password to have it's
     /// content upgraded later.
     fn maybe_pw_upgrade(
-        au: &mut AuditScope,
         pw: &Password,
         who: Uuid,
         cleartext: &str,
@@ -173,9 +167,8 @@ impl CredHandler {
         }
     }
 
-    // ! TRACING INTEGRATED
     /// validate that the client wants to authenticate as the anonymous user.
-    fn validate_anonymous(au: &mut AuditScope, cred: &AuthCredential) -> CredState {
+    fn validate_anonymous(cred: &AuthCredential) -> CredState {
         match cred {
             AuthCredential::Anonymous => {
                 // For anonymous, no claims will ever be issued.
@@ -191,10 +184,8 @@ impl CredHandler {
         }
     }
 
-    // ! TRACING INTEGRATED
     /// Validate a singule password credential of the account.
     fn validate_password(
-        au: &mut AuditScope,
         cred: &AuthCredential,
         pw: &mut Password,
         generated: bool,
@@ -212,7 +203,7 @@ impl CredHandler {
                         }
                         _ => {
                             security_info!("Handler::Password -> Result::Success");
-                            Self::maybe_pw_upgrade(au, pw, who, cleartext.as_str(), async_tx);
+                            Self::maybe_pw_upgrade(pw, who, cleartext.as_str(), async_tx);
                             if generated {
                                 CredState::Success(AuthType::GeneratedPassword)
                             } else {
@@ -235,12 +226,10 @@ impl CredHandler {
         }
     }
 
-    // ! TRACING INTEGRATED
     /// Proceed with the next step in a multifactor authentication, based on the current
     /// verification results and state. If this logic of this statemachine is violated, the
     /// authentication will fail.
     fn validate_password_mfa(
-        au: &mut AuditScope,
         cred: &AuthCredential,
         ts: &Duration,
         pw_mfa: &mut CredMfa,
@@ -348,7 +337,6 @@ impl CredHandler {
                                     pw_mfa.pw_state = CredVerifyState::Success;
                                     security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
                                     Self::maybe_pw_upgrade(
-                                        au,
                                         &pw_mfa.pw,
                                         who,
                                         cleartext.as_str(),
@@ -378,10 +366,8 @@ impl CredHandler {
         }
     } // end CredHandler::PasswordMfa
 
-    // ! TRACING INTEGRATED
     /// Validate a webauthn authentication attempt
     pub fn validate_webauthn(
-        au: &mut AuditScope,
         cred: &AuthCredential,
         wan_cred: &mut CredWebauthn,
         webauthn: &Webauthn<WebauthnDomainConfig>,
@@ -432,12 +418,10 @@ impl CredHandler {
         }
     }
 
-    // ! TRACING INTEGRATED
     #[allow(clippy::too_many_arguments)]
     /// Given the current handler, proceed to authenticate the attempted credential step.
     pub fn validate(
         &mut self,
-        au: &mut AuditScope,
         cred: &AuthCredential,
         ts: &Duration,
         who: Uuid,
@@ -446,12 +430,11 @@ impl CredHandler {
         pw_badlist_set: Option<&HashSet<String>>,
     ) -> CredState {
         match self {
-            CredHandler::Anonymous => Self::validate_anonymous(au, cred),
+            CredHandler::Anonymous => Self::validate_anonymous(cred),
             CredHandler::Password(ref mut pw, generated) => {
-                Self::validate_password(au, cred, pw, *generated, who, async_tx, pw_badlist_set)
+                Self::validate_password(cred, pw, *generated, who, async_tx, pw_badlist_set)
             }
             CredHandler::PasswordMfa(ref mut pw_mfa) => Self::validate_password_mfa(
-                au,
                 cred,
                 ts,
                 pw_mfa,
@@ -461,7 +444,7 @@ impl CredHandler {
                 pw_badlist_set,
             ),
             CredHandler::Webauthn(ref mut wan_cred) => {
-                Self::validate_webauthn(au, cred, wan_cred, webauthn, who, async_tx)
+                Self::validate_webauthn(cred, wan_cred, webauthn, who, async_tx)
             }
         }
     }
@@ -548,12 +531,10 @@ pub(crate) struct AuthSession {
 }
 
 impl AuthSession {
-    // ! TRACING INTEGRATED
     /// Create a new auth session, based on the available credential handlers of the account.
     /// the session is a whole encapsulated unit of what we need to proceed, so that subsequent
     /// or interleved write operations do not cause inconsistency in this process.
     pub fn new(
-        au: &mut AuditScope,
         account: Account,
         webauthn: &Webauthn<WebauthnDomainConfig>,
         ct: Duration,
@@ -573,7 +554,7 @@ impl AuthSession {
                     Some(cred) => {
                         // TODO: Make it possible to have multiple creds.
                         // Probably means new authsession has to be failable
-                        CredHandler::try_from(au, cred, webauthn)
+                        CredHandler::try_from(cred, webauthn)
                             .map(|ch| AuthSessionState::Init(vec![ch]))
                             .unwrap_or_else(|_| {
                                 security_critical!(
@@ -617,10 +598,8 @@ impl AuthSession {
     /// Given the users indicated and preferred authentication mechanism that they want to proceed
     /// with, select the credential handler and begin the process of stepping through the
     /// authentication process.
-    // ! TRACING INTEGRATED
     pub fn start_session(
         &mut self,
-        _au: &mut AuditScope,
         mech: &AuthMech,
         // time: &Duration,
         // webauthn: &Webauthn<WebauthnDomainConfig>,
@@ -679,13 +658,11 @@ impl AuthSession {
         response
     }
 
-    // ! TRACING INTEGRATED
     /// Conduct a step of the authentication process. This validates the next credential factor
     /// presented and returns a result of Success, Continue, or Denied. Only in the success
     /// case is a UAT granted -- all others do not, including raised operation errors.
     pub fn validate_creds(
         &mut self,
-        au: &mut AuditScope,
         cred: &AuthCredential,
         time: &Duration,
         async_tx: &Sender<DelayedAction>,
@@ -701,7 +678,6 @@ impl AuthSession {
             }
             AuthSessionState::InProgress(ref mut handler) => {
                 match handler.validate(
-                    au,
                     cred,
                     time,
                     self.account.uuid,
@@ -715,10 +691,13 @@ impl AuthSession {
                         // Can't `unwrap` the uuid until full integration, because some unit tests
                         // call functions that call this indirectly without opening a span first,
                         // and this returns `None` when not in a span (and panics if the tree isn't initialized).
-                        let _tracing_id = tracing_tree::operation_id();
+                        let tracing_id = tracing_tree::operation_id().unwrap_or_else(|| {
+                            admin_warn!("Recoverable - Invalid Tracing Operation ID State");
+                            Uuid::new_v4()
+                        });
                         let uat = self
                             .account
-                            .to_userauthtoken(au.uuid, *time, auth_type)
+                            .to_userauthtoken(tracing_id, *time, auth_type)
                             .ok_or(OperationError::InvalidState)?;
 
                         // Now encrypt and prepare the token for return to the client.
@@ -837,21 +816,11 @@ mod tests {
     #[test]
     fn test_idm_authsession_anonymous_auth_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_anonymous_auth_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let webauthn = create_webauthn();
 
         let anon_account = entry_str_to_account!(JSON_ANONYMOUS_V1);
 
-        let (session, state) = AuthSession::new(
-            &mut audit,
-            anon_account,
-            &webauthn,
-            duration_from_epoch_now(),
-        );
+        let (session, state) = AuthSession::new(anon_account, &webauthn, duration_from_epoch_now());
 
         if let AuthState::Choose(auth_mechs) = state {
             assert!(auth_mechs.iter().any(|x| matches!(x, AuthMech::Anonymous)));
@@ -861,7 +830,7 @@ mod tests {
 
         let state = session
             .expect("Missing auth session?")
-            .start_session(&mut audit, &AuthMech::Anonymous)
+            .start_session(&AuthMech::Anonymous)
             .expect("Failed to select anonymous mech.");
 
         if let AuthState::Continue(auth_mechs) = state {
@@ -879,12 +848,8 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $audit,
-                $account.clone(),
-                $webauthn,
-                duration_from_epoch_now(),
-            );
+            let (session, state) =
+                AuthSession::new($account.clone(), $webauthn, duration_from_epoch_now());
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -894,7 +859,7 @@ mod tests {
             }
 
             let state = session
-                .start_session($audit, &AuthMech::Password)
+                .start_session(&AuthMech::Password)
                 .expect("Failed to select anonymous mech.");
 
             if let AuthState::Continue(auth_mechs) = state {
@@ -912,11 +877,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_simple_password_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_simple_password_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let webauthn = create_webauthn();
         // create the ent
         let mut account = entry_str_to_account!(JSON_ADMIN_V1);
@@ -934,7 +894,6 @@ mod tests {
         let attempt = AuthCredential::Password("bad_password".to_string());
         let hs512 = create_hs512();
         match session.validate_creds(
-            &mut audit,
             &attempt,
             &Duration::from_secs(0),
             &async_tx,
@@ -953,7 +912,6 @@ mod tests {
 
         let attempt = AuthCredential::Password("test_password".to_string());
         match session.validate_creds(
-            &mut audit,
             &attempt,
             &Duration::from_secs(0),
             &async_tx,
@@ -972,11 +930,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_simple_password_badlist() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_simple_password_badlist",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let hs512 = create_hs512();
         let webauthn = create_webauthn();
         // create the ent
@@ -994,7 +947,6 @@ mod tests {
 
         let attempt = AuthCredential::Password("list@no3IBTyqHu$bad".to_string());
         match session.validate_creds(
-            &mut audit,
             &attempt,
             &Duration::from_secs(0),
             &async_tx,
@@ -1012,16 +964,11 @@ mod tests {
 
     macro_rules! start_password_mfa_session {
         (
-            $audit:expr,
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $audit,
-                $account.clone(),
-                $webauthn,
-                duration_from_epoch_now(),
-            );
+            let (session, state) =
+                AuthSession::new($account.clone(), $webauthn, duration_from_epoch_now());
             let mut session = session.expect("Session was unable to be created.");
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1033,7 +980,7 @@ mod tests {
             }
 
             let state = session
-                .start_session($audit, &AuthMech::PasswordMfa)
+                .start_session(&AuthMech::PasswordMfa)
                 .expect("Failed to select anonymous mech.");
 
             let mut rchal = None;
@@ -1071,11 +1018,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_totp_password_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_totp_password_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let hs512 = create_hs512();
         let webauthn = create_webauthn();
         // create the ent
@@ -1112,10 +1054,9 @@ mod tests {
         // check send anon (fail)
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Anonymous,
                 &ts,
                 &async_tx,
@@ -1133,10 +1074,9 @@ mod tests {
         // Sending a PW first is an immediate fail.
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1151,10 +1091,9 @@ mod tests {
         // check send bad totp, should fail immediate
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_bad),
                 &ts,
                 &async_tx,
@@ -1171,10 +1110,9 @@ mod tests {
         //      then bad pw, fail pw
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
@@ -1186,7 +1124,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1203,10 +1140,9 @@ mod tests {
         //      then good pw, success
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
@@ -1218,7 +1154,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
@@ -1238,11 +1173,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_password_mfa_badlist() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_password_mfa_badlist",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let webauthn = create_webauthn();
         let hs512 = create_hs512();
         // create the ent
@@ -1277,10 +1207,9 @@ mod tests {
         //      then badlist pw, failed
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
@@ -1292,7 +1221,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_badlist.to_string()),
                 &ts,
                 &async_tx,
@@ -1315,12 +1243,8 @@ mod tests {
             $account:expr,
             $webauthn:expr
         ) => {{
-            let (session, state) = AuthSession::new(
-                $audit,
-                $account.clone(),
-                $webauthn,
-                duration_from_epoch_now(),
-            );
+            let (session, state) =
+                AuthSession::new($account.clone(), $webauthn, duration_from_epoch_now());
             let mut session = session.unwrap();
 
             if let AuthState::Choose(auth_mechs) = state {
@@ -1330,7 +1254,7 @@ mod tests {
             }
 
             let state = session
-                .start_session($audit, &AuthMech::Webauthn)
+                .start_session(&AuthMech::Webauthn)
                 .expect("Failed to select Webauthn mech.");
 
             let wan_chal = if let AuthState::Continue(auth_mechs) = state {
@@ -1379,11 +1303,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_webauthn_only_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_webauthn_only_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1404,7 +1323,6 @@ mod tests {
                 start_webauthn_only_session!(&mut audit, account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Anonymous,
                 &ts,
                 &async_tx,
@@ -1426,7 +1344,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1456,7 +1373,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1499,7 +1415,6 @@ mod tests {
             // get this far, because the client should identify that the cred id's are
             // not inline.
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1519,11 +1434,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_webauthn_password_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_webauthn_password_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1546,10 +1456,9 @@ mod tests {
         // check pw first (fail)
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1565,10 +1474,9 @@ mod tests {
         // Check totp first attempt fails.
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(0),
                 &ts,
                 &async_tx,
@@ -1586,9 +1494,8 @@ mod tests {
         // extensively tested.
         {
             let (_session, inv_chal, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
-            let (mut session, _chal, _) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
+            let (mut session, _chal, _) = start_password_mfa_session!(account, &webauthn);
 
             let inv_chal = inv_chal.unwrap();
 
@@ -1598,7 +1505,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1614,7 +1520,7 @@ mod tests {
         // check good webauthn/bad pw (fail)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1622,7 +1528,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1634,7 +1539,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1656,7 +1560,7 @@ mod tests {
         // Check good webauthn/good pw (pass)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1664,7 +1568,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1676,7 +1579,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
@@ -1702,11 +1604,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_webauthn_password_totp_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_webauthn_password_totp_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let (async_tx, mut async_rx) = unbounded();
         let ts = duration_from_epoch_now();
         // create the ent
@@ -1740,10 +1637,9 @@ mod tests {
         // check pw first (fail)
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1759,10 +1655,9 @@ mod tests {
         // Check bad totp (fail)
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_bad),
                 &ts,
                 &async_tx,
@@ -1778,9 +1673,8 @@ mod tests {
         // check bad webauthn (fail)
         {
             let (_session, inv_chal, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
-            let (mut session, _chal, _) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
+            let (mut session, _chal, _) = start_password_mfa_session!(account, &webauthn);
 
             let inv_chal = inv_chal.unwrap();
 
@@ -1790,7 +1684,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1806,7 +1699,7 @@ mod tests {
         // check good webauthn/bad pw (fail)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1814,7 +1707,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1826,7 +1718,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1848,10 +1739,9 @@ mod tests {
         // check good totp/bad pw (fail)
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
@@ -1863,7 +1753,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -1879,10 +1768,9 @@ mod tests {
         // check good totp/good pw (pass)
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
@@ -1894,7 +1782,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
@@ -1910,7 +1797,7 @@ mod tests {
         // Check good webauthn/good pw (pass)
         {
             let (mut session, chal, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
             let chal = chal.unwrap();
 
             let resp = wa
@@ -1918,7 +1805,6 @@ mod tests {
                 .expect("failed to use softtoken to authenticate");
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Webauthn(resp),
                 &ts,
                 &async_tx,
@@ -1930,7 +1816,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
@@ -1956,11 +1841,6 @@ mod tests {
     #[test]
     fn test_idm_authsession_backup_code_mech() {
         let _ = tracing_tree::test_init();
-        let mut audit = AuditScope::new(
-            "test_idm_authsession_backup_code_mech",
-            uuid::Uuid::new_v4(),
-            None,
-        );
         let hs512 = create_hs512();
         let webauthn = create_webauthn();
         // create the ent
@@ -2005,10 +1885,9 @@ mod tests {
         // Sending a PW first is an immediate fail.
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -2023,10 +1902,9 @@ mod tests {
         // check send wrong backup code, should fail immediate
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::BackupCode(backup_code_bad),
                 &ts,
                 &async_tx,
@@ -2042,10 +1920,9 @@ mod tests {
         //      then bad pw, fail pw
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::BackupCode(backup_code_good.clone()),
                 &ts,
                 &async_tx,
@@ -2057,7 +1934,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_bad.to_string()),
                 &ts,
                 &async_tx,
@@ -2079,10 +1955,9 @@ mod tests {
         //      then good pw, success
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::BackupCode(backup_code_good.clone()),
                 &ts,
                 &async_tx,
@@ -2094,7 +1969,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,
@@ -2117,10 +1991,9 @@ mod tests {
         //      then good pw, success
         {
             let (mut session, _, pw_badlist_cache) =
-                start_password_mfa_session!(&mut audit, account, &webauthn);
+                start_password_mfa_session!(account, &webauthn);
 
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Totp(totp_good),
                 &ts,
                 &async_tx,
@@ -2132,7 +2005,6 @@ mod tests {
                 _ => panic!(),
             };
             match session.validate_creds(
-                &mut audit,
                 &AuthCredential::Password(pw_good.to_string()),
                 &ts,
                 &async_tx,

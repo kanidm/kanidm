@@ -27,7 +27,6 @@ trait Plugin {
     fn id() -> &'static str;
 
     fn pre_create_transform(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
@@ -40,7 +39,6 @@ trait Plugin {
     }
 
     fn pre_create(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         _cand: &[Entry<EntrySealed, EntryNew>],
@@ -51,7 +49,6 @@ trait Plugin {
     }
 
     fn post_create(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we commited that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -62,7 +59,6 @@ trait Plugin {
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
@@ -72,7 +68,6 @@ trait Plugin {
     }
 
     fn post_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
         _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
@@ -84,7 +79,6 @@ trait Plugin {
     }
 
     fn pre_delete(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
@@ -94,7 +88,6 @@ trait Plugin {
     }
 
     fn post_delete(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we delete that was valid?
         _cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -104,10 +97,7 @@ trait Plugin {
         Err(OperationError::InvalidState)
     }
 
-    fn verify(
-        au: &mut AuditScope,
-        _qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(_qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         admin_error!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
     }
@@ -117,127 +107,114 @@ pub struct Plugins {}
 
 macro_rules! run_verify_plugin {
     (
-        $au:ident,
         $qs:ident,
         $results:expr,
         $target_plugin:ty
     ) => {{
-        let mut r = <$target_plugin>::verify($au, $qs);
+        let mut r = <$target_plugin>::verify($qs);
         $results.append(&mut r);
     }};
 }
 
 impl Plugins {
     pub fn run_pre_create_transform(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_pre_create_transform", {
-            base::Base::pre_create_transform(au, qs, cand, ce)
-                .and_then(|_| {
-                    password_import::PasswordImport::pre_create_transform(au, qs, cand, ce)
-                })
-                .and_then(|_| oauth2::Oauth2Secrets::pre_create_transform(au, qs, cand, ce))
-                .and_then(|_| gidnumber::GidNumber::pre_create_transform(au, qs, cand, ce))
-                .and_then(|_| domain::Domain::pre_create_transform(au, qs, cand, ce))
-                .and_then(|_| spn::Spn::pre_create_transform(au, qs, cand, ce))
+            base::Base::pre_create_transform(qs, cand, ce)
+                .and_then(|_| password_import::PasswordImport::pre_create_transform(qs, cand, ce))
+                .and_then(|_| oauth2::Oauth2Secrets::pre_create_transform(qs, cand, ce))
+                .and_then(|_| gidnumber::GidNumber::pre_create_transform(qs, cand, ce))
+                .and_then(|_| domain::Domain::pre_create_transform(qs, cand, ce))
+                .and_then(|_| spn::Spn::pre_create_transform(qs, cand, ce))
                 // Should always be last
-                .and_then(|_| attrunique::AttrUnique::pre_create_transform(au, qs, cand, ce))
+                .and_then(|_| attrunique::AttrUnique::pre_create_transform(qs, cand, ce))
         })
     }
 
     pub fn run_pre_create(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_pre_create", {
-            protected::Protected::pre_create(au, qs, cand, ce)
+            protected::Protected::pre_create(qs, cand, ce)
         })
     }
 
     pub fn run_post_create(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_post_create", {
-            refint::ReferentialIntegrity::post_create(au, qs, cand, ce)
-                .and_then(|_| memberof::MemberOf::post_create(au, qs, cand, ce))
+            refint::ReferentialIntegrity::post_create(qs, cand, ce)
+                .and_then(|_| memberof::MemberOf::post_create(qs, cand, ce))
         })
     }
 
     pub fn run_pre_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_pre_modify", {
-            protected::Protected::pre_modify(au, qs, cand, me)
-                .and_then(|_| base::Base::pre_modify(au, qs, cand, me))
-                .and_then(|_| password_import::PasswordImport::pre_modify(au, qs, cand, me))
-                .and_then(|_| oauth2::Oauth2Secrets::pre_modify(au, qs, cand, me))
-                .and_then(|_| gidnumber::GidNumber::pre_modify(au, qs, cand, me))
-                .and_then(|_| spn::Spn::pre_modify(au, qs, cand, me))
+            protected::Protected::pre_modify(qs, cand, me)
+                .and_then(|_| base::Base::pre_modify(qs, cand, me))
+                .and_then(|_| password_import::PasswordImport::pre_modify(qs, cand, me))
+                .and_then(|_| oauth2::Oauth2Secrets::pre_modify(qs, cand, me))
+                .and_then(|_| gidnumber::GidNumber::pre_modify(qs, cand, me))
+                .and_then(|_| spn::Spn::pre_modify(qs, cand, me))
                 // attr unique should always be last
-                .and_then(|_| attrunique::AttrUnique::pre_modify(au, qs, cand, me))
+                .and_then(|_| attrunique::AttrUnique::pre_modify(qs, cand, me))
         })
     }
 
     pub fn run_post_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_post_modify", {
-            refint::ReferentialIntegrity::post_modify(au, qs, pre_cand, cand, me)
-                .and_then(|_| memberof::MemberOf::post_modify(au, qs, pre_cand, cand, me))
-                .and_then(|_| spn::Spn::post_modify(au, qs, pre_cand, cand, me))
+            refint::ReferentialIntegrity::post_modify(qs, pre_cand, cand, me)
+                .and_then(|_| memberof::MemberOf::post_modify(qs, pre_cand, cand, me))
+                .and_then(|_| spn::Spn::post_modify(qs, pre_cand, cand, me))
         })
     }
 
     pub fn run_pre_delete(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_pre_delete", {
-            protected::Protected::pre_delete(au, qs, cand, de)
+            protected::Protected::pre_delete(qs, cand, de)
         })
     }
 
     pub fn run_post_delete(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         spanned!("plugins::run_post_delete", {
-            refint::ReferentialIntegrity::post_delete(au, qs, cand, de)
-                .and_then(|_| memberof::MemberOf::post_delete(au, qs, cand, de))
+            refint::ReferentialIntegrity::post_delete(qs, cand, de)
+                .and_then(|_| memberof::MemberOf::post_delete(qs, cand, de))
         })
     }
 
-    pub fn run_verify(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    pub fn run_verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let _entered = trace_span!("plugins::run_verify").entered();
         spanned!("plugins::run_verify", {
             let mut results = Vec::new();
-            run_verify_plugin!(au, qs, &mut results, base::Base);
-            run_verify_plugin!(au, qs, &mut results, attrunique::AttrUnique);
-            run_verify_plugin!(au, qs, &mut results, refint::ReferentialIntegrity);
-            run_verify_plugin!(au, qs, &mut results, memberof::MemberOf);
-            run_verify_plugin!(au, qs, &mut results, spn::Spn);
+            run_verify_plugin!(qs, &mut results, base::Base);
+            run_verify_plugin!(qs, &mut results, attrunique::AttrUnique);
+            run_verify_plugin!(qs, &mut results, refint::ReferentialIntegrity);
+            run_verify_plugin!(qs, &mut results, memberof::MemberOf);
+            run_verify_plugin!(qs, &mut results, spn::Spn);
             results
         })
     }

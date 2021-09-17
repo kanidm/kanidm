@@ -2,8 +2,7 @@
 //! which is used to process authentication, store identities and enforce access controls.
 
 #![recursion_limit = "512"]
-// UNCOMMENT THIS WILLIAM YOU SLACKER 🔥
-// #![deny(warnings)]
+#![deny(warnings)]
 #![warn(unused_extern_crates)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -70,7 +69,6 @@ pub mod prelude {
     pub use url::Url;
     pub use uuid::Uuid;
 
-    pub use crate::audit::AuditScope;
     pub use crate::constants::*;
     pub use crate::filter::{Filter, FilterInvalid};
 

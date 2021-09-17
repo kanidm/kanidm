@@ -1,7 +1,6 @@
 use std::iter;
 use std::sync::Arc;
-use tokio::sync::mpsc::UnboundedSender as Sender;
-use tracing::{error, info, instrument, span, trace, Level};
+use tracing::{info, instrument, span, trace, Level};
 
 use crate::idm::event::GenerateBackupCodeEvent;
 use crate::idm::event::RemoveBackupCodeEvent;
@@ -36,14 +35,17 @@ use kanidm_proto::v1::{
 use uuid::Uuid;
 
 pub struct QueryServerWriteV1 {
-    log_level: Option<u32>,
+    _log_level: Option<u32>,
     idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {
     pub fn new(log_level: Option<u32>, idms: Arc<IdmServer>) -> Self {
         info!("Starting query server v1 worker ...");
-        QueryServerWriteV1 { log_level, idms }
+        QueryServerWriteV1 {
+            _log_level: log_level,
+            idms,
+        }
     }
 
     pub fn start_static(
@@ -58,8 +60,6 @@ impl QueryServerWriteV1 {
 
     async fn modify_from_parts(
         &self,
-        audit: &mut AuditScope,
-        audit_tag: &str,
         uat: Option<String>,
         uuid_or_name: &str,
         proto_ml: &ProtoModifyList,
@@ -70,8 +70,8 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -79,14 +79,13 @@ impl QueryServerWriteV1 {
 
             let target_uuid = idms_prox_write
                 .qs_write
-                .name_to_uuid(audit, uuid_or_name)
+                .name_to_uuid(uuid_or_name)
                 .map_err(|e| {
                     admin_error!(err = ?e, "Error resolving id to target");
                     e
                 })?;
 
             let mdf = match ModifyEvent::from_parts(
-                audit,
                 ident,
                 target_uuid,
                 proto_ml,
@@ -104,15 +103,13 @@ impl QueryServerWriteV1 {
 
             idms_prox_write
                 .qs_write
-                .modify(audit, &mdf)
-                .and_then(|_| idms_prox_write.commit(audit).map(|_| ()))
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
         })
     }
 
     async fn modify_from_internal_parts(
         &self,
-        audit: &mut AuditScope,
-        audit_tag: &str,
         uat: Option<String>,
         uuid_or_name: &str,
         ml: &ModifyList<ModifyInvalid>,
@@ -123,8 +120,8 @@ impl QueryServerWriteV1 {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -132,7 +129,7 @@ impl QueryServerWriteV1 {
 
             let target_uuid = idms_prox_write
                 .qs_write
-                .name_to_uuid(audit, uuid_or_name)
+                .name_to_uuid(uuid_or_name)
                 .map_err(|e| {
                     admin_error!("Error resolving id to target");
                     e
@@ -143,7 +140,6 @@ impl QueryServerWriteV1 {
             let joined_filter = Filter::join_parts_and(f_uuid, filter);
 
             let mdf = match ModifyEvent::from_internal_parts(
-                audit,
                 ident,
                 ml,
                 &joined_filter,
@@ -160,8 +156,8 @@ impl QueryServerWriteV1 {
 
             idms_prox_write
                 .qs_write
-                .modify(audit, &mdf)
-                .and_then(|_| idms_prox_write.commit(audit).map(|_| ()))
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
         })
     }
 
@@ -177,35 +173,32 @@ impl QueryServerWriteV1 {
         req: CreateRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("create", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<CreateMessage>", {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
-            let crt =
-                match CreateEvent::from_message(&mut audit, ident, &req, &idms_prox_write.qs_write)
-                {
-                    Ok(c) => c,
-                    Err(e) => {
-                        admin_warn!(err = ?e, "Failed to begin create");
-                        return Err(e);
-                    }
-                };
+            let crt = match CreateEvent::from_message(ident, &req, &idms_prox_write.qs_write) {
+                Ok(c) => c,
+                Err(e) => {
+                    admin_warn!(err = ?e, "Failed to begin create");
+                    return Err(e);
+                }
+            };
 
             trace!(?crt, "Begin create event");
 
             idms_prox_write
                 .qs_write
-                .create(&mut audit, &crt)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .create(&crt)
+                .and_then(|_| idms_prox_write.commit())
         });
         // At the end of the event we send it for logging.
         res
@@ -215,36 +208,33 @@ impl QueryServerWriteV1 {
         &self,
         uat: Option<String>,
         req: ModifyRequest,
-        eventid: Uuid,
+        _eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("modify", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<ModifyMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
-            let mdf =
-                match ModifyEvent::from_message(&mut audit, ident, &req, &idms_prox_write.qs_write)
-                {
-                    Ok(m) => m,
-                    Err(e) => {
-                        admin_error!(err = ?e, "Failed to begin modify");
-                        return Err(e);
-                    }
-                };
+            let mdf = match ModifyEvent::from_message(ident, &req, &idms_prox_write.qs_write) {
+                Ok(m) => m,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin modify");
+                    return Err(e);
+                }
+            };
 
             trace!(?mdf, "Begin modify event");
 
             idms_prox_write
                 .qs_write
-                .modify(&mut audit, &mdf)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit())
         });
         res
     }
@@ -261,33 +251,30 @@ impl QueryServerWriteV1 {
         req: DeleteRequest,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("delete", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<DeleteMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
-            let del =
-                match DeleteEvent::from_message(&mut audit, ident, &req, &idms_prox_write.qs_write)
-                {
-                    Ok(d) => d,
-                    Err(e) => {
-                        admin_error!(err = ?e, "Failed to begin delete");
-                        return Err(e);
-                    }
-                };
+            let del = match DeleteEvent::from_message(ident, &req, &idms_prox_write.qs_write) {
+                Ok(d) => d,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin delete");
+                    return Err(e);
+                }
+            };
 
             trace!(?del, "Begin delete event");
 
             idms_prox_write
                 .qs_write
-                .delete(&mut audit, &del)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .delete(&del)
+                .and_then(|_| idms_prox_write.commit())
         });
         res
     }
@@ -297,30 +284,28 @@ impl QueryServerWriteV1 {
         uat: Option<String>,
         filter: Filter<FilterInvalid>,
         update: ProtoEntry,
-        eventid: Uuid,
+        _eventid: Uuid,
     ) -> Result<(), OperationError> {
         // Given a protoEntry, turn this into a modification set.
-        let mut audit = AuditScope::new("internal_patch", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<InternalPatch>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
             // Transform the ProtoEntry to a Modlist
-            let modlist = ModifyList::from_patch(&mut audit, &update, &idms_prox_write.qs_write)
-                .map_err(|e| {
+            let modlist =
+                ModifyList::from_patch(&update, &idms_prox_write.qs_write).map_err(|e| {
                     admin_error!(err = ?e, "Invalid Patch Request");
                     e
                 })?;
 
             let mdf = ModifyEvent::from_internal_parts(
-                &mut audit,
                 ident,
                 &modlist,
                 &filter,
@@ -335,8 +320,8 @@ impl QueryServerWriteV1 {
 
             idms_prox_write
                 .qs_write
-                .modify(&mut audit, &mdf)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit())
         });
         res.map(|_| ())
     }
@@ -353,23 +338,17 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("internal_delete", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<InternalDeleteMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
-            let del = match DeleteEvent::from_parts(
-                &mut audit,
-                ident,
-                &filter,
-                &idms_prox_write.qs_write,
-            ) {
+            let del = match DeleteEvent::from_parts(ident, &filter, &idms_prox_write.qs_write) {
                 Ok(d) => d,
                 Err(e) => {
                     admin_error!(err = ?e, "Failed to begin delete");
@@ -381,8 +360,8 @@ impl QueryServerWriteV1 {
 
             idms_prox_write
                 .qs_write
-                .delete(&mut audit, &del)
-                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+                .delete(&del)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
         });
         res
     }
@@ -399,36 +378,31 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("revive", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<ReviveRecycledMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
-            let rev = match ReviveRecycledEvent::from_parts(
-                &mut audit,
-                ident,
-                &filter,
-                &idms_prox_write.qs_write,
-            ) {
-                Ok(r) => r,
-                Err(e) => {
-                    admin_error!(err = ?e, "Failed to begin revive");
-                    return Err(e);
-                }
-            };
+            let rev =
+                match ReviveRecycledEvent::from_parts(ident, &filter, &idms_prox_write.qs_write) {
+                    Ok(r) => r,
+                    Err(e) => {
+                        admin_error!(err = ?e, "Failed to begin revive");
+                        return Err(e);
+                    }
+                };
 
             trace!(?rev, "Begin revive event");
 
             idms_prox_write
                 .qs_write
-                .revive_recycled(&mut audit, &rev)
-                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+                .revive_recycled(&rev)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
         });
         res
     }
@@ -447,7 +421,6 @@ impl QueryServerWriteV1 {
         sac: SetCredentialRequest,
         eventid: Uuid,
     ) -> Result<SetCredentialResponse, OperationError> {
-        let mut audit = AuditScope::new("internal_credential_set_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<InternalCredentialSetMessage>", {
@@ -457,8 +430,8 @@ impl QueryServerWriteV1 {
             idms_prox_write.expire_mfareg_sessions(ct);
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -471,7 +444,7 @@ impl QueryServerWriteV1 {
 
             let target_uuid = idms_prox_write
                 .qs_write
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!(err = ?e, "Error resolving id to target");
                     e
@@ -481,7 +454,6 @@ impl QueryServerWriteV1 {
             match sac {
                 SetCredentialRequest::Password(cleartext) => {
                     let pce = PasswordChangeEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -495,13 +467,12 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .set_account_password(&mut audit, &pce)
-                        .and_then(|_| idms_prox_write.commit(&mut audit))
+                        .set_account_password(&pce)
+                        .and_then(|_| idms_prox_write.commit())
                         .map(|_| SetCredentialResponse::Success)
                 }
                 SetCredentialRequest::GeneratePassword => {
                     let gpe = GeneratePasswordEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -514,13 +485,12 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .generate_account_password(&mut audit, &gpe)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .generate_account_password(&gpe)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                         .map(SetCredentialResponse::Token)
                 }
                 SetCredentialRequest::TotpGenerate => {
                     let gte = GenerateTotpEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -533,12 +503,11 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .generate_account_totp(&mut audit, &gte, ct)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .generate_account_totp(&gte, ct)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::TotpVerify(uuid, chal) => {
                     let vte = VerifyTotpEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -553,26 +522,24 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .verify_account_totp(&mut audit, &vte, ct)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .verify_account_totp(&vte, ct)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::TotpAcceptSha1(uuid) => {
                     let aste =
-                        AcceptSha1TotpEvent::from_parts(&mut audit, ident, target_uuid, uuid)
-                            .map_err(|e| {
-                                admin_error!(
-                                    err = ?e,
-                                    "Failed to begin internal_credential_set_message",
-                                );
-                                e
-                            })?;
+                        AcceptSha1TotpEvent::from_parts(ident, target_uuid, uuid).map_err(|e| {
+                            admin_error!(
+                                err = ?e,
+                                "Failed to begin internal_credential_set_message",
+                            );
+                            e
+                        })?;
                     idms_prox_write
-                        .accept_account_sha1_totp(&mut audit, &aste)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .accept_account_sha1_totp(&aste)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::TotpRemove => {
                     let rte = RemoveTotpEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -585,12 +552,11 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .remove_account_totp(&mut audit, &rte)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .remove_account_totp(&rte)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::WebauthnBegin(label) => {
                     let wre = WebauthnInitRegisterEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -604,12 +570,11 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .reg_account_webauthn_init(&mut audit, &wre, ct)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .reg_account_webauthn_init(&wre, ct)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::WebauthnRegister(uuid, rpkc) => {
                     let wre = WebauthnDoRegisterEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -624,12 +589,11 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .reg_account_webauthn_complete(&mut audit, &wre)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .reg_account_webauthn_complete(&wre)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::WebauthnRemove(label) => {
                     let rwe = RemoveWebauthnEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -643,12 +607,11 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .remove_account_webauthn(&mut audit, &rwe)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .remove_account_webauthn(&rwe)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
                 SetCredentialRequest::BackupCodeGenerate => {
                     let gbe = GenerateBackupCodeEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -661,13 +624,12 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .generate_backup_code(&mut audit, &gbe)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .generate_backup_code(&gbe)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                         .map(SetCredentialResponse::BackupCodes)
                 }
                 SetCredentialRequest::BackupCodeRemove => {
                     let rbe = RemoveBackupCodeEvent::from_parts(
-                        &mut audit,
                         // &idms_prox_write.qs_write,
                         ident,
                         target_uuid,
@@ -680,8 +642,8 @@ impl QueryServerWriteV1 {
                         e
                     })?;
                     idms_prox_write
-                        .remove_backup_code(&mut audit, &rbe)
-                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .remove_backup_code(&rbe)
+                        .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
             }
         });
@@ -700,22 +662,21 @@ impl QueryServerWriteV1 {
         cleartext: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("idm_account_set_password", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmAccountSetPasswordMessage>", {
             idms_prox_write.expire_mfareg_sessions(ct);
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
             let pce = PasswordChangeEvent::from_idm_account_set_password(
-                &mut audit, ident, cleartext,
+                ident, cleartext,
                 // &idms_prox_write.qs_write,
             )
             .map_err(|e| {
@@ -724,8 +685,8 @@ impl QueryServerWriteV1 {
             })?;
 
             idms_prox_write
-                .set_account_password(&mut audit, &pce)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .set_account_password(&pce)
+                .and_then(|_| idms_prox_write.commit())
         });
         res
     }
@@ -742,7 +703,6 @@ impl QueryServerWriteV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<String, OperationError> {
-        let mut audit = AuditScope::new("idm_account_regenerate_radius", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!(
@@ -751,8 +711,8 @@ impl QueryServerWriteV1 {
                 idms_prox_write.expire_mfareg_sessions(ct);
 
                 let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                    .validate_and_parse_uat(uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                     .map_err(|e| {
                         admin_error!(err = ?e, "Invalid identity");
                         e
@@ -760,14 +720,13 @@ impl QueryServerWriteV1 {
 
                 let target_uuid = idms_prox_write
                     .qs_write
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .name_to_uuid(uuid_or_name.as_str())
                     .map_err(|e| {
                         admin_error!(err = ?e, "Error resolving id to target");
                         e
                     })?;
 
                 let rrse = RegenerateRadiusSecretEvent::from_parts(
-                    &mut audit,
                     // &idms_prox_write.qs_write,
                     ident,
                     target_uuid,
@@ -781,8 +740,8 @@ impl QueryServerWriteV1 {
                 })?;
 
                 idms_prox_write
-                    .regenerate_radius_secret(&mut audit, &rrse)
-                    .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                    .regenerate_radius_secret(&rrse)
+                    .and_then(|r| idms_prox_write.commit().map(|_| r))
             }
         );
         res
@@ -802,27 +761,25 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("purge_attribute", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<PurgeAttributeMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
             let target_uuid = idms_prox_write
                 .qs_write
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!(err = ?e, "Error resolving id to target");
                     e
                 })?;
 
             let mdf = match ModifyEvent::from_target_uuid_attr_purge(
-                &mut audit,
                 ident,
                 target_uuid,
                 &attr,
@@ -840,8 +797,8 @@ impl QueryServerWriteV1 {
 
             idms_prox_write
                 .qs_write
-                .modify(&mut audit, &mdf)
-                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
         });
         res
     }
@@ -861,20 +818,19 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("remove_attribute_values", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         let res = spanned!("actors::v1_write::handle<RemoveAttributeValuesMessage>", {
             let ct = duration_from_epoch_now();
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
             let target_uuid = idms_prox_write
                 .qs_write
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!(err = ?e, "Error resolving id to target");
                     e
@@ -888,7 +844,6 @@ impl QueryServerWriteV1 {
             );
 
             let mdf = match ModifyEvent::from_parts(
-                &mut audit,
                 ident,
                 target_uuid,
                 &proto_ml,
@@ -906,8 +861,8 @@ impl QueryServerWriteV1 {
 
             idms_prox_write
                 .qs_write
-                .modify(&mut audit, &mdf)
-                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
         });
         res
     }
@@ -927,7 +882,6 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("append_attribute", eventid, self.log_level);
         // We need to turn these into proto modlists so they can be converted
         // and validated.
         let proto_ml = ProtoModifyList::new_list(
@@ -937,14 +891,7 @@ impl QueryServerWriteV1 {
                 .collect(),
         );
         let res = self
-            .modify_from_parts(
-                &mut audit,
-                "actors::v1_write::handle<AppendAttributeMessage>",
-                uat,
-                &uuid_or_name,
-                &proto_ml,
-                filter,
-            )
+            .modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
             .await;
         res
     }
@@ -964,7 +911,6 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("set_attribute", eventid, self.log_level);
         // We need to turn these into proto modlists so they can be converted
         // and validated.
         let proto_ml = ProtoModifyList::new_list(
@@ -977,14 +923,7 @@ impl QueryServerWriteV1 {
                 .collect(),
         );
         let res = self
-            .modify_from_parts(
-                &mut audit,
-                "actors::v1_write::handle<SetAttributeMessage>",
-                uat,
-                &uuid_or_name,
-                &proto_ml,
-                filter,
-            )
+            .modify_from_parts(uat, &uuid_or_name, &proto_ml, filter)
             .await;
         res
     }
@@ -1004,20 +943,12 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("internal_sshkey_create", eventid, self.log_level);
         // Because this is from internal, we can generate a real modlist, rather
         // than relying on the proto ones.
         let ml = ModifyList::new_append("ssh_publickey", Value::new_sshkey(tag, key));
 
         let res = self
-            .modify_from_internal_parts(
-                &mut audit,
-                "actors::v1_write::handle<InternalSshKeyCreateMessage>",
-                uat,
-                &uuid_or_name,
-                &ml,
-                filter,
-            )
+            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await;
         res
     }
@@ -1034,7 +965,6 @@ impl QueryServerWriteV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("idm_account_person_extend", eventid, self.log_level);
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         // NOTE: This is an iter for future requirements to be added
@@ -1050,14 +980,7 @@ impl QueryServerWriteV1 {
         let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
         let res = self
-            .modify_from_internal_parts(
-                &mut audit,
-                "actors::v1_write::handle<IdmAccountPersonExtendMessage>",
-                uat,
-                &uuid_or_name,
-                &ml,
-                filter,
-            )
+            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await;
         res
     }
@@ -1076,7 +999,6 @@ impl QueryServerWriteV1 {
         eventid: Uuid,
     ) -> Result<(), OperationError> {
         let AccountUnixExtend { gidnumber, shell } = ux;
-        let mut audit = AuditScope::new("idm_account_unix_extend", eventid, self.log_level);
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
@@ -1105,14 +1027,7 @@ impl QueryServerWriteV1 {
         let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
 
         let res = self
-            .modify_from_internal_parts(
-                &mut audit,
-                "actors::v1_write::handle<IdmAccountUnixExtendMessage>",
-                uat,
-                &uuid_or_name,
-                &ml,
-                filter,
-            )
+            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await;
         res
     }
@@ -1130,7 +1045,6 @@ impl QueryServerWriteV1 {
         gx: GroupUnixExtend,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("idm_group_unix_extend", eventid, self.log_level);
         // The filter_map here means we only create the mods if the gidnumber or shell are set
         // in the actual request.
         let mods: Vec<_> = iter::once(Some(Modify::Present(
@@ -1148,14 +1062,7 @@ impl QueryServerWriteV1 {
         let filter = filter_all!(f_eq("class", PartialValue::new_class("group")));
 
         let res = self
-            .modify_from_internal_parts(
-                &mut audit,
-                "actors::v1_write::handle<IdmGroupUnixExtendMessage>",
-                uat,
-                &uuid_or_name,
-                &ml,
-                filter,
-            )
+            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
             .await;
         res
     }
@@ -1173,15 +1080,14 @@ impl QueryServerWriteV1 {
         cred: String,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("idm_account_unix_set_cred", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmAccountUnixSetCredMessage>", {
             idms_prox_write.expire_mfareg_sessions(ct);
 
             let ident = idms_prox_write
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
@@ -1190,7 +1096,7 @@ impl QueryServerWriteV1 {
             let target_uuid = Uuid::parse_str(uuid_or_name.as_str()).or_else(|_| {
                 idms_prox_write
                     .qs_write
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .name_to_uuid(uuid_or_name.as_str())
                     .map_err(|e| {
                         admin_info!("Error resolving as gidnumber continuing ...");
                         e
@@ -1198,7 +1104,6 @@ impl QueryServerWriteV1 {
             })?;
 
             let upce = UnixPasswordChangeEvent::from_parts(
-                &mut audit,
                 // &idms_prox_write.qs_write,
                 ident,
                 target_uuid,
@@ -1209,8 +1114,8 @@ impl QueryServerWriteV1 {
                 e
             })?;
             idms_prox_write
-                .set_unix_account_password(&mut audit, &upce)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .set_unix_account_password(&upce)
+                .and_then(|_| idms_prox_write.commit())
                 .map(|_| ())
         });
         res
@@ -1224,16 +1129,14 @@ impl QueryServerWriteV1 {
         fields(uuid = ?msg.eventid)
     )]
     pub(crate) async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
-        let mut audit = AuditScope::new("purge tombstones", msg.eventid, self.log_level);
-
         trace!(?msg, "Begin purge tombstone event");
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
 
         spanned!("actors::v1_write::handle<PurgeTombstoneEvent>", {
             let res = idms_prox_write
                 .qs_write
-                .purge_tombstones(&mut audit)
-                .and_then(|_| idms_prox_write.commit(&mut audit));
+                .purge_tombstones()
+                .and_then(|_| idms_prox_write.commit());
             admin_info!(?res, "Purge tombstones result");
             #[allow(clippy::expect_used)]
             res.expect("Invalid Server State");
@@ -1247,14 +1150,13 @@ impl QueryServerWriteV1 {
         fields(uuid = ?msg.eventid)
     )]
     pub(crate) async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
-        let mut audit = AuditScope::new("purge recycled", msg.eventid, self.log_level);
         trace!(?msg, "Begin purge recycled event");
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
         spanned!("actors::v1_write::handle<PurgeRecycledEvent>", {
             let res = idms_prox_write
                 .qs_write
-                .purge_recycled(&mut audit)
-                .and_then(|_| idms_prox_write.commit(&mut audit));
+                .purge_recycled()
+                .and_then(|_| idms_prox_write.commit());
             admin_info!(?res, "Purge recycled result");
             #[allow(clippy::expect_used)]
             res.expect("Invalid Server State");
@@ -1266,14 +1168,13 @@ impl QueryServerWriteV1 {
         let nspan = span!(Level::TRACE, "delayedaction", uuid = ?eventid);
         let _span = nspan.enter();
 
-        let mut audit = AuditScope::new("delayed action", eventid, self.log_level);
         trace!("Begin delayed action ...");
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         spanned!("actors::v1_write::handle<DelayedAction>", {
             if let Err(res) = idms_prox_write
-                .process_delayedaction(&mut audit, da)
-                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .process_delayedaction(da)
+                .and_then(|_| idms_prox_write.commit())
             {
                 admin_info!(?res, "delayed action error");
             }

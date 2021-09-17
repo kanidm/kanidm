@@ -63,7 +63,6 @@ pub struct AccessControlSearch {
 
 impl AccessControlSearch {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
@@ -83,7 +82,7 @@ impl AccessControlSearch {
             .map(AttrString::from)
             .collect();
 
-        let acp = AccessControlProfile::try_from(audit, qs, value)?;
+        let acp = AccessControlProfile::try_from(qs, value)?;
 
         Ok(AccessControlSearch { acp, attrs })
     }
@@ -118,7 +117,6 @@ pub struct AccessControlDelete {
 
 impl AccessControlDelete {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
@@ -130,7 +128,7 @@ impl AccessControlDelete {
         }
 
         Ok(AccessControlDelete {
-            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            acp: AccessControlProfile::try_from(qs, value)?,
         })
     }
 
@@ -161,7 +159,6 @@ pub struct AccessControlCreate {
 
 impl AccessControlCreate {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
@@ -183,7 +180,7 @@ impl AccessControlCreate {
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlCreate {
-            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            acp: AccessControlProfile::try_from(qs, value)?,
             classes,
             attrs,
         })
@@ -221,7 +218,6 @@ pub struct AccessControlModify {
 
 impl AccessControlModify {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
@@ -248,7 +244,7 @@ impl AccessControlModify {
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlModify {
-            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            acp: AccessControlProfile::try_from(qs, value)?,
             classes,
             presattrs,
             remattrs,
@@ -298,7 +294,6 @@ struct AccessControlProfile {
 
 impl AccessControlProfile {
     fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
@@ -341,7 +336,7 @@ impl AccessControlProfile {
 
         let ident = Identity::from_internal();
 
-        let receiver_i = Filter::from_rw(audit, &ident, &receiver_f, qs).map_err(|e| {
+        let receiver_i = Filter::from_rw(&ident, &receiver_f, qs).map_err(|e| {
             admin_error!("Receiver validation failed {:?}", e);
             e
         })?;
@@ -350,7 +345,7 @@ impl AccessControlProfile {
             OperationError::SchemaViolation(e)
         })?;
 
-        let targetscope_i = Filter::from_rw(audit, &ident, &targetscope_f, qs).map_err(|e| {
+        let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
             admin_error!("Targetscope validation failed {:?}", e);
             e
         })?;
@@ -402,7 +397,6 @@ pub trait AccessControlsTransaction<'a> {
     // ! TRACING INTEGRATED
     fn search_related_acp<'b>(
         &'b self,
-        audit: &mut AuditScope,
         rec_entry: &Entry<EntrySealed, EntryCommitted>,
         se: &SearchEvent,
     ) -> Vec<&'b AccessControlSearch> {
@@ -424,7 +418,7 @@ pub trait AccessControlsTransaction<'a> {
 
         /*
         if let Some(acs_uuids) = acp_related_search_cache.get(rec_entry.get_uuid()) {
-            lperf_trace_segment!(audit, "access::search_related_acp<cached>", || {
+            lperf_trace_segment!( "access::search_related_acp<cached>", || {
                 // If we have a cache, we should look here first for all the uuids that match
 
                 // could this be a better algo?
@@ -487,10 +481,8 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     // Contains all the way to eval acps to entries
-    // ! TRACING INTEGRATED
     fn search_filter_entries(
         &self,
-        audit: &mut AuditScope,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
@@ -507,7 +499,7 @@ pub trait AccessControlsTransaction<'a> {
             trace!(event = %se.ident, "Access check for search (filter) event");
 
             // First get the set of acps that apply to this receiver
-            let related_acp = self.search_related_acp(audit, rec_entry, se);
+            let related_acp = self.search_related_acp(rec_entry, se);
             let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
@@ -592,7 +584,6 @@ pub trait AccessControlsTransaction<'a> {
     // ! TRACING INTEGRATED
     fn search_filter_entry_attributes(
         &self,
-        audit: &mut AuditScope,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
@@ -630,7 +621,7 @@ pub trait AccessControlsTransaction<'a> {
             let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Get the relevant acps for this receiver.
-            let related_acp = self.search_related_acp(audit, rec_entry, se);
+            let related_acp = self.search_related_acp(rec_entry, se);
 
             let related_acp: Vec<&AccessControlSearch> = if let Some(r_attrs) = se.attrs.as_ref() {
                 related_acp
@@ -661,7 +652,7 @@ pub trait AccessControlsTransaction<'a> {
 
             /*
             related_acp.iter().for_each(|racp| {
-                lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
+                lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
             });
             */
 
@@ -740,7 +731,6 @@ pub trait AccessControlsTransaction<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn modify_allow_operation(
         &self,
-        audit: &mut AuditScope,
         me: &ModifyEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
@@ -924,7 +914,6 @@ pub trait AccessControlsTransaction<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn create_allow_operation(
         &self,
-        audit: &mut AuditScope,
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
@@ -977,7 +966,7 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            // lsecurity_access!(audit, "Related acc -> {:?}", related_acp);
+            // lsecurity_access!( "Related acc -> {:?}", related_acp);
 
             // For each entry
             let r = entries.iter().all(|e| {
@@ -1057,7 +1046,6 @@ pub trait AccessControlsTransaction<'a> {
 
     fn delete_allow_operation(
         &self,
-        audit: &mut AuditScope,
         de: &DeleteEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
@@ -1113,7 +1101,7 @@ pub trait AccessControlsTransaction<'a> {
 
             /*
             related_acp.iter().for_each(|racp| {
-                lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
+                lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
             });
             */
 
@@ -1373,7 +1361,6 @@ mod tests {
 
     macro_rules! acp_from_entry_err {
         (
-            $audit:expr,
             $qs:expr,
             $e:expr,
             $type:ty
@@ -1381,14 +1368,13 @@ mod tests {
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.into_sealed_committed() };
 
-            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_err());
         }};
     }
 
     macro_rules! acp_from_entry_ok {
         (
-            $audit:expr,
             $qs:expr,
             $e:expr,
             $type:ty
@@ -1396,7 +1382,7 @@ mod tests {
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.into_sealed_committed() };
 
-            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_ok());
             r1.unwrap()
         }};
@@ -1404,7 +1390,7 @@ mod tests {
 
     #[test]
     fn test_access_acp_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test parsing entries to acp. There so no point testing schema violations
             // because the schema system is well tested an robust. Instead we target
             // entry misconfigurations, such as missing classes required.
@@ -1416,7 +1402,6 @@ mod tests {
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1429,7 +1414,6 @@ mod tests {
             );
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1442,7 +1426,6 @@ mod tests {
             );
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1458,7 +1441,6 @@ mod tests {
 
             // "\"Self\""
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1480,11 +1462,10 @@ mod tests {
 
     #[test]
     fn test_access_acp_delete_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1503,7 +1484,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1525,13 +1505,12 @@ mod tests {
 
     #[test]
     fn test_access_acp_search_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing search access controls works.
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             // Missing class acp
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1552,7 +1531,6 @@ mod tests {
 
             // Missing class acs
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1573,7 +1551,6 @@ mod tests {
 
             // Missing attr acp_search_attr
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1593,7 +1570,6 @@ mod tests {
 
             // All good!
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1616,12 +1592,11 @@ mod tests {
 
     #[test]
     fn test_access_acp_modify_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing modify access controls works.
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1643,7 +1618,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1662,7 +1636,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1687,12 +1660,11 @@ mod tests {
 
     #[test]
     fn test_access_acp_create_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing create access controls works.
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1713,7 +1685,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1732,7 +1703,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1756,7 +1726,7 @@ mod tests {
 
     #[test]
     fn test_access_acp_compound_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing compound access controls works. This means that
             // given a single &str, we can evaluate all types from a single record.
             // This is valid, and could exist, IE a rule to allow create, search and modify
@@ -1790,10 +1760,10 @@ mod tests {
                     }
                 }"#;
 
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlCreate);
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlDelete);
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlModify);
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlSearch);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlCreate);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlDelete);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlModify);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlSearch);
         })
     }
 
@@ -1809,9 +1779,8 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search", uuid::Uuid::new_v4(), None);
             let res = acw
-                .search_filter_entries(&mut audit, $se, $entries)
+                .search_filter_entries(&mut $se, $entries)
                 .expect("op failed");
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
@@ -1910,14 +1879,13 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search_reduce", uuid::Uuid::new_v4(), None);
             // We still have to reduce the entries to be sure that we are good.
             let res = acw
-                .search_filter_entries(&mut audit, $se, $entries)
+                .search_filter_entries(&mut $se, $entries)
                 .expect("operation failed");
             // Now on the reduced entries, reduce the entries attrs.
             let reduced = acw
-                .search_filter_entry_attributes(&mut audit, $se, res)
+                .search_filter_entry_attributes(&mut $se, res)
                 .expect("operation failed");
 
             // Help the type checker for the expect set.
@@ -2031,9 +1999,8 @@ mod tests {
             acw.update_modify($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_modify", uuid::Uuid::new_v4(), None);
             let res = acw
-                .modify_allow_operation(&mut audit, $me, $entries)
+                .modify_allow_operation(&mut $me, $entries)
                 .expect("op failed");
 
             debug!("result --> {:?}", res);
@@ -2194,9 +2161,8 @@ mod tests {
             acw.update_create($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_create", uuid::Uuid::new_v4(), None);
             let res = acw
-                .create_allow_operation(&mut audit, $ce, $entries)
+                .create_allow_operation(&mut $ce, $entries)
                 .expect("op failed");
 
             debug!("result --> {:?}", res);
@@ -2313,9 +2279,8 @@ mod tests {
             acw.update_delete($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_delete", uuid::Uuid::new_v4(), None);
             let res = acw
-                .delete_allow_operation(&mut audit, $de, $entries)
+                .delete_allow_operation($de, $entries)
                 .expect("op failed");
 
             debug!("result --> {:?}", res);

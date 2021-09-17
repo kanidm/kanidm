@@ -49,16 +49,10 @@ pub fn m_purge(a: &str) -> Modify {
 }
 
 impl Modify {
-    pub fn from(
-        audit: &mut AuditScope,
-        m: &ProtoModify,
-        qs: &QueryServerWriteTransaction,
-    ) -> Result<Self, OperationError> {
+    pub fn from(m: &ProtoModify, qs: &QueryServerWriteTransaction) -> Result<Self, OperationError> {
         Ok(match m {
-            ProtoModify::Present(a, v) => Modify::Present(a.into(), qs.clone_value(audit, a, v)?),
-            ProtoModify::Removed(a, v) => {
-                Modify::Removed(a.into(), qs.clone_partialvalue(audit, a, v)?)
-            }
+            ProtoModify::Present(a, v) => Modify::Present(a.into(), qs.clone_value(a, v)?),
+            ProtoModify::Removed(a, v) => Modify::Removed(a.into(), qs.clone_partialvalue(a, v)?),
             ProtoModify::Purged(a) => Modify::Purged(a.into()),
         })
     }
@@ -115,16 +109,11 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn from(
-        audit: &mut AuditScope,
         ml: &ProtoModifyList,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         // For each ProtoModify, do a from.
-        let inner: Result<Vec<_>, _> = ml
-            .mods
-            .iter()
-            .map(|pm| Modify::from(audit, pm, qs))
-            .collect();
+        let inner: Result<Vec<_>, _> = ml.mods.iter().map(|pm| Modify::from(pm, qs)).collect();
         match inner {
             Ok(m) => Ok(ModifyList {
                 valid: ModifyInvalid,
@@ -135,7 +124,6 @@ impl ModifyList<ModifyInvalid> {
     }
 
     pub fn from_patch(
-        audit: &mut AuditScope,
         pe: &ProtoEntry,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -147,7 +135,7 @@ impl ModifyList<ModifyInvalid> {
             // Now if there are vals, push those too.
             // For each value we want to now be present.
             vals.iter().try_for_each(|val| {
-                qs.clone_value(audit, attr, val).map(|resolved_v| {
+                qs.clone_value(attr, val).map(|resolved_v| {
                     mods.push(Modify::Present(attr.as_str().into(), resolved_v));
                 })
             })

@@ -1,4 +1,3 @@
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::{error, info, instrument, trace};
 
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -73,7 +72,6 @@ impl QueryServerReadV1 {
     // required complete. We still need to do certain validation steps, but
     // at this point our just is just to route to do_<action>
 
-    // ! TRACING INTEGRATED
     // ! For uuid, we should deprecate `RequestExtensions::new_eventid` and just manually call
     // ! `Uuid::new_v4().to_hyphenated().to_string()` instead of keeping a `Uuid` around.
     // ! Ideally, this function takes &self, uat, req, and then a `uuid` argument that is a `&str` of the hyphenated uuid.
@@ -90,7 +88,6 @@ impl QueryServerReadV1 {
         req: SearchRequest,
         eventid: Uuid,
     ) -> Result<SearchResponse, OperationError> {
-        let mut audit = AuditScope::new("search", eventid, self.log_level);
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
@@ -103,8 +100,8 @@ impl QueryServerReadV1 {
         // ! in order to not short-circuit the entire function.
         let res = spanned!("actors::v1_read::handle<SearchMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(?e, "Invalid identity");
                     e
@@ -112,18 +109,16 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let search =
-                SearchEvent::from_message(&mut audit, ident, &req, &idms_prox_read.qs_read)
-                    .map_err(|e| {
-                        admin_error!(?e, "Failed to begin search");
-                        e
-                    })?;
+                SearchEvent::from_message(ident, &req, &idms_prox_read.qs_read).map_err(|e| {
+                    admin_error!(?e, "Failed to begin search");
+                    e
+                })?;
 
             trace!(?search, "Begin event");
 
-            let entries = idms_prox_read.qs_read.search_ext(&mut audit, &search)?;
+            let entries = idms_prox_read.qs_read.search_ext(&search)?;
 
-            SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
-                .map(SearchResult::response)
+            SearchResult::new(&idms_prox_read.qs_read, &entries).map(SearchResult::response)
         });
         res
     }
@@ -145,7 +140,6 @@ impl QueryServerReadV1 {
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
-        let mut audit = AuditScope::new("auth", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth_async().await;
         security_info!(?sessionid, ?req, "Begin auth event");
@@ -166,9 +160,9 @@ impl QueryServerReadV1 {
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .auth(&mut audit, &ae, ct)
+            .auth(&ae, ct)
             .await
-            .and_then(|r| idm_auth.commit(&mut audit).map(|_| r));
+            .and_then(|r| idm_auth.commit().map(|_| r));
 
         security_info!(?res, "Sending auth result");
 
@@ -187,8 +181,6 @@ impl QueryServerReadV1 {
         outpath: &str,
         versions: usize,
     ) {
-        let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
-
         trace!(eventid = ?msg.eventid, "Begin online backup event");
 
         let now: DateTime<Utc> = Utc::now();
@@ -205,10 +197,7 @@ impl QueryServerReadV1 {
             false => {
                 let idms_prox_read = self.idms.proxy_read_async().await;
                 spanned!("actors::v1_read::handle<OnlineBackupEvent>", {
-                    let res = idms_prox_read
-                        .qs_read
-                        .get_be_txn()
-                        .backup(&mut audit, &dest_file);
+                    let res = idms_prox_read.qs_read.get_be_txn().backup(&dest_file);
 
                     match &res {
                         Ok(()) => {
@@ -310,7 +299,6 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
-        let mut audit = AuditScope::new("whoami", eventid, self.log_level);
         // TODO #62: Move this to IdmServer!!!
         // Begin a read
         let ct = duration_from_epoch_now();
@@ -331,10 +319,10 @@ impl QueryServerReadV1 {
             // then move this to core.rs, and don't allow Option<UAT> to get
             // this far.
             let (uat, ident) = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| {
                     idms_prox_read
-                        .process_uat_to_identity(&mut audit, &uat, ct)
+                        .process_uat_to_identity(&uat, ct)
                         .map(|i| (uat, i))
                 })
                 .map_err(|e| {
@@ -342,20 +330,19 @@ impl QueryServerReadV1 {
                     e
                 })?;
 
-            let srch = SearchEvent::from_whoami_request(&mut audit, ident, &idms_prox_read.qs_read)
-                .map_err(|e| {
+            let srch =
+                SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
                     admin_error!(?e, "Failed to begin whoami");
                     e
                 })?;
 
             trace!(search = ?srch, "Begin event");
 
-            let mut entries = idms_prox_read.qs_read.search_ext(&mut audit, &srch)?;
+            let mut entries = idms_prox_read.qs_read.search_ext(&srch)?;
 
             match entries.pop() {
                 Some(e) if entries.is_empty() => {
-                    WhoamiResult::new(&mut audit, &idms_prox_read.qs_read, &e, uat)
-                        .map(WhoamiResult::response)
+                    WhoamiResult::new(&idms_prox_read.qs_read, &e, uat).map(WhoamiResult::response)
                 }
                 Some(_) => Err(OperationError::InvalidState), // Somehow matched multiple entries...
                 _ => Err(OperationError::NoMatchingEntries),
@@ -377,20 +364,18 @@ impl QueryServerReadV1 {
         attrs: Option<Vec<String>>,
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
-        let mut audit = AuditScope::new("internal_search_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSearchMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
             // Make an event from the request
             let srch = match SearchEvent::from_internal_message(
-                &mut audit,
                 ident,
                 &filter,
                 attrs.as_deref(),
@@ -405,8 +390,8 @@ impl QueryServerReadV1 {
 
             trace!(?srch, "Begin event");
 
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
                     .map(|ok_sr| ok_sr.into_proto_array()),
                 Err(e) => Err(e),
             }
@@ -427,21 +412,19 @@ impl QueryServerReadV1 {
         attrs: Option<Vec<String>>,
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
-        let mut audit = AuditScope::new("internal_search_recycle_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = spanned!("actors::v1_read::handle<InternalSearchRecycledMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
             // Make an event from the request
             let srch = match SearchEvent::from_internal_recycle_message(
-                &mut audit,
                 ident,
                 &filter,
                 attrs.as_deref(),
@@ -456,8 +439,8 @@ impl QueryServerReadV1 {
 
             trace!(?srch, "Begin event");
 
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
                     .map(|ok_sr| ok_sr.into_proto_array()),
                 Err(e) => Err(e),
             }
@@ -477,13 +460,12 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let mut audit = AuditScope::new("internal_radius_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalRadiusReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -491,7 +473,7 @@ impl QueryServerReadV1 {
 
             let target_uuid = idms_prox_read
                 .qs_read
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!("Error resolving id to target");
                     e
@@ -499,7 +481,6 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
                 ident,
                 target_uuid,
                 &idms_prox_read.qs_read,
@@ -514,7 +495,7 @@ impl QueryServerReadV1 {
             trace!(?srch, "Begin event");
 
             // We have to use search_ext to guarantee acs was applied.
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
+            match idms_prox_read.qs_read.search_ext(&srch) {
                 Ok(mut entries) => {
                     let r = entries
                         .pop()
@@ -544,18 +525,13 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<RadiusAuthToken, OperationError> {
-        let mut audit = AuditScope::new(
-            "internal_radius_token_read_message",
-            eventid,
-            self.log_level,
-        );
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = spanned!("actors::v1_read::handle<InternalRadiusTokenReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
@@ -563,7 +539,7 @@ impl QueryServerReadV1 {
 
             let target_uuid = idms_prox_read
                 .qs_read
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!("Error resolving id to target");
                     e
@@ -571,7 +547,6 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let rate = match RadiusAuthTokenEvent::from_parts(
-                &mut audit,
                 // &idms_prox_read.qs_read,
                 ident,
                 target_uuid,
@@ -585,7 +560,7 @@ impl QueryServerReadV1 {
 
             trace!(?rate, "Begin event");
 
-            idms_prox_read.get_radiusauthtoken(&mut audit, &rate, ct)
+            idms_prox_read.get_radiusauthtoken(&rate, ct)
         });
         res
     }
@@ -602,8 +577,6 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixUserToken, OperationError> {
-        let mut audit =
-            AuditScope::new("internal_unix_token_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
@@ -611,8 +584,8 @@ impl QueryServerReadV1 {
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
             {
                 let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                    .validate_and_parse_uat(uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                     .map_err(|e| {
                         admin_error!("Invalid identity: {:?}", e);
                         e
@@ -620,7 +593,7 @@ impl QueryServerReadV1 {
 
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .name_to_uuid(uuid_or_name.as_str())
                     .map_err(|e| {
                         admin_info!(
                             err = ?e,
@@ -631,7 +604,7 @@ impl QueryServerReadV1 {
                     })?;
 
                 // Make an event from the request
-                let rate = match UnixUserTokenEvent::from_parts(&mut audit, ident, target_uuid) {
+                let rate = match UnixUserTokenEvent::from_parts(ident, target_uuid) {
                     Ok(s) => s,
                     Err(e) => {
                         admin_error!("Failed to begin unix token read: {:?}", e);
@@ -641,7 +614,7 @@ impl QueryServerReadV1 {
 
                 trace!(?rate, "Begin event");
 
-                idms_prox_read.get_unixusertoken(&mut audit, &rate, ct)
+                idms_prox_read.get_unixusertoken(&rate, ct)
             }
         );
         res
@@ -659,19 +632,14 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixGroupToken, OperationError> {
-        let mut audit = AuditScope::new(
-            "internal_unixgroup_token_read_message",
-            eventid,
-            self.log_level,
-        );
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!(
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
             {
                 let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                    .validate_and_parse_uat(uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                     .map_err(|e| {
                         admin_error!("Invalid identity: {:?}", e);
                         e
@@ -679,7 +647,7 @@ impl QueryServerReadV1 {
 
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .name_to_uuid(uuid_or_name.as_str())
                     .map_err(|e| {
                         admin_info!(err = ?e, "Error resolving as gidnumber continuing");
                         e
@@ -687,7 +655,6 @@ impl QueryServerReadV1 {
 
                 // Make an event from the request
                 let rate = match UnixGroupTokenEvent::from_parts(
-                    &mut audit,
                     // &idms_prox_read.qs_read,
                     ident,
                     target_uuid,
@@ -701,7 +668,7 @@ impl QueryServerReadV1 {
 
                 trace!(?rate, "Begin event");
 
-                idms_prox_read.get_unixgrouptoken(&mut audit, &rate)
+                idms_prox_read.get_unixgrouptoken(&rate)
             }
         );
         res
@@ -719,20 +686,19 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
-        let mut audit = AuditScope::new("internal_sshkey_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSshKeyReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
             let target_uuid = idms_prox_read
                 .qs_read
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!("Error resolving id to target");
                     e
@@ -740,7 +706,6 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
                 ident,
                 target_uuid,
                 &idms_prox_read.qs_read,
@@ -754,7 +719,7 @@ impl QueryServerReadV1 {
 
             trace!(?srch, "Begin event");
 
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
+            match idms_prox_read.qs_read.search_ext(&srch) {
                 Ok(mut entries) => {
                     let r = entries
                         .pop()
@@ -789,21 +754,19 @@ impl QueryServerReadV1 {
         tag: String,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let mut audit =
-            AuditScope::new("internal_sshkey_tag_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<InternalSshKeyTagReadMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
             let target_uuid = idms_prox_read
                 .qs_read
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_info!("Error resolving id to target");
                     e
@@ -811,7 +774,6 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let srch = match SearchEvent::from_target_uuid_request(
-                &mut audit,
                 ident,
                 target_uuid,
                 &idms_prox_read.qs_read,
@@ -825,7 +787,7 @@ impl QueryServerReadV1 {
 
             trace!(?srch, "Begin event");
 
-            match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
+            match idms_prox_read.qs_read.search_ext(&srch) {
                 Ok(mut entries) => {
                     let r = entries
                         .pop()
@@ -862,14 +824,13 @@ impl QueryServerReadV1 {
         cred: String,
         eventid: Uuid,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        let mut audit = AuditScope::new("idm_account_unix_auth", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth_async().await;
         // let res = spanned!("actors::v1_read::handle<IdmAccountUnixAuthMessage>", {
         // resolve the id
         let ident = idm_auth
-            .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-            .and_then(|uat| idm_auth.process_uat_to_identity(&mut audit, &uat, ct))
+            .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| idm_auth.process_uat_to_identity(&uat, ct))
             .map_err(|e| {
                 admin_error!(err = ?e, "Invalid identity");
                 e
@@ -877,13 +838,13 @@ impl QueryServerReadV1 {
 
         let target_uuid = idm_auth
             .qs_read
-            .name_to_uuid(&mut audit, uuid_or_name.as_str())
+            .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
                 admin_info!(err = ?e, "Error resolving as gidnumber continuing");
                 e
             })?;
         // Make an event from the request
-        let uuae = match UnixUserAuthEvent::from_parts(&mut audit, ident, target_uuid, cred) {
+        let uuae = match UnixUserAuthEvent::from_parts(ident, target_uuid, cred) {
             Ok(s) => s,
             Err(e) => {
                 admin_error!(err = ?e, "Failed to begin unix auth");
@@ -894,9 +855,9 @@ impl QueryServerReadV1 {
         security_info!(event = ?uuae, "Begin unix auth event");
 
         let res = idm_auth
-            .auth_unix(&mut audit, &uuae, ct)
+            .auth_unix(&uuae, ct)
             .await
-            .and_then(|r| idm_auth.commit(&mut audit).map(|_| r));
+            .and_then(|r| idm_auth.commit().map(|_| r));
 
         security_info!(?res, "Sending result");
 
@@ -916,21 +877,20 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {
-        let mut audit = AuditScope::new("idm_credential_status_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = spanned!("actors::v1_read::handle<IdmCredentialStatusMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
             let target_uuid = idms_prox_read
                 .qs_read
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!(err = ?e, "Error resolving id to target");
                     e
@@ -938,7 +898,6 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let cse = match CredentialStatusEvent::from_parts(
-                &mut audit,
                 // &idms_prox_read.qs_read,
                 ident,
                 target_uuid,
@@ -952,7 +911,7 @@ impl QueryServerReadV1 {
 
             trace!(?cse, "Begin event");
 
-            idms_prox_read.get_credentialstatus(&mut audit, &cse)
+            idms_prox_read.get_credentialstatus(&cse)
         });
         res
     }
@@ -969,21 +928,20 @@ impl QueryServerReadV1 {
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<BackupCodesView, OperationError> {
-        let mut audit = AuditScope::new("idm_backup_code_view", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = spanned!("actors::v1_read::handle<IdmBackupCodeViewMessage>", {
             let ident = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                 .map_err(|e| {
                     admin_error!("Invalid identity: {:?}", e);
                     e
                 })?;
             let target_uuid = idms_prox_read
                 .qs_read
-                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .name_to_uuid(uuid_or_name.as_str())
                 .map_err(|e| {
                     admin_error!("Error resolving id to target");
                     e
@@ -991,7 +949,6 @@ impl QueryServerReadV1 {
 
             // Make an event from the request
             let rbce = match ReadBackupCodeEvent::from_parts(
-                &mut audit,
                 // &idms_prox_read.qs_read,
                 ident,
                 target_uuid,
@@ -1005,7 +962,7 @@ impl QueryServerReadV1 {
 
             trace!(?rbce, "Begin event");
 
-            idms_prox_read.get_backup_codes(&mut audit, &rbce)
+            idms_prox_read.get_backup_codes(&rbce)
         });
         res
     }
@@ -1022,15 +979,14 @@ impl QueryServerReadV1 {
         auth_req: AuthorisationRequest,
         eventid: Uuid,
     ) -> Result<ConsentRequest, Oauth2Error> {
-        let mut audit = AuditScope::new("oauth2_authorise", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<Oauth2Authorise>", {
             let (ident, uat) = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| {
                     idms_prox_read
-                        .process_uat_to_identity(&mut audit, &uat, ct)
+                        .process_uat_to_identity(&uat, ct)
                         .map(|ident| (ident, uat))
                 })
                 .map_err(|e| {
@@ -1039,7 +995,7 @@ impl QueryServerReadV1 {
                 })?;
 
             // Now we can send to the idm server for authorisation checking.
-            idms_prox_read.check_oauth2_authorisation(&mut audit, &ident, &uat, &auth_req, ct)
+            idms_prox_read.check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
         });
         res
     }
@@ -1056,15 +1012,14 @@ impl QueryServerReadV1 {
         consent_req: String,
         eventid: Uuid,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
-        let mut audit = AuditScope::new("oauth2_authorise_permit", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<Oauth2AuthorisePermit>", {
             let (ident, uat) = idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .validate_and_parse_uat(uat.as_deref(), ct)
                 .and_then(|uat| {
                     idms_prox_read
-                        .process_uat_to_identity(&mut audit, &uat, ct)
+                        .process_uat_to_identity(&uat, ct)
                         .map(|ident| (ident, uat))
                 })
                 .map_err(|e| {
@@ -1072,7 +1027,7 @@ impl QueryServerReadV1 {
                     e
                 })?;
 
-            idms_prox_read.check_oauth2_authorise_permit(&mut audit, &ident, &uat, &consent_req, ct)
+            idms_prox_read.check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
         });
         res
     }
@@ -1089,12 +1044,11 @@ impl QueryServerReadV1 {
         token_req: AccessTokenRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        let mut audit = AuditScope::new("oauth2_token_exchange", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<Oauth2TokenExchange>", {
             // Now we can send to the idm server for authorisation checking.
-            idms_prox_read.check_oauth2_token_exchange(&mut audit, &client_authz, &token_req, ct)
+            idms_prox_read.check_oauth2_token_exchange(&client_authz, &token_req, ct)
         });
         res
     }
@@ -1110,13 +1064,12 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("auth_valid", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
 
         let res = spanned!("actors::v1_read::handle<AuthValid>", {
             idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .validate_and_parse_uat(uat.as_deref(), ct)
                 .map(|_| ())
                 .map_err(|e| {
                     admin_error!("Invalid token: {:?}", e);
@@ -1129,13 +1082,12 @@ impl QueryServerReadV1 {
     #[instrument(
         level = "trace",
         name = "ldaprequest",
-        skip(self, eventid, audit, protomsg, uat)
+        skip(self, eventid,  protomsg, uat)
         fields(uuid = ?eventid)
     )]
     pub async fn handle_ldaprequest(
         &self,
         eventid: Uuid,
-        mut audit: AuditScope,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
     ) -> Option<LdapResponseState> {
@@ -1143,7 +1095,7 @@ impl QueryServerReadV1 {
         let res = match ServerOps::try_from(protomsg) {
             Ok(server_op) => self
                 .ldap
-                .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
+                .do_op(&self.idms, server_op, uat, &eventid)
                 .await
                 .unwrap_or_else(|e| {
                     admin_error!("do_op failed -> {:?}", e);

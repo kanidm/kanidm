@@ -14,7 +14,6 @@ use std::cell::UnsafeCell;
 use std::sync::Arc;
 use tracing::{trace, trace_span};
 
-use crate::audit::AuditScope;
 use crate::be::dbentry::DbEntry;
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
@@ -159,7 +158,6 @@ pub trait BackendTransaction {
     #[allow(clippy::cognitive_complexity)]
     fn filter2idl(
         &self,
-        au: &mut AuditScope,
         filt: &FilterResolved,
         thres: usize,
     ) -> Result<(IdList, FilterPlan), OperationError> {
@@ -234,7 +232,7 @@ pub trait BackendTransaction {
                 // For each filter in l
                 for f in l.iter() {
                     // get their idls
-                    match self.filter2idl(au, f, thres)? {
+                    match self.filter2idl(f, thres)? {
                         (IdList::Indexed(idl), fp) => {
                             plan.push(fp);
                             // now union them (if possible)
@@ -290,7 +288,7 @@ pub trait BackendTransaction {
 
                 // Setup the initial result.
                 let (mut cand_idl, fp) = match f_rem_iter.next() {
-                    Some(f) => self.filter2idl(au, f, thres)?,
+                    Some(f) => self.filter2idl(f, thres)?,
                     None => {
                         filter_warn!(
                             "And filter was empty, or contains only AndNot, can not evaluate."
@@ -328,7 +326,7 @@ pub trait BackendTransaction {
                 // Now, for all remaining,
                 for f in f_rem_iter {
                     f_rem_count -= 1;
-                    let (inter, fp) = self.filter2idl(au, f, thres)?;
+                    let (inter, fp) = self.filter2idl(f, thres)?;
                     plan.push(fp);
                     cand_idl = match (cand_idl, inter) {
                         (IdList::Indexed(ia), IdList::Indexed(ib)) => {
@@ -397,7 +395,7 @@ pub trait BackendTransaction {
                             return Err(OperationError::InvalidState);
                         }
                     };
-                    let (inter, fp) = self.filter2idl(au, f_in, thres)?;
+                    let (inter, fp) = self.filter2idl(f_in, thres)?;
                     // It's an and not, so we need to wrap the plan accordingly.
                     plan.push(FilterPlan::AndNot(Box::new(fp)));
                     cand_idl = match (cand_idl, inter) {
@@ -482,7 +480,7 @@ pub trait BackendTransaction {
                 // For each filter in l
                 for f in l.iter() {
                     // get their idls
-                    match self.filter2idl(au, f, thres)? {
+                    match self.filter2idl(f, thres)? {
                         (IdList::Indexed(idl), fp) => {
                             plan.push(fp);
                             if idl.is_empty() {
@@ -524,7 +522,6 @@ pub trait BackendTransaction {
     // ! TRACING INTEGRATED
     fn search(
         &self,
-        au: &mut AuditScope,
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
@@ -537,7 +534,7 @@ pub trait BackendTransaction {
 
             let (idl, fplan) = trace_span!("be::search -> filter2idl").in_scope(|| {
                 spanned!("be::search -> filter2idl", {
-                    self.filter2idl(au, filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
+                    self.filter2idl(filt.to_inner(), FILTER_SEARCH_TEST_THRESHOLD)
                 })
             })?;
 
@@ -631,7 +628,6 @@ pub trait BackendTransaction {
     /// refint and attr uniqueness.
     fn exists(
         &self,
-        au: &mut AuditScope,
         erl: &Limits,
         filt: &Filter<FilterValidResolved>,
     ) -> Result<bool, OperationError> {
@@ -643,7 +639,7 @@ pub trait BackendTransaction {
             // Also get if the filter was 100% resolved or not.
             let (idl, fplan) = spanned!("be::exists -> filter2idl", {
                 spanned!("be::exists -> filter2idl", {
-                    self.filter2idl(au, filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
+                    self.filter2idl(filt.to_inner(), FILTER_EXISTS_TEST_THRESHOLD)
                 })
             })?;
 
@@ -703,7 +699,6 @@ pub trait BackendTransaction {
     // ! TRACING INTEGRATED
     fn verify_entry_index(
         &self,
-        audit: &mut AuditScope,
         e: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<(), ConsistencyError> {
         // First, check our references in name2uuid, uuid2spn and uuid2rdn
@@ -776,8 +771,7 @@ pub trait BackendTransaction {
         Ok(())
     }
 
-    // ! TRACING INTEGRATED
-    fn verify_indexes(&self, audit: &mut AuditScope) -> Vec<Result<(), ConsistencyError>> {
+    fn verify_indexes(&self) -> Vec<Result<(), ConsistencyError>> {
         let idl = IdList::AllIds;
         let entries = match self.get_idlayer().get_identry(&idl) {
             Ok(s) => s,
@@ -787,9 +781,7 @@ pub trait BackendTransaction {
             }
         };
 
-        let r = entries
-            .iter()
-            .try_for_each(|e| self.verify_entry_index(audit, e));
+        let r = entries.iter().try_for_each(|e| self.verify_entry_index(e));
 
         if r.is_err() {
             vec![r]
@@ -798,8 +790,7 @@ pub trait BackendTransaction {
         }
     }
 
-    // ! TRACING INTEGRATED
-    fn backup(&self, audit: &mut AuditScope, dst_path: &str) -> Result<(), OperationError> {
+    fn backup(&self, dst_path: &str) -> Result<(), OperationError> {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
@@ -907,10 +898,8 @@ impl<'a> BackendTransaction for BackendWriteTransaction<'a> {
 }
 
 impl<'a> BackendWriteTransaction<'a> {
-    // TODO: tracing
     pub fn create(
         &self,
-        au: &mut AuditScope,
         entries: Vec<Entry<EntrySealed, EntryNew>>,
     ) -> Result<Vec<Entry<EntrySealed, EntryCommitted>>, OperationError> {
         spanned!("be::create", {
@@ -937,7 +926,7 @@ impl<'a> BackendWriteTransaction<'a> {
 
             // Now update the indexes as required.
             for e in c_entries.iter() {
-                self.entry_index(au, None, Some(e))?
+                self.entry_index(None, Some(e))?
             }
 
             Ok(c_entries)
@@ -946,7 +935,6 @@ impl<'a> BackendWriteTransaction<'a> {
 
     pub fn modify(
         &self,
-        au: &mut AuditScope,
         pre_entries: &[Arc<EntrySealedCommitted>],
         post_entries: &[Entry<EntrySealed, EntryCommitted>],
     ) -> Result<(), OperationError> {
@@ -978,7 +966,7 @@ impl<'a> BackendWriteTransaction<'a> {
                 })
                 .collect();
 
-            let ser_entries = try_audit!(au, ser_entries);
+            let ser_entries = try_audit!( ser_entries);
 
             // Simple: If the list of id's is not the same as the input list, we are missing id's
             //
@@ -997,15 +985,11 @@ impl<'a> BackendWriteTransaction<'a> {
             pre_entries
                 .iter()
                 .zip(post_entries.iter())
-                .try_for_each(|(pre, post)| self.entry_index(au, Some(pre.as_ref()), Some(post)))
+                .try_for_each(|(pre, post)| self.entry_index(Some(pre.as_ref()), Some(post)))
         })
     }
 
-    pub fn delete(
-        &self,
-        au: &mut AuditScope,
-        entries: &[Arc<EntrySealedCommitted>],
-    ) -> Result<(), OperationError> {
+    pub fn delete(&self, entries: &[Arc<EntrySealedCommitted>]) -> Result<(), OperationError> {
         spanned!("be::delete", {
             if entries.is_empty() {
                 admin_error!("No entries provided to BE to delete, invalid server call!");
@@ -1021,15 +1005,11 @@ impl<'a> BackendWriteTransaction<'a> {
             // Finally, purge the indexes from the entries we removed.
             entries
                 .iter()
-                .try_for_each(|e| self.entry_index(au, Some(e), None))
+                .try_for_each(|e| self.entry_index(Some(e), None))
         })
     }
 
-    pub fn update_idxmeta(
-        &mut self,
-        audit: &mut AuditScope,
-        idxkeys: Vec<IdxKey>,
-    ) -> Result<(), OperationError> {
+    pub fn update_idxmeta(&mut self, idxkeys: Vec<IdxKey>) -> Result<(), OperationError> {
         if self.is_idx_slopeyness_generated()? {
             trace!("Indexing slopes available");
         } else {
@@ -1043,7 +1023,7 @@ impl<'a> BackendWriteTransaction<'a> {
         // have been analysed, we can set the slope factor into here.
         let idxkeys: Result<Map<_, _>, _> = idxkeys
             .into_iter()
-            .map(|k| self.get_idx_slope(audit, &k).map(|slope| (k, slope)))
+            .map(|k| self.get_idx_slope(&k).map(|slope| (k, slope)))
             .collect();
 
         let mut idxkeys = idxkeys?;
@@ -1065,7 +1045,6 @@ impl<'a> BackendWriteTransaction<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn entry_index(
         &self,
-        audit: &mut AuditScope,
         pre: Option<&Entry<EntrySealed, EntryCommitted>>,
         post: Option<&Entry<EntrySealed, EntryCommitted>>,
     ) -> Result<(), OperationError> {
@@ -1223,10 +1202,7 @@ impl<'a> BackendWriteTransaction<'a> {
     }
 
     #[allow(dead_code)]
-    fn missing_idxs(
-        &self,
-        audit: &mut AuditScope,
-    ) -> Result<Vec<(AttrString, IndexType)>, OperationError> {
+    fn missing_idxs(&self) -> Result<Vec<(AttrString, IndexType)>, OperationError> {
         let idx_table_list = self.get_idlayer().list_idxs()?;
 
         // Turn the vec to a real set
@@ -1251,7 +1227,7 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(missing)
     }
 
-    fn create_idxs(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    fn create_idxs(&self) -> Result<(), OperationError> {
         let idlayer = self.get_idlayer();
         // Create name2uuid and uuid2name
         trace!("Creating index -> name2uuid");
@@ -1269,29 +1245,28 @@ impl<'a> BackendWriteTransaction<'a> {
             .try_for_each(|ikey| idlayer.create_idx(&ikey.attr, &ikey.itype))
     }
 
-    pub fn upgrade_reindex(&self, audit: &mut AuditScope, v: i64) -> Result<(), OperationError> {
+    pub fn upgrade_reindex(&self, v: i64) -> Result<(), OperationError> {
         let dbv = self.get_db_index_version();
         admin_info!(?dbv, ?v, "upgrade_reindex");
         if dbv < v {
             limmediate_warning!(
-                audit,
                 "NOTICE: A system reindex is required. This may take a long time ...\n"
             );
-            self.reindex(audit)?;
-            limmediate_warning!(audit, "NOTICE: System reindex complete\n");
+            self.reindex()?;
+            limmediate_warning!("NOTICE: System reindex complete\n");
             self.set_db_index_version(v)
         } else {
             Ok(())
         }
     }
 
-    pub fn reindex(&self, audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn reindex(&self) -> Result<(), OperationError> {
         let idlayer = self.get_idlayer();
         // Purge the idxs
         unsafe { idlayer.purge_idxs()? };
 
         // Using the index metadata on the txn, create all our idx tables
-        self.create_idxs(audit)?;
+        self.create_idxs()?;
 
         // Now, we need to iterate over everything in id2entry and index them
         // Future idea: Do this in batches of X amount to limit memory
@@ -1309,26 +1284,26 @@ impl<'a> BackendWriteTransaction<'a> {
             .try_for_each(|e| {
                 count += 1;
                 if count % 2500 == 0 {
-                    limmediate_warning!(audit, "{}", count);
+                    limmediate_warning!("{}", count);
                 } else if count % 250 == 0 {
-                    limmediate_warning!(audit, ".");
+                    limmediate_warning!(".");
                 }
-                self.entry_index(audit, None, Some(e))
+                self.entry_index(None, Some(e))
             })
             .map_err(|e| {
                 admin_error!("reindex failed -> {:?}", e);
                 e
             })?;
-        limmediate_warning!(audit, " reindexed {} entries ✅\n", count);
-        limmediate_warning!(audit, "Optimising Indexes ... ");
+        limmediate_warning!(" reindexed {} entries ✅\n", count);
+        limmediate_warning!("Optimising Indexes ... ");
         idlayer.optimise_dirty_idls();
-        limmediate_warning!(audit, "done ✅\n");
-        limmediate_warning!(audit, "Calculating Index Optimisation Slopes ... ");
+        limmediate_warning!("done ✅\n");
+        limmediate_warning!("Calculating Index Optimisation Slopes ... ");
         idlayer.analyse_idx_slopes().map_err(|e| {
             admin_error!(err = ?e, "index optimisation failed");
             e
         })?;
-        limmediate_warning!(audit, "done ✅\n");
+        limmediate_warning!("done ✅\n");
         Ok(())
     }
 
@@ -1351,11 +1326,7 @@ impl<'a> BackendWriteTransaction<'a> {
         self.get_idlayer().is_idx_slopeyness_generated()
     }
 
-    fn get_idx_slope(
-        &self,
-        audit: &mut AuditScope,
-        ikey: &IdxKey,
-    ) -> Result<IdxSlope, OperationError> {
+    fn get_idx_slope(&self, ikey: &IdxKey) -> Result<IdxSlope, OperationError> {
         // Do we have the slopeyness?
         let slope = self
             .get_idlayer()
@@ -1365,7 +1336,7 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(slope)
     }
 
-    pub fn restore(&self, audit: &mut AuditScope, src_path: &str) -> Result<(), OperationError> {
+    pub fn restore(&self, src_path: &str) -> Result<(), OperationError> {
         let idlayer = self.get_idlayer();
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
@@ -1401,7 +1372,7 @@ impl<'a> BackendWriteTransaction<'a> {
         idlayer.write_identries_raw(identries?.into_iter())?;
 
         // Reindex now we are loaded.
-        self.reindex(audit)?;
+        self.reindex()?;
 
         let vr = self.verify();
         if vr.is_empty() {
@@ -1411,7 +1382,7 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    pub fn commit(self, _audit: &mut AuditScope) -> Result<(), OperationError> {
+    pub fn commit(self) -> Result<(), OperationError> {
         let BackendWriteTransaction {
             idlayer,
             idxmeta: _,
@@ -1502,7 +1473,6 @@ fn get_idx_slope_default(ikey: &IdxKey) -> IdxSlope {
 // In the future this will do the routing between the chosen backends etc.
 impl Backend {
     pub fn new(
-        audit: &mut AuditScope,
         mut cfg: BackendConfig,
         // path: &str,
         // mut pool_size: u32,
@@ -1580,14 +1550,14 @@ impl Backend {
     }
 
     // Should this actually call the idlayer directly?
-    pub fn reset_db_s_uuid(&self, audit: &mut AuditScope) -> Uuid {
+    pub fn reset_db_s_uuid(&self) -> Uuid {
         let wr = self.write();
         #[allow(clippy::expect_used)]
         let sid = wr
             .reset_db_s_uuid()
             .expect("unable to reset db server uuid");
         #[allow(clippy::expect_used)]
-        wr.commit(audit)
+        wr.commit()
             .expect("Unable to commit to backend, can not proceed");
         sid
     }
@@ -1610,7 +1580,6 @@ mod tests {
     use std::sync::Arc;
     use uuid::Uuid;
 
-    use super::super::audit::AuditScope;
     use super::super::entry::{Entry, EntryInit, EntryNew};
     use super::{
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, IdList, OperationError,
@@ -1623,7 +1592,6 @@ mod tests {
     macro_rules! run_test {
         ($test_fn:expr) => {{
             let _ = crate::tracing_tree::test_init();
-            let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
 
             // This is a demo idxmeta, purely for testing.
             let idxmeta = vec![
@@ -1657,20 +1625,20 @@ mod tests {
                 },
             ];
 
-            let be = Backend::new(&mut audit, BackendConfig::new_test(), idxmeta, false)
+            let be = Backend::new(BackendConfig::new_test(), idxmeta, false)
                 .expect("Failed to setup backend");
 
             let mut be_txn = be.write();
 
-            let r = $test_fn(&mut audit, &mut be_txn);
+            let r = $test_fn(&mut be_txn);
             // Commit, to guarantee it worked.
-            assert!(be_txn.commit(&mut audit).is_ok());
+            assert!(be_txn.commit().is_ok());
             r
         }};
     }
 
     macro_rules! entry_exists {
-        ($audit:expr, $be:expr, $ent:expr) => {{
+        ($be:expr, $ent:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
             let filt = unsafe {
                 ei.filter_from_attrs(&vec![AttrString::from("userid")])
@@ -1678,13 +1646,13 @@ mod tests {
                     .into_valid_resolved()
             };
             let lims = Limits::unlimited();
-            let entries = $be.search($audit, &lims, &filt).expect("failed to search");
+            let entries = $be.search(&lims, &filt).expect("failed to search");
             entries.first().is_some()
         }};
     }
 
     macro_rules! entry_attr_pres {
-        ($audit:expr, $be:expr, $ent:expr, $attr:expr) => {{
+        ($be:expr, $ent:expr, $attr:expr) => {{
             let ei = unsafe { $ent.clone().into_sealed_committed() };
             let filt = unsafe {
                 ei.filter_from_attrs(&vec![AttrString::from("userid")])
@@ -1692,7 +1660,7 @@ mod tests {
                     .into_valid_resolved()
             };
             let lims = Limits::unlimited();
-            let entries = $be.search($audit, &lims, &filt).expect("failed to search");
+            let entries = $be.search(&lims, &filt).expect("failed to search");
             match entries.first() {
                 Some(ent) => ent.attribute_pres($attr),
                 None => false,
@@ -1712,10 +1680,10 @@ mod tests {
 
     #[test]
     fn test_be_simple_create() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Create");
 
-            let empty_result = be.create(audit, Vec::new());
+            let empty_result = be.create(Vec::new());
             trace!("{:?}", empty_result);
             assert_eq!(empty_result, Err(OperationError::EmptyRequest));
 
@@ -1724,18 +1692,18 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
-            let single_result = be.create(audit, vec![e.clone()]);
+            let single_result = be.create(vec![e.clone()]);
 
             assert!(single_result.is_ok());
 
             // Construct a filter
-            assert!(entry_exists!(audit, be, e));
+            assert!(entry_exists!(be, e));
         });
     }
 
     #[test]
     fn test_be_simple_search() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Search");
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
@@ -1743,7 +1711,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e = unsafe { e.into_sealed_new() };
 
-            let single_result = be.create(audit, vec![e.clone()]);
+            let single_result = be.create(vec![e.clone()]);
             assert!(single_result.is_ok());
             // Test a simple EQ search
 
@@ -1752,7 +1720,7 @@ mod tests {
 
             let lims = Limits::unlimited();
 
-            let r = be.search(audit, &lims, &filt);
+            let r = be.search(&lims, &filt);
             assert!(r.expect("Search failed!").len() == 1);
 
             // Test empty search
@@ -1765,7 +1733,7 @@ mod tests {
 
     #[test]
     fn test_be_simple_modify() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Modify");
             let lims = Limits::unlimited();
             // First create some entries (3?)
@@ -1780,13 +1748,13 @@ mod tests {
             let ve1 = unsafe { e1.clone().into_sealed_new() };
             let ve2 = unsafe { e2.clone().into_sealed_new() };
 
-            assert!(be.create(audit, vec![ve1, ve2]).is_ok());
-            assert!(entry_exists!(audit, be, e1));
-            assert!(entry_exists!(audit, be, e2));
+            assert!(be.create(vec![ve1, ve2]).is_ok());
+            assert!(entry_exists!(be, e1));
+            assert!(entry_exists!(be, e2));
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, &lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -1800,11 +1768,9 @@ mod tests {
             // This is now impossible due to the state machine design.
             // However, with some unsafe ....
             let ue1 = unsafe { e1.clone().into_sealed_committed() };
-            assert!(be
-                .modify(audit, &vec![Arc::new(ue1.clone())], &vec![ue1])
-                .is_err());
+            assert!(be.modify(&vec![Arc::new(ue1.clone())], &vec![ue1]).is_err());
             // Modify none
-            assert!(be.modify(audit, &vec![], &vec![]).is_err());
+            assert!(be.modify(&vec![], &vec![]).is_err());
 
             // Make some changes to r1, r2.
             let pre1 = unsafe { Arc::new(r1.clone().into_sealed_committed()) };
@@ -1818,30 +1784,27 @@ mod tests {
             let vr2 = unsafe { r2.into_sealed_committed() };
 
             // Modify single
-            assert!(be
-                .modify(audit, &vec![pre1.clone()], &vec![vr1.clone()])
-                .is_ok());
+            assert!(be.modify(&vec![pre1.clone()], &vec![vr1.clone()]).is_ok());
             // Assert no other changes
-            assert!(entry_attr_pres!(audit, be, vr1, "desc"));
-            assert!(!entry_attr_pres!(audit, be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, "desc"));
+            assert!(!entry_attr_pres!(be, vr2, "desc"));
 
             // Modify both
             assert!(be
                 .modify(
-                    audit,
                     &vec![Arc::new(vr1.clone()), pre2.clone()],
                     &vec![vr1.clone(), vr2.clone()]
                 )
                 .is_ok());
 
-            assert!(entry_attr_pres!(audit, be, vr1, "desc"));
-            assert!(entry_attr_pres!(audit, be, vr2, "desc"));
+            assert!(entry_attr_pres!(be, vr1, "desc"));
+            assert!(entry_attr_pres!(be, vr2, "desc"));
         });
     }
 
     #[test]
     fn test_be_simple_delete() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             trace!("Simple Delete");
             let lims = Limits::unlimited();
 
@@ -1862,14 +1825,14 @@ mod tests {
             let ve2 = unsafe { e2.clone().into_sealed_new() };
             let ve3 = unsafe { e3.clone().into_sealed_new() };
 
-            assert!(be.create(audit, vec![ve1, ve2, ve3]).is_ok());
-            assert!(entry_exists!(audit, be, e1));
-            assert!(entry_exists!(audit, be, e2));
-            assert!(entry_exists!(audit, be, e3));
+            assert!(be.create(vec![ve1, ve2, ve3]).is_ok());
+            assert!(entry_exists!(be, e1));
+            assert!(entry_exists!(be, e2));
+            assert!(entry_exists!(be, e3));
 
             // You need to now retrieve the entries back out to get the entry id's
             let mut results = be
-                .search(audit, &lims, unsafe { &filter_resolved!(f_pres("userid")) })
+                .search(&lims, unsafe { &filter_resolved!(f_pres("userid")) })
                 .expect("Failed to search");
 
             // Get these out to usable entries.
@@ -1878,11 +1841,11 @@ mod tests {
             let r3 = results.remove(0);
 
             // Delete one
-            assert!(be.delete(audit, &vec![r1.clone()]).is_ok());
-            assert!(!entry_exists!(audit, be, r1.as_ref()));
+            assert!(be.delete(&vec![r1.clone()]).is_ok());
+            assert!(!entry_exists!(be, r1.as_ref()));
 
             // delete none (no match filter)
-            assert!(be.delete(audit, &vec![]).is_err());
+            assert!(be.delete(&vec![]).is_err());
 
             // Delete with no id
             // WARNING: Normally, this isn't possible, but we are pursposefully breaking
@@ -1893,20 +1856,20 @@ mod tests {
 
             let ve4 = unsafe { Arc::new(e4.clone().into_sealed_committed()) };
 
-            assert!(be.delete(audit, &vec![ve4]).is_err());
+            assert!(be.delete(&vec![ve4]).is_err());
 
-            assert!(entry_exists!(audit, be, r2.as_ref()));
-            assert!(entry_exists!(audit, be, r3.as_ref()));
+            assert!(entry_exists!(be, r2.as_ref()));
+            assert!(entry_exists!(be, r3.as_ref()));
 
             // delete batch
-            assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
+            assert!(be.delete(&vec![r2.clone(), r3.clone()]).is_ok());
 
-            assert!(!entry_exists!(audit, be, r2.as_ref()));
-            assert!(!entry_exists!(audit, be, r3.as_ref()));
+            assert!(!entry_exists!(be, r2.as_ref()));
+            assert!(!entry_exists!(be, r3.as_ref()));
 
             // delete none (no entries left)
             // see fn delete for why this is ok, not err
-            assert!(be.delete(audit, &vec![r2.clone(), r3.clone()]).is_ok());
+            assert!(be.delete(&vec![r2.clone(), r3.clone()]).is_ok());
         });
     }
 
@@ -1914,7 +1877,7 @@ mod tests {
 
     #[test]
     fn test_be_backup_restore() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", Value::from("william"));
@@ -1932,10 +1895,10 @@ mod tests {
             let ve2 = unsafe { e2.clone().into_sealed_new() };
             let ve3 = unsafe { e3.clone().into_sealed_new() };
 
-            assert!(be.create(audit, vec![ve1, ve2, ve3]).is_ok());
-            assert!(entry_exists!(audit, be, e1));
-            assert!(entry_exists!(audit, be, e2));
-            assert!(entry_exists!(audit, be, e3));
+            assert!(be.create(vec![ve1, ve2, ve3]).is_ok());
+            assert!(entry_exists!(be, e1));
+            assert!(entry_exists!(be, e2));
+            assert!(entry_exists!(be, e3));
 
             let result = fs::remove_file(DB_BACKUP_FILE_NAME);
 
@@ -1951,10 +1914,8 @@ mod tests {
                 _ => (),
             }
 
-            be.backup(audit, DB_BACKUP_FILE_NAME)
-                .expect("Backup failed!");
-            be.restore(audit, DB_BACKUP_FILE_NAME)
-                .expect("Restore failed!");
+            be.backup(DB_BACKUP_FILE_NAME).expect("Backup failed!");
+            be.restore(DB_BACKUP_FILE_NAME).expect("Restore failed!");
 
             assert!(be.verify().len() == 0);
         });
@@ -1964,7 +1925,7 @@ mod tests {
 
     #[test]
     fn test_be_backup_restore_tampered() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", Value::from("william"));
@@ -1982,10 +1943,10 @@ mod tests {
             let ve2 = unsafe { e2.clone().into_sealed_new() };
             let ve3 = unsafe { e3.clone().into_sealed_new() };
 
-            assert!(be.create(audit, vec![ve1, ve2, ve3]).is_ok());
-            assert!(entry_exists!(audit, be, e1));
-            assert!(entry_exists!(audit, be, e2));
-            assert!(entry_exists!(audit, be, e3));
+            assert!(be.create(vec![ve1, ve2, ve3]).is_ok());
+            assert!(entry_exists!(be, e1));
+            assert!(entry_exists!(be, e2));
+            assert!(entry_exists!(be, e3));
 
             let result = fs::remove_file(DB_BACKUP2_FILE_NAME);
 
@@ -2001,8 +1962,7 @@ mod tests {
                 _ => (),
             }
 
-            be.backup(audit, DB_BACKUP2_FILE_NAME)
-                .expect("Backup failed!");
+            be.backup(DB_BACKUP2_FILE_NAME).expect("Backup failed!");
 
             // Now here, we need to tamper with the file.
             let serialized_string = fs::read_to_string(DB_BACKUP2_FILE_NAME).unwrap();
@@ -2012,8 +1972,7 @@ mod tests {
             let serialized_entries_str = serde_json::to_string_pretty(&dbentries).unwrap();
             fs::write(DB_BACKUP2_FILE_NAME, serialized_entries_str).unwrap();
 
-            be.restore(audit, DB_BACKUP2_FILE_NAME)
-                .expect("Restore failed!");
+            be.restore(DB_BACKUP2_FILE_NAME).expect("Restore failed!");
 
             assert!(be.verify().len() == 0);
         });
@@ -2021,27 +1980,25 @@ mod tests {
 
     #[test]
     fn test_be_sid_generation_and_reset() {
-        run_test!(
-            |_audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-                let sid1 = be.get_db_s_uuid();
-                let sid2 = be.get_db_s_uuid();
-                assert!(sid1 == sid2);
-                let sid3 = be.reset_db_s_uuid().unwrap();
-                assert!(sid1 != sid3);
-                let sid4 = be.get_db_s_uuid();
-                assert!(sid3 == sid4);
-            }
-        );
+        run_test!(|be: &mut BackendWriteTransaction| {
+            let sid1 = be.get_db_s_uuid();
+            let sid2 = be.get_db_s_uuid();
+            assert!(sid1 == sid2);
+            let sid3 = be.reset_db_s_uuid().unwrap();
+            assert!(sid1 != sid3);
+            let sid4 = be.get_db_s_uuid();
+            assert!(sid3 == sid4);
+        });
     }
 
     #[test]
     fn test_be_reindex_empty() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // Add some test data?
-            let missing = be.missing_idxs(audit).unwrap();
+            let missing = be.missing_idxs().unwrap();
             assert!(missing.len() == 7);
-            assert!(be.reindex(audit).is_ok());
-            let missing = be.missing_idxs(audit).unwrap();
+            assert!(be.reindex().is_ok());
+            let missing = be.missing_idxs().unwrap();
             debug!("{:?}", missing);
             assert!(missing.is_empty());
         });
@@ -2049,7 +2006,7 @@ mod tests {
 
     #[test]
     fn test_be_reindex_data() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // Add some test data?
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", Value::new_iname("william"));
@@ -2061,15 +2018,15 @@ mod tests {
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
-            be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();
+            be.create(vec![e1.clone(), e2.clone()]).unwrap();
 
             // purge indexes
             be.purge_idxs().unwrap();
             // Check they are gone
-            let missing = be.missing_idxs(audit).unwrap();
+            let missing = be.missing_idxs().unwrap();
             assert!(missing.len() == 7);
-            assert!(be.reindex(audit).is_ok());
-            let missing = be.missing_idxs(audit).unwrap();
+            assert!(be.reindex().is_ok());
+            let missing = be.missing_idxs().unwrap();
             debug!("{:?}", missing);
             assert!(missing.is_empty());
             // check name and uuid ids on eq, sub, pres
@@ -2143,9 +2100,9 @@ mod tests {
 
     #[test]
     fn test_be_index_create_delete_simple() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // First, setup our index tables!
-            assert!(be.reindex(audit).is_ok());
+            assert!(be.reindex().is_ok());
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2153,7 +2110,7 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(audit, vec![e1.clone()]).unwrap();
+            let rset = be.create(vec![e1.clone()]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
 
             idl_state!(be, "name", IndexType::Equality, "william", Some(vec![1]));
@@ -2176,7 +2133,7 @@ mod tests {
             assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=william".to_string())));
 
             // == Now we delete, and assert we removed the items.
-            be.delete(audit, &rset).unwrap();
+            be.delete(&rset).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "william", Some(Vec::new()));
 
@@ -2200,10 +2157,10 @@ mod tests {
 
     #[test]
     fn test_be_index_create_delete_multi() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // delete multiple entries at a time, without deleting others
             // First, setup our index tables!
-            assert!(be.reindex(audit).is_ok());
+            assert!(be.reindex().is_ok());
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2221,14 +2178,12 @@ mod tests {
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
             let e3 = unsafe { e3.into_sealed_new() };
 
-            let mut rset = be
-                .create(audit, vec![e1.clone(), e2.clone(), e3.clone()])
-                .unwrap();
+            let mut rset = be.create(vec![e1.clone(), e2.clone(), e3.clone()]).unwrap();
             rset.remove(1);
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
 
             // Now remove e1, e3.
-            be.delete(audit, &rset).unwrap();
+            be.delete(&rset).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![2]));
 
@@ -2264,8 +2219,8 @@ mod tests {
 
     #[test]
     fn test_be_index_modify_simple() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            assert!(be.reindex(audit).is_ok());
+        run_test!(|be: &mut BackendWriteTransaction| {
+            assert!(be.reindex().is_ok());
             // modify with one type, ensuring we clean the indexes behind
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
@@ -2275,7 +2230,7 @@ mod tests {
             e1.add_ava("ta", Value::from("test"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(audit, vec![e1.clone()]).unwrap();
+            let rset = be.create(vec![e1.clone()]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
@@ -2289,7 +2244,7 @@ mod tests {
 
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
-            be.modify(audit, &rset, &vec![ce1]).unwrap();
+            be.modify(&rset, &vec![ce1]).unwrap();
 
             // Now check the idls
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
@@ -2311,8 +2266,8 @@ mod tests {
 
     #[test]
     fn test_be_index_modify_rename() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            assert!(be.reindex(audit).is_ok());
+        run_test!(|be: &mut BackendWriteTransaction| {
+            assert!(be.reindex().is_ok());
             // test when we change name AND uuid
             // This will be needing to be correct for conflicts when we add
             // replication support!
@@ -2321,7 +2276,7 @@ mod tests {
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
-            let rset = be.create(audit, vec![e1.clone()]).unwrap();
+            let rset = be.create(vec![e1.clone()]).unwrap();
             let rset: Vec<_> = rset.into_iter().map(Arc::new).collect();
             // Now, alter the new entry.
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
@@ -2331,7 +2286,7 @@ mod tests {
             ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
-            be.modify(audit, &rset, &vec![ce1]).unwrap();
+            be.modify(&rset, &vec![ce1]).unwrap();
 
             idl_state!(be, "name", IndexType::Equality, "claire", Some(vec![1]));
 
@@ -2368,8 +2323,8 @@ mod tests {
 
     #[test]
     fn test_be_index_search_simple() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
-            assert!(be.reindex(audit).is_ok());
+        run_test!(|be: &mut BackendWriteTransaction| {
+            assert!(be.reindex().is_ok());
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -2384,12 +2339,12 @@ mod tests {
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             let e2 = unsafe { e2.into_sealed_new() };
 
-            let _rset = be.create(audit, vec![e1.clone(), e2.clone()]).unwrap();
+            let _rset = be.create(vec![e1.clone(), e2.clone()]).unwrap();
             // Test fully unindexed
             let f_un =
                 unsafe { filter_resolved!(f_eq("no-index", PartialValue::new_utf8s("william"))) };
 
-            let (r, _plan) = be.filter2idl(audit, f_un.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_un.to_inner(), 0).unwrap();
             match r {
                 IdList::AllIds => {}
                 _ => {
@@ -2401,7 +2356,7 @@ mod tests {
             let f_eq =
                 unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
 
-            let (r, _plan) = be.filter2idl(audit, f_eq.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
@@ -2423,7 +2378,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_in_and.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_in_and.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
@@ -2448,7 +2403,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_p1.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_p1.to_inner(), 0).unwrap();
             match r {
                 IdList::Partial(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
@@ -2458,7 +2413,7 @@ mod tests {
                 }
             }
 
-            let (r, _plan) = be.filter2idl(audit, f_p2.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_p2.to_inner(), 0).unwrap();
             match r {
                 IdList::Partial(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
@@ -2476,7 +2431,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_no_and.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_no_and.to_inner(), 0).unwrap();
             match r {
                 IdList::AllIds => {}
                 _ => {
@@ -2489,7 +2444,7 @@ mod tests {
                 filter_resolved!(f_or!([f_eq("name", PartialValue::new_utf8s("william"))]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_in_or.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_in_or.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
@@ -2506,7 +2461,7 @@ mod tests {
                 )]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_un_or.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_un_or.to_inner(), 0).unwrap();
             match r {
                 IdList::AllIds => {}
                 _ => {
@@ -2519,7 +2474,7 @@ mod tests {
                 filter_resolved!(f_andnot(f_eq("name", PartialValue::new_utf8s("william"))))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_r_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_r_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(Vec::new()));
@@ -2537,7 +2492,7 @@ mod tests {
                 ))]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(Vec::new()));
@@ -2554,7 +2509,7 @@ mod tests {
                 ))]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_or_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_or_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(Vec::new()));
@@ -2572,7 +2527,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     debug!("{:?}", idl);
@@ -2590,7 +2545,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
@@ -2607,7 +2562,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::AllIds => {}
                 _ => {
@@ -2622,7 +2577,7 @@ mod tests {
                 ]))
             };
 
-            let (r, _plan) = be.filter2idl(audit, f_and_andnot.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_and_andnot.to_inner(), 0).unwrap();
             match r {
                 IdList::AllIds => {}
                 _ => {
@@ -2633,7 +2588,7 @@ mod tests {
             //   empty or
             let f_e_or = unsafe { filter_resolved!(f_or!([])) };
 
-            let (r, _plan) = be.filter2idl(audit, f_e_or.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_e_or.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![]));
@@ -2645,7 +2600,7 @@ mod tests {
 
             let f_e_and = unsafe { filter_resolved!(f_and!([])) };
 
-            let (r, _plan) = be.filter2idl(audit, f_e_and.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_e_and.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![]));
@@ -2659,15 +2614,15 @@ mod tests {
 
     #[test]
     fn test_be_index_search_missing() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // Test where the index is in schema but not created (purge idxs)
             // should fall back to an empty set because we can't satisfy the term
             be.purge_idxs().unwrap();
-            debug!("{:?}", be.missing_idxs(audit).unwrap());
+            debug!("{:?}", be.missing_idxs().unwrap());
             let f_eq =
                 unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
 
-            let (r, _plan) = be.filter2idl(audit, f_eq.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
             match r {
                 IdList::AllIds => {}
                 _ => {
@@ -2679,7 +2634,7 @@ mod tests {
 
     #[test]
     fn test_be_index_slope_generation() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // Create some test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("name", Value::from("william"));
@@ -2702,73 +2657,71 @@ mod tests {
             e3.add_ava("tb", Value::from("2"));
             let e3 = unsafe { e3.into_sealed_new() };
 
-            let _rset = be
-                .create(audit, vec![e1.clone(), e2.clone(), e3.clone()])
-                .unwrap();
+            let _rset = be.create(vec![e1.clone(), e2.clone(), e3.clone()]).unwrap();
 
             // If the slopes haven't been generated yet, there are some hardcoded values
             // that we can use instead. They aren't generated until a first re-index.
             assert!(!be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 45);
 
             let tb_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 45);
 
             let name_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 1);
             let uuid_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 1);
 
             let name_pres_slope = be
-                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 90);
             let uuid_pres_slope = be
-                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 90);
             // Check the slopes are what we expect for hardcoded values.
 
             // Now check slope generation for the values. Today these are calculated
             // at reindex time, so we now perform the re-index.
-            assert!(be.reindex(audit).is_ok());
+            assert!(be.reindex().is_ok());
             assert!(be.is_idx_slopeyness_generated().unwrap());
 
             let ta_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("ta", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("ta", IndexType::Equality))
                 .unwrap();
             assert_eq!(ta_eq_slope, 200);
 
             let tb_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("tb", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("tb", IndexType::Equality))
                 .unwrap();
             assert_eq!(tb_eq_slope, 133);
 
             let name_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("name", IndexType::Equality))
                 .unwrap();
             assert_eq!(name_eq_slope, 51);
             let uuid_eq_slope = be
-                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Equality))
+                .get_idx_slope(&IdxKey::new("uuid", IndexType::Equality))
                 .unwrap();
             assert_eq!(uuid_eq_slope, 51);
 
             let name_pres_slope = be
-                .get_idx_slope(audit, &IdxKey::new("name", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new("name", IndexType::Presence))
                 .unwrap();
             assert_eq!(name_pres_slope, 200);
             let uuid_pres_slope = be
-                .get_idx_slope(audit, &IdxKey::new("uuid", IndexType::Presence))
+                .get_idx_slope(&IdxKey::new("uuid", IndexType::Presence))
                 .unwrap();
             assert_eq!(uuid_pres_slope, 200);
         })
@@ -2776,7 +2729,7 @@ mod tests {
 
     #[test]
     fn test_be_limits_allids() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             let mut lim_allow_allids = Limits::unlimited();
             lim_allow_allids.unindexed_allow = true;
 
@@ -2788,7 +2741,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(audit, vec![e.clone()]);
+            let single_result = be.create(vec![e.clone()]);
 
             assert!(single_result.is_ok());
             let filt = unsafe {
@@ -2797,22 +2750,22 @@ mod tests {
                     .into_valid_resolved()
             };
             // check allow on allids
-            let res = be.search(audit, &lim_allow_allids, &filt);
+            let res = be.search(&lim_allow_allids, &filt);
             assert!(res.is_ok());
-            let res = be.exists(audit, &lim_allow_allids, &filt);
+            let res = be.exists(&lim_allow_allids, &filt);
             assert!(res.is_ok());
 
             // check deny on allids
-            let res = be.search(audit, &lim_deny_allids, &filt);
+            let res = be.search(&lim_deny_allids, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
-            let res = be.exists(audit, &lim_deny_allids, &filt);
+            let res = be.exists(&lim_deny_allids, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
         })
     }
 
     #[test]
     fn test_be_limits_results_max() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             let mut lim_allow = Limits::unlimited();
             lim_allow.search_max_results = usize::MAX;
 
@@ -2824,7 +2777,7 @@ mod tests {
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(audit, vec![e.clone()]);
+            let single_result = be.create(vec![e.clone()]);
             assert!(single_result.is_ok());
 
             let filt = unsafe {
@@ -2835,31 +2788,31 @@ mod tests {
 
             // --> This is the all ids path (unindexed)
             // check allow on entry max
-            let res = be.search(audit, &lim_allow, &filt);
+            let res = be.search(&lim_allow, &filt);
             assert!(res.is_ok());
-            let res = be.exists(audit, &lim_allow, &filt);
+            let res = be.exists(&lim_allow, &filt);
             assert!(res.is_ok());
 
             // check deny on entry max
-            let res = be.search(audit, &lim_deny, &filt);
+            let res = be.search(&lim_deny, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
-            let res = be.exists(audit, &lim_deny, &filt);
+            let res = be.exists(&lim_deny, &filt);
             assert!(res.is_ok());
 
             // --> This will shortcut due to indexing.
-            assert!(be.reindex(audit).is_ok());
-            let res = be.search(audit, &lim_deny, &filt);
+            assert!(be.reindex().is_ok());
+            let res = be.search(&lim_deny, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
-            let res = be.exists(audit, &lim_deny, &filt);
+            let res = be.exists(&lim_deny, &filt);
             assert!(res.is_ok());
         })
     }
 
     #[test]
     fn test_be_limits_partial_filter() {
-        run_test!(|audit: &mut AuditScope, be: &mut BackendWriteTransaction| {
+        run_test!(|be: &mut BackendWriteTransaction| {
             // This relies on how we do partials, so it could be a bit sensitive.
             // A partial is generated after an allids + indexed in a single and
             // as we require both conditions to exist. Allids comes from unindexed
@@ -2882,11 +2835,11 @@ mod tests {
             e.add_ava("nonexist", Value::from("x"));
             e.add_ava("nonexist", Value::from("y"));
             let e = unsafe { e.into_sealed_new() };
-            let single_result = be.create(audit, vec![e.clone()]);
+            let single_result = be.create(vec![e.clone()]);
             assert!(single_result.is_ok());
 
             // Reindex so we have things in place for our query
-            assert!(be.reindex(audit).is_ok());
+            assert!(be.reindex().is_ok());
 
             // 🚨 This is evil!
             // The and allows us to hit "allids + indexed -> partial".
@@ -2911,16 +2864,16 @@ mod tests {
                 ]))
             };
 
-            let res = be.search(audit, &lim_allow, &filt);
+            let res = be.search(&lim_allow, &filt);
             assert!(res.is_ok());
-            let res = be.exists(audit, &lim_allow, &filt);
+            let res = be.exists(&lim_allow, &filt);
             assert!(res.is_ok());
 
             // check deny on entry max
-            let res = be.search(audit, &lim_deny, &filt);
+            let res = be.search(&lim_deny, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
             // we don't limit on exists because we never load the entries.
-            let res = be.exists(audit, &lim_deny, &filt);
+            let res = be.exists(&lim_deny, &filt);
             assert!(res == Err(OperationError::ResourceLimit));
         })
     }

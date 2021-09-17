@@ -120,27 +120,24 @@ macro_rules! try_from_entry {
 
 impl UnixUserAccount {
     pub(crate) fn try_from_entry_rw(
-        au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_rw(au, value, qs)?;
+        let groups = UnixGroup::try_from_account_entry_rw(value, qs)?;
         try_from_entry!(value, groups)
     }
 
     // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_ro(
-        au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        let groups = UnixGroup::try_from_account_entry_ro(au, value, qs)?;
+        let groups = UnixGroup::try_from_account_entry_ro(value, qs)?;
         try_from_entry!(value, groups)
     }
 
     /*
     pub(crate) fn try_from_entry_reduced(
-        au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -212,7 +209,6 @@ impl UnixUserAccount {
     // ! TRACING INTEGRATED
     pub(crate) fn verify_unix_credential(
         &self,
-        au: &mut AuditScope,
         cleartext: &str,
         async_tx: &Sender<DelayedAction>,
         ct: Duration,
@@ -325,7 +321,7 @@ macro_rules! try_from_group_e {
 }
 
 macro_rules! try_from_account_group_e {
-    ($au:expr, $value:expr, $qs:expr) => {{
+    ($value:expr, $qs:expr) => {{
         // First synthesise the self-group from the account.
         // We have already checked these, but paranoia is better than
         // complacency.
@@ -380,7 +376,7 @@ macro_rules! try_from_account_group_e {
                             .collect()
                     )
                 ]));
-                let ges: Vec<_> = $qs.internal_search($au, f)?;
+                let ges: Vec<_> = $qs.internal_search(f)?;
                 let groups: Result<Vec<_>, _> = iter::once(Ok(upg))
                     .chain(ges.iter().map(|e| UnixGroup::try_from_entry(e.as_ref())))
                     .collect();
@@ -396,25 +392,22 @@ macro_rules! try_from_account_group_e {
 
 impl UnixGroup {
     pub fn try_from_account_entry_rw(
-        au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_group_e!(au, value, qs)
+        try_from_account_group_e!(value, qs)
     }
 
     // ! TRACING INTEGRATED
     pub fn try_from_account_entry_ro(
-        au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_group_e!(au, value, qs)
+        try_from_account_group_e!(value, qs)
     }
 
     /*
     pub fn try_from_account_entry_red_ro(
-        au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {

@@ -1,5 +1,3 @@
-use crate::prelude::AuditScope;
-
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::ldap::{LdapBoundToken, LdapResponseState};
 use crate::prelude::*;
@@ -16,7 +14,6 @@ use std::str::FromStr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio_util::codec::{FramedRead, FramedWrite};
-use tracing::trace;
 use uuid::Uuid;
 
 struct LdapSession {
@@ -44,7 +41,6 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
     while let Some(Ok(protomsg)) = r.next().await {
         // Start the event
         let eventid = Uuid::new_v4();
-        let mut audit = AuditScope::new("ldap_request_message", eventid, qe_r_ref.log_level);
         let uat = session.uat.clone();
         // I'd really have liked to have put this near the [LdapResponseState::Bind] but due to the handing of `audit` it isn't possible due to borrows, etc.
         security_info!(
@@ -52,9 +48,7 @@ async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
             client_port = %client_address.port(),
             "LDAP client"
         );
-        let qs_result = qe_r_ref
-            .handle_ldaprequest(eventid, audit, protomsg, uat)
-            .await;
+        let qs_result = qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).await;
 
         match qs_result {
             Some(LdapResponseState::Unbind) => return,

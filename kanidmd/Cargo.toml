@@ -94,7 +94,7 @@ validator = { version = "0.14" }
 touch = "0.0.1"
 filetime = "0.2"
 
-tracing = { version = "0.1", features = ["attributes"] }
+tracing = { version = "0.1", features = ["attributes", "release_max_level_info"] }
 tracing-subscriber = "0.2"
 tracing-serde = "0.1"
 

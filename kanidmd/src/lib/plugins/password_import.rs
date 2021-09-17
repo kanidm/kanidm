@@ -14,7 +14,6 @@ impl Plugin for PasswordImport {
     }
 
     fn pre_create_transform(
-        _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
@@ -58,7 +57,6 @@ impl Plugin for PasswordImport {
     }
 
     fn pre_modify(
-        _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
@@ -145,7 +143,7 @@ mod tests {
 
         let create = vec![e.clone()];
 
-        run_create_test!(Ok(()), preload, create, None, |_, _| {});
+        run_create_test!(Ok(()), preload, create, None, |_| {});
     }
 
     #[test]
@@ -174,7 +172,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -208,7 +206,7 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -245,10 +243,9 @@ mod tests {
                 Value::from(IMPORT_HASH)
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let e = qs
                     .internal_search_uuid(
-                        au,
                         &Uuid::parse_str("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap(),
                     )
                     .expect("failed to get entry");

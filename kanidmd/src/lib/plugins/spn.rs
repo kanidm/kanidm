@@ -26,7 +26,6 @@ impl Plugin for Spn {
 
     // hook on pre-create and modify to generate / validate.
     fn pre_create_transform(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
@@ -45,7 +44,7 @@ impl Plugin for Spn {
             {
                 // We do this in the loop so that we don't get it unless required.
                 if domain_name.is_none() {
-                    domain_name = Some(qs.get_domain_name(au)?);
+                    domain_name = Some(qs.get_domain_name()?);
                 }
 
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
@@ -78,7 +77,6 @@ impl Plugin for Spn {
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
@@ -92,7 +90,7 @@ impl Plugin for Spn {
                 || e.attribute_equality("class", &CLASS_ACCOUNT)
             {
                 if domain_name.is_none() {
-                    domain_name = Some(qs.get_domain_name(au)?);
+                    domain_name = Some(qs.get_domain_name()?);
                 }
 
                 // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
@@ -125,7 +123,6 @@ impl Plugin for Spn {
     }
 
     fn post_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         // List of what we modified that was valid?
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
@@ -160,7 +157,6 @@ impl Plugin for Spn {
         // All we do is purge spn, and allow the plugin to recreate. Neat! It's also all still
         // within the transaction, just incase!
         qs.internal_modify(
-            au,
             &filter!(f_or!([
                 f_eq("class", PartialValue::new_class("group")),
                 f_eq("class", PartialValue::new_class("account"))
@@ -169,17 +165,14 @@ impl Plugin for Spn {
         )
     }
 
-    fn verify(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Verify that all items with spn's have valid spns.
         //   We need to consider the case that an item has a different origin domain too,
         // so we should be able to verify that *those* spns validate to the trusted domain info
         // we have been sent also. It's not up to use to generate those though ...
 
         let domain_name = match qs
-            .get_domain_name(au)
+            .get_domain_name()
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(dn) => dn,
@@ -192,7 +185,7 @@ impl Plugin for Spn {
         ]));
 
         let all_cand = match qs
-            .internal_search(au, filt_in)
+            .internal_search(filt_in)
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(all_cand) => all_cand,
@@ -264,7 +257,7 @@ mod tests {
             preload,
             create,
             None,
-            |_au, _qs_write: &QueryServerWriteTransaction| {}
+            |_qs_write: &QueryServerWriteTransaction| {}
         );
         // We don't need a validator due to the fn verify above.
     }
@@ -291,7 +284,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("spn")]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -318,7 +311,7 @@ mod tests {
             preload,
             create,
             None,
-            |_au, _qs_write: &QueryServerWriteTransaction| {}
+            |_qs_write: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -347,13 +340,13 @@ mod tests {
                 m_pres("spn", &Value::new_spn_str("invalid", "spn"))
             ]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
     #[test]
     fn test_spn_regen_domain_rename() {
-        run_test!(|server: &QueryServer, au: &mut AuditScope| {
+        run_test!(|server: &QueryServer| {
             let server_txn = server.write(duration_from_epoch_now());
 
             let ex1 = Value::new_spn_str("admin", "example.com");
@@ -361,7 +354,7 @@ mod tests {
             // get the current domain name
             // check the spn on admin is admin@<initial domain>
             let e_pre = server_txn
-                .internal_search_uuid(au, &UUID_ADMIN)
+                .internal_search_uuid(&UUID_ADMIN)
                 .expect("must not fail");
 
             let e_pre_spn = e_pre.get_ava_single("spn").expect("must not fail");
@@ -371,12 +364,12 @@ mod tests {
             // in the final version), but it will still call the same qs function to perform the
             // change.
             server_txn
-                .domain_rename(au, "new.example.com")
+                .domain_rename("new.example.com")
                 .expect("should not fail!");
 
             // check the spn on admin is admin@<new domain>
             let e_post = server_txn
-                .internal_search_uuid(au, &UUID_ADMIN)
+                .internal_search_uuid(&UUID_ADMIN)
                 .expect("must not fail");
 
             let e_post_spn = e_post.get_ava_single("spn").expect("must not fail");
@@ -384,7 +377,7 @@ mod tests {
             debug!("{:?}", ex2);
             assert!(e_post_spn == ex2);
 
-            server_txn.commit(au).expect("Must not fail");
+            server_txn.commit().expect("Must not fail");
         });
     }
 }
