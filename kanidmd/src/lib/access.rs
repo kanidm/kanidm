@@ -1813,7 +1813,6 @@ mod tests {
             let res = acw
                 .search_filter_entries(&mut audit, $se, $entries)
                 .expect("op failed");
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -1927,8 +1926,6 @@ mod tests {
                 .map(|e| unsafe { e.into_reduced() })
                 .collect();
 
-            audit.write_log();
-
             debug!("expect --> {:?}", expect_set);
             debug!("result --> {:?}", reduced);
             // should be ok, and same as expect.
@@ -2039,7 +2036,6 @@ mod tests {
                 .modify_allow_operation(&mut audit, $me, $entries)
                 .expect("op failed");
 
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2203,7 +2199,6 @@ mod tests {
                 .create_allow_operation(&mut audit, $ce, $entries)
                 .expect("op failed");
 
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2323,7 +2318,6 @@ mod tests {
                 .delete_allow_operation(&mut audit, $de, $entries)
                 .expect("op failed");
 
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.

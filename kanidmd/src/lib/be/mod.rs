@@ -1665,7 +1665,6 @@ mod tests {
             let r = $test_fn(&mut audit, &mut be_txn);
             // Commit, to guarantee it worked.
             assert!(be_txn.commit(&mut audit).is_ok());
-            audit.write_log();
             r
         }};
     }

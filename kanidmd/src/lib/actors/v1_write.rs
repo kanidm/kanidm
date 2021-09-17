@@ -36,27 +36,21 @@ use kanidm_proto::v1::{
 use uuid::Uuid;
 
 pub struct QueryServerWriteV1 {
-    log: Sender<AuditScope>,
     log_level: Option<u32>,
     idms: Arc<IdmServer>,
 }
 
 impl QueryServerWriteV1 {
-    pub fn new(log: Sender<AuditScope>, log_level: Option<u32>, idms: Arc<IdmServer>) -> Self {
+    pub fn new(log_level: Option<u32>, idms: Arc<IdmServer>) -> Self {
         info!("Starting query server v1 worker ...");
-        QueryServerWriteV1 {
-            log,
-            log_level,
-            idms,
-        }
+        QueryServerWriteV1 { log_level, idms }
     }
 
     pub fn start_static(
-        log: Sender<AuditScope>,
         log_level: Option<u32>,
         idms: Arc<IdmServer>,
     ) -> &'static QueryServerWriteV1 {
-        let x = Box::new(QueryServerWriteV1::new(log, log_level, idms));
+        let x = Box::new(QueryServerWriteV1::new(log_level, idms));
 
         let x_ptr = Box::leak(x);
         &(*x_ptr)
@@ -214,10 +208,6 @@ impl QueryServerWriteV1 {
                 .and_then(|_| idms_prox_write.commit(&mut audit))
         });
         // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -256,10 +246,6 @@ impl QueryServerWriteV1 {
                 .modify(&mut audit, &mdf)
                 .and_then(|_| idms_prox_write.commit(&mut audit))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -303,10 +289,6 @@ impl QueryServerWriteV1 {
                 .delete(&mut audit, &del)
                 .and_then(|_| idms_prox_write.commit(&mut audit))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -356,10 +338,6 @@ impl QueryServerWriteV1 {
                 .modify(&mut audit, &mdf)
                 .and_then(|_| idms_prox_write.commit(&mut audit))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res.map(|_| ())
     }
 
@@ -406,10 +384,6 @@ impl QueryServerWriteV1 {
                 .delete(&mut audit, &del)
                 .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -456,10 +430,6 @@ impl QueryServerWriteV1 {
                 .revive_recycled(&mut audit, &rev)
                 .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -715,10 +685,6 @@ impl QueryServerWriteV1 {
                 }
             }
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -761,10 +727,6 @@ impl QueryServerWriteV1 {
                 .set_account_password(&mut audit, &pce)
                 .and_then(|_| idms_prox_write.commit(&mut audit))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -823,10 +785,6 @@ impl QueryServerWriteV1 {
                     .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
             }
         );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -885,10 +843,6 @@ impl QueryServerWriteV1 {
                 .modify(&mut audit, &mdf)
                 .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -955,10 +909,6 @@ impl QueryServerWriteV1 {
                 .modify(&mut audit, &mdf)
                 .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -996,10 +946,6 @@ impl QueryServerWriteV1 {
                 filter,
             )
             .await;
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1040,10 +986,6 @@ impl QueryServerWriteV1 {
                 filter,
             )
             .await;
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1077,10 +1019,6 @@ impl QueryServerWriteV1 {
                 filter,
             )
             .await;
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1121,10 +1059,6 @@ impl QueryServerWriteV1 {
                 filter,
             )
             .await;
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1180,10 +1114,6 @@ impl QueryServerWriteV1 {
                 filter,
             )
             .await;
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1227,10 +1157,6 @@ impl QueryServerWriteV1 {
                 filter,
             )
             .await;
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1287,10 +1213,6 @@ impl QueryServerWriteV1 {
                 .and_then(|_| idms_prox_write.commit(&mut audit))
                 .map(|_| ())
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1316,10 +1238,6 @@ impl QueryServerWriteV1 {
             #[allow(clippy::expect_used)]
             res.expect("Invalid Server State");
         });
-        // At the end of the event we send it for logging.
-        self.log.send(audit).unwrap_or_else(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-        });
     }
 
     #[instrument(
@@ -1341,10 +1259,6 @@ impl QueryServerWriteV1 {
             #[allow(clippy::expect_used)]
             res.expect("Invalid Server State");
         });
-        // At the end of the event we send it for logging.
-        self.log.send(audit).unwrap_or_else(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-        });
     }
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
@@ -1363,9 +1277,6 @@ impl QueryServerWriteV1 {
             {
                 admin_info!(?res, "delayed action error");
             }
-        });
-        self.log.send(audit).unwrap_or_else(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
         });
     }
 }

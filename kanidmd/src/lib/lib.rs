@@ -35,8 +35,6 @@ pub mod macros;
 mod crypto;
 pub mod utils;
 #[macro_use]
-mod async_log;
-#[macro_use]
 pub mod audit;
 pub mod be;
 pub mod constants;

@@ -94,7 +94,6 @@ macro_rules! run_test_no_init {
         let be = match Backend::new(&mut audit, BackendConfig::new_test(), idxmeta, false) {
             Ok(be) => be,
             Err(e) => {
-                audit.write_log();
                 error!("{:?}", e);
                 panic!()
             }
@@ -106,7 +105,6 @@ macro_rules! run_test_no_init {
         // Make sure there are no errors.
         // let verifications = test_server.verify(&mut audit);
         // assert!(verifications.len() == 0);
-        audit.write_log();
     }};
 }
 
@@ -138,7 +136,6 @@ macro_rules! run_test {
         let verifications = test_server.verify(&mut audit);
         trace!("Verification result: {:?}", verifications);
         assert!(verifications.len() == 0);
-        audit.write_log();
     }};
 }
 
@@ -214,7 +211,6 @@ macro_rules! run_idm_test {
     ($test_fn:expr) => {{
         let _ = crate::tracing_tree::test_init();
         let audit = run_idm_test_inner!($test_fn);
-        audit.write_log();
     }};
 }
 
@@ -280,7 +276,6 @@ macro_rules! run_create_test {
             assert!(ver.len() == 0);
         });
         // Dump the raw audit log.
-        au.write_log();
     }};
 }
 
@@ -337,7 +332,6 @@ macro_rules! run_modify_test {
             assert!(ver.len() == 0);
         });
         // Dump the raw audit log.
-        au.write_log();
     }};
 }
 
@@ -389,8 +383,6 @@ macro_rules! run_delete_test {
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
-        // Dump the raw audit log.
-        au.write_log();
     }};
 }
 

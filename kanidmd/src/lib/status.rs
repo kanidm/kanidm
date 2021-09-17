@@ -10,24 +10,21 @@ pub struct StatusRequestEvent {
 }
 
 pub struct StatusActor {
-    log_tx: Sender<AuditScope>,
-    log_level: Option<u32>,
+    _log_level: Option<u32>,
 }
 
 impl StatusActor {
-    pub fn start(log_tx: Sender<AuditScope>, log_level: Option<u32>) -> &'static Self {
-        let x = Box::new(StatusActor { log_tx, log_level });
+    pub fn start(log_level: Option<u32>) -> &'static Self {
+        let x = Box::new(StatusActor {
+            _log_level: log_level,
+        });
 
         let x_ptr = Box::into_raw(x);
         unsafe { &(*x_ptr) }
     }
 
     pub async fn handle_request(&self, event: StatusRequestEvent) -> bool {
-        let mut audit = AuditScope::new("status_handler", event.eventid, self.log_level);
         admin_info!("status handler complete");
-        self.log_tx.send(audit).unwrap_or_else(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-        });
         true
     }
 }

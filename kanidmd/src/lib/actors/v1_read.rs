@@ -42,22 +42,15 @@ use std::convert::TryFrom;
 // ===========================================================
 
 pub struct QueryServerReadV1 {
-    log: Sender<AuditScope>,
     pub log_level: Option<u32>,
     idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
 
 impl QueryServerReadV1 {
-    pub fn new(
-        log: Sender<AuditScope>,
-        log_level: Option<u32>,
-        idms: Arc<IdmServer>,
-        ldap: Arc<LdapServer>,
-    ) -> Self {
+    pub fn new(log_level: Option<u32>, idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> Self {
         info!("Starting query server v1 worker ...");
         QueryServerReadV1 {
-            log,
             log_level,
             idms,
             ldap,
@@ -65,12 +58,11 @@ impl QueryServerReadV1 {
     }
 
     pub fn start_static(
-        log: Sender<AuditScope>,
         log_level: Option<u32>,
         idms: Arc<IdmServer>,
         ldap: Arc<LdapServer>,
     ) -> &'static Self {
-        let x = Box::new(QueryServerReadV1::new(log, log_level, idms, ldap));
+        let x = Box::new(QueryServerReadV1::new(log_level, idms, ldap));
 
         let x_ref = Box::leak(x);
         &(*x_ref)
@@ -133,11 +125,6 @@ impl QueryServerReadV1 {
             SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
                 .map(SearchResult::response)
         });
-        // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -185,11 +172,6 @@ impl QueryServerReadV1 {
 
         security_info!(?res, "Sending auth result");
 
-        // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -315,11 +297,6 @@ impl QueryServerReadV1 {
         } else {
             debug!("Online backup cleanup had no files to remove");
         };
-
-        // At the end of the event we send it for logging.
-        self.log.send(audit).unwrap_or_else(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-        });
     }
 
     #[instrument(
@@ -384,12 +361,6 @@ impl QueryServerReadV1 {
                 _ => Err(OperationError::NoMatchingEntries),
             }
         });
-        // Should we log the final result?
-        // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -440,10 +411,6 @@ impl QueryServerReadV1 {
                 Err(e) => Err(e),
             }
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -495,10 +462,6 @@ impl QueryServerReadV1 {
                 Err(e) => Err(e),
             }
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -566,10 +529,6 @@ impl QueryServerReadV1 {
                 Err(e) => Err(e),
             }
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -628,10 +587,6 @@ impl QueryServerReadV1 {
 
             idms_prox_read.get_radiusauthtoken(&mut audit, &rate, ct)
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -689,10 +644,6 @@ impl QueryServerReadV1 {
                 idms_prox_read.get_unixusertoken(&mut audit, &rate, ct)
             }
         );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -753,10 +704,6 @@ impl QueryServerReadV1 {
                 idms_prox_read.get_unixgrouptoken(&mut audit, &rate)
             }
         );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -826,10 +773,6 @@ impl QueryServerReadV1 {
                 Err(e) => Err(e),
             }
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -903,10 +846,6 @@ impl QueryServerReadV1 {
                 Err(e) => Err(e),
             }
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -962,10 +901,6 @@ impl QueryServerReadV1 {
         security_info!(?res, "Sending result");
 
         // res });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1019,10 +954,6 @@ impl QueryServerReadV1 {
 
             idms_prox_read.get_credentialstatus(&mut audit, &cse)
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1076,10 +1007,6 @@ impl QueryServerReadV1 {
 
             idms_prox_read.get_backup_codes(&mut audit, &rbce)
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1114,10 +1041,6 @@ impl QueryServerReadV1 {
             // Now we can send to the idm server for authorisation checking.
             idms_prox_read.check_oauth2_authorisation(&mut audit, &ident, &uat, &auth_req, ct)
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            Oauth2Error::ServerError(OperationError::InvalidState)
-        })?;
         res
     }
 
@@ -1151,10 +1074,6 @@ impl QueryServerReadV1 {
 
             idms_prox_read.check_oauth2_authorise_permit(&mut audit, &ident, &uat, &consent_req, ct)
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1177,10 +1096,6 @@ impl QueryServerReadV1 {
             // Now we can send to the idm server for authorisation checking.
             idms_prox_read.check_oauth2_token_exchange(&mut audit, &client_authz, &token_req, ct)
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            Oauth2Error::ServerError(OperationError::InvalidState)
-        })?;
         res
     }
 
@@ -1208,10 +1123,6 @@ impl QueryServerReadV1 {
                     e
                 })
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -1247,14 +1158,6 @@ impl QueryServerReadV1 {
             )),
         };
         // });
-        if self.log.send(audit).is_err() {
-            error!("Unable to commit log -> {:?}", &eventid);
-            Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                LdapResultCode::Other,
-                format!("Internal Server Error {:?}", &eventid).as_str(),
-            )))
-        } else {
-            Some(res)
-        }
+        Some(res)
     }
 }

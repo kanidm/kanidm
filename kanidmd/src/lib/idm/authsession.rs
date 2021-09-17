@@ -967,8 +967,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-
-        audit.write_log();
     }
 
     #[test]
@@ -1010,7 +1008,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 
     macro_rules! start_password_mfa_session {
@@ -1236,7 +1233,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 
     #[test]
@@ -1311,7 +1307,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 
     macro_rules! start_webauthn_only_session {
@@ -1519,7 +1514,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 
     #[test]
@@ -1703,7 +1697,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 
     #[test]
@@ -1958,7 +1951,6 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 
     #[test]
@@ -2155,6 +2147,5 @@ mod tests {
 
         drop(async_tx);
         assert!(async_rx.blocking_recv().is_none());
-        audit.write_log();
     }
 }

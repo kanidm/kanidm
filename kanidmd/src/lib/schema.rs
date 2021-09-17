@@ -1857,7 +1857,6 @@ mod tests {
         let schema = Schema::new(&mut audit).expect("failed to create schema");
         let schema_ro = schema.read();
         validate_schema!(schema_ro, &mut audit);
-        audit.write_log();
     }
 
     #[test]
@@ -2012,7 +2011,6 @@ mod tests {
             .into_invalid_new()
         };
         assert!(e_ok.validate(&schema).is_ok());
-        audit.write_log();
     }
 
     #[test]
@@ -2059,7 +2057,6 @@ mod tests {
         let e_valid = e_test.validate(&schema).expect("validation failure");
 
         assert_eq!(e_expect, e_valid);
-        audit.write_log();
     }
 
     #[test]
@@ -2123,7 +2120,6 @@ mod tests {
 
         /* Is okay because extensible! */
         assert!(e_extensible.validate(&schema).is_ok());
-        audit.write_log();
     }
 
     #[test]
@@ -2189,7 +2185,6 @@ mod tests {
                 ])))
             })
         );
-        audit.write_log();
     }
 
     #[test]
@@ -2219,7 +2214,5 @@ mod tests {
         assert!(schema.update_classes(vec![class]).is_ok());
 
         assert!(schema.validate(&mut audit).len() == 1);
-
-        audit.write_log();
     }
 }
