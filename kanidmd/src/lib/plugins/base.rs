@@ -45,12 +45,12 @@ impl Plugin for Base {
         // debug!("Entering base pre_create_transform");
         // For each candidate
         for entry in cand.iter_mut() {
-            ltrace!(au, "Base check on entry: {:?}", entry);
+            trace!("Base check on entry: {:?}", entry);
 
             // First, ensure we have the 'object', class in the class set.
             entry.add_ava("class", CLASS_OBJECT.clone());
 
-            ltrace!(au, "Object should now be in entry: {:?}", entry);
+            trace!("Object should now be in entry: {:?}", entry);
 
             // If they have a name, but no principal name, derive it.
 
@@ -59,7 +59,7 @@ impl Plugin for Base {
                 None => {
                     // Generate
                     let ava_uuid = btreeset![Value::new_uuid(Uuid::new_v4())];
-                    ltrace!(au, "Setting temporary UUID {:?} to entry", ava_uuid);
+                    trace!("Setting temporary UUID {:?} to entry", ava_uuid);
                     entry.set_ava("uuid", ava_uuid);
                 }
                 Some(1) => {
@@ -67,11 +67,7 @@ impl Plugin for Base {
                 }
                 Some(x) => {
                     // If we get some it MUST be 2 +
-                    ladmin_error!(
-                        au,
-                        "Entry defines uuid attr, but has multiple ({}) values.",
-                        x
-                    );
+                    admin_error!("Entry defines uuid attr, but has multiple ({}) values.", x);
                     return Err(OperationError::Plugin(PluginError::Base(
                         "Uuid has multiple values".to_string(),
                     )));
@@ -92,9 +88,9 @@ impl Plugin for Base {
                 .get_ava_single_uuid("uuid")
                 .copied()
                 .ok_or_else(|| OperationError::InvalidAttribute("uuid".to_string()))?;
-            ltrace!(au, "Entry valid UUID: {:?}", entry);
+            trace!("Entry valid UUID: {:?}", entry);
             if !cand_uuid.insert(uuid_ref) {
-                ltrace!(au, "uuid duplicate found in create set! {:?}", uuid_ref);
+                trace!("uuid duplicate found in create set! {:?}", uuid_ref);
                 return Err(OperationError::Plugin(PluginError::Base(
                     "Uuid duplicate detected in request".to_string(),
                 )));
@@ -116,8 +112,7 @@ impl Plugin for Base {
             // Sadly we need to allocate these to strings to make references, sigh.
             let overlap: usize = cand_uuid.range(uuid_admin..uuid_anonymous).count();
             if overlap != 0 {
-                ladmin_error!(
-                    au,
+                admin_error!(
                     "uuid from protected system UUID range found in create set! {:?}",
                     overlap
                 );
@@ -128,8 +123,7 @@ impl Plugin for Base {
         }
 
         if cand_uuid.contains(&uuid_does_not_exist) {
-            ladmin_error!(
-                au,
+            admin_error!(
                 "uuid \"does not exist\" found in create set! {:?}",
                 uuid_does_not_exist
             );
@@ -160,14 +154,14 @@ impl Plugin for Base {
         match r {
             Ok(b) => {
                 if b {
-                    ladmin_error!(au, "A UUID already exists, rejecting.");
+                    admin_error!("A UUID already exists, rejecting.");
                     return Err(OperationError::Plugin(PluginError::Base(
                         "Uuid duplicate found in database".to_string(),
                     )));
                 }
             }
             Err(e) => {
-                ladmin_error!(au, "Error occured checking UUID existance. {:?}", e);
+                admin_error!("Error occured checking UUID existance. {:?}", e);
                 return Err(e);
             }
         }
@@ -188,7 +182,7 @@ impl Plugin for Base {
                 Modify::Purged(a) => a,
             };
             if attr == "uuid" {
-                lrequest_error!(au, "Modifications to UUID's are NOT ALLOWED");
+                request_error!("Modifications to UUID's are NOT ALLOWED");
                 return Err(OperationError::SystemProtectedAttribute);
             }
         }
@@ -203,7 +197,7 @@ impl Plugin for Base {
         let entries = match qs.internal_search(au, filter!(f_pres("class"))) {
             Ok(v) => v,
             Err(e) => {
-                ladmin_error!(au, "Internal Search Failure: {:?}", e);
+                admin_error!("Internal Search Failure: {:?}", e);
                 return vec![Err(ConsistencyError::QueryServerSearchFailure)];
             }
         };

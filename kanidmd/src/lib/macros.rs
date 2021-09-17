@@ -105,7 +105,6 @@ macro_rules! run_test_no_init {
         // Any needed teardown?
         // Make sure there are no errors.
         // let verifications = test_server.verify(&mut audit);
-        // ltrace!(audit, "Verification result: {:?}", verifications);
         // assert!(verifications.len() == 0);
         audit.write_log();
     }};
@@ -137,7 +136,7 @@ macro_rules! run_test {
         // Any needed teardown?
         // Make sure there are no errors.
         let verifications = test_server.verify(&mut audit);
-        ltrace!(audit, "Verification result: {:?}", verifications);
+        trace!("Verification result: {:?}", verifications);
         assert!(verifications.len() == 0);
         audit.write_log();
     }};
@@ -249,7 +248,7 @@ macro_rules! run_create_test {
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
+        spanned!("plugins::macros::run_create_test", {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let ce = match $internal {
@@ -270,7 +269,7 @@ macro_rules! run_create_test {
                         qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        admin_error!("Rolling back => {:?}", e);
                     }
                 }
             }
@@ -302,7 +301,7 @@ macro_rules! run_modify_test {
         use crate::schema::Schema;
 
         let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
+        spanned!("plugins::macros::run_modify_test", {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let me = match $internal {
@@ -314,16 +313,12 @@ macro_rules! run_modify_test {
 
             {
                 let qs_write = qs.write(duration_from_epoch_now());
-                let r = lperf_segment!(
-                    &mut au,
-                    "plugins::macros::run_modify_test -> main_test",
-                    || { qs_write.modify(&mut au, &me) }
-                );
-                lperf_segment!(
-                    &mut au,
-                    "plugins::macros::run_modify_test -> post_test check",
-                    || { $check(&mut au, &qs_write) }
-                );
+                let r = spanned!("plugins::macros::run_modify_test -> main_test", {
+                    qs_write.modify(&mut au, &me)
+                });
+                spanned!("plugins::macros::run_modify_test -> post_test check", {
+                    $check(&mut au, &qs_write)
+                });
                 debug!("test result: {:?}", r);
                 assert!(r == $expect);
                 match r {
@@ -331,7 +326,7 @@ macro_rules! run_modify_test {
                         qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        admin_error!("Rolling back => {:?}", e);
                     }
                 }
             }
@@ -363,7 +358,7 @@ macro_rules! run_delete_test {
         use crate::utils::duration_from_epoch_now;
 
         let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_delete_test", || {
+        spanned!("plugins::macros::run_delete_test", {
             let qs = setup_test!(&mut au, $preload_entries);
 
             let de = match $internal {
@@ -384,7 +379,7 @@ macro_rules! run_delete_test {
                         qs_write.commit(&mut au).expect("commit failure!");
                     }
                     Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        admin_error!("Rolling back => {:?}", e);
                     }
                 }
             }

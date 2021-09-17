@@ -32,8 +32,7 @@ trait Plugin {
         _cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(
-            au,
+        admin_error!(
             "plugin {} has an unimplemented pre_create_transform!",
             Self::id()
         );
@@ -47,7 +46,7 @@ trait Plugin {
         _cand: &[Entry<EntrySealed, EntryNew>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(au, "plugin {} has an unimplemented pre_create!", Self::id());
+        admin_error!("plugin {} has an unimplemented pre_create!", Self::id());
         Err(OperationError::InvalidState)
     }
 
@@ -58,11 +57,7 @@ trait Plugin {
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(
-            au,
-            "plugin {} has an unimplemented post_create!",
-            Self::id()
-        );
+        admin_error!("plugin {} has an unimplemented post_create!", Self::id());
         Err(OperationError::InvalidState)
     }
 
@@ -72,7 +67,7 @@ trait Plugin {
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(au, "plugin {} has an unimplemented pre_modify!", Self::id());
+        admin_error!("plugin {} has an unimplemented pre_modify!", Self::id());
         Err(OperationError::InvalidState)
     }
 
@@ -84,11 +79,7 @@ trait Plugin {
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(
-            au,
-            "plugin {} has an unimplemented post_modify!",
-            Self::id()
-        );
+        admin_error!("plugin {} has an unimplemented post_modify!", Self::id());
         Err(OperationError::InvalidState)
     }
 
@@ -98,7 +89,7 @@ trait Plugin {
         _cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(au, "plugin {} has an unimplemented pre_delete!", Self::id());
+        admin_error!("plugin {} has an unimplemented pre_delete!", Self::id());
         Err(OperationError::InvalidState)
     }
 
@@ -109,11 +100,7 @@ trait Plugin {
         _cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        ladmin_error!(
-            au,
-            "plugin {} has an unimplemented post_delete!",
-            Self::id()
-        );
+        admin_error!("plugin {} has an unimplemented post_delete!", Self::id());
         Err(OperationError::InvalidState)
     }
 
@@ -121,128 +108,12 @@ trait Plugin {
         au: &mut AuditScope,
         _qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
-        ladmin_error!(au, "plugin {} has an unimplemented verify!", Self::id());
+        admin_error!("plugin {} has an unimplemented verify!", Self::id());
         vec![Err(ConsistencyError::Unknown)]
     }
 }
 
 pub struct Plugins {}
-
-// Should this be a function instead, to allow inlining and better debug?
-// Probably not - I use this to generate the audit scope of the plugin from the type
-// and the ty can't really be "passed" to the fns with fn pointer stuff.
-
-macro_rules! run_pre_create_transform_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
-            <$target_plugin>::pre_create_transform($au, $qs, $cand, $ce)
-        });
-        r
-    }};
-}
-
-macro_rules! run_pre_create_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!(
-            $au,
-            <$target_plugin>::id(),
-            || <$target_plugin>::pre_create($au, $qs, $cand, $ce,)
-        );
-        r
-    }};
-}
-
-macro_rules! run_post_create_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
-            <$target_plugin>::post_create($au, $qs, $cand, $ce)
-        });
-        r
-    }};
-}
-
-macro_rules! run_pre_modify_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!(
-            $au,
-            <$target_plugin>::id(),
-            || <$target_plugin>::pre_modify($au, $qs, $cand, $ce)
-        );
-        r
-    }};
-}
-
-macro_rules! run_post_modify_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $pre_cand:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
-            <$target_plugin>::post_modify($au, $qs, $pre_cand, $cand, $ce)
-        });
-        r
-    }};
-}
-
-macro_rules! run_pre_delete_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!(
-            $au,
-            <$target_plugin>::id(),
-            || <$target_plugin>::pre_delete($au, $qs, $cand, $ce,)
-        );
-        r
-    }};
-}
-
-macro_rules! run_post_delete_plugin {
-    (
-        $au:ident,
-        $qs:ident,
-        $cand:ident,
-        $ce:ident,
-        $target_plugin:ty
-    ) => {{
-        let r = lperf_trace_segment!($au, <$target_plugin>::id(), || {
-            <$target_plugin>::post_delete($au, $qs, $cand, $ce)
-        });
-        r
-    }};
-}
 
 macro_rules! run_verify_plugin {
     (
@@ -251,9 +122,7 @@ macro_rules! run_verify_plugin {
         $results:expr,
         $target_plugin:ty
     ) => {{
-        let mut r = lperf_trace_segment!($au, <$target_plugin>::id(), || <$target_plugin>::verify(
-            $au, $qs,
-        ));
+        let mut r = <$target_plugin>::verify($au, $qs);
         $results.append(&mut r);
     }};
 }
@@ -265,29 +134,17 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_pre_create_transform", || {
-            run_pre_create_transform_plugin!(au, qs, cand, ce, base::Base)
+        spanned!("plugins::run_pre_create_transform", {
+            base::Base::pre_create_transform(au, qs, cand, ce)
                 .and_then(|_| {
-                    run_pre_create_transform_plugin!(
-                        au,
-                        qs,
-                        cand,
-                        ce,
-                        password_import::PasswordImport
-                    )
+                    password_import::PasswordImport::pre_create_transform(au, qs, cand, ce)
                 })
-                .and_then(|_| {
-                    run_pre_create_transform_plugin!(au, qs, cand, ce, oauth2::Oauth2Secrets)
-                })
-                .and_then(|_| {
-                    run_pre_create_transform_plugin!(au, qs, cand, ce, gidnumber::GidNumber)
-                })
-                .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, domain::Domain))
-                .and_then(|_| run_pre_create_transform_plugin!(au, qs, cand, ce, spn::Spn))
-                .and_then(|_| {
-                    // Should always be last
-                    run_pre_create_transform_plugin!(au, qs, cand, ce, attrunique::AttrUnique)
-                })
+                .and_then(|_| oauth2::Oauth2Secrets::pre_create_transform(au, qs, cand, ce))
+                .and_then(|_| gidnumber::GidNumber::pre_create_transform(au, qs, cand, ce))
+                .and_then(|_| domain::Domain::pre_create_transform(au, qs, cand, ce))
+                .and_then(|_| spn::Spn::pre_create_transform(au, qs, cand, ce))
+                // Should always be last
+                .and_then(|_| attrunique::AttrUnique::pre_create_transform(au, qs, cand, ce))
         })
     }
 
@@ -297,13 +154,9 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_pre_create", || run_pre_create_plugin!(
-            au,
-            qs,
-            cand,
-            ce,
-            protected::Protected
-        ))
+        spanned!("plugins::run_pre_create", {
+            protected::Protected::pre_create(au, qs, cand, ce)
+        })
     }
 
     pub fn run_post_create(
@@ -312,20 +165,10 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_post_create", || run_post_create_plugin!(
-            au,
-            qs,
-            cand,
-            ce,
-            refint::ReferentialIntegrity
-        )
-        .and_then(|_| run_post_create_plugin!(
-            au,
-            qs,
-            cand,
-            ce,
-            memberof::MemberOf
-        )))
+        spanned!("plugins::run_post_create", {
+            refint::ReferentialIntegrity::post_create(au, qs, cand, ce)
+                .and_then(|_| memberof::MemberOf::post_create(au, qs, cand, ce))
+        })
     }
 
     pub fn run_pre_modify(
@@ -334,17 +177,15 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_pre_modify", || {
-            run_pre_modify_plugin!(au, qs, cand, me, protected::Protected)
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, base::Base))
-                .and_then(|_| {
-                    run_pre_modify_plugin!(au, qs, cand, me, password_import::PasswordImport)
-                })
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, oauth2::Oauth2Secrets))
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, gidnumber::GidNumber))
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, spn::Spn))
+        spanned!("plugins::run_pre_modify", {
+            protected::Protected::pre_modify(au, qs, cand, me)
+                .and_then(|_| base::Base::pre_modify(au, qs, cand, me))
+                .and_then(|_| password_import::PasswordImport::pre_modify(au, qs, cand, me))
+                .and_then(|_| oauth2::Oauth2Secrets::pre_modify(au, qs, cand, me))
+                .and_then(|_| gidnumber::GidNumber::pre_modify(au, qs, cand, me))
+                .and_then(|_| spn::Spn::pre_modify(au, qs, cand, me))
                 // attr unique should always be last
-                .and_then(|_| run_pre_modify_plugin!(au, qs, cand, me, attrunique::AttrUnique))
+                .and_then(|_| attrunique::AttrUnique::pre_modify(au, qs, cand, me))
         })
     }
 
@@ -355,23 +196,11 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_post_modify", || run_post_modify_plugin!(
-            au,
-            qs,
-            pre_cand,
-            cand,
-            me,
-            refint::ReferentialIntegrity
-        )
-        .and_then(|_| run_post_modify_plugin!(au, qs, pre_cand, cand, me, memberof::MemberOf))
-        .and_then(|_| run_post_modify_plugin!(
-            au,
-            qs,
-            pre_cand,
-            cand,
-            me,
-            spn::Spn
-        )))
+        spanned!("plugins::run_post_modify", {
+            refint::ReferentialIntegrity::post_modify(au, qs, pre_cand, cand, me)
+                .and_then(|_| memberof::MemberOf::post_modify(au, qs, pre_cand, cand, me))
+                .and_then(|_| spn::Spn::post_modify(au, qs, pre_cand, cand, me))
+        })
     }
 
     pub fn run_pre_delete(
@@ -380,13 +209,9 @@ impl Plugins {
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_pre_delete", || run_pre_delete_plugin!(
-            au,
-            qs,
-            cand,
-            de,
-            protected::Protected
-        ))
+        spanned!("plugins::run_pre_delete", {
+            protected::Protected::pre_delete(au, qs, cand, de)
+        })
     }
 
     pub fn run_post_delete(
@@ -395,20 +220,10 @@ impl Plugins {
         cand: &[Entry<EntrySealed, EntryCommitted>],
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
-        lperf_segment!(au, "plugins::run_post_delete", || run_post_delete_plugin!(
-            au,
-            qs,
-            cand,
-            de,
-            refint::ReferentialIntegrity
-        )
-        .and_then(|_| run_post_delete_plugin!(
-            au,
-            qs,
-            cand,
-            de,
-            memberof::MemberOf
-        )))
+        spanned!("plugins::run_post_delete", {
+            refint::ReferentialIntegrity::post_delete(au, qs, cand, de)
+                .and_then(|_| memberof::MemberOf::post_delete(au, qs, cand, de))
+        })
     }
 
     pub fn run_verify(
@@ -416,7 +231,7 @@ impl Plugins {
         qs: &QueryServerReadTransaction,
     ) -> Vec<Result<(), ConsistencyError>> {
         let _entered = trace_span!("plugins::run_verify").entered();
-        lperf_segment!(au, "plugins::run_verify", || {
+        spanned!("plugins::run_verify", {
             let mut results = Vec::new();
             run_verify_plugin!(au, qs, &mut results, base::Base);
             run_verify_plugin!(au, qs, &mut results, attrunique::AttrUnique);

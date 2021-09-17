@@ -126,13 +126,13 @@ impl SearchEvent {
 
         if let Some(s) = &r_attrs {
             if s.is_empty() {
-                lrequest_error!(audit, "EmptyRequest for attributes");
+                request_error!("EmptyRequest for attributes");
                 return Err(OperationError::EmptyRequest);
             }
         }
 
         let filter_orig = filter.validate(qs.get_schema()).map_err(|e| {
-            lrequest_error!(audit, "filter schema violation -> {:?}", e);
+            request_error!(?e, "filter schema violation");
             OperationError::SchemaViolation(e)
         })?;
         let filter = filter_orig.clone().into_ignore_hidden();

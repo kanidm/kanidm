@@ -34,7 +34,7 @@ impl ReferentialIntegrity {
     ) -> Result<(), OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
-            ladmin_info!(au, "no reference types modified, skipping check");
+            admin_info!("no reference types modified, skipping check");
             return Ok(());
         }
 
@@ -45,7 +45,7 @@ impl ReferentialIntegrity {
         // operationn.
         let filt_in = filter!(f_inc(inner));
         let b = qs.internal_exists(au, filt_in).map_err(|e| {
-            ladmin_error!(au, "internal exists failure -> {:?}", e);
+            admin_error!(err = ?e, "internal exists failure");
             e
         })?;
 
@@ -53,8 +53,7 @@ impl ReferentialIntegrity {
         if b {
             Ok(())
         } else {
-            ladmin_error!(
-                au,
+            admin_error!(
                 "UUID reference set size differs from query result size <fast path, no uuid info available>"
             );
             Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
@@ -112,8 +111,8 @@ impl Plugin for ReferentialIntegrity {
                 });
                 Ok(())
             } else {
-                ladmin_error!(au, "reference value could not convert to reference uuid.");
-                ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                admin_error!("reference value could not convert to reference uuid.");
+                admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                 Err(OperationError::InvalidAttribute(
                     "uuid could not become reference value".to_string(),
                 ))
@@ -148,8 +147,8 @@ impl Plugin for ReferentialIntegrity {
             v.to_ref_uuid()
                 .map(|uuid| PartialValue::new_uuid(*uuid))
                 .ok_or_else(|| {
-                    ladmin_error!(au, "reference value could not convert to reference uuid.");
-                    ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                    admin_error!("reference value could not convert to reference uuid.");
+                    admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                     OperationError::InvalidAttribute(
                         "uuid could not become reference value".to_string(),
                     )
@@ -195,7 +194,7 @@ impl Plugin for ReferentialIntegrity {
                 .collect(),
         ));
 
-        ltrace!(au, "refint post_delete filter {:?}", filt);
+        trace!("refint post_delete filter {:?}", filt);
 
         let removed_ids: BTreeSet<_> = cand
             .iter()

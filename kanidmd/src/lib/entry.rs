@@ -307,14 +307,13 @@ impl Entry<EntryInit, EntryNew> {
             if cfg!(test) {
                 if es.len() > 256 {
                     let (dsp_es, _) = es.split_at(255);
-                    ltrace!(audit, "Parsing -> {}...", dsp_es);
+                    trace!("Parsing -> {}...", dsp_es);
                 } else {
-                    ltrace!(audit, "Parsing -> {}", es);
+                    trace!("Parsing -> {}", es);
                 }
             }
             // str -> Proto entry
             let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
-                ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
                 admin_error!(?e, "SerdeJson Failure");
                 OperationError::SerdeJsonError
             })?;

@@ -1,6 +1,7 @@
 use std::iter;
 use std::sync::Arc;
 use tokio::sync::mpsc::UnboundedSender as Sender;
+use tracing::{error, info, instrument, span, trace, Level};
 
 use crate::idm::event::GenerateBackupCodeEvent;
 use crate::idm::event::RemoveBackupCodeEvent;
@@ -71,14 +72,14 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        lperf_op_segment!(audit, audit_tag, || {
+        spanned!("modify_from_parts", {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
                 .validate_and_parse_uat(audit, uat.as_deref(), ct)
                 .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat, ct))
                 .map_err(|e| {
-                    ladmin_error!(audit, "Invalid identity: {:?}", e);
+                    admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
@@ -86,7 +87,7 @@ impl QueryServerWriteV1 {
                 .qs_write
                 .name_to_uuid(audit, uuid_or_name)
                 .map_err(|e| {
-                    ladmin_error!(audit, "Error resolving id to target");
+                    admin_error!(err = ?e, "Error resolving id to target");
                     e
                 })?;
 
@@ -100,12 +101,12 @@ impl QueryServerWriteV1 {
             ) {
                 Ok(m) => m,
                 Err(e) => {
-                    ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                    admin_error!(err=?e, "Failed to begin modify");
                     return Err(e);
                 }
             };
 
-            ltrace!(audit, "Begin modify event {:?}", mdf);
+            trace!(?mdf, "Begin modify event");
 
             idms_prox_write
                 .qs_write
@@ -124,14 +125,14 @@ impl QueryServerWriteV1 {
         filter: Filter<FilterInvalid>,
     ) -> Result<(), OperationError> {
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        lperf_op_segment!(audit, audit_tag, || {
+        spanned!("modify_from_internal_parts", {
             let ct = duration_from_epoch_now();
 
             let ident = idms_prox_write
                 .validate_and_parse_uat(audit, uat.as_deref(), ct)
                 .and_then(|uat| idms_prox_write.process_uat_to_identity(audit, &uat, ct))
                 .map_err(|e| {
-                    ladmin_error!(audit, "Invalid identity: {:?}", e);
+                    admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
@@ -139,7 +140,7 @@ impl QueryServerWriteV1 {
                 .qs_write
                 .name_to_uuid(audit, uuid_or_name)
                 .map_err(|e| {
-                    ladmin_error!(audit, "Error resolving id to target");
+                    admin_error!("Error resolving id to target");
                     e
                 })?;
 
@@ -156,12 +157,12 @@ impl QueryServerWriteV1 {
             ) {
                 Ok(m) => m,
                 Err(e) => {
-                    ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                    admin_error!(err = ?e, "Failed to begin modify");
                     return Err(e);
                 }
             };
 
-            ltrace!(audit, "Begin modify event {:?}", mdf);
+            trace!(?mdf, "Begin modify event");
 
             idms_prox_write
                 .qs_write
@@ -170,6 +171,12 @@ impl QueryServerWriteV1 {
         })
     }
 
+    #[instrument(
+        level = "trace",
+        name = "create",
+        skip(self, uat, req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_create(
         &self,
         uat: Option<String>,
@@ -178,41 +185,34 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("create", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<CreateMessage>",
-            || {
-                let ct = duration_from_epoch_now();
+        let res = spanned!("actors::v1_write::handle<CreateMessage>", {
+            let ct = duration_from_epoch_now();
 
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
 
-                let crt = match CreateEvent::from_message(
-                    &mut audit,
-                    ident,
-                    &req,
-                    &idms_prox_write.qs_write,
-                ) {
+            let crt =
+                match CreateEvent::from_message(&mut audit, ident, &req, &idms_prox_write.qs_write)
+                {
                     Ok(c) => c,
                     Err(e) => {
-                        ladmin_warning!(audit, "Failed to begin create: {:?}", e);
+                        admin_warn!(err = ?e, "Failed to begin create");
                         return Err(e);
                     }
                 };
 
-                ltrace!(audit, "Begin create event {:?}", crt);
+            trace!(?crt, "Begin create event");
 
-                idms_prox_write
-                    .qs_write
-                    .create(&mut audit, &crt)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .create(&mut audit, &crt)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+        });
         // At the end of the event we send it for logging.
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
@@ -229,40 +229,33 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("modify", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_segment!(
-            &mut audit,
-            "actors::v1_write::handle<ModifyMessage>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+        let res = spanned!("actors::v1_write::handle<ModifyMessage>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
 
-                let mdf = match ModifyEvent::from_message(
-                    &mut audit,
-                    ident,
-                    &req,
-                    &idms_prox_write.qs_write,
-                ) {
+            let mdf =
+                match ModifyEvent::from_message(&mut audit, ident, &req, &idms_prox_write.qs_write)
+                {
                     Ok(m) => m,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                        admin_error!(err = ?e, "Failed to begin modify");
                         return Err(e);
                     }
                 };
 
-                ltrace!(audit, "Begin modify event {:?}", mdf);
+            trace!(?mdf, "Begin modify event");
 
-                idms_prox_write
-                    .qs_write
-                    .modify(&mut audit, &mdf)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -270,6 +263,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "delete",
+        skip(self, uat, req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_delete(
         &self,
         uat: Option<String>,
@@ -278,39 +277,32 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("delete", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<DeleteMessage>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let del = match DeleteEvent::from_message(
-                    &mut audit,
-                    ident,
-                    &req,
-                    &idms_prox_write.qs_write,
-                ) {
+        let res = spanned!("actors::v1_write::handle<DeleteMessage>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let del =
+                match DeleteEvent::from_message(&mut audit, ident, &req, &idms_prox_write.qs_write)
+                {
                     Ok(d) => d,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin delete: {:?}", e);
+                        admin_error!(err = ?e, "Failed to begin delete");
                         return Err(e);
                     }
                 };
 
-                ltrace!(audit, "Begin delete event {:?}", del);
+            trace!(?del, "Begin delete event");
 
-                idms_prox_write
-                    .qs_write
-                    .delete(&mut audit, &del)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .delete(&mut audit, &del)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -328,47 +320,42 @@ impl QueryServerWriteV1 {
         // Given a protoEntry, turn this into a modification set.
         let mut audit = AuditScope::new("internal_patch", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_segment!(
-            &mut audit,
-            "actors::v1_write::handle<InternalPatch>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-
-                // Transform the ProtoEntry to a Modlist
-                let modlist =
-                    ModifyList::from_patch(&mut audit, &update, &idms_prox_write.qs_write)
-                        .map_err(|e| {
-                            ladmin_error!(&mut audit, "Invalid Patch Request: {:?}", e);
-                            e
-                        })?;
-
-                let mdf = ModifyEvent::from_internal_parts(
-                    &mut audit,
-                    ident,
-                    &modlist,
-                    &filter,
-                    &idms_prox_write.qs_write,
-                )
+        let res = spanned!("actors::v1_write::handle<InternalPatch>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                 .map_err(|e| {
-                    ladmin_error!(audit, "Failed to begin modify: {:?}", e);
+                    admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
-                ltrace!(audit, "Begin modify event {:?}", mdf);
+            // Transform the ProtoEntry to a Modlist
+            let modlist = ModifyList::from_patch(&mut audit, &update, &idms_prox_write.qs_write)
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid Patch Request");
+                    e
+                })?;
 
-                idms_prox_write
-                    .qs_write
-                    .modify(&mut audit, &mdf)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-            }
-        );
+            let mdf = ModifyEvent::from_internal_parts(
+                &mut audit,
+                ident,
+                &modlist,
+                &filter,
+                &idms_prox_write.qs_write,
+            )
+            .map_err(|e| {
+                admin_error!(err = ?e, "Failed to begin modify");
+                e
+            })?;
+
+            trace!(?mdf, "Begin modify event");
+
+            idms_prox_write
+                .qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -376,6 +363,12 @@ impl QueryServerWriteV1 {
         res.map(|_| ())
     }
 
+    #[instrument(
+        level = "trace",
+        name = "internal_delete",
+        skip(self, uat, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internaldelete(
         &self,
         uat: Option<String>,
@@ -384,39 +377,35 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("internal_delete", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<InternalDeleteMessage>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let del = match DeleteEvent::from_parts(
-                    &mut audit,
-                    ident,
-                    &filter,
-                    &idms_prox_write.qs_write,
-                ) {
-                    Ok(d) => d,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin delete: {:?}", e);
-                        return Err(e);
-                    }
-                };
+        let res = spanned!("actors::v1_write::handle<InternalDeleteMessage>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let del = match DeleteEvent::from_parts(
+                &mut audit,
+                ident,
+                &filter,
+                &idms_prox_write.qs_write,
+            ) {
+                Ok(d) => d,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin delete");
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin delete event {:?}", del);
+            trace!(?del, "Begin delete event");
 
-                idms_prox_write
-                    .qs_write
-                    .delete(&mut audit, &del)
-                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .delete(&mut audit, &del)
+                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -424,6 +413,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "reviverecycled",
+        skip(self, uat, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_reviverecycled(
         &self,
         uat: Option<String>,
@@ -432,39 +427,35 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("revive", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<ReviveRecycledMessage>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let rev = match ReviveRecycledEvent::from_parts(
-                    &mut audit,
-                    ident,
-                    &filter,
-                    &idms_prox_write.qs_write,
-                ) {
-                    Ok(r) => r,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin revive: {:?}", e);
-                        return Err(e);
-                    }
-                };
+        let res = spanned!("actors::v1_write::handle<ReviveRecycledMessage>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let rev = match ReviveRecycledEvent::from_parts(
+                &mut audit,
+                ident,
+                &filter,
+                &idms_prox_write.qs_write,
+            ) {
+                Ok(r) => r,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin revive");
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin revive event {:?}", rev);
+            trace!(?rev, "Begin revive event");
 
-                idms_prox_write
-                    .qs_write
-                    .revive_recycled(&mut audit, &rev)
-                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .revive_recycled(&mut audit, &rev)
+                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -473,6 +464,12 @@ impl QueryServerWriteV1 {
     }
 
     // === IDM native types for modifications
+    #[instrument(
+        level = "trace",
+        name = "credentialset",
+        skip(self, uat, uuid_or_name, sac, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_credentialset(
         &self,
         uat: Option<String>,
@@ -483,256 +480,241 @@ impl QueryServerWriteV1 {
         let mut audit = AuditScope::new("internal_credential_set_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<InternalCredentialSetMessage>",
-            || {
-                // Trigger a session clean *before* we take any auth steps.
-                // It's important to do this before to ensure that timeouts on
-                // the session are enforced.
-                idms_prox_write.expire_mfareg_sessions(ct);
+        let res = spanned!("actors::v1_write::handle<InternalCredentialSetMessage>", {
+            // Trigger a session clean *before* we take any auth steps.
+            // It's important to do this before to ensure that timeouts on
+            // the session are enforced.
+            idms_prox_write.expire_mfareg_sessions(ct);
 
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+
+            // given the uuid_or_name, determine the target uuid.
+            // We can either do this by trying to parse the name or by creating a filter
+            // to find the entry - there are risks to both TBH ... especially when the uuid
+            // is also an entries name, but that they aren't the same entry.
+
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
+
+            // What type of auth set did we recieve?
+            match sac {
+                SetCredentialRequest::Password(cleartext) => {
+                    let pce = PasswordChangeEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                        cleartext,
+                    )
                     .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
                         e
                     })?;
-
-                // given the uuid_or_name, determine the target uuid.
-                // We can either do this by trying to parse the name or by creating a filter
-                // to find the entry - there are risks to both TBH ... especially when the uuid
-                // is also an entries name, but that they aren't the same entry.
-
-                let target_uuid = idms_prox_write
-                    .qs_write
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    idms_prox_write
+                        .set_account_password(&mut audit, &pce)
+                        .and_then(|_| idms_prox_write.commit(&mut audit))
+                        .map(|_| SetCredentialResponse::Success)
+                }
+                SetCredentialRequest::GeneratePassword => {
+                    let gpe = GeneratePasswordEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                    )
                     .map_err(|e| {
-                        ladmin_error!(audit, "Error resolving id to target");
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
                         e
                     })?;
-
-                // What type of auth set did we recieve?
-                match sac {
-                    SetCredentialRequest::Password(cleartext) => {
-                        let pce = PasswordChangeEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                            cleartext,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .set_account_password(&mut audit, &pce)
-                            .and_then(|_| idms_prox_write.commit(&mut audit))
-                            .map(|_| SetCredentialResponse::Success)
-                    }
-                    SetCredentialRequest::GeneratePassword => {
-                        let gpe = GeneratePasswordEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .generate_account_password(&mut audit, &gpe)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                            .map(SetCredentialResponse::Token)
-                    }
-                    SetCredentialRequest::TotpGenerate => {
-                        let gte = GenerateTotpEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .generate_account_totp(&mut audit, &gte, ct)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::TotpVerify(uuid, chal) => {
-                        let vte = VerifyTotpEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                            uuid,
-                            chal,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .verify_account_totp(&mut audit, &vte, ct)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::TotpAcceptSha1(uuid) => {
-                        let aste =
-                            AcceptSha1TotpEvent::from_parts(&mut audit, ident, target_uuid, uuid)
-                                .map_err(|e| {
-                                ladmin_error!(
-                                    audit,
-                                    "Failed to begin internal_credential_set_message: {:?}",
-                                    e
+                    idms_prox_write
+                        .generate_account_password(&mut audit, &gpe)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .map(SetCredentialResponse::Token)
+                }
+                SetCredentialRequest::TotpGenerate => {
+                    let gte = GenerateTotpEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .generate_account_totp(&mut audit, &gte, ct)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::TotpVerify(uuid, chal) => {
+                    let vte = VerifyTotpEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                        uuid,
+                        chal,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .verify_account_totp(&mut audit, &vte, ct)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::TotpAcceptSha1(uuid) => {
+                    let aste =
+                        AcceptSha1TotpEvent::from_parts(&mut audit, ident, target_uuid, uuid)
+                            .map_err(|e| {
+                                admin_error!(
+                                    err = ?e,
+                                    "Failed to begin internal_credential_set_message",
                                 );
                                 e
                             })?;
-                        idms_prox_write
-                            .accept_account_sha1_totp(&mut audit, &aste)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::TotpRemove => {
-                        let rte = RemoveTotpEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .remove_account_totp(&mut audit, &rte)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::WebauthnBegin(label) => {
-                        let wre = WebauthnInitRegisterEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                            label,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .reg_account_webauthn_init(&mut audit, &wre, ct)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::WebauthnRegister(uuid, rpkc) => {
-                        let wre = WebauthnDoRegisterEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                            uuid,
-                            rpkc,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .reg_account_webauthn_complete(&mut audit, &wre)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::WebauthnRemove(label) => {
-                        let rwe = RemoveWebauthnEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                            label,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .remove_account_webauthn(&mut audit, &rwe)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
-                    SetCredentialRequest::BackupCodeGenerate => {
-                        let gbe = GenerateBackupCodeEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .generate_backup_code(&mut audit, &gbe)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                            .map(SetCredentialResponse::BackupCodes)
-                    }
-                    SetCredentialRequest::BackupCodeRemove => {
-                        let rbe = RemoveBackupCodeEvent::from_parts(
-                            &mut audit,
-                            // &idms_prox_write.qs_write,
-                            ident,
-                            target_uuid,
-                        )
-                        .map_err(|e| {
-                            ladmin_error!(
-                                audit,
-                                "Failed to begin internal_credential_set_message: {:?}",
-                                e
-                            );
-                            e
-                        })?;
-                        idms_prox_write
-                            .remove_backup_code(&mut audit, &rbe)
-                            .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
-                    }
+                    idms_prox_write
+                        .accept_account_sha1_totp(&mut audit, &aste)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::TotpRemove => {
+                    let rte = RemoveTotpEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .remove_account_totp(&mut audit, &rte)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::WebauthnBegin(label) => {
+                    let wre = WebauthnInitRegisterEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                        label,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .reg_account_webauthn_init(&mut audit, &wre, ct)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::WebauthnRegister(uuid, rpkc) => {
+                    let wre = WebauthnDoRegisterEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                        uuid,
+                        rpkc,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .reg_account_webauthn_complete(&mut audit, &wre)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::WebauthnRemove(label) => {
+                    let rwe = RemoveWebauthnEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                        label,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .remove_account_webauthn(&mut audit, &rwe)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                }
+                SetCredentialRequest::BackupCodeGenerate => {
+                    let gbe = GenerateBackupCodeEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .generate_backup_code(&mut audit, &gbe)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
+                        .map(SetCredentialResponse::BackupCodes)
+                }
+                SetCredentialRequest::BackupCodeRemove => {
+                    let rbe = RemoveBackupCodeEvent::from_parts(
+                        &mut audit,
+                        // &idms_prox_write.qs_write,
+                        ident,
+                        target_uuid,
+                    )
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin internal_credential_set_message",
+                        );
+                        e
+                    })?;
+                    idms_prox_write
+                        .remove_backup_code(&mut audit, &rbe)
+                        .and_then(|r| idms_prox_write.commit(&mut audit).map(|_| r))
                 }
             }
-        );
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -740,6 +722,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "idmaccountsetpassword",
+        skip(self, uat, cleartext, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmaccountsetpassword(
         &self,
         uat: Option<String>,
@@ -749,34 +737,30 @@ impl QueryServerWriteV1 {
         let mut audit = AuditScope::new("idm_account_set_password", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<IdmAccountSetPasswordMessage>",
-            || {
-                idms_prox_write.expire_mfareg_sessions(ct);
+        let res = spanned!("actors::v1_write::handle<IdmAccountSetPasswordMessage>", {
+            idms_prox_write.expire_mfareg_sessions(ct);
 
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-
-                let pce = PasswordChangeEvent::from_idm_account_set_password(
-                    &mut audit, ident, cleartext,
-                    // &idms_prox_write.qs_write,
-                )
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                 .map_err(|e| {
-                    ladmin_error!(audit, "Failed to begin idm_account_set_password: {:?}", e);
+                    admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
 
-                idms_prox_write
-                    .set_account_password(&mut audit, &pce)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-            }
-        );
+            let pce = PasswordChangeEvent::from_idm_account_set_password(
+                &mut audit, ident, cleartext,
+                // &idms_prox_write.qs_write,
+            )
+            .map_err(|e| {
+                admin_error!(err = ?e, "Failed to begin idm_account_set_password");
+                e
+            })?;
+
+            idms_prox_write
+                .set_account_password(&mut audit, &pce)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -784,6 +768,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "regenerateradius",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_regenerateradius(
         &self,
         uat: Option<String>,
@@ -793,17 +783,16 @@ impl QueryServerWriteV1 {
         let mut audit = AuditScope::new("idm_account_regenerate_radius", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let res = lperf_op_segment!(
-            &mut audit,
+        let res = spanned!(
             "actors::v1_write::handle<InternalRegenerateRadiusMessage>",
-            || {
+            {
                 idms_prox_write.expire_mfareg_sessions(ct);
 
                 let ident = idms_prox_write
                     .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
                     .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                     .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        admin_error!(err = ?e, "Invalid identity");
                         e
                     })?;
 
@@ -811,7 +800,7 @@ impl QueryServerWriteV1 {
                     .qs_write
                     .name_to_uuid(&mut audit, uuid_or_name.as_str())
                     .map_err(|e| {
-                        ladmin_error!(audit, "Error resolving id to target");
+                        admin_error!(err = ?e, "Error resolving id to target");
                         e
                     })?;
 
@@ -822,10 +811,9 @@ impl QueryServerWriteV1 {
                     target_uuid,
                 )
                 .map_err(|e| {
-                    ladmin_error!(
-                        audit,
-                        "Failed to begin idm_account_regenerate_radius: {:?}",
-                        e
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin idm_account_regenerate_radius",
                     );
                     e
                 })?;
@@ -842,6 +830,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "purgeattribute",
+        skip(self, uat, uuid_or_name, attr, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_purgeattribute(
         &self,
         uat: Option<String>,
@@ -852,49 +846,45 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("purge_attribute", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<PurgeAttributeMessage>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let target_uuid = idms_prox_write
-                    .qs_write
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Error resolving id to target");
-                        e
-                    })?;
+        let res = spanned!("actors::v1_write::handle<PurgeAttributeMessage>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
 
-                let mdf = match ModifyEvent::from_target_uuid_attr_purge(
-                    &mut audit,
-                    ident,
-                    target_uuid,
-                    &attr,
-                    filter,
-                    &idms_prox_write.qs_write,
-                ) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            let mdf = match ModifyEvent::from_target_uuid_attr_purge(
+                &mut audit,
+                ident,
+                target_uuid,
+                &attr,
+                filter,
+                &idms_prox_write.qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin modify");
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin modify event {:?}", mdf);
+            trace!(?mdf, "Begin modify event");
 
-                idms_prox_write
-                    .qs_write
-                    .modify(&mut audit, &mdf)
-                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -902,6 +892,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "removeattributevalues",
+        skip(self, uat, uuid_or_name, attr, values, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_removeattributevalues(
         &self,
         uat: Option<String>,
@@ -913,56 +909,52 @@ impl QueryServerWriteV1 {
     ) -> Result<(), OperationError> {
         let mut audit = AuditScope::new("remove_attribute_values", eventid, self.log_level);
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<RemoveAttributeValuesMessage>",
-            || {
-                let ct = duration_from_epoch_now();
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let target_uuid = idms_prox_write
-                    .qs_write
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Error resolving id to target");
-                        e
-                    })?;
+        let res = spanned!("actors::v1_write::handle<RemoveAttributeValuesMessage>", {
+            let ct = duration_from_epoch_now();
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
 
-                let proto_ml = ProtoModifyList::new_list(
-                    values
-                        .into_iter()
-                        .map(|v| ProtoModify::Removed(attr.clone(), v))
-                        .collect(),
-                );
+            let proto_ml = ProtoModifyList::new_list(
+                values
+                    .into_iter()
+                    .map(|v| ProtoModify::Removed(attr.clone(), v))
+                    .collect(),
+            );
 
-                let mdf = match ModifyEvent::from_parts(
-                    &mut audit,
-                    ident,
-                    target_uuid,
-                    &proto_ml,
-                    filter,
-                    &idms_prox_write.qs_write,
-                ) {
-                    Ok(m) => m,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin modify: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            let mdf = match ModifyEvent::from_parts(
+                &mut audit,
+                ident,
+                target_uuid,
+                &proto_ml,
+                filter,
+                &idms_prox_write.qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin modify");
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin modify event {:?}", mdf);
+            trace!(?mdf, "Begin modify event");
 
-                idms_prox_write
-                    .qs_write
-                    .modify(&mut audit, &mdf)
-                    .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
-            }
-        );
+            idms_prox_write
+                .qs_write
+                .modify(&mut audit, &mdf)
+                .and_then(|_| idms_prox_write.commit(&mut audit).map(|_| ()))
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -970,6 +962,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "appendattribute",
+        skip(self, uat, uuid_or_name, attr, values, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_appendattribute(
         &self,
         uat: Option<String>,
@@ -1005,6 +1003,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "setattribute",
+        skip(self, uat, uuid_or_name, attr, values, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_setattribute(
         &self,
         uat: Option<String>,
@@ -1043,6 +1047,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "sshkeycreate",
+        skip(self, uat, uuid_or_name, tag, key, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_sshkeycreate(
         &self,
         uat: Option<String>,
@@ -1074,6 +1084,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "idmaccountpersonextend",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmaccountpersonextend(
         &self,
         uat: Option<String>,
@@ -1112,6 +1128,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "idmaccountunixextend",
+        skip(self, uat, uuid_or_name, ux, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmaccountunixextend(
         &self,
         uat: Option<String>,
@@ -1165,6 +1187,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "idmgroupunixextend",
+        skip(self, uat, uuid_or_name, gx, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmgroupunixextend(
         &self,
         uat: Option<String>,
@@ -1206,6 +1234,12 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "idmaccountunixsetcred",
+        skip(self, uat, uuid_or_name, cred, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmaccountunixsetcred(
         &self,
         uat: Option<String>,
@@ -1216,47 +1250,43 @@ impl QueryServerWriteV1 {
         let mut audit = AuditScope::new("idm_account_unix_set_cred", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<IdmAccountUnixSetCredMessage>",
-            || {
-                idms_prox_write.expire_mfareg_sessions(ct);
+        let res = spanned!("actors::v1_write::handle<IdmAccountUnixSetCredMessage>", {
+            idms_prox_write.expire_mfareg_sessions(ct);
 
-                let ident = idms_prox_write
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-
-                let target_uuid = Uuid::parse_str(uuid_or_name.as_str()).or_else(|_| {
-                    idms_prox_write
-                        .qs_write
-                        .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                        .map_err(|e| {
-                            ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
-                            e
-                        })
-                })?;
-
-                let upce = UnixPasswordChangeEvent::from_parts(
-                    &mut audit,
-                    // &idms_prox_write.qs_write,
-                    ident,
-                    target_uuid,
-                    cred,
-                )
+            let ident = idms_prox_write
+                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&mut audit, &uat, ct))
                 .map_err(|e| {
-                    ladmin_error!(audit, "Failed to begin UnixPasswordChangeEvent: {:?}", e);
+                    admin_error!(err = ?e, "Invalid identity");
                     e
                 })?;
+
+            let target_uuid = Uuid::parse_str(uuid_or_name.as_str()).or_else(|_| {
                 idms_prox_write
-                    .set_unix_account_password(&mut audit, &upce)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-                    .map(|_| ())
-            }
-        );
+                    .qs_write
+                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .map_err(|e| {
+                        admin_info!("Error resolving as gidnumber continuing ...");
+                        e
+                    })
+            })?;
+
+            let upce = UnixPasswordChangeEvent::from_parts(
+                &mut audit,
+                // &idms_prox_write.qs_write,
+                ident,
+                target_uuid,
+                cred,
+            )
+            .map_err(|e| {
+                admin_error!(err = ?e, "Failed to begin UnixPasswordChangeEvent");
+                e
+            })?;
+            idms_prox_write
+                .set_unix_account_password(&mut audit, &upce)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+                .map(|_| ())
+        });
         self.log.send(audit).map_err(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
             OperationError::InvalidState
@@ -1265,48 +1295,52 @@ impl QueryServerWriteV1 {
     }
 
     // ===== These below are internal only event types. =====
+    #[instrument(
+        level = "trace",
+        name = "purge_tombstone_event",
+        skip(self, msg)
+        fields(uuid = ?msg.eventid)
+    )]
     pub(crate) async fn handle_purgetombstoneevent(&self, msg: PurgeTombstoneEvent) {
         let mut audit = AuditScope::new("purge tombstones", msg.eventid, self.log_level);
 
-        ltrace!(audit, "Begin purge tombstone event {:?}", msg);
+        trace!(?msg, "Begin purge tombstone event");
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
 
-        lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<PurgeTombstoneEvent>",
-            || {
-                let res = idms_prox_write
-                    .qs_write
-                    .purge_tombstones(&mut audit)
-                    .and_then(|_| idms_prox_write.commit(&mut audit));
-                ladmin_info!(audit, "Purge tombstones result: {:?}", res);
-                #[allow(clippy::expect_used)]
-                res.expect("Invalid Server State");
-            }
-        );
+        spanned!("actors::v1_write::handle<PurgeTombstoneEvent>", {
+            let res = idms_prox_write
+                .qs_write
+                .purge_tombstones(&mut audit)
+                .and_then(|_| idms_prox_write.commit(&mut audit));
+            admin_info!(?res, "Purge tombstones result");
+            #[allow(clippy::expect_used)]
+            res.expect("Invalid Server State");
+        });
         // At the end of the event we send it for logging.
         self.log.send(audit).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
         });
     }
 
+    #[instrument(
+        level = "trace",
+        name = "purge_recycled_event",
+        skip(self, msg)
+        fields(uuid = ?msg.eventid)
+    )]
     pub(crate) async fn handle_purgerecycledevent(&self, msg: PurgeRecycledEvent) {
         let mut audit = AuditScope::new("purge recycled", msg.eventid, self.log_level);
-        ltrace!(audit, "Begin purge recycled event {:?}", msg);
+        trace!(?msg, "Begin purge recycled event");
         let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
-        lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<PurgeRecycledEvent>",
-            || {
-                let res = idms_prox_write
-                    .qs_write
-                    .purge_recycled(&mut audit)
-                    .and_then(|_| idms_prox_write.commit(&mut audit));
-                ladmin_info!(audit, "Purge recycled result: {:?}", res);
-                #[allow(clippy::expect_used)]
-                res.expect("Invalid Server State");
-            }
-        );
+        spanned!("actors::v1_write::handle<PurgeRecycledEvent>", {
+            let res = idms_prox_write
+                .qs_write
+                .purge_recycled(&mut audit)
+                .and_then(|_| idms_prox_write.commit(&mut audit));
+            admin_info!(?res, "Purge recycled result");
+            #[allow(clippy::expect_used)]
+            res.expect("Invalid Server State");
+        });
         // At the end of the event we send it for logging.
         self.log.send(audit).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
@@ -1315,22 +1349,21 @@ impl QueryServerWriteV1 {
 
     pub(crate) async fn handle_delayedaction(&self, da: DelayedAction) {
         let eventid = Uuid::new_v4();
+        let nspan = span!(Level::TRACE, "delayedaction", uuid = ?eventid);
+        let _span = nspan.enter();
+
         let mut audit = AuditScope::new("delayed action", eventid, self.log_level);
-        ltrace!(audit, "Begin delayed action ...");
+        trace!("Begin delayed action ...");
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
-        lperf_op_segment!(
-            &mut audit,
-            "actors::v1_write::handle<DelayedAction>",
-            || {
-                if let Err(res) = idms_prox_write
-                    .process_delayedaction(&mut audit, da)
-                    .and_then(|_| idms_prox_write.commit(&mut audit))
-                {
-                    ladmin_info!(audit, "delayed action error: {:?}", res);
-                }
+        spanned!("actors::v1_write::handle<DelayedAction>", {
+            if let Err(res) = idms_prox_write
+                .process_delayedaction(&mut audit, da)
+                .and_then(|_| idms_prox_write.commit(&mut audit))
+            {
+                admin_info!(?res, "delayed action error");
             }
-        );
+        });
         self.log.send(audit).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
         });

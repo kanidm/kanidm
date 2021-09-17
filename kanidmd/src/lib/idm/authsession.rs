@@ -108,11 +108,10 @@ impl CredHandler {
                         .generate_challenge_authenticate(maybe_wan.values().cloned().collect())
                         .map(Some)
                         .map_err(|e| {
-                            lsecurity!(
-                                au,
-                                "Unable to create webauthn authentication challenge -> {:?}",
-                                e
-                            );
+                            security_info!(
+                                err = ?e,
+                                "Unable to create webauthn authentication challenge"
+                            )
                         })?
                 } else {
                     None
@@ -130,10 +129,6 @@ impl CredHandler {
                 // Paranoia. Should NEVER occur.
                 if cmfa.totp.is_none() && cmfa.wan.is_none() {
                     security_critical!("Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!");
-                    lsecurity_critical!(
-                        au,
-                        "Unable to create CredHandler::PasswordMfa - totp and webauthn are both not present. Credentials MAY be corrupt!"
-                    );
                     return Err(());
                 }
 
@@ -150,11 +145,6 @@ impl CredHandler {
                 })
                 .map_err(|e| {
                     security_info!(?e, "Unable to create webauthn authentication challenge");
-                    lsecurity!(
-                        au,
-                        "Unable to create webauthn authentication challenge -> {:?}",
-                        e
-                    );
                     // maps to unit.
                 }),
         }
@@ -179,7 +169,6 @@ impl CredHandler {
                 existing_password: cleartext.to_string(),
             })) {
                 admin_warn!("unable to queue delayed pwupgrade, continuing ... ");
-                ladmin_warning!(au, "unable to queue delayed pwupgrade, continuing ... ");
             };
         }
     }
@@ -191,15 +180,10 @@ impl CredHandler {
             AuthCredential::Anonymous => {
                 // For anonymous, no claims will ever be issued.
                 security_info!("Handler::Anonymous -> Result::Success");
-                lsecurity!(au, "Handler::Anonymous -> Result::Success");
                 CredState::Success(AuthType::Anonymous)
             }
             _ => {
                 security_info!(
-                    "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
-                );
-                lsecurity!(
-                    au,
                     "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -224,15 +208,10 @@ impl CredHandler {
                     match pw_badlist_set {
                         Some(p) if p.contains(&cleartext.to_lowercase()) => {
                             security_info!("Handler::Password -> Result::Denied - Password found in badlist during login");
-                            lsecurity!(
-                                au,
-                                "Handler::Password -> Result::Denied - Password found in badlist during login"
-                            );
                             CredState::Denied(PW_BADLIST_MSG)
                         }
                         _ => {
                             security_info!("Handler::Password -> Result::Success");
-                            lsecurity!(au, "Handler::Password -> Result::Success");
                             Self::maybe_pw_upgrade(au, pw, who, cleartext.as_str(), async_tx);
                             if generated {
                                 CredState::Success(AuthType::GeneratedPassword)
@@ -243,20 +222,12 @@ impl CredHandler {
                     }
                 } else {
                     security_info!("Handler::Password -> Result::Denied - incorrect password");
-                    lsecurity!(
-                        au,
-                        "Handler::Password -> Result::Denied - incorrect password"
-                    );
                     CredState::Denied(BAD_PASSWORD_MSG)
                 }
             }
             // All other cases fail.
             _ => {
                 security_info!(
-                    "Handler::Password -> Result::Denied - invalid cred type for handler"
-                );
-                lsecurity!(
-                    au,
                     "Handler::Password -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -305,7 +276,6 @@ impl CredHandler {
                                         ))
                                     {
                                         admin_warn!("unable to queue delayed webauthn counter increment, continuing ... ");
-                                        ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                                     };
                                 };
                                 CredState::Continue(vec![AuthAllowed::Password])
@@ -317,11 +287,6 @@ impl CredHandler {
                                     ?e,
                                     "Handler::Webauthn -> Result::Denied - webauthn error"
                                 );
-                                lsecurity!(
-                                    au,
-                                    "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
-                                    e
-                                );
                                 CredState::Denied(BAD_WEBAUTHN_MSG)
                             }
                         }
@@ -332,18 +297,10 @@ impl CredHandler {
                             security_info!(
                                 "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
                             );
-                            lsecurity!(
-                                au,
-                                "Handler::PasswordMfa -> Result::Continue - TOTP OK, password -"
-                            );
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_info!(
-                                "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
-                            );
-                            lsecurity!(
-                                au,
                                 "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
                             );
                             CredState::Denied(BAD_TOTP_MSG)
@@ -360,34 +317,18 @@ impl CredHandler {
                                 admin_warn!(
                                     "unable to queue delayed backup code removal, continuing ... "
                                 );
-                                ladmin_warning!(
-                                    au,
-                                    "unable to queue delayed backup code removal, continuing ... "
-                                );
                             };
                             pw_mfa.mfa_state = CredVerifyState::Success;
                             security_info!("Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -");
-                            lsecurity!(
-                                au,
-                                "Handler::PasswordMfa -> Result::Continue - BackupCode OK, password -"
-                            );
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
                             security_info!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
-                            lsecurity!(
-                                au,
-                                "Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -"
-                            );
                             CredState::Denied(BAD_BACKUPCODE_MSG)
                         }
                     }
                     _ => {
                         security_info!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
-                        lsecurity!(
-                            au,
-                            "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
-                        );
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
                 }
@@ -401,19 +342,11 @@ impl CredHandler {
                                 Some(p) if p.contains(&cleartext.to_lowercase()) => {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
                                     security_info!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
-                                    lsecurity!(
-                                        au,
-                                        "Handler::PasswordMfa -> Result::Denied - Password found in badlist during login"
-                                    );
                                     CredState::Denied(PW_BADLIST_MSG)
                                 }
                                 _ => {
                                     pw_mfa.pw_state = CredVerifyState::Success;
                                     security_info!("Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK");
-                                    lsecurity!(
-                                        au,
-                                        "Handler::PasswordMfa -> Result::Success - TOTP/WebAuthn/BackupCode OK, password OK"
-                                    );
                                     Self::maybe_pw_upgrade(
                                         au,
                                         &pw_mfa.pw,
@@ -427,29 +360,17 @@ impl CredHandler {
                         } else {
                             pw_mfa.pw_state = CredVerifyState::Fail;
                             security_info!("Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail");
-                            lsecurity!(
-                                au,
-                                "Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail"
-                            );
                             CredState::Denied(BAD_PASSWORD_MSG)
                         }
                     }
                     _ => {
                         security_info!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
-                        lsecurity!(
-                            au,
-                            "Handler::PasswordMfa -> Result::Denied - invalid cred type for handler"
-                        );
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
                 }
             }
             _ => {
                 security_info!(
-                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
-                );
-                lsecurity!(
-                    au,
                     "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -469,10 +390,6 @@ impl CredHandler {
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
             security_info!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
-            lsecurity!(
-                au,
-                "Handler::Webauthn -> Result::Denied - Internal State Already Fail"
-            );
             return CredState::Denied(BAD_WEBAUTHN_MSG);
         }
 
@@ -494,7 +411,6 @@ impl CredHandler {
                                 },
                             )) {
                                 admin_warn!("unable to queue delayed webauthn counter increment, continuing ... ");
-                                ladmin_warning!(au, "unable to queue delayed webauthn counter increment, continuing ... ");
                             };
                         };
                         CredState::Success(AuthType::Webauthn)
@@ -503,21 +419,12 @@ impl CredHandler {
                         wan_cred.state = CredVerifyState::Fail;
                         // Denied.
                         security_info!(?e, "Handler::Webauthn -> Result::Denied - webauthn error");
-                        lsecurity!(
-                            au,
-                            "Handler::Webauthn -> Result::Denied - webauthn error {:?}",
-                            e
-                        );
                         CredState::Denied(BAD_WEBAUTHN_MSG)
                     }
                 }
             }
             _ => {
                 security_info!(
-                    "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
-                );
-                lsecurity!(
-                    au,
                     "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -672,23 +579,17 @@ impl AuthSession {
                                 security_critical!(
                                     "corrupt credentials, unable to start credhandler"
                                 );
-                                lsecurity_critical!(
-                                    au,
-                                    "corrupt credentials, unable to start credhandler"
-                                );
                                 AuthSessionState::Denied("invalid credential state")
                             })
                     }
                     None => {
                         security_info!("account has no primary credentials");
-                        lsecurity!(au, "account has no primary credentials");
                         AuthSessionState::Denied("invalid credential state")
                     }
                 }
             }
         } else {
             security_info!("account expired");
-            lsecurity!(au, "account expired");
             AuthSessionState::Denied(ACCOUNT_EXPIRED)
         };
 
@@ -810,7 +711,6 @@ impl AuthSession {
                 ) {
                     CredState::Success(auth_type) => {
                         security_info!("Successful cred handling");
-                        lsecurity!(au, "Successful cred handling");
                         // TODO: put the operation id into the call to `to_userauthtoken`
                         // Can't `unwrap` the uuid until full integration, because some unit tests
                         // call functions that call this indirectly without opening a span first,
@@ -824,7 +724,6 @@ impl AuthSession {
                         // Now encrypt and prepare the token for return to the client.
                         let token = uat_bundy_hmac.sign(&uat).map_err(|e| {
                             admin_error!(?e, "Failed to sign UserAuthToken");
-                            ladmin_error!(au, "Failed to sign UserAuthToken - {:?}", e);
                             OperationError::InvalidState
                         })?;
 
@@ -835,12 +734,10 @@ impl AuthSession {
                     }
                     CredState::Continue(allowed) => {
                         security_info!(?allowed, "Request credential continuation");
-                        lsecurity!(au, "Request credential continuation: {:?}", allowed);
                         (None, Ok(AuthState::Continue(allowed)))
                     }
                     CredState::Denied(reason) => {
                         security_info!(%reason, "Credentials denied");
-                        lsecurity!(au, "Credentials denied: {}", reason);
                         (
                             Some(AuthSessionState::Denied(reason)),
                             Ok(AuthState::Denied(reason.to_string())),

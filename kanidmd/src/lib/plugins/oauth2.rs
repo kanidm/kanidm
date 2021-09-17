@@ -17,12 +17,12 @@ macro_rules! oauth2_transform {
     ) => {{
         if $e.attribute_equality("class", &CLASS_OAUTH2_BASIC) {
             if !$e.attribute_pres("oauth2_rs_basic_secret") {
-                lsecurity!($au, "regenerating oauth2 basic secret");
+                security_info!("regenerating oauth2 basic secret");
                 let v = Value::new_utf8(password_from_random());
                 $e.add_ava("oauth2_rs_basic_secret", v);
             }
             if !$e.attribute_pres("oauth2_rs_basic_token_key") {
-                lsecurity!($au, "regenerating oauth2 token key");
+                security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
                 let v = Value::new_secret_str(&k);
                 $e.add_ava("oauth2_rs_basic_token_key", v);

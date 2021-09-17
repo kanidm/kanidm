@@ -493,14 +493,12 @@ impl Filter<FilterInvalid> {
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         spanned!("filer::from_ro", {
-            lperf_trace_segment!(audit, "filter::from_ro", || {
-                let depth = FILTER_DEPTH_MAX;
-                let mut elems = ev.limits.filter_max_elements;
-                Ok(Filter {
-                    state: FilterInvalid {
-                        inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
-                    },
-                })
+            let depth = FILTER_DEPTH_MAX;
+            let mut elems = ev.limits.filter_max_elements;
+            Ok(Filter {
+                state: FilterInvalid {
+                    inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
+                },
             })
         })
     }
@@ -511,7 +509,7 @@ impl Filter<FilterInvalid> {
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(audit, "filter::from_rw", || {
+        spanned!("filter::from_rw", {
             let depth = FILTER_DEPTH_MAX;
             let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
@@ -528,7 +526,7 @@ impl Filter<FilterInvalid> {
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(audit, "filter::from_ldap_ro", || {
+        spanned!("filter::from_ldap_ro", {
             let depth = FILTER_DEPTH_MAX;
             let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
@@ -885,7 +883,7 @@ impl FilterComp {
                 },
             ) => {
                 // let a = ldap_attr_filter_map(a);
-                ladmin_error!(audit, "Unable to convert ldapsubstringfilter to sub filter");
+                admin_error!("Unable to convert ldapsubstringfilter to sub filter");
                 return Err(OperationError::FilterGeneration);
             }
         })

@@ -122,10 +122,8 @@ impl Account {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         spanned!("idm::account::try_from_entry_ro", {
-            lperf_trace_segment!(au, "idm::account::try_from_entry_ro", || {
-                let groups = Group::try_from_account_entry_ro(au, value, qs)?;
-                try_from_entry!(value, groups)
-            })
+            let groups = Group::try_from_account_entry_ro(au, value, qs)?;
+            try_from_entry!(value, groups)
         })
     }
 
@@ -136,10 +134,8 @@ impl Account {
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
         spanned!("idm::account::try_from_entry_rw", {
-            lperf_trace_segment!(au, "idm::account::try_from_entry_rw", || {
-                let groups = Group::try_from_account_entry_rw(au, value, qs)?;
-                try_from_entry!(value, groups)
-            })
+            let groups = Group::try_from_account_entry_rw(au, value, qs)?;
+            try_from_entry!(value, groups)
         })
     }
 
@@ -150,10 +146,8 @@ impl Account {
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         spanned!("idm::account::try_from_entry_reduced", {
-            lperf_trace_segment!(au, "idm::account::try_from_entry_reduced", || {
-                let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
-                try_from_entry!(value, groups)
-            })
+            let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
+            try_from_entry!(value, groups)
         })
     }
 

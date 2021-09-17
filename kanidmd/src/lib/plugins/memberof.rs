@@ -45,7 +45,7 @@ fn do_memberof(
             ])),
         )
         .map_err(|e| {
-            ladmin_error!(au, "internal search failure -> {:?}", e);
+            admin_error!("internal search failure -> {:?}", e);
             e
         })?;
 
@@ -70,16 +70,14 @@ fn do_memberof(
     });
 
     if r.is_err() {
-        ladmin_error!(au, "Invalid valueset type -> {:?}", r);
+        admin_error!("Invalid valueset type -> {:?}", r);
     } else {
-        ltrace!(
-            au,
+        trace!(
             "Updating {:?} to be dir mo {:?}",
             uuid,
             tgte.get_ava_set("directmemberof")
         );
-        ltrace!(
-            au,
+        trace!(
             "Updating {:?} to be mo {:?}",
             uuid,
             tgte.get_ava_set("memberof")
@@ -96,8 +94,8 @@ fn apply_memberof(
     // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
     mut group_affect: Vec<Uuid>,
 ) -> Result<(), OperationError> {
-    ltrace!(au, " => entering apply_memberof");
-    ltrace!(au, " => initial group_affect {:?}", group_affect);
+    trace!(" => entering apply_memberof");
+    trace!(" => initial group_affect {:?}", group_affect);
 
     // We can't cache groups, because we need to be continually writing
     // and querying them. But we can cache anything we find in the process
@@ -130,12 +128,12 @@ fn apply_memberof(
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
-                ltrace!(au, "not a group, delaying update to -> {:?}", guuid);
+                trace!("not a group, delaying update to -> {:?}", guuid);
                 other_cache.insert(guuid, (pre, tgte));
                 continue;
             }
 
-            ltrace!(au, "=> processing group update -> {:?}", guuid);
+            trace!("=> processing group update -> {:?}", guuid);
 
             do_memberof(au, qs, &guuid, &mut tgte)?;
 
@@ -146,8 +144,7 @@ fn apply_memberof(
                 // Yes we changed - we now must process all our members, as they need to
                 // inherit changes. Some of these members COULD be non groups, but we
                 // handle that in the dbload step.
-                ltrace!(
-                    au,
+                trace!(
                     "{:?} changed, flagging members as groups to change. ",
                     guuid
                 );
@@ -159,7 +156,7 @@ fn apply_memberof(
                 pre_candidates.push(pre);
                 candidates.push(tgte);
             } else {
-                ltrace!(au, "{:?} stable", guuid);
+                trace!("{:?} stable", guuid);
             }
         }
 
@@ -168,7 +165,7 @@ fn apply_memberof(
         if !pre_candidates.is_empty() {
             qs.internal_batch_modify(au, pre_candidates, candidates)
                 .map_err(|e| {
-                    ladmin_error!(au, "Failed to commit memberof group set {:?}", e);
+                    admin_error!("Failed to commit memberof group set {:?}", e);
                     e
                 })?;
         }
@@ -182,7 +179,7 @@ fn apply_memberof(
     other_cache
         .into_iter()
         .try_for_each(|(auuid, (pre, mut tgte))| {
-            ltrace!(au, "=> processing affected uuid {:?}", auuid);
+            trace!("=> processing affected uuid {:?}", auuid);
             debug_assert!(!tgte.attribute_equality("class", &CLASS_GROUP));
             do_memberof(au, qs, &auuid, &mut tgte)?;
             // Only write if a change occured.
@@ -355,12 +352,7 @@ impl Plugin for MemberOf {
                 .map(|e| Value::new_refer(*e.get_uuid()))
                 .collect();
 
-            ltrace!(
-                au,
-                "DMO search groups {:?} -> {:?}",
-                e.get_uuid(),
-                d_groups_set
-            );
+            trace!("DMO search groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
 
             match (e.get_ava_set("directmemberof"), d_groups_set) {
                 (Some(edmos), Some(dmos)) => {
@@ -369,8 +361,7 @@ impl Plugin for MemberOf {
                         (Some(a), Some(b)) => {
                             let diff: Vec<_> = a.symmetric_difference(b).collect();
                             if !diff.is_empty() {
-                                ladmin_error!(
-                                    au,
+                                admin_error!(
                                     "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
                                     e,
                                     diff
@@ -379,11 +370,7 @@ impl Plugin for MemberOf {
                             }
                         }
                         _ => {
-                            ladmin_error!(
-                                au,
-                                "MemberOfInvalid: Entry {}, DMO has incorrect syntax",
-                                e,
-                            );
+                            admin_error!("MemberOfInvalid: Entry {}, DMO has incorrect syntax", e,);
                             r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                         }
                     }
@@ -392,8 +379,7 @@ impl Plugin for MemberOf {
                     // Ok
                 }
                 _ => {
-                    ladmin_error!(
-                        au,
+                    admin_error!(
                         "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
                         e.get_uuid()
                     );

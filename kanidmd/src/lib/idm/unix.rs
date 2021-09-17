@@ -233,7 +233,6 @@ impl UnixUserAccount {
                 cred.password_ref().and_then(|pw| {
                     if pw.verify(cleartext)? {
                         security_info!("Successful unix cred handling");
-                        lsecurity!(au, "Successful unix cred handling");
                         if pw.requires_upgrade() {
                             async_tx
                                 .send(DelayedAction::UnixPwUpgrade(UnixPasswordUpgrade {
@@ -242,10 +241,6 @@ impl UnixUserAccount {
                                 }))
                                 .map_err(|_| {
                                     admin_error!(
-                                        "failed to queue delayed action - unix password upgrade"
-                                    );
-                                    ladmin_error!(
-                                        au,
                                         "failed to queue delayed action - unix password upgrade"
                                     );
                                     OperationError::InvalidState
@@ -258,7 +253,6 @@ impl UnixUserAccount {
                     } else {
                         // Failed to auth
                         security_info!("Failed unix cred handling (denied)");
-                        lsecurity!(au, "Failed unix cred handling (denied)");
                         Ok(None)
                     }
                 })
@@ -266,7 +260,6 @@ impl UnixUserAccount {
             // They don't have a unix cred, fail the auth.
             None => {
                 security_info!("Failed unix cred handling (no cred present)");
-                lsecurity!(au, "Failed unix cred handling (no cred present)");
                 Ok(None)
             }
         }

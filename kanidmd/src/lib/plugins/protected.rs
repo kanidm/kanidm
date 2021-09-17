@@ -53,10 +53,7 @@ impl Plugin for Protected {
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         if ce.ident.is_internal() {
-            ltrace!(
-                au,
-                "Internal operation, not enforcing system object protection"
-            );
+            trace!("Internal operation, not enforcing system object protection");
             return Ok(());
         }
 
@@ -83,10 +80,7 @@ impl Plugin for Protected {
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         if me.ident.is_internal() {
-            ltrace!(
-                au,
-                "Internal operation, not enforcing system object protection"
-            );
+            trace!("Internal operation, not enforcing system object protection");
             return Ok(());
         }
         // Prevent adding class: system, domain_info, tombstone, or recycled.
@@ -128,7 +122,7 @@ impl Plugin for Protected {
             c.attribute_equality("class", &PVCLASS_SYSTEM)
         });
 
-        ltrace!(au, "class: system -> {}", system_pres);
+        trace!("class: system -> {}", system_pres);
         // No system types being altered, return.
         if !system_pres {
             return Ok(());
@@ -155,10 +149,7 @@ impl Plugin for Protected {
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         if de.ident.is_internal() {
-            ltrace!(
-                au,
-                "Internal operation, not enforcing system object protection"
-            );
+            trace!("Internal operation, not enforcing system object protection");
             return Ok(());
         }
 

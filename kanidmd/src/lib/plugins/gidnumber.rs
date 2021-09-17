@@ -33,7 +33,7 @@ fn apply_gidnumber<T: Clone>(
             .get_uuid()
             .ok_or(OperationError::InvalidEntryState)
             .map_err(|e| {
-                ladmin_error!(au, "Invalid Entry State - Missing UUID");
+                admin_error!("Invalid Entry State - Missing UUID");
                 e
             })?;
 
@@ -47,7 +47,7 @@ fn apply_gidnumber<T: Clone>(
         }
 
         let gid_v = Value::new_uint32(gid);
-        ladmin_info!(au, "Generated {} for {:?}", gid, u_ref);
+        admin_info!("Generated {} for {:?}", gid, u_ref);
         e.set_ava("gidnumber", btreeset![gid_v]);
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {

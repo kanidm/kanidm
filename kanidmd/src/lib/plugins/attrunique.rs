@@ -9,6 +9,7 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use kanidm_proto::v1::{ConsistencyError, PluginError};
+use tracing::trace;
 
 use std::collections::BTreeMap;
 
@@ -37,8 +38,7 @@ fn get_cand_attr_set<VALID, STATE>(
                         match cand_attr.insert(v, uuid.clone()) {
                             None => Ok(()),
                             Some(vr) => {
-                                ladmin_error!(
-                                    au,
+                                admin_error!(
                                     "ava already exists -> {:?}: {:?} on {:?}",
                                     attr,
                                     vr,
@@ -62,16 +62,16 @@ fn enforce_unique<STATE>(
     cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
-    ltrace!(au, "{:?}", attr);
+    trace!(?attr);
 
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
     let cand_attr = get_cand_attr_set(au, cand, attr).map_err(|e| {
-        ladmin_error!(au, "failed to get cand attr set {:?}", e);
+        admin_error!(err = ?e, "failed to get cand attr set");
         e
     })?;
 
-    ltrace!(au, "{:?}", cand_attr);
+    trace!(?cand_attr);
 
     // No candidates to check!
     if cand_attr.is_empty() {
@@ -93,11 +93,11 @@ fn enforce_unique<STATE>(
             .collect()
     ));
 
-    ltrace!(au, "{:?}", filt_in);
+    trace!(?filt_in);
 
     // If any results, reject.
     let conflict_cand = qs.internal_exists(au, filt_in).map_err(|e| {
-        ladmin_error!(au, "internal exists error {:?}", e);
+        admin_error!("internal exists error {:?}", e);
         e
     })?;
 
@@ -185,7 +185,7 @@ impl Plugin for AttrUnique {
             }
         }
 
-        ltrace!(au, "{:?}", res);
+        trace!(?res);
 
         res
     }

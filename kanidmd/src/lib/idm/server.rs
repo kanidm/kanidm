@@ -172,7 +172,6 @@ impl IdmServer {
         Url::parse(origin.as_str())
             .map_err(|_e| {
                 admin_error!("Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
-                ladmin_error!(au, "Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
                 OperationError::InvalidState
             })
             .and_then(|url| {
@@ -185,7 +184,6 @@ impl IdmServer {
                 })
                 .ok_or_else(|| {
                     admin_error!("Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}", origin, rp_id);
-                    ladmin_error!(au, "Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}", origin, rp_id);
                     OperationError::InvalidState
                 })
             })?;
@@ -204,14 +202,12 @@ impl IdmServer {
             .and_then(|bundy_key| HS512::from_str(&bundy_key))
             .map_err(|e| {
                 admin_error!("Failed to generate uat_bundy_hmac - {:?}", e);
-                ladmin_error!(au, "Failed to generate uat_bundy_hmac - {:?}", e);
                 OperationError::InvalidState
             })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
         let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set).map_err(|e| {
             admin_error!("Failed to load oauth2 resource servers - {:?}", e);
-            ladmin_error!(au, "Failed to load oauth2 resource servers - {:?}", e);
             e
         })?;
 
@@ -369,14 +365,12 @@ pub trait IdmServerTransaction<'a> {
                 .and_then(|token| {
                     bref.verify(token).map_err(|e| {
                         security_info!(?e, "Unable to verify token");
-                        lsecurity!(audit, "Unable to verify token - {:?}", e);
                         OperationError::NotAuthenticated
                     })
                 })?;
 
         if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
             security_info!("Session expired");
-            lsecurity!(audit, "Session expired");
             Err(OperationError::SessionExpired)
         } else {
             Ok(uat)
@@ -396,7 +390,6 @@ pub trait IdmServerTransaction<'a> {
             .internal_search_uuid(audit, &uat.uuid)
             .map_err(|e| {
                 admin_error!(?e, "from_ro_uat failed");
-                ladmin_error!(audit, "from_ro_uat failed {:?}", e);
                 e
             })?;
 
@@ -410,10 +403,6 @@ pub trait IdmServerTransaction<'a> {
 
         if !valid {
             security_info!("Account has expired or is not yet valid, not allowing to proceed");
-            lsecurity!(
-                audit,
-                "Account has expired or is not yet valid, not allowing to proceed"
-            );
             return Err(OperationError::SessionExpired);
         }
 
@@ -447,7 +436,6 @@ pub trait IdmServerTransaction<'a> {
         */
 
         trace!(claims = ?entry.get_ava_set("claim"), "Applied claims");
-        ltrace!(audit, "Applied claims -> {:?}", entry.get_ava_set("claim"));
 
         let limits = Limits::from_uat(uat);
         Ok(Identity {
@@ -496,7 +484,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         ct: Duration,
     ) -> Result<AuthResult, OperationError> {
         trace!(?ae, "Recieved");
-        ltrace!(au, "Received -> {:?}", ae);
         // Match on the auth event, to see what we need to do.
 
         match &ae.step {
@@ -529,12 +516,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     ?entry,
                     uuid = %euuid,
                     "Initiating Authentication Session",
-                );
-                lsecurity!(
-                    au,
-                    "Initiating Authentication Session for ... {:?}: {:?}",
-                    euuid,
-                    entry
                 );
 
                 // Now, convert the Entry to an account - this gives us some stronger
@@ -569,7 +550,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 } else {
                     // it's softlocked, don't even bother.
                     security_info!("Account is softlocked.");
-                    lsecurity!(au, "Account is softlocked.");
                     (
                         None,
                         AuthState::Denied("Account is temporarily locked".to_string()),
@@ -582,22 +562,19 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         let _session_ticket = self.session_ticket.acquire().await;
                         let mut session_write = self.sessions.write();
                         spanned!("idm::server::auth<Init> -> sessions", {
-                            lperf_segment!(au, "idm::server::auth<Init> -> sessions", || {
-                                if session_write.contains_key(&sessionid) {
-                                    Err(OperationError::InvalidSessionState)
-                                } else {
-                                    session_write.insert(sessionid, auth_session);
-                                    // Debugging: ensure we really inserted ...
-                                    debug_assert!(session_write.get(&sessionid).is_some());
-                                    Ok(())
-                                }
-                            })?;
-                            session_write.commit();
-                        })
+                            if session_write.contains_key(&sessionid) {
+                                Err(OperationError::InvalidSessionState)
+                            } else {
+                                session_write.insert(sessionid, auth_session);
+                                // Debugging: ensure we really inserted ...
+                                debug_assert!(session_write.get(&sessionid).is_some());
+                                Ok(())
+                            }
+                        })?;
+                        session_write.commit();
                     }
                     None => {
                         security_info!("Authentication Session Unable to begin");
-                        lsecurity!(au, "Authentication Session Unable to begin");
                     }
                 };
 
@@ -626,7 +603,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     .get_mut(&mech.sessionid)
                     .ok_or_else(|| {
                         admin_error!("Invalid Session State (no present session uuid)");
-                        ladmin_error!(au, "Invalid Session State (no present session uuid)");
                         OperationError::InvalidSessionState
                     })?;
 
@@ -677,7 +653,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     .get_mut(&creds.sessionid)
                     .ok_or_else(|| {
                         admin_error!("Invalid Session State (no present session uuid)");
-                        ladmin_error!(au, "Invalid Session State (no present session uuid)");
                         OperationError::InvalidSessionState
                     })?;
 
@@ -770,13 +745,11 @@ impl<'a> IdmServerAuthTransaction<'a> {
             })
             .map_err(|e| {
                 admin_error!("Failed to start auth unix -> {:?}", e);
-                ladmin_error!(au, "Failed to start auth unix -> {:?}", e);
                 e
             })?;
 
         if !account.is_within_valid_time(ct) {
             security_info!("Account is not within valid time period");
-            lsecurity!(au, "Account is not within valid time period");
             return Ok(None);
         }
 
@@ -825,7 +798,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         } else {
             // Account is slocked!
             security_info!("Account is softlocked.");
-            lsecurity!(au, "Account is softlocked.");
             Ok(None)
         };
 
@@ -844,7 +816,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             .qs_read
             .internal_search_uuid(au, &lae.target)
             .map_err(|e| {
-                ladmin_error!(au, "Failed to start auth ldap -> {:?}", e);
+                admin_error!("Failed to start auth ldap -> {:?}", e);
                 e
             })?;
 
@@ -854,7 +826,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 Account::try_from_entry_ro(au, account_entry.as_ref(), &mut self.qs_read)?;
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
-                lsecurity!(au, "Account is not within valid time period");
+                security_info!("Account is not within valid time period");
                 return Ok(None);
             }
 
@@ -865,7 +837,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     .to_userauthtoken(au.uuid, ct, AuthType::Anonymous)
                     .ok_or(OperationError::InvalidState)
                     .map_err(|e| {
-                        ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
+                        admin_error!("Unable to generate effective_uat -> {:?}", e);
                         e
                     })?,
                 spn: account.spn,
@@ -875,7 +847,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 UnixUserAccount::try_from_entry_ro(au, account_entry.as_ref(), &mut self.qs_read)?;
 
             if !account.is_within_valid_time(ct) {
-                lsecurity!(au, "Account is not within valid time period");
+                security_info!("Account is not within valid time period");
                 return Ok(None);
             }
 
@@ -910,11 +882,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         .qs_read
                         .internal_search_uuid(au, &UUID_ANONYMOUS)
                         .map_err(|e| {
-                            ladmin_error!(
-                                au,
-                                "Failed to find effective uat for auth ldap -> {:?}",
-                                e
-                            );
+                            admin_error!("Failed to find effective uat for auth ldap -> {:?}", e);
                             e
                         })?;
                     let anon_account =
@@ -927,7 +895,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                             .to_userauthtoken(au.uuid, ct, AuthType::UnixPassword)
                             .ok_or(OperationError::InvalidState)
                             .map_err(|e| {
-                                ladmin_error!(au, "Unable to generate effective_uat -> {:?}", e);
+                                admin_error!("Unable to generate effective_uat -> {:?}", e);
                                 e
                             })?,
                     }))
@@ -948,7 +916,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 }
             } else {
                 // Account is slocked!
-                lsecurity!(au, "Account is softlocked.");
+                security_info!("Account is softlocked.");
                 Ok(None)
             };
 
@@ -994,7 +962,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 RadiusAccount::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to start radius auth token {:?}", e);
+                admin_error!("Failed to start radius auth token {:?}", e);
                 e
             })?;
 
@@ -1015,7 +983,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 UnixUserAccount::try_from_entry_ro(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to start unix user token -> {:?}", e);
+                admin_error!("Failed to start unix user token -> {:?}", e);
                 e
             })?;
 
@@ -1033,7 +1001,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .impersonate_search_ext_uuid(au, &uute.target, &uute.ident)
             .and_then(|e| UnixGroup::try_from_entry_reduced(&e))
             .map_err(|e| {
-                ladmin_error!(au, "Failed to start unix group token {:?}", e);
+                admin_error!("Failed to start unix group token {:?}", e);
                 e
             })?;
         group.to_unixgrouptoken()
@@ -1052,7 +1020,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Account::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to search account {:?}", e);
+                admin_error!("Failed to search account {:?}", e);
                 e
             })?;
 
@@ -1072,7 +1040,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
                 Account::try_from_entry_reduced(au, &account_entry, &mut self.qs_read)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to search account {:?}", e);
+                admin_error!("Failed to search account {:?}", e);
                 e
             })?;
 
@@ -1159,7 +1127,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // does the password pass zxcvbn?
 
         let entropy = zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|e| {
-            ladmin_error!(au, "zxcvbn check failure (password empty?) {:?}", e);
+            admin_error!("zxcvbn check failure (password empty?) {:?}", e);
             OperationError::PasswordEmpty
         })?;
 
@@ -1174,11 +1142,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .ok_or(OperationError::InvalidState)
                 .map(|v| v.clone())
                 .map_err(|e| {
-                    lsecurity!(au, "zxcvbn returned no feedback when score < 3");
+                    security_info!("zxcvbn returned no feedback when score < 3");
                     e
                 })?;
 
-            lsecurity!(au, "pw feedback -> {:?}", feedback);
+            security_info!(?feedback, "pw quality feedback");
 
             // return Err(OperationError::PasswordTooWeak(feedback))
             return Err(OperationError::PasswordTooWeak);
@@ -1188,7 +1156,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // we check the password as "lower case" to help eliminate possibilities
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
         if (&*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
-            lsecurity!(au, "Password found in badlist, rejecting");
+            security_info!("Password found in badlist, rejecting");
             Err(OperationError::PasswordBadListed)
         } else {
             Ok(())
@@ -1209,7 +1177,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 Account::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to search account {:?}", e);
+                admin_error!("Failed to search account {:?}", e);
                 e
             })?;
         // Ask if tis all good - this step checks pwpolicy and such
@@ -1239,10 +1207,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
-                ladmin_error!(au, "Failed to generate password mod {:?}", e);
+                admin_error!("Failed to generate password mod {:?}", e);
                 e
             })?;
-        ltrace!(au, "processing change {:?}", modlist);
+        trace!(?modlist, "processing change");
 
         // Check with the QS if we would be ALLOWED to do this change.
 
@@ -1258,7 +1226,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &pce.ident,
             )
             .map_err(|e| {
-                lrequest_error!(au, "error -> {:?}", e);
+                request_error!(error = ?e);
                 e
             })?;
 
@@ -1267,7 +1235,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .modify_pre_apply(au, &me)
                 .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
                 .map_err(|e| {
-                    lrequest_error!(au, "error -> {:?}", e);
+                    request_error!(error = ?e);
                     e
                 })?
         };
@@ -1290,13 +1258,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
             .map_err(|e| {
-                lrequest_error!(au, "check_password_quality -> {:?}", e);
+                request_error!(err = ?e, "check_password_quality");
                 e
             })?;
 
         // And actually really apply it now.
         self.qs_write.modify_apply(au, mp).map_err(|e| {
-            lrequest_error!(au, "error -> {:?}", e);
+            request_error!(error = ?e);
             e
         })?;
 
@@ -1318,7 +1286,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 UnixUserAccount::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to start set unix account password {:?}", e);
+                admin_error!("Failed to start set unix account password {:?}", e);
                 e
             })?;
         // Ask if tis all good - this step checks pwpolicy and such
@@ -1331,10 +1299,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .gen_password_mod(pce.cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate password change modlist {:?}", e);
+                admin_error!(?e, "Unable to generate password change modlist");
                 e
             })?;
-        ltrace!(au, "processing change {:?}", modlist);
+        trace!(?modlist, "processing change");
 
         // Check with the QS if we would be ALLOWED to do this change.
 
@@ -1350,7 +1318,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &pce.ident,
             )
             .map_err(|e| {
-                lrequest_error!(au, "error -> {:?}", e);
+                request_error!(error = ?e);
                 e
             })?;
 
@@ -1359,7 +1327,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .modify_pre_apply(au, &me)
                 .and_then(|opt_mp| opt_mp.ok_or(OperationError::NoMatchingEntries))
                 .map_err(|e| {
-                    lrequest_error!(au, "error -> {:?}", e);
+                    request_error!(error = ?e);
                     e
                 })?
         };
@@ -1380,13 +1348,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         self.check_password_quality(au, pce.cleartext.as_str(), related_inputs.as_slice())
             .map_err(|e| {
-                ladmin_error!(au, "Failed to checked password quality {:?}", e);
+                admin_error!(?e, "Failed to checked password quality");
                 e
             })?;
 
         // And actually really apply it now.
         self.qs_write.modify_apply(au, mp).map_err(|e| {
-            lrequest_error!(au, "error -> {:?}", e);
+            request_error!(error = ?e);
             e
         })?;
 
@@ -1402,7 +1370,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<String, OperationError> {
         // name to uuid
         let target = self.qs_write.name_to_uuid(au, name).map_err(|e| {
-            ladmin_error!(au, "name to uuid failed {:?}", e);
+            admin_error!(?e, "name to uuid failed");
             e
         })?;
 
@@ -1415,10 +1383,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .gen_generatedpassword_recover_mod(&cleartext, self.crypto_policy)
             .map_err(|e| {
-                ladmin_error!(au, "Failed to generate password mod {:?}", e);
+                admin_error!("Failed to generate password mod {:?}", e);
                 e
             })?;
-        ltrace!(au, "processing change {:?}", modlist);
+        trace!(?modlist, "processing change");
 
         self.qs_write
             .internal_modify(
@@ -1428,7 +1396,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &modlist,
             )
             .map_err(|e| {
-                lrequest_error!(au, "error -> {:?}", e);
+                request_error!(error = ?e);
                 e
             })?;
 
@@ -1455,11 +1423,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .gen_generatedpassword_recover_mod(cleartext.as_str(), self.crypto_policy)
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate password mod {:?}", e);
+                admin_error!("Unable to generate password mod {:?}", e);
                 e
             })?;
 
-        ltrace!(au, "processing change {:?}", modlist);
+        trace!(?modlist, "processing change");
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
         self.qs_write
@@ -1475,7 +1443,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .map(|_| cleartext)
             .map_err(|e| {
-                ladmin_error!(au, "Failed to generate account password {:?}", e);
+                admin_error!("Failed to generate account password {:?}", e);
                 e
             })
     }
@@ -1496,11 +1464,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .gen_backup_code_mod(BackupCodes::new(s.clone()))
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
+                admin_error!("Unable to generate backup code mod {:?}", e);
                 e
             })?;
 
-        ltrace!(au, "processing change {:?}", modlist);
+        trace!(?modlist, "processing change");
         // given the new credential generate a modify
         // We use impersonate here to get the event from ae
         self.qs_write
@@ -1516,7 +1484,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
             .map(|_| s.into_iter().collect())
             .map_err(|e| {
-                ladmin_error!(au, "Failed to generate backup code {:?}", e);
+                admin_error!("Failed to generate backup code {:?}", e);
                 e
             })
     }
@@ -1527,11 +1495,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         rte: &RemoveBackupCodeEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
-        ltrace!(au, "Attempting to remove backup code -> {:?}", rte.target);
+        trace!(target = ?rte.target, "Attempting to remove backup code");
 
         let account = self.target_to_account(au, &rte.target)?;
         let modlist = account.gen_backup_code_remove_mod().map_err(|e| {
-            ladmin_error!(au, "Failed to gen backup code remove mod {:?}", e);
+            admin_error!("Failed to gen backup code remove mod {:?}", e);
             e
         })?;
         // Perform the mod
@@ -1546,7 +1514,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &rte.ident,
             )
             .map_err(|e| {
-                ladmin_error!(au, "remove_backup_code {:?}", e);
+                admin_error!("remove_backup_code {:?}", e);
                 e
             })
             .map(|_| SetCredentialResponse::Success)
@@ -1568,10 +1536,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .regenerate_radius_secret_mod(cleartext.as_str())
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate radius secret mod {:?}", e);
+                admin_error!("Unable to generate radius secret mod {:?}", e);
                 e
             })?;
-        ltrace!(au, "processing change {:?}", modlist);
+        trace!(?modlist, "processing change");
 
         // Apply it.
         self.qs_write
@@ -1586,7 +1554,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &rrse.ident,
             )
             .map_err(|e| {
-                lrequest_error!(au, "error -> {:?}", e);
+                request_error!(error = ?e);
                 e
             })
             .map(|_| cleartext)
@@ -1612,7 +1580,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        ltrace!(au, "Start mfa reg session -> {:?}", sessionid);
+        trace!(?sessionid, "Start mfa reg session");
         Ok(next)
     }
 
@@ -1633,21 +1601,21 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .remove(&sessionid)
             .ok_or(OperationError::InvalidState)
             .map_err(|e| {
-                ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
+                admin_error!("Failed to register webauthn -> {:?}", e);
                 e
             })?;
 
         let (next, wan_cred) = session
             .webauthn_step(au, &origin, &wre.target, &wre.chal, webauthn)
             .map_err(|e| {
-                ladmin_error!(au, "Failed to register webauthn -> {:?}", e);
+                admin_error!("Failed to register webauthn -> {:?}", e);
                 OperationError::Webauthn
             })?;
 
         if let (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred))) = (&next, wan_cred) {
             // Persist the credential
             let modlist = session.account.gen_webauthn_mod(label, cred).map_err(|e| {
-                ladmin_error!(au, "Failed to gen webauthn mod {:?}", e);
+                admin_error!("Failed to gen webauthn mod {:?}", e);
                 e
             })?;
             // Perform the mod
@@ -1662,7 +1630,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     &wre.ident,
                 )
                 .map_err(|e| {
-                    ladmin_error!(au, "reg_account_webauthn_complete {:?}", e);
+                    admin_error!("reg_account_webauthn_complete {:?}", e);
                     e
                 })?;
         }
@@ -1677,8 +1645,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         rwe: &RemoveWebauthnEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
-        ltrace!(
-            au,
+        trace!(
             "Attempting to remove webauthn {:?} -> {:?}",
             rwe.label,
             rwe.target
@@ -1688,7 +1655,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .gen_webauthn_remove_mod(rwe.label.as_str())
             .map_err(|e| {
-                ladmin_error!(au, "Failed to gen webauthn remove mod {:?}", e);
+                admin_error!("Failed to gen webauthn remove mod {:?}", e);
                 e
             })?;
         // Perform the mod
@@ -1703,7 +1670,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &rwe.ident,
             )
             .map_err(|e| {
-                ladmin_error!(au, "remove_account_webauthn {:?}", e);
+                admin_error!("remove_account_webauthn {:?}", e);
                 e
             })
             .map(|_| SetCredentialResponse::Success)
@@ -1721,7 +1688,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let origin = (&gte.ident.origin).into();
         let (session, next) = MfaRegSession::totp_new(origin, account).map_err(|e| {
-            ladmin_error!(au, "Unable to start totp MfaRegSession {:?}", e);
+            admin_error!("Unable to start totp MfaRegSession {:?}", e);
             e
         })?;
 
@@ -1729,7 +1696,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Add session to tree
         self.mfareg_sessions.insert(sessionid, session);
-        ltrace!(au, "Start mfa reg session -> {:?}", sessionid);
+        trace!(?sessionid, "Start mfa reg session");
         Ok(next)
     }
 
@@ -1744,7 +1711,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let origin = (&vte.ident.origin).into();
         let chal = vte.chal;
 
-        ltrace!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
+        trace!(?sessionid, "Attempting to find mfareg_session");
 
         let (next, opt_cred) = self
             .mfareg_sessions
@@ -1752,7 +1719,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .ok_or(OperationError::InvalidRequestState)
             .and_then(|session| session.totp_step(&origin, &vte.target, chal, &ct))
             .map_err(|e| {
-                ladmin_error!(au, "Failed to verify totp {:?}", e);
+                admin_error!("Failed to verify totp {:?}", e);
                 e
             })?;
 
@@ -1763,12 +1730,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .remove(&sessionid)
                 .ok_or(OperationError::InvalidState)
                 .map_err(|e| {
-                    ladmin_error!(au, "Session within transaction vanished!");
+                    admin_error!("Session within transaction vanished!");
                     e
                 })?;
             // reg the token
             let modlist = session.account.gen_totp_mod(token).map_err(|e| {
-                ladmin_error!(au, "Failed to gen totp mod {:?}", e);
+                admin_error!("Failed to gen totp mod {:?}", e);
                 e
             })?;
             // Perform the mod
@@ -1783,7 +1750,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     &vte.ident,
                 )
                 .map_err(|e| {
-                    ladmin_error!(au, "verify_account_totp {:?}", e);
+                    admin_error!("verify_account_totp {:?}", e);
                     e
                 })?;
         };
@@ -1801,7 +1768,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = aste.session;
         let origin = (&aste.ident.origin).into();
 
-        ltrace!(au, "Attempting to find mfareg_session -> {:?}", sessionid);
+        trace!(?sessionid, "Attempting to find mfareg_session");
 
         let (next, opt_cred) = self
             .mfareg_sessions
@@ -1809,7 +1776,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .ok_or(OperationError::InvalidRequestState)
             .and_then(|session| session.totp_accept_sha1(&origin, &aste.target))
             .map_err(|e| {
-                ladmin_error!(au, "Failed to accept sha1 totp {:?}", e);
+                admin_error!("Failed to accept sha1 totp {:?}", e);
                 e
             })?;
 
@@ -1820,12 +1787,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .remove(&sessionid)
                 .ok_or(OperationError::InvalidState)
                 .map_err(|e| {
-                    ladmin_error!(au, "Session within transaction vanished!");
+                    admin_error!("Session within transaction vanished!");
                     e
                 })?;
             // reg the token
             let modlist = session.account.gen_totp_mod(token).map_err(|e| {
-                ladmin_error!(au, "Failed to gen totp mod {:?}", e);
+                admin_error!("Failed to gen totp mod {:?}", e);
                 e
             })?;
             // Perform the mod
@@ -1840,7 +1807,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     &aste.ident,
                 )
                 .map_err(|e| {
-                    ladmin_error!(au, "accept_account_sha1_totp {:?}", e);
+                    admin_error!("accept_account_sha1_totp {:?}", e);
                     e
                 })?;
         };
@@ -1855,11 +1822,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         au: &mut AuditScope,
         rte: &RemoveTotpEvent,
     ) -> Result<SetCredentialResponse, OperationError> {
-        ltrace!(au, "Attempting to remove totp -> {:?}", rte.target);
+        trace!(target = ?rte.target, "Attempting to remove totp");
 
         let account = self.target_to_account(au, &rte.target)?;
         let modlist = account.gen_totp_remove_mod().map_err(|e| {
-            ladmin_error!(au, "Failed to gen totp remove mod {:?}", e);
+            admin_error!("Failed to gen totp remove mod {:?}", e);
             e
         })?;
         // Perform the mod
@@ -1874,7 +1841,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 &rte.ident,
             )
             .map_err(|e| {
-                ladmin_error!(au, "remove_account_totp {:?}", e);
+                admin_error!("remove_account_totp {:?}", e);
                 e
             })
             .map(|_| SetCredentialResponse::Success)
@@ -1899,7 +1866,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
                 .map_err(|e| {
                     admin_error!("Unable to generate password mod {:?}", e);
-                    ladmin_error!(au, "Unable to generate password mod {:?}", e);
                     e
                 })?;
 
@@ -1927,7 +1893,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                 UnixUserAccount::try_from_entry_rw(au, &account_entry, &mut self.qs_write)
             })
             .map_err(|e| {
-                ladmin_error!(au, "Failed to start unix pw upgrade -> {:?}", e);
+                admin_error!("Failed to start unix pw upgrade -> {:?}", e);
                 e
             })?;
 
@@ -1937,7 +1903,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let modlist = account
                 .gen_password_mod(pwu.existing_password.as_str(), self.crypto_policy)
                 .map_err(|e| {
-                    ladmin_error!(au, "Unable to generate password mod {:?}", e);
+                    admin_error!("Unable to generate password mod {:?}", e);
                     e
                 })?;
 
@@ -1963,7 +1929,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let opt_modlist = account
             .gen_webauthn_counter_mod(&wci.cid, wci.counter)
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate webauthn counter mod {:?}", e);
+                admin_error!("Unable to generate webauthn counter mod {:?}", e);
                 e
             })?;
 
@@ -1975,7 +1941,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             )
         } else {
             // No mod needed.
-            ltrace!(au, "No modification required");
+            trace!("No modification required");
             Ok(())
         }
     }
@@ -1991,7 +1957,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let modlist = account
             .invalidate_backup_code_mod(&bcr.code_to_remove)
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate backup code mod {:?}", e);
+                admin_error!("Unable to generate backup code mod {:?}", e);
                 e
             })?;
 
@@ -2020,29 +1986,25 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     // TODO: tracing
     pub fn commit(mut self, au: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_trace_segment!(
-            au,
-            "idm::server::IdmServerProxyWriteTransaction::commit",
-            || {
-                if self
-                    .qs_write
-                    .get_changed_uuids()
-                    .contains(&UUID_SYSTEM_CONFIG)
-                {
-                    self.reload_password_badlist(au)?;
-                };
-                if self.qs_write.get_changed_ouath2() {
-                    self.qs_write
-                        .get_oauth2rs_set(au)
-                        .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
-                }
-                // Commit everything.
-                self.oauth2rs.commit();
-                self.pw_badlist_cache.commit();
-                self.mfareg_sessions.commit();
-                self.qs_write.commit(au)
+        spanned!("idm::server::IdmServerProxyWriteTransaction::commit", {
+            if self
+                .qs_write
+                .get_changed_uuids()
+                .contains(&UUID_SYSTEM_CONFIG)
+            {
+                self.reload_password_badlist(au)?;
+            };
+            if self.qs_write.get_changed_ouath2() {
+                self.qs_write
+                    .get_oauth2rs_set(au)
+                    .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
             }
-        )
+            // Commit everything.
+            self.oauth2rs.commit();
+            self.pw_badlist_cache.commit();
+            self.mfareg_sessions.commit();
+            self.qs_write.commit(au)
+        })
     }
 
     // TODO: tracing

@@ -259,22 +259,18 @@ impl Oauth2ResourceServersReadTransaction {
         // * is within it's valid time window.
 
         if auth_req.response_type != "code" {
-            ladmin_warning!(audit, "Invalid oauth2 response_type (should be 'code')");
+            admin_warn!("Invalid oauth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
 
         // CodeChallengeMethod must be S256
         if auth_req.code_challenge_method != CodeChallengeMethod::S256 {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 code_challenge_method (must be 'S256')"
-            );
+            admin_warn!("Invalid oauth2 code_challenge_method (must be 'S256')");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         let o2rs = self.inner.rs_set.get(&auth_req.client_id).ok_or_else(|| {
-            ladmin_warning!(
-                audit,
+            admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );
             Oauth2Error::InvalidRequest
@@ -293,10 +289,9 @@ impl Oauth2ResourceServersReadTransaction {
             Oauth2RS::Basic(rsbasic) => {
                 // redirect_uri must be part of the client_id origin.
                 if auth_req.redirect_uri.origin() != rsbasic.origin {
-                    ladmin_warning!(
-                        audit,
-                        "Invalid oauth2 redirect_uri (must be related to origin of {:?})",
-                        rsbasic.origin
+                    admin_warn!(
+                        origin = ?rsbasic.origin,
+                        "Invalid oauth2 redirect_uri (must be related to origin of)"
                     );
                     return Err(Oauth2Error::InvalidRequest);
                 }
@@ -313,7 +308,7 @@ impl Oauth2ResourceServersReadTransaction {
         };
 
         let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
-            ladmin_error!(audit, "Unable to encode consent data {:?}", e);
+            admin_error!(err = ?e, "Unable to encode consent data");
             Oauth2Error::ServerError(OperationError::SerdeJsonError)
         })?;
 
@@ -343,31 +338,25 @@ impl Oauth2ResourceServersReadTransaction {
             .fernet
             .decrypt_at_time(consent_token, Some(300), ct.as_secs())
             .map_err(|_| {
-                ladmin_error!(audit, "Failed to decrypt consent request");
+                admin_error!("Failed to decrypt consent request");
                 OperationError::CryptographyError
             })
             .and_then(|data| {
                 serde_json::from_slice(&data).map_err(|e| {
-                    ladmin_error!(audit, "Failed to deserialise consent request - {:?}", e);
+                    admin_error!(err = ?e, "Failed to deserialise consent request");
                     OperationError::SerdeJsonError
                 })
             })?;
 
         // Validate that the ident_id matches our current ident.
         if consent_req.ident_id != ident.get_event_origin_id() {
-            lsecurity!(
-                audit,
-                "consent request ident id does not match the identity of our UAT."
-            );
+            security_info!("consent request ident id does not match the identity of our UAT.");
             return Err(OperationError::InvalidSessionState);
         }
 
         // Validate that the session id matches our uat.
         if consent_req.session_id != uat.session_id {
-            lsecurity!(
-                audit,
-                "consent request sessien id does not match the session id of our UAT."
-            );
+            security_info!("consent request sessien id does not match the session id of our UAT.");
             return Err(OperationError::InvalidSessionState);
         }
 
@@ -375,7 +364,7 @@ impl Oauth2ResourceServersReadTransaction {
         let o2rs_fernet = match self.inner.rs_set.get(&consent_req.client_id) {
             Some(Oauth2RS::Basic(rsbasic)) => &rsbasic.token_fernet,
             None => {
-                ladmin_error!(audit, "Invalid consent request oauth2 client_id");
+                admin_error!("Invalid consent request oauth2 client_id");
                 return Err(OperationError::InvalidRequestState);
             }
         };
@@ -390,7 +379,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Encrypt the exchange token with the fernet key of the client resource server
         let code_data = serde_json::to_vec(&xchg_code).map_err(|e| {
-            ladmin_error!(audit, "Unable to encode xchg_code data {:?}", e);
+            admin_error!(err = ?e, "Unable to encode xchg_code data");
             OperationError::SerdeJsonError
         })?;
 
@@ -411,22 +400,19 @@ impl Oauth2ResourceServersReadTransaction {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         if token_req.grant_type != "authorization_code" {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 grant_type (should be 'authorization_code')"
-            );
+            admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         // Check the client_authz
         let authz = base64::decode(&client_authz)
             .map_err(|_| {
-                ladmin_error!(audit, "Basic authz invalid base64");
+                admin_error!("Basic authz invalid base64");
                 Oauth2Error::AuthenticationRequired
             })
             .and_then(|data| {
                 String::from_utf8(data).map_err(|_| {
-                    ladmin_error!(audit, "Basic authz invalid utf8");
+                    admin_error!("Basic authz invalid utf8");
                     Oauth2Error::AuthenticationRequired
                 })
             })?;
@@ -436,17 +422,17 @@ impl Oauth2ResourceServersReadTransaction {
         let mut split_iter = authz.split(':');
 
         let client_id = split_iter.next().ok_or_else(|| {
-            ladmin_error!(audit, "Basic authz invalid format (corrupt input?)");
+            admin_error!("Basic authz invalid format (corrupt input?)");
             Oauth2Error::AuthenticationRequired
         })?;
         let secret = split_iter.next().ok_or_else(|| {
-            ladmin_error!(audit, "Basic authz invalid format (missing ':' seperator?)");
+            admin_error!("Basic authz invalid format (missing ':' seperator?)");
             Oauth2Error::AuthenticationRequired
         })?;
 
         // Get the o2rs for the handle.
         let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
-            ladmin_warning!(audit, "Invalid oauth2 client_id");
+            admin_warn!("Invalid oauth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
 
@@ -454,7 +440,7 @@ impl Oauth2ResourceServersReadTransaction {
         let o2rs_fernet = match o2rs {
             Oauth2RS::Basic(rsbasic) => {
                 if rsbasic.authz_secret != secret {
-                    lsecurity!(audit, "Invalid oauth2 client_id secret");
+                    security_info!("Invalid oauth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
                 // We are authenticated! Yay! Now we can actually check things ...
@@ -468,12 +454,12 @@ impl Oauth2ResourceServersReadTransaction {
         let code_xchg: TokenExchangeCode = o2rs_fernet
             .decrypt_at_time(&token_req.code, Some(60), ct.as_secs())
             .map_err(|_| {
-                ladmin_error!(audit, "Failed to decrypt token exchange request");
+                admin_error!("Failed to decrypt token exchange request");
                 Oauth2Error::InvalidRequest
             })
             .and_then(|data| {
                 serde_json::from_slice(&data).map_err(|e| {
-                    ladmin_error!(audit, "Failed to deserialise token exchange code - {:?}", e);
+                    admin_error!("Failed to deserialise token exchange code - {:?}", e);
                     Oauth2Error::InvalidRequest
                 })
             })?;
@@ -484,19 +470,13 @@ impl Oauth2ResourceServersReadTransaction {
         let code_verifier_hash: Vec<u8> = hasher.finish().iter().copied().collect();
 
         if code_xchg.code_challenge.0 != code_verifier_hash {
-            lsecurity!(
-                audit,
-                "PKCE code verification failed - this may indicate malicious activity"
-            );
+            security_info!("PKCE code verification failed - this may indicate malicious activity");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         // Validate the redirect_uri is the same as the original.
         if token_req.redirect_uri != code_xchg.redirect_uri {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 redirect_uri (differs from original request uri)"
-            );
+            security_info!("Invalid oauth2 redirect_uri (differs from original request uri)");
             return Err(Oauth2Error::InvalidRequest);
         }
 
@@ -508,8 +488,7 @@ impl Oauth2ResourceServersReadTransaction {
             // Becomes a duration.
             (code_xchg.uat.expiry - odt_ct).whole_seconds() as u32
         } else {
-            lsecurity!(
-                audit,
+            security_info!(
                 "User Auth Token has expired before we could publish the oauth2 response"
             );
             return Err(Oauth2Error::AccessDenied);
@@ -517,7 +496,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         let access_token = serde_json::to_vec(&code_xchg.uat)
             .map_err(|e| {
-                ladmin_error!(audit, "Unable to encode uat data {:?}", e);
+                admin_error!(err = ?e, "Unable to encode uat data");
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })
             .map(|data| o2rs_fernet.encrypt_at_time(&data, ct.as_secs()))?;

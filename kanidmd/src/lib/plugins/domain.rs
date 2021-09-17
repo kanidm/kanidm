@@ -9,6 +9,7 @@ use crate::plugins::Plugin;
 use crate::event::CreateEvent;
 use crate::prelude::*;
 use kanidm_proto::v1::OperationError;
+use tracing::trace;
 
 lazy_static! {
     static ref PVCLASS_DOMAIN_INFO: PartialValue = PartialValue::new_class("domain_info");
@@ -28,7 +29,7 @@ impl Plugin for Domain {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        ltrace!(au, "Entering plugin_domain pre_create_transform");
+        trace!("Entering plugin_domain pre_create_transform");
         cand.iter_mut().for_each(|e| {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
@@ -36,17 +37,17 @@ impl Plugin for Domain {
                 // We always set this, because the DB uuid is authorative.
                 let u = Value::new_uuid(qs.get_domain_uuid());
                 e.set_ava("domain_uuid", btreeset![u]);
-                ltrace!(au, "plugin_domain: Applying uuid transform");
+                trace!("plugin_domain: Applying uuid transform");
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
                     let n = Value::new_iname("example.com");
                     e.set_ava("domain_name", btreeset![n]);
-                    ltrace!(au, "plugin_domain: Applying domain_name transform");
+                    trace!("plugin_domain: Applying domain_name transform");
                 }
-                ltrace!(au, "{:?}", e);
+                trace!(?e);
             }
         });
-        ltrace!(au, "Ending plugin_domain pre_create_transform");
+        trace!("Ending plugin_domain pre_create_transform");
         Ok(())
     }
 }

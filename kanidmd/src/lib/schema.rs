@@ -108,14 +108,14 @@ impl SchemaAttribute {
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Convert entry to a schema attribute.
-        ltrace!(audit, "Converting -> {:?}", value);
+        trace!("Converting -> {:?}", value);
 
         // uuid
         let uuid = *value.get_uuid();
 
         // class
         if !value.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE) {
-            ladmin_error!(audit, "class attribute type not present - {:?}", uuid);
+            admin_error!("class attribute type not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing attributetype".to_string(),
             ));
@@ -126,7 +126,7 @@ impl SchemaAttribute {
             .get_ava_single_str("attributename")
             .map(|s| s.into())
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing attributename - {:?}", uuid);
+                admin_error!("missing attributename - {:?}", uuid);
                 OperationError::InvalidSchemaState("missing attributename".to_string())
             })?;
         // description
@@ -134,17 +134,17 @@ impl SchemaAttribute {
             .get_ava_single_str("description")
             .map(|s| s.to_string())
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing description - {}", name);
+                admin_error!("missing description - {}", name);
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
         // multivalue
         let multivalue = value.get_ava_single_bool("multivalue").ok_or_else(|| {
-            ladmin_error!(audit, "missing multivalue - {}", name);
+            admin_error!("missing multivalue - {}", name);
             OperationError::InvalidSchemaState("missing multivalue".to_string())
         })?;
         let unique = value.get_ava_single_bool("unique").ok_or_else(|| {
-            ladmin_error!(audit, "missing unique - {}", name);
+            admin_error!("missing unique - {}", name);
             OperationError::InvalidSchemaState("missing unique".to_string())
         })?;
         let phantom = value.get_ava_single_bool("phantom").unwrap_or(false);
@@ -152,7 +152,7 @@ impl SchemaAttribute {
         // even if empty, it SHOULD be present ... (is that valid to put an empty set?)
         // The get_ava_opt_index handles the optional case for us :)
         let index = value.get_ava_opt_index("index").ok_or_else(|| {
-            ladmin_error!(audit, "invalid index - {}", name);
+            admin_error!("invalid index - {}", name);
             OperationError::InvalidSchemaState("invalid index".to_string())
         })?;
         // syntax type
@@ -160,7 +160,7 @@ impl SchemaAttribute {
             .get_ava_single_syntax("syntax")
             .cloned()
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing syntax - {}", name);
+                admin_error!("missing syntax - {}", name);
                 OperationError::InvalidSchemaState("missing syntax".to_string())
             })?;
 
@@ -295,12 +295,12 @@ impl SchemaClass {
         audit: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
-        ltrace!(audit, "Converting {:?}", value);
+        trace!("Converting {:?}", value);
         // uuid
         let uuid = *value.get_uuid();
         // Convert entry to a schema class.
         if !value.attribute_equality("class", &PVCLASS_CLASSTYPE) {
-            ladmin_error!(audit, "class classtype not present - {:?}", uuid);
+            admin_error!("class classtype not present - {:?}", uuid);
             return Err(OperationError::InvalidSchemaState(
                 "missing classtype".to_string(),
             ));
@@ -311,7 +311,7 @@ impl SchemaClass {
             .get_ava_single_str("classname")
             .map(AttrString::from)
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing classname - {:?}", uuid);
+                admin_error!("missing classname - {:?}", uuid);
                 OperationError::InvalidSchemaState("missing classname".to_string())
             })?;
         // description
@@ -319,7 +319,7 @@ impl SchemaClass {
             .get_ava_single_str("description")
             .map(String::from)
             .ok_or_else(|| {
-                ladmin_error!(audit, "missing description - {}", name);
+                admin_error!("missing description - {}", name);
                 OperationError::InvalidSchemaState("missing description".to_string())
             })?;
 
@@ -525,7 +525,7 @@ impl<'a> SchemaWriteTransaction<'a> {
     }
 
     pub fn generate_in_memory(&mut self, audit: &mut AuditScope) -> Result<(), OperationError> {
-        lperf_trace_segment!(audit, "schema::generate_in_memory", || {
+        spanned!("schema::generate_in_memory", {
             //
             self.classes.clear();
             self.attributes.clear();
@@ -1345,10 +1345,10 @@ impl<'a> SchemaWriteTransaction<'a> {
 
             let r = self.validate(audit);
             if r.is_empty() {
-                ladmin_info!(audit, "schema validate -> passed");
+                admin_info!("schema validate -> passed");
                 Ok(())
             } else {
-                ladmin_info!(audit, "schema validate -> errors {:?}", r);
+                admin_info!(err = ?r, "schema validate -> errors");
                 Err(OperationError::ConsistencyError(r))
             }
         })

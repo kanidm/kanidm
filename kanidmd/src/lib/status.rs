@@ -1,6 +1,7 @@
 //! An actor that shows the servers current status and statistics. (TODO).
 
 use crate::audit::AuditScope;
+use crate::prelude::*;
 use tokio::sync::mpsc::UnboundedSender as Sender;
 use uuid::Uuid;
 
@@ -23,7 +24,7 @@ impl StatusActor {
 
     pub async fn handle_request(&self, event: StatusRequestEvent) -> bool {
         let mut audit = AuditScope::new("status_handler", event.eventid, self.log_level);
-        ladmin_info!(&mut audit, "status handler complete");
+        admin_info!("status handler complete");
         self.log_tx.send(audit).unwrap_or_else(|_| {
             error!("CRITICAL: UNABLE TO COMMIT LOGS");
         });

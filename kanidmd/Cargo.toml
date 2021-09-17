@@ -92,11 +92,11 @@ smartstring = { version = "0.2", features = ["serde"] }
 validator = { version = "0.14" }
 
 touch = "0.0.1"
-filetime = "0.2.14"
+filetime = "0.2"
 
-tracing = { version = "0.1.26", features = ["attributes"] }
-tracing-subscriber = "0.2.19"
-tracing-serde = "0.1.2"
+tracing = { version = "0.1", features = ["attributes"] }
+tracing-subscriber = "0.2"
+tracing-serde = "0.1"
 
 [features]
 simd_support = [ "concread/simd_support" ]
