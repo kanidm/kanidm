@@ -613,7 +613,6 @@ impl IdlSqliteWriteTransaction {
     /*
     pub fn write_identries<'b, I>(
         &'b self,
-        au: &mut AuditScope,
         entries: I,
     ) -> Result<(), OperationError>
     where
@@ -637,7 +636,6 @@ impl IdlSqliteWriteTransaction {
     }
     */
 
-    // ! TRACING INTEGRATED
     pub fn write_identry(
         &self,
         entry: &Entry<EntrySealed, EntryCommitted>,
@@ -653,7 +651,6 @@ impl IdlSqliteWriteTransaction {
         self.write_identries_raw(raw_entries)
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_identries_raw<I>(&self, mut entries: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = IdRawEntry>,
@@ -677,7 +674,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     /*
-    pub fn delete_identries<I>(&self, au: &mut AuditScope, mut idl: I) -> Result<(), OperationError>
+    pub fn delete_identries<I>(&self, mut idl: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = u64>,
     {

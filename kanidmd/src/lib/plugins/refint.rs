@@ -28,13 +28,12 @@ pub struct ReferentialIntegrity;
 
 impl ReferentialIntegrity {
     fn check_uuids_exist(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         inner: Vec<PartialValue>,
     ) -> Result<(), OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
-            ladmin_info!(au, "no reference types modified, skipping check");
+            admin_info!("no reference types modified, skipping check");
             return Ok(());
         }
 
@@ -44,8 +43,8 @@ impl ReferentialIntegrity {
         // will fail. This will return the union of the inclusion after the
         // operationn.
         let filt_in = filter!(f_inc(inner));
-        let b = qs.internal_exists(au, filt_in).map_err(|e| {
-            ladmin_error!(au, "internal exists failure -> {:?}", e);
+        let b = qs.internal_exists(filt_in).map_err(|e| {
+            admin_error!(err = ?e, "internal exists failure");
             e
         })?;
 
@@ -53,8 +52,7 @@ impl ReferentialIntegrity {
         if b {
             Ok(())
         } else {
-            ladmin_error!(
-                au,
+            admin_error!(
                 "UUID reference set size differs from query result size <fast path, no uuid info available>"
             );
             Err(OperationError::Plugin(PluginError::ReferentialIntegrity(
@@ -84,7 +82,6 @@ impl Plugin for ReferentialIntegrity {
     // in complex scenarioes - It actually simplifies the check from "could
     // be in cand AND db" to simply "is it in the DB?".
     fn post_create(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
@@ -112,19 +109,18 @@ impl Plugin for ReferentialIntegrity {
                 });
                 Ok(())
             } else {
-                ladmin_error!(au, "reference value could not convert to reference uuid.");
-                ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                admin_error!("reference value could not convert to reference uuid.");
+                admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                 Err(OperationError::InvalidAttribute(
                     "uuid could not become reference value".to_string(),
                 ))
             }
         })?;
 
-        Self::check_uuids_exist(au, qs, i)
+        Self::check_uuids_exist(qs, i)
     }
 
     fn post_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         _pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         _cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -148,8 +144,8 @@ impl Plugin for ReferentialIntegrity {
             v.to_ref_uuid()
                 .map(|uuid| PartialValue::new_uuid(*uuid))
                 .ok_or_else(|| {
-                    ladmin_error!(au, "reference value could not convert to reference uuid.");
-                    ladmin_error!(au, "If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
+                    admin_error!("reference value could not convert to reference uuid.");
+                    admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                     OperationError::InvalidAttribute(
                         "uuid could not become reference value".to_string(),
                     )
@@ -160,11 +156,10 @@ impl Plugin for ReferentialIntegrity {
 
         let i = i?;
 
-        Self::check_uuids_exist(au, qs, i)
+        Self::check_uuids_exist(qs, i)
     }
 
     fn post_delete(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
@@ -195,14 +190,14 @@ impl Plugin for ReferentialIntegrity {
                 .collect(),
         ));
 
-        ltrace!(au, "refint post_delete filter {:?}", filt);
+        trace!("refint post_delete filter {:?}", filt);
 
         let removed_ids: BTreeSet<_> = cand
             .iter()
             .map(|e| PartialValue::new_refer(*e.get_uuid()))
             .collect();
 
-        let work_set = qs.internal_search_writeable(au, &filt)?;
+        let work_set = qs.internal_search_writeable(&filt)?;
 
         let (pre_candidates, candidates) = work_set
             .into_iter()
@@ -214,19 +209,16 @@ impl Plugin for ReferentialIntegrity {
             })
             .unzip();
 
-        qs.internal_batch_modify(au, pre_candidates, candidates)
+        qs.internal_batch_modify(pre_candidates, candidates)
     }
 
-    fn verify(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Get all entries as cand
         //      build a cand-uuid set
         let filt_in = filter_all!(f_pres("class"));
 
         let all_cand = match qs
-            .internal_search(au, filt_in)
+            .internal_search(filt_in)
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(all_cand) => all_cand,
@@ -295,7 +287,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -332,12 +324,12 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(
-                        au,
-                        filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
-                    )
+                    .internal_search(filter!(f_eq(
+                        "name",
+                        PartialValue::new_iname("testgroup_b")
+                    )))
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -368,12 +360,9 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 let cands = qs
-                    .internal_search(
-                        au,
-                        filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
-                    )
+                    .internal_search(filter!(f_eq("name", PartialValue::new_iname("testgroup"))))
                     .expect("Internal search failure");
                 let _ue = cands.first().expect("No cand");
             }
@@ -415,7 +404,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -445,7 +434,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -493,7 +482,7 @@ mod tests {
                 ),
             ]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -530,7 +519,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             ModifyList::new_list(vec![Modify::Purged(AttrString::from("member"))]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -559,7 +548,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -600,7 +589,7 @@ mod tests {
                 Value::new_refer_s("d2b496bd-8493-47b7-8142-f568b5cf47ee").unwrap()
             )]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -638,7 +627,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_a"))),
             None,
-            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
+            |_qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -680,7 +669,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
+            |_qs: &QueryServerWriteTransaction| {}
         );
     }
 
@@ -706,7 +695,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
-            |_au: &mut AuditScope, _qs: &QueryServerWriteTransaction| {}
+            |_qs: &QueryServerWriteTransaction| {}
         );
     }
 }

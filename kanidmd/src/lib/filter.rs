@@ -487,53 +487,48 @@ impl Filter<FilterInvalid> {
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
     // ! TRACING INTEGRATED
     pub fn from_ro(
-        audit: &mut AuditScope,
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
         spanned!("filer::from_ro", {
-            lperf_trace_segment!(audit, "filter::from_ro", || {
-                let depth = FILTER_DEPTH_MAX;
-                let mut elems = ev.limits.filter_max_elements;
-                Ok(Filter {
-                    state: FilterInvalid {
-                        inner: FilterComp::from_ro(audit, f, qs, depth, &mut elems)?,
-                    },
-                })
+            let depth = FILTER_DEPTH_MAX;
+            let mut elems = ev.limits.filter_max_elements;
+            Ok(Filter {
+                state: FilterInvalid {
+                    inner: FilterComp::from_ro(f, qs, depth, &mut elems)?,
+                },
             })
         })
     }
 
     pub fn from_rw(
-        audit: &mut AuditScope,
         ev: &Identity,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(audit, "filter::from_rw", || {
+        spanned!("filter::from_rw", {
             let depth = FILTER_DEPTH_MAX;
             let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
                 state: FilterInvalid {
-                    inner: FilterComp::from_rw(audit, f, qs, depth, &mut elems)?,
+                    inner: FilterComp::from_rw(f, qs, depth, &mut elems)?,
                 },
             })
         })
     }
 
     pub fn from_ldap_ro(
-        audit: &mut AuditScope,
         ev: &Identity,
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
-        lperf_trace_segment!(audit, "filter::from_ldap_ro", || {
+        spanned!("filter::from_ldap_ro", {
             let depth = FILTER_DEPTH_MAX;
             let mut elems = ev.limits.filter_max_elements;
             Ok(Filter {
                 state: FilterInvalid {
-                    inner: FilterComp::from_ldap_ro(audit, f, qs, depth, &mut elems)?,
+                    inner: FilterComp::from_ldap_ro(f, qs, depth, &mut elems)?,
                 },
             })
         })
@@ -728,7 +723,6 @@ impl FilterComp {
 
     // ! TRACING INTEGRATED
     fn from_ro(
-        audit: &mut AuditScope,
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,
         depth: usize,
@@ -738,12 +732,12 @@ impl FilterComp {
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Eq(nk, v)
             }
             ProtoFilter::Sub(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Sub(nk, v)
             }
             ProtoFilter::Pres(a) => {
@@ -756,7 +750,7 @@ impl FilterComp {
                     .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::Or(
                     l.iter()
-                        .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
+                        .map(|f| Self::from_ro(f, qs, ndepth, elems))
                         .collect::<Result<Vec<_>, _>>()?,
                 )
             }
@@ -766,7 +760,7 @@ impl FilterComp {
                     .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::And(
                     l.iter()
-                        .map(|f| Self::from_ro(audit, f, qs, ndepth, elems))
+                        .map(|f| Self::from_ro(f, qs, ndepth, elems))
                         .collect::<Result<Vec<_>, _>>()?,
                 )
             }
@@ -774,14 +768,13 @@ impl FilterComp {
                 *elems = (*elems)
                     .checked_sub(1)
                     .ok_or(OperationError::ResourceLimit)?;
-                FilterComp::AndNot(Box::new(Self::from_ro(audit, l, qs, ndepth, elems)?))
+                FilterComp::AndNot(Box::new(Self::from_ro(l, qs, ndepth, elems)?))
             }
             ProtoFilter::SelfUuid => FilterComp::SelfUuid,
         })
     }
 
     fn from_rw(
-        audit: &mut AuditScope,
         f: &ProtoFilter,
         qs: &QueryServerWriteTransaction,
         depth: usize,
@@ -791,12 +784,12 @@ impl FilterComp {
         Ok(match f {
             ProtoFilter::Eq(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Eq(nk, v)
             }
             ProtoFilter::Sub(a, v) => {
                 let nk = qs.get_schema().normalise_attr_name(a);
-                let v = qs.clone_partialvalue(audit, nk.as_str(), v)?;
+                let v = qs.clone_partialvalue(nk.as_str(), v)?;
                 FilterComp::Sub(nk, v)
             }
             ProtoFilter::Pres(a) => {
@@ -809,7 +802,7 @@ impl FilterComp {
                     .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::Or(
                     l.iter()
-                        .map(|f| Self::from_rw(audit, f, qs, ndepth, elems))
+                        .map(|f| Self::from_rw(f, qs, ndepth, elems))
                         .collect::<Result<Vec<_>, _>>()?,
                 )
             }
@@ -819,7 +812,7 @@ impl FilterComp {
                     .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::And(
                     l.iter()
-                        .map(|f| Self::from_rw(audit, f, qs, ndepth, elems))
+                        .map(|f| Self::from_rw(f, qs, ndepth, elems))
                         .collect::<Result<Vec<_>, _>>()?,
                 )
             }
@@ -828,14 +821,13 @@ impl FilterComp {
                     .checked_sub(1)
                     .ok_or(OperationError::ResourceLimit)?;
 
-                FilterComp::AndNot(Box::new(Self::from_rw(audit, l, qs, ndepth, elems)?))
+                FilterComp::AndNot(Box::new(Self::from_rw(l, qs, ndepth, elems)?))
             }
             ProtoFilter::SelfUuid => FilterComp::SelfUuid,
         })
     }
 
     fn from_ldap_ro(
-        audit: &mut AuditScope,
         f: &LdapFilter,
         qs: &QueryServerReadTransaction,
         depth: usize,
@@ -849,7 +841,7 @@ impl FilterComp {
                     .ok_or(OperationError::ResourceLimit)?;
                 FilterComp::And(
                     l.iter()
-                        .map(|f| Self::from_ldap_ro(audit, f, qs, ndepth, elems))
+                        .map(|f| Self::from_ldap_ro(f, qs, ndepth, elems))
                         .collect::<Result<Vec<_>, _>>()?,
                 )
             }
@@ -860,7 +852,7 @@ impl FilterComp {
 
                 FilterComp::Or(
                     l.iter()
-                        .map(|f| Self::from_ldap_ro(audit, f, qs, ndepth, elems))
+                        .map(|f| Self::from_ldap_ro(f, qs, ndepth, elems))
                         .collect::<Result<Vec<_>, _>>()?,
                 )
             }
@@ -868,11 +860,11 @@ impl FilterComp {
                 *elems = (*elems)
                     .checked_sub(1)
                     .ok_or(OperationError::ResourceLimit)?;
-                FilterComp::AndNot(Box::new(Self::from_ldap_ro(audit, l, qs, ndepth, elems)?))
+                FilterComp::AndNot(Box::new(Self::from_ldap_ro(l, qs, ndepth, elems)?))
             }
             LdapFilter::Equality(a, v) => {
                 let a = ldap_attr_filter_map(a);
-                let v = qs.clone_partialvalue(audit, a.as_str(), v)?;
+                let v = qs.clone_partialvalue(a.as_str(), v)?;
                 FilterComp::Eq(a, v)
             }
             LdapFilter::Present(a) => FilterComp::Pres(ldap_attr_filter_map(a)),
@@ -885,7 +877,7 @@ impl FilterComp {
                 },
             ) => {
                 // let a = ldap_attr_filter_map(a);
-                ladmin_error!(audit, "Unable to convert ldapsubstringfilter to sub filter");
+                admin_error!("Unable to convert ldapsubstringfilter to sub filter");
                 return Err(OperationError::FilterGeneration);
             }
         })
@@ -1800,7 +1792,7 @@ mod tests {
 
     #[test]
     fn test_filter_resolve_value() {
-        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer| {
             let server_txn = server.write(duration_from_epoch_now());
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
                 r#"{
@@ -1833,39 +1825,39 @@ mod tests {
             }"#,
             );
             let ce = CreateEvent::new_internal(vec![e1, e2, e_ts]);
-            let cr = server_txn.create(audit, &ce);
+            let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
 
             // Resolving most times should yield expected results
             let t1 = ValueSet::new(Value::new_utf8s("teststring"));
-            let r1 = server_txn.resolve_valueset(audit, &t1);
+            let r1 = server_txn.resolve_valueset(&t1);
             assert!(r1 == Ok(vec!["teststring".to_string()]));
 
             // Resolve UUID with matching spn
             let t_uuid =
                 ValueSet::new(Value::new_refer_s("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
-            let r_uuid = server_txn.resolve_valueset(audit, &t_uuid);
+            let r_uuid = server_txn.resolve_valueset(&t_uuid);
             debug!("{:?}", r_uuid);
             assert!(r_uuid == Ok(vec!["testperson1@example.com".to_string()]));
 
             // Resolve UUID with matching name
             let t_uuid =
                 ValueSet::new(Value::new_refer_s("a67c0c71-0b35-4218-a6b0-22d23d131d27").unwrap());
-            let r_uuid = server_txn.resolve_valueset(audit, &t_uuid);
+            let r_uuid = server_txn.resolve_valueset(&t_uuid);
             debug!("{:?}", r_uuid);
             assert!(r_uuid == Ok(vec!["testperson2".to_string()]));
 
             // Resolve UUID non-exist
             let t_uuid_non =
                 ValueSet::new(Value::new_refer_s("b83e98f0-3d2e-41d2-9796-d8d993289c86").unwrap());
-            let r_uuid_non = server_txn.resolve_valueset(audit, &t_uuid_non);
+            let r_uuid_non = server_txn.resolve_valueset(&t_uuid_non);
             debug!("{:?}", r_uuid_non);
             assert!(r_uuid_non == Ok(vec!["b83e98f0-3d2e-41d2-9796-d8d993289c86".to_string()]));
 
             // Resolve UUID to tombstone/recycled (same an non-exst)
             let t_uuid_ts =
                 ValueSet::new(Value::new_refer_s("9557f49c-97a5-4277-a9a5-097d17eb8317").unwrap());
-            let r_uuid_ts = server_txn.resolve_valueset(audit, &t_uuid_ts);
+            let r_uuid_ts = server_txn.resolve_valueset(&t_uuid_ts);
             debug!("{:?}", r_uuid_ts);
             assert!(r_uuid_ts == Ok(vec!["9557f49c-97a5-4277-a9a5-097d17eb8317".to_string()]));
         })
@@ -1873,7 +1865,7 @@ mod tests {
 
     #[test]
     fn test_filter_depth_limits() {
-        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer| {
             let r_txn = server.read();
 
             let mut inv_proto = ProtoFilter::Pres("class".to_string());
@@ -1889,11 +1881,11 @@ mod tests {
             let ev = Identity::from_internal();
 
             // Test proto + read
-            let res = Filter::from_ro(audit, &ev, &inv_proto, &r_txn);
+            let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
             assert!(res == Err(OperationError::ResourceLimit));
 
             // ldap
-            let res = Filter::from_ldap_ro(audit, &ev, &inv_ldap, &r_txn);
+            let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
             assert!(res == Err(OperationError::ResourceLimit));
 
             // Can only have one db conn at a time.
@@ -1901,14 +1893,14 @@ mod tests {
 
             // proto + write
             let wr_txn = server.write(duration_from_epoch_now());
-            let res = Filter::from_rw(audit, &ev, &inv_proto, &wr_txn);
+            let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
             assert!(res == Err(OperationError::ResourceLimit));
         })
     }
 
     #[test]
     fn test_filter_max_element_limits() {
-        run_test!(|server: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|server: &QueryServer| {
             const LIMIT: usize = 4;
             let r_txn = server.read();
 
@@ -1928,11 +1920,11 @@ mod tests {
             ev.limits.filter_max_elements = LIMIT;
 
             // Test proto + read
-            let res = Filter::from_ro(audit, &ev, &inv_proto, &r_txn);
+            let res = Filter::from_ro(&ev, &inv_proto, &r_txn);
             assert!(res == Err(OperationError::ResourceLimit));
 
             // ldap
-            let res = Filter::from_ldap_ro(audit, &ev, &inv_ldap, &r_txn);
+            let res = Filter::from_ldap_ro(&ev, &inv_ldap, &r_txn);
             assert!(res == Err(OperationError::ResourceLimit));
 
             // Can only have one db conn at a time.
@@ -1940,7 +1932,7 @@ mod tests {
 
             // proto + write
             let wr_txn = server.write(duration_from_epoch_now());
-            let res = Filter::from_rw(audit, &ev, &inv_proto, &wr_txn);
+            let res = Filter::from_rw(&ev, &inv_proto, &wr_txn);
             assert!(res == Err(OperationError::ResourceLimit));
         })
     }

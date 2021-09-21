@@ -63,12 +63,11 @@ pub struct AccessControlSearch {
 
 impl AccessControlSearch {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality("class", &CLASS_ACS) {
-            ladmin_error!(audit, "class access_control_search not present.");
+            admin_error!("class access_control_search not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_search".to_string(),
             ));
@@ -77,13 +76,13 @@ impl AccessControlSearch {
         let attrs = value
             .get_ava_as_str("acp_search_attr")
             .ok_or_else(|| {
-                ladmin_error!(audit, "Missing acp_search_attr");
+                admin_error!("Missing acp_search_attr");
                 OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
             })?
             .map(AttrString::from)
             .collect();
 
-        let acp = AccessControlProfile::try_from(audit, qs, value)?;
+        let acp = AccessControlProfile::try_from(qs, value)?;
 
         Ok(AccessControlSearch { acp, attrs })
     }
@@ -118,19 +117,18 @@ pub struct AccessControlDelete {
 
 impl AccessControlDelete {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality("class", &CLASS_ACD) {
-            ladmin_error!(audit, "class access_control_delete not present.");
+            admin_error!("class access_control_delete not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_delete".to_string(),
             ));
         }
 
         Ok(AccessControlDelete {
-            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            acp: AccessControlProfile::try_from(qs, value)?,
         })
     }
 
@@ -161,12 +159,11 @@ pub struct AccessControlCreate {
 
 impl AccessControlCreate {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality("class", &CLASS_ACC) {
-            ladmin_error!(audit, "class access_control_create not present.");
+            admin_error!("class access_control_create not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_create".to_string(),
             ));
@@ -183,7 +180,7 @@ impl AccessControlCreate {
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlCreate {
-            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            acp: AccessControlProfile::try_from(qs, value)?,
             classes,
             attrs,
         })
@@ -221,12 +218,11 @@ pub struct AccessControlModify {
 
 impl AccessControlModify {
     pub fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         if !value.attribute_equality("class", &CLASS_ACM) {
-            ladmin_error!(audit, "class access_control_modify not present.");
+            admin_error!("class access_control_modify not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_modify".to_string(),
             ));
@@ -248,7 +244,7 @@ impl AccessControlModify {
             .unwrap_or_else(Vec::new);
 
         Ok(AccessControlModify {
-            acp: AccessControlProfile::try_from(audit, qs, value)?,
+            acp: AccessControlProfile::try_from(qs, value)?,
             classes,
             presattrs,
             remattrs,
@@ -298,13 +294,12 @@ struct AccessControlProfile {
 
 impl AccessControlProfile {
     fn try_from(
-        audit: &mut AuditScope,
         qs: &mut QueryServerWriteTransaction,
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {
         // Assert we have class access_control_profile
         if !value.attribute_equality("class", &CLASS_ACP) {
-            ladmin_error!(audit, "class access_control_profile not present.");
+            admin_error!("class access_control_profile not present.");
             return Err(OperationError::InvalidAcpState(
                 "Missing access_control_profile".to_string(),
             ));
@@ -314,7 +309,7 @@ impl AccessControlProfile {
         let name = value
             .get_ava_single_str("name")
             .ok_or_else(|| {
-                ladmin_error!(audit, "Missing name");
+                admin_error!("Missing name");
                 OperationError::InvalidAcpState("Missing name".to_string())
             })?
             .to_string();
@@ -326,7 +321,7 @@ impl AccessControlProfile {
             // .map(|pf| pf.clone())
             .cloned()
             .ok_or_else(|| {
-                ladmin_error!(audit, "Missing acp_receiver");
+                admin_error!("Missing acp_receiver");
                 OperationError::InvalidAcpState("Missing acp_receiver".to_string())
             })?;
         // targetscope, and turn to real filter
@@ -335,28 +330,28 @@ impl AccessControlProfile {
             // .map(|pf| pf.clone())
             .cloned()
             .ok_or_else(|| {
-                ladmin_error!(audit, "Missing acp_targetscope");
+                admin_error!("Missing acp_targetscope");
                 OperationError::InvalidAcpState("Missing acp_targetscope".to_string())
             })?;
 
         let ident = Identity::from_internal();
 
-        let receiver_i = Filter::from_rw(audit, &ident, &receiver_f, qs).map_err(|e| {
-            ladmin_error!(audit, "Receiver validation failed {:?}", e);
+        let receiver_i = Filter::from_rw(&ident, &receiver_f, qs).map_err(|e| {
+            admin_error!("Receiver validation failed {:?}", e);
             e
         })?;
         let receiver = receiver_i.validate(qs.get_schema()).map_err(|e| {
-            ladmin_error!(audit, "acp_receiver Schema Violation {:?}", e);
+            admin_error!("acp_receiver Schema Violation {:?}", e);
             OperationError::SchemaViolation(e)
         })?;
 
-        let targetscope_i = Filter::from_rw(audit, &ident, &targetscope_f, qs).map_err(|e| {
-            ladmin_error!(audit, "Targetscope validation failed {:?}", e);
+        let targetscope_i = Filter::from_rw(&ident, &targetscope_f, qs).map_err(|e| {
+            admin_error!("Targetscope validation failed {:?}", e);
             e
         })?;
 
         let targetscope = targetscope_i.validate(qs.get_schema()).map_err(|e| {
-            ladmin_error!(audit, "acp_targetscope Schema Violation {:?}", e);
+            admin_error!("acp_targetscope Schema Violation {:?}", e);
             OperationError::SchemaViolation(e)
         })?;
 
@@ -402,7 +397,6 @@ pub trait AccessControlsTransaction<'a> {
     // ! TRACING INTEGRATED
     fn search_related_acp<'b>(
         &'b self,
-        audit: &mut AuditScope,
         rec_entry: &Entry<EntrySealed, EntryCommitted>,
         se: &SearchEvent,
     ) -> Vec<&'b AccessControlSearch> {
@@ -424,7 +418,7 @@ pub trait AccessControlsTransaction<'a> {
 
         /*
         if let Some(acs_uuids) = acp_related_search_cache.get(rec_entry.get_uuid()) {
-            lperf_trace_segment!(audit, "access::search_related_acp<cached>", || {
+            lperf_trace_segment!( "access::search_related_acp<cached>", || {
                 // If we have a cache, we should look here first for all the uuids that match
 
                 // could this be a better algo?
@@ -438,48 +432,41 @@ pub trait AccessControlsTransaction<'a> {
         // else, we calculate this, and then stash/cache the uuids.
         let related_acp: Vec<&AccessControlSearch> =
             spanned!("access::search_related_acp<uncached>", {
-                lperf_trace_segment!(audit, "access::search_related_acp<uncached>", || {
-                    search_state
-                        .iter()
-                        // .filter_map(|(_, acs)| {
-                        .filter(|acs| {
-                            // Now resolve the receiver filter
-                            // Okay, so in filter resolution, the primary error case
-                            // is that we have a non-user in the event. We have already
-                            // checked for this above BUT we should still check here
-                            // properly just in case.
-                            //
-                            // In this case, we assume that if the event is internal
-                            // that the receiver can NOT match because it has no selfuuid
-                            // and can as a result, never return true. This leads to this
-                            // acp not being considered in that case ... which should never
-                            // happen because we already bypassed internal ops above!
-                            //
-                            // A possible solution is to change the filter resolve function
-                            // such that it takes an entry, rather than an event, but that
-                            // would create issues in search.
-                            match (&acs.acp.receiver).resolve(
-                                &se.ident,
-                                None,
-                                Some(acp_resolve_filter_cache),
-                            ) {
-                                Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
-                                Err(e) => {
-                                    admin_error!(
-                                        ?e,
-                                        "A internal filter/event was passed for resolution!?!?"
-                                    );
-                                    ladmin_error!(
-                                    audit,
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
+                search_state
+                    .iter()
+                    // .filter_map(|(_, acs)| {
+                    .filter(|acs| {
+                        // Now resolve the receiver filter
+                        // Okay, so in filter resolution, the primary error case
+                        // is that we have a non-user in the event. We have already
+                        // checked for this above BUT we should still check here
+                        // properly just in case.
+                        //
+                        // In this case, we assume that if the event is internal
+                        // that the receiver can NOT match because it has no selfuuid
+                        // and can as a result, never return true. This leads to this
+                        // acp not being considered in that case ... which should never
+                        // happen because we already bypassed internal ops above!
+                        //
+                        // A possible solution is to change the filter resolve function
+                        // such that it takes an entry, rather than an event, but that
+                        // would create issues in search.
+                        match (&acs.acp.receiver).resolve(
+                            &se.ident,
+                            None,
+                            Some(acp_resolve_filter_cache),
+                        ) {
+                            Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
+                            Err(e) => {
+                                admin_error!(
+                                    ?e,
+                                    "A internal filter/event was passed for resolution!?!?"
                                 );
-                                    false
-                                }
+                                false
                             }
-                        })
-                        .collect()
-                })
+                        }
+                    })
+                    .collect()
             });
 
         /*
@@ -494,10 +481,8 @@ pub trait AccessControlsTransaction<'a> {
     }
 
     // Contains all the way to eval acps to entries
-    // ! TRACING INTEGRATED
     fn search_filter_entries(
         &self,
-        audit: &mut AuditScope,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
@@ -505,66 +490,50 @@ pub trait AccessControlsTransaction<'a> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &se.ident.origin {
             IdentType::Internal => {
                 trace!("Internal operation, bypassing access check");
-                ltrace!(audit, "Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(entries);
             }
             IdentType::User(u) => &u.entry,
         };
         spanned!("access::search_filter_entries", {
-            lperf_segment!(audit, "access::search_filter_entries", || {
-                trace!(event = %se.ident, "Access check for search (filter) event");
-                ltrace!(
-                    audit,
-                    "Access check for search (filter) event: {}",
-                    se.ident
-                );
+            trace!(event = %se.ident, "Access check for search (filter) event");
 
-                // First get the set of acps that apply to this receiver
-                let related_acp = self.search_related_acp(audit, rec_entry, se);
-                let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
+            // First get the set of acps that apply to this receiver
+            let related_acp = self.search_related_acp(rec_entry, se);
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
-                let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
-                    .into_iter()
-                    .filter_map(|acs| {
-                        (&acs.acp.targetscope)
-                            .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                ladmin_error!(
-                                    audit,
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    })
-                    .collect();
+            let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
+                .into_iter()
+                .filter_map(|acs| {
+                    (&acs.acp.targetscope)
+                        .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "A internal filter/event was passed for resolution!?!?"
+                            );
+                            e
+                        })
+                        .ok()
+                        .map(|f_res| (acs, f_res))
+                })
+                .collect();
 
-                /*
-                related_acp.iter().for_each(|racp| {
-                    lsecurity_access!(audit, "Event Origin Related acs -> {:?}", racp.acp.name);
-                });
-                */
+            /*
+            related_acp.iter().for_each(|racp| {
+                security_access!(acs = ?racp.acp.name, "Event Origin Related acs");
+            });
+            */
 
-                // Get the set of attributes requested by this se filter. This is what we are
-                // going to access check.
-                let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
+            // Get the set of attributes requested by this se filter. This is what we are
+            // going to access check.
+            let requested_attrs: BTreeSet<&str> = se.filter_orig.get_attr_set();
 
-                // For each entry
-                let allowed_entries: Vec<Arc<EntrySealedCommitted>> = spanned!(
-                    "access::search_filter_entries<allowed_entries>",
-                    {
-                        lperf_segment!(
-                            audit,
-                            "access::search_filter_entries<allowed_entries>",
-                            || {
-                                entries
+            // For each entry
+            let allowed_entries: Vec<Arc<EntrySealedCommitted>> = spanned!(
+                "access::search_filter_entries<allowed_entries>",
+                {
+                    entries
                                     .into_iter()
                                     .filter(|e| {
                                         // For each acp
@@ -574,22 +543,10 @@ pub trait AccessControlsTransaction<'a> {
                                                 // if it applies
                                                 if e.entry_match_no_index(f_res) {
                                                     security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                                                    lsecurity_access!(
-                                                        audit,
-                                                        "entry {:?} matches acs {}",
-                                                        e.get_uuid(),
-                                                        acs.acp.name
-                                                    );
                                                     // add search_attrs to allowed.
                                                     Some(acs.attrs.iter().map(|s| s.as_str()))
                                                 } else {
                                                     trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
-                                                    ltrace!(
-                                                        audit,
-                                                        "entry {:?} DOES NOT match acs {}",
-                                                        e.get_uuid(),
-                                                        acs.acp.name
-                                                    );
                                                     None
                                                 }
                                             })
@@ -601,12 +558,6 @@ pub trait AccessControlsTransaction<'a> {
                                             allows = ?allowed_attrs,
                                             "attributes",
                                         );
-                                        lsecurity_access!(
-                                            audit,
-                                            "requested filter attributes --> {:?} allowed attributes   --> {:?}",
-                                            requested_attrs,
-                                            allowed_attrs
-                                        );
 
                                         // is attr set a subset of allowed set?
                                         // true -> entry is allowed in result set
@@ -614,32 +565,25 @@ pub trait AccessControlsTransaction<'a> {
                                         //          excluded.
                                         let decision = requested_attrs.is_subset(&allowed_attrs);
                                         security_access!(?decision, "search attr decision");
-                                        lsecurity_access!(audit, "search attr decision --> {:?}", decision);
                                         decision
                                     })
                                     .collect()
-                            }
-                        )
-                    }
-                );
-
-                if allowed_entries.is_empty() {
-                    security_access!("denied ❌");
-                    lsecurity_access!(audit, "denied ❌");
-                } else {
-                    security_access!("allowed {} entries ✅", allowed_entries.len());
-                    lsecurity_access!(audit, "allowed {} entries ✅", allowed_entries.len());
                 }
+            );
 
-                Ok(allowed_entries)
-            })
+            if allowed_entries.is_empty() {
+                security_access!("denied ❌");
+            } else {
+                security_access!("allowed {} entries ✅", allowed_entries.len());
+            }
+
+            Ok(allowed_entries)
         })
     }
 
     // ! TRACING INTEGRATED
     fn search_filter_entry_attributes(
         &self,
-        audit: &mut AuditScope,
         se: &SearchEvent,
         entries: Vec<Arc<EntrySealedCommitted>>,
     ) -> Result<Vec<Entry<EntryReduced, EntryCommitted>>, OperationError> {
@@ -648,7 +592,6 @@ pub trait AccessControlsTransaction<'a> {
             IdentType::Internal => {
                 if cfg!(test) {
                     trace!("TEST: Internal search in external interface - allowing due to cfg test ...");
-                    ltrace!(audit, "TEST: Internal search in external interface - allowing due to cfg test ...");
                     // In tests we just push everything back.
                     return Ok(entries
                         .into_iter()
@@ -658,7 +601,6 @@ pub trait AccessControlsTransaction<'a> {
                     // In production we can't risk leaking data here, so we return
                     // empty sets.
                     security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
-                    lsecurity_critical!(audit, "IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
                     // No need to check ACS
                     return Ok(Vec::new());
                 }
@@ -667,190 +609,141 @@ pub trait AccessControlsTransaction<'a> {
         };
 
         spanned!("access::search_filter_entry_attributes", {
-            lperf_segment!(audit, "access::search_filter_entry_attributes", || {
-                /*
-                 * Super similar to above (could even re-use some parts). Given a set of entries,
-                 * reduce the attribute sets on them to "what is visible". This is ONLY called on
-                 * the server edge, such that clients only see what they can, but internally,
-                 * impersonate and such actually still get the whole entry back as not to break
-                 * modify and co.
-                 */
+            /*
+             * Super similar to above (could even re-use some parts). Given a set of entries,
+             * reduce the attribute sets on them to "what is visible". This is ONLY called on
+             * the server edge, such that clients only see what they can, but internally,
+             * impersonate and such actually still get the whole entry back as not to break
+             * modify and co.
+             */
 
-                trace!("Access check for search (reduce) event: {}", se.ident);
-                ltrace!(
-                    audit,
-                    "Access check for search (reduce) event: {}",
-                    se.ident
-                );
-                let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
+            trace!("Access check for search (reduce) event: {}", se.ident);
+            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
-                // Get the relevant acps for this receiver.
-                let related_acp = self.search_related_acp(audit, rec_entry, se);
+            // Get the relevant acps for this receiver.
+            let related_acp = self.search_related_acp(rec_entry, se);
 
-                let related_acp: Vec<&AccessControlSearch> =
-                    if let Some(r_attrs) = se.attrs.as_ref() {
-                        related_acp
-                            .into_iter()
-                            .filter(|acs| !acs.attrs.is_disjoint(r_attrs))
-                            .collect()
-                    } else {
-                        related_acp
-                    };
-
-                // Compile all the target filters in one pass.
-                let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
+            let related_acp: Vec<&AccessControlSearch> = if let Some(r_attrs) = se.attrs.as_ref() {
+                related_acp
                     .into_iter()
-                    .filter_map(|acs| {
-                        (&acs.acp.targetscope)
-                            .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
-                            .map_err(|e| {
-                                admin_error!(
-                                    ?e,
-                                    "A internal filter/event was passed for resolution!?!?"
-                                );
-                                ladmin_error!(
-                                    audit,
-                                    "A internal filter/event was passed for resolution!?!? {:?}",
-                                    e
-                                );
-                                e
-                            })
-                            .ok()
-                            .map(|f_res| (acs, f_res))
-                    })
-                    .collect();
+                    .filter(|acs| !acs.attrs.is_disjoint(r_attrs))
+                    .collect()
+            } else {
+                related_acp
+            };
 
-                /*
-                related_acp.iter().for_each(|racp| {
-                    lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
-                });
-                */
+            // Compile all the target filters in one pass.
+            let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
+                .into_iter()
+                .filter_map(|acs| {
+                    (&acs.acp.targetscope)
+                        .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
+                        .map_err(|e| {
+                            admin_error!(
+                                ?e,
+                                "A internal filter/event was passed for resolution!?!?"
+                            );
+                            e
+                        })
+                        .ok()
+                        .map(|f_res| (acs, f_res))
+                })
+                .collect();
 
-                // Build a reference set from the req_attrs. This is what we test against
-                // to see if the attribute is something we currently want.
-                let req_attrs: Option<BTreeSet<_>> = se
-                    .attrs
-                    .as_ref()
-                    .map(|vs| vs.iter().map(|s| s.as_str()).collect());
+            /*
+            related_acp.iter().for_each(|racp| {
+                lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
+            });
+            */
 
-                //  For each entry
-                let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> = spanned!(
-                    "access::search_filter_entry_attributes<allowed_entries>",
-                    {
-                        lperf_segment!(
-                            audit,
-                            "access::search_filter_entry_attributes<allowed_entries>",
-                            || {
-                                entries
-                                    .into_iter()
-                                    .map(|e| {
-                                        // Get the set of attributes you can see for this entry
-                                        // this is within your related acp scope.
-                                        let allowed_attrs: BTreeSet<&str> = related_acp
-                                            .iter()
-                                            .filter_map(|(acs, f_res)| {
-                                                if e.entry_match_no_index(f_res) {
-                                                    security_access!(
-                                                        target = ?e.get_uuid(),
-                                                        acs = %acs.acp.name,
-                                                        "target entry matches acs",
-                                                    );
-                                                    lsecurity_access!(
-                                                        audit,
-                                                        "target entry {:?} matches acs {}",
-                                                        e.get_uuid(),
-                                                        acs.acp.name
-                                                    );
-                                                    // add search_attrs to allowed iterator
-                                                    Some(
-                                                        acs.attrs
-                                                            .iter()
-                                                            .map(|s| s.as_str())
-                                                            .filter(|s| {
-                                                                req_attrs.as_ref().map(|r_attrs| r_attrs.contains(s)).unwrap_or(true)
-                                                            }),
-                                                    )
-                                                } else {
-                                                    trace!(
-                                                        target = ?e.get_uuid(),
-                                                        acs = %acs.acp.name,
-                                                        "target entry DOES NOT match acs",
-                                                    );
-                                                    ltrace!(
-                                                        audit,
-                                                        "target entry {:?} DOES NOT match acs {}",
-                                                        e.get_uuid(),
-                                                        acs.acp.name
-                                                    );
-                                                    None
-                                                }
-                                            })
-                                            .flatten()
-                                            .collect();
+            // Build a reference set from the req_attrs. This is what we test against
+            // to see if the attribute is something we currently want.
+            let req_attrs: Option<BTreeSet<_>> = se
+                .attrs
+                .as_ref()
+                .map(|vs| vs.iter().map(|s| s.as_str()).collect());
 
-                                        // Remove all others that are present on the entry.
+            //  For each entry
+            let allowed_entries: Vec<Entry<EntryReduced, EntryCommitted>> =
+                spanned!("access::search_filter_entry_attributes<allowed_entries>", {
+                    entries
+                        .into_iter()
+                        .map(|e| {
+                            // Get the set of attributes you can see for this entry
+                            // this is within your related acp scope.
+                            let allowed_attrs: BTreeSet<&str> = related_acp
+                                .iter()
+                                .filter_map(|(acs, f_res)| {
+                                    if e.entry_match_no_index(f_res) {
                                         security_access!(
-                                            requested = ?req_attrs,
-                                            allowed = ?allowed_attrs,
-                                            "attributes"
+                                            target = ?e.get_uuid(),
+                                            acs = %acs.acp.name,
+                                            "target entry matches acs",
                                         );
-                                        lsecurity_access!(
-                                            audit,
-                                            "requested attributes --> {:?} allowed attributes   --> {:?}",
-                                            req_attrs,
-                                            allowed_attrs
+                                        // add search_attrs to allowed iterator
+                                        Some(acs.attrs.iter().map(|s| s.as_str()).filter(|s| {
+                                            req_attrs
+                                                .as_ref()
+                                                .map(|r_attrs| r_attrs.contains(s))
+                                                .unwrap_or(true)
+                                        }))
+                                    } else {
+                                        trace!(
+                                            target = ?e.get_uuid(),
+                                            acs = %acs.acp.name,
+                                            "target entry DOES NOT match acs",
                                         );
+                                        None
+                                    }
+                                })
+                                .flatten()
+                                .collect();
 
-                                        // Now purge the attrs that are NOT allowed.
-                                        spanned!("access::search_filter_entry_attributes<reduce_attributes>", {
-                                            lperf_trace_segment!(audit, "access::search_filter_entry_attributes<reduce_attributes>", || {
-                                                e.reduce_attributes(&allowed_attrs)
-                                            })
-                                        })
-                                    })
-                                    .collect()
-                            }
-                        )
-                    }
+                            // Remove all others that are present on the entry.
+                            security_access!(
+                                requested = ?req_attrs,
+                                allowed = ?allowed_attrs,
+                                "attributes"
+                            );
+
+                            // Now purge the attrs that are NOT allowed.
+                            spanned!(
+                                "access::search_filter_entry_attributes<reduce_attributes>",
+                                { e.reduce_attributes(&allowed_attrs) }
+                            )
+                        })
+                        .collect()
+                });
+
+            if allowed_entries.is_empty() {
+                security_access!("reduced to empty set on all entries ❌");
+            } else {
+                security_access!(
+                    "attribute set reduced on {} entries ✅",
+                    allowed_entries.len()
                 );
+            }
 
-                if allowed_entries.is_empty() {
-                    security_access!("reduced to empty set on all entries ❌");
-                    lsecurity_access!(audit, "reduced to empty set on all entries ❌");
-                } else {
-                    security_access!(
-                        "attribute set reduced on {} entries ✅",
-                        allowed_entries.len()
-                    );
-                    lsecurity_access!(
-                        audit,
-                        "attribute set reduced on {} entries ✅",
-                        allowed_entries.len()
-                    );
-                }
-
-                Ok(allowed_entries)
-            })
+            Ok(allowed_entries)
         })
     }
 
     #[allow(clippy::cognitive_complexity)]
     fn modify_allow_operation(
         &self,
-        audit: &mut AuditScope,
         me: &ModifyEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.ident.origin {
             IdentType::Internal => {
-                ltrace!(audit, "Internal operation, bypassing access check");
+                trace!("Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
             IdentType::User(u) => &u.entry,
         };
-        lperf_segment!(audit, "access::modify_allow_operation", || {
-            ltrace!(audit, "Access check for modify event: {}", me.ident);
+        spanned!("access::modify_allow_operation", {
+            trace!("Access check for modify event: {}", me.ident);
 
             // Some useful references we'll use for the remainder of the operation
             let modify_state = self.get_modify();
@@ -863,7 +756,7 @@ pub trait AccessControlsTransaction<'a> {
                 .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
 
             if disallow {
-                lsecurity_access!(audit, "Disallowing purge class in modification");
+                security_access!("Disallowing purge class in modification");
                 return Ok(false);
             }
 
@@ -878,8 +771,7 @@ pub trait AccessControlsTransaction<'a> {
                                 (&acs.acp.targetscope)
                                     .resolve(&me.ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
-                                        ladmin_error!(
-                                            audit,
+                                        admin_error!(
                                             "A internal filter/event was passed for resolution!?!? {:?}",
                                             e
                                         );
@@ -892,8 +784,7 @@ pub trait AccessControlsTransaction<'a> {
                             }
                         }
                         Err(e) => {
-                            ladmin_error!(
-                                audit,
+                            admin_error!(
                                 "A internal filter/event was passed for resolution!?!? {:?}",
                                 e
                             );
@@ -904,7 +795,7 @@ pub trait AccessControlsTransaction<'a> {
                 .collect();
 
             related_acp.iter().for_each(|racp| {
-                ltrace!(audit, "Related acs -> {:?}", racp.0.acp.name);
+                trace!("Related acs -> {:?}", racp.0.acp.name);
             });
 
             // build two sets of "requested pres" and "requested rem"
@@ -958,9 +849,9 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            lsecurity_access!(audit, "Requested present set: {:?}", requested_pres);
-            lsecurity_access!(audit, "Requested remove set: {:?}", requested_rem);
-            lsecurity_access!(audit, "Requested class set: {:?}", requested_classes);
+            security_access!(?requested_pres, "Requested present set");
+            security_access!(?requested_rem, "Requested remove set");
+            security_access!(?requested_classes, "Requested class set");
 
             let r = entries.iter().all(|e| {
                 // For this entry, find the acp's that apply to it from the
@@ -995,26 +886,26 @@ pub trait AccessControlsTransaction<'a> {
                 // Now check all the subsets are true. Remember, purge class
                 // is already checked above.
                 if !requested_pres.is_subset(&allowed_pres) {
-                    lsecurity_access!(audit, "requested_pres is not a subset of allowed");
-                    lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_pres, allowed_pres);
+                    security_access!("requested_pres is not a subset of allowed");
+                    security_access!("{:?} !⊆ {:?}", requested_pres, allowed_pres);
                     false
                 } else if !requested_rem.is_subset(&allowed_rem) {
-                    lsecurity_access!(audit, "requested_rem is not a subset of allowed");
-                    lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_rem, allowed_rem);
+                    security_access!("requested_rem is not a subset of allowed");
+                    security_access!("{:?} !⊆ {:?}", requested_rem, allowed_rem);
                     false
                 } else if !requested_classes.is_subset(&allowed_classes) {
-                    lsecurity_access!(audit, "requested_classes is not a subset of allowed");
-                    lsecurity_access!(audit, "{:?} !⊆ {:?}", requested_classes, allowed_classes);
+                    security_access!("requested_classes is not a subset of allowed");
+                    security_access!("{:?} !⊆ {:?}", requested_classes, allowed_classes);
                     false
                 } else {
-                    lsecurity_access!(audit, "passed pres, rem, classes check.");
+                    security_access!("passed pres, rem, classes check.");
                     true
                 } // if acc == false
             });
             if r {
-                lsecurity_access!(audit, "allowed ✅");
+                security_access!("allowed ✅");
             } else {
-                lsecurity_access!(audit, "denied ❌");
+                security_access!("denied ❌");
             }
             Ok(r)
         })
@@ -1023,20 +914,19 @@ pub trait AccessControlsTransaction<'a> {
     #[allow(clippy::cognitive_complexity)]
     fn create_allow_operation(
         &self,
-        audit: &mut AuditScope,
         ce: &CreateEvent,
         entries: &[Entry<EntryInit, EntryNew>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ce.ident.origin {
             IdentType::Internal => {
-                ltrace!(audit, "Internal operation, bypassing access check");
+                trace!("Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
             IdentType::User(u) => &u.entry,
         };
-        lperf_segment!(audit, "access::create_allow_operation", || {
-            ltrace!(audit, "Access check for create event: {}", ce.ident);
+        spanned!("access::create_allow_operation", {
+            trace!("Access check for create event: {}", ce.ident);
 
             // Some useful references we'll use for the remainder of the operation
             let create_state = self.get_create();
@@ -1056,8 +946,7 @@ pub trait AccessControlsTransaction<'a> {
                             .targetscope
                             .resolve(&ce.ident, None, Some(acp_resolve_filter_cache))
                             .map_err(|e| {
-                                ladmin_error!(
-                                    audit,
+                                admin_error!(
                                     "A internal filter/event was passed for resolution!?!? {:?}",
                                     e
                                 );
@@ -1067,8 +956,7 @@ pub trait AccessControlsTransaction<'a> {
                             .map(|f_res| (acs, f_res)),
                         Ok(_) => None,
                         Err(e) => {
-                            ladmin_error!(
-                                audit,
+                            admin_error!(
                                 "A internal filter/event was passed for resolution!?!? {:?}",
                                 e
                             );
@@ -1078,7 +966,7 @@ pub trait AccessControlsTransaction<'a> {
                 })
                 .collect();
 
-            // lsecurity_access!(audit, "Related acc -> {:?}", related_acp);
+            // lsecurity_access!( "Related acc -> {:?}", related_acp);
 
             // For each entry
             let r = entries.iter().all(|e| {
@@ -1101,7 +989,7 @@ pub trait AccessControlsTransaction<'a> {
                 let create_classes: BTreeSet<&str> = match e.get_ava_as_str("class") {
                     Some(s) => s.collect(),
                     None => {
-                        ladmin_error!(audit, "Class set failed to build - corrupted entry?");
+                        admin_error!("Class set failed to build - corrupted entry?");
                         return false;
                     }
                 };
@@ -1109,7 +997,7 @@ pub trait AccessControlsTransaction<'a> {
                 related_acp.iter().any(|(accr, f_res)| {
                     // Check to see if allowed.
                     if e.entry_match_no_index(f_res) {
-                        lsecurity_access!(audit, "entry {:?} matches acs {:?}", e, accr);
+                        security_access!(?e, acs = ?accr, "entry matches acs");
                         // It matches, so now we have to check attrs and classes.
                         // Remember, we have to match ALL requested attrs
                         // and classes to pass!
@@ -1119,25 +1007,20 @@ pub trait AccessControlsTransaction<'a> {
                             accr.classes.iter().map(|s| s.as_str()).collect();
 
                         if !create_attrs.is_subset(&allowed_attrs) {
-                            lsecurity_access!(audit, "create_attrs is not a subset of allowed");
-                            lsecurity_access!(audit, "{:?} !⊆ {:?}", create_attrs, allowed_attrs);
+                            security_access!("create_attrs is not a subset of allowed");
+                            security_access!("{:?} !⊆ {:?}", create_attrs, allowed_attrs);
                             return false;
                         }
                         if !create_classes.is_subset(&allowed_classes) {
-                            lsecurity_access!(audit, "create_classes is not a subset of allowed");
-                            lsecurity_access!(
-                                audit,
-                                "{:?} !⊆ {:?}",
-                                create_classes,
-                                allowed_classes
-                            );
+                            security_access!("create_classes is not a subset of allowed");
+                            security_access!("{:?} !⊆ {:?}", create_classes, allowed_classes);
                             return false;
                         }
-                        lsecurity_access!(audit, "passed");
+                        security_access!("passed");
 
                         true
                     } else {
-                        ltrace!(audit, "entry {:?} DOES NOT match acs {}", e, accr.acp.name);
+                        trace!(?e, acs = %accr.acp.name, "entry DOES NOT match acs");
                         // Does not match, fail this rule.
                         false
                     }
@@ -1152,9 +1035,9 @@ pub trait AccessControlsTransaction<'a> {
             });
 
             if r {
-                lsecurity_access!(audit, "allowed ✅");
+                security_access!("allowed ✅");
             } else {
-                lsecurity_access!(audit, "denied ❌");
+                security_access!("denied ❌");
             }
 
             Ok(r)
@@ -1163,20 +1046,19 @@ pub trait AccessControlsTransaction<'a> {
 
     fn delete_allow_operation(
         &self,
-        audit: &mut AuditScope,
         de: &DeleteEvent,
         entries: &[Arc<EntrySealedCommitted>],
     ) -> Result<bool, OperationError> {
         let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &de.ident.origin {
             IdentType::Internal => {
-                ltrace!(audit, "Internal operation, bypassing access check");
+                trace!("Internal operation, bypassing access check");
                 // No need to check ACS
                 return Ok(true);
             }
             IdentType::User(u) => &u.entry,
         };
-        lperf_segment!(audit, "access::delete_allow_operation", || {
-            ltrace!(audit, "Access check for delete event: {}", de.ident);
+        spanned!("access::delete_allow_operation", {
+            trace!("Access check for delete event: {}", de.ident);
 
             // Some useful references we'll use for the remainder of the operation
             let delete_state = self.get_delete();
@@ -1192,8 +1074,7 @@ pub trait AccessControlsTransaction<'a> {
                                 acs.acp.targetscope
                                     .resolve(&de.ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
-                                        ladmin_error!(
-                                            audit,
+                                        admin_error!(
                                             "A internal filter/event was passed for resolution!?!? {:?}",
                                             e
                                         );
@@ -1208,8 +1089,7 @@ pub trait AccessControlsTransaction<'a> {
                             }
                         }
                         Err(e) => {
-                            ladmin_error!(
-                                audit,
+                            admin_error!(
                                 "A internal filter/event was passed for resolution!?!? {:?}",
                                 e
                             );
@@ -1221,7 +1101,7 @@ pub trait AccessControlsTransaction<'a> {
 
             /*
             related_acp.iter().for_each(|racp| {
-                lsecurity_access!(audit, "Related acs -> {:?}", racp.acp.name);
+                lsecurity_access!( "Related acs -> {:?}", racp.acp.name);
             });
             */
 
@@ -1229,18 +1109,16 @@ pub trait AccessControlsTransaction<'a> {
             let r = entries.iter().all(|e| {
                 related_acp.iter().any(|(acd, f_res)| {
                     if e.entry_match_no_index(f_res) {
-                        lsecurity_access!(
-                            audit,
-                            "entry {:?} matches acs {}",
-                            e.get_uuid(),
-                            acd.acp.name
+                        security_access!(
+                            entry_uuid = ?e.get_uuid(),
+                            acs = %acd.acp.name,
+                            "entry matches acs"
                         );
                         // It matches, so we can delete this!
-                        lsecurity_access!(audit, "passed");
+                        security_access!("passed");
                         true
                     } else {
-                        ltrace!(
-                            audit,
+                        trace!(
                             "entry {:?} DOES NOT match acs {}",
                             e.get_uuid(),
                             acd.acp.name
@@ -1251,9 +1129,9 @@ pub trait AccessControlsTransaction<'a> {
                 }) // any related_acp
             });
             if r {
-                lsecurity_access!(audit, "allowed ✅");
+                security_access!("allowed ✅");
             } else {
-                lsecurity_access!(audit, "denied ❌");
+                security_access!("denied ❌");
             }
             Ok(r)
         })
@@ -1483,7 +1361,6 @@ mod tests {
 
     macro_rules! acp_from_entry_err {
         (
-            $audit:expr,
             $qs:expr,
             $e:expr,
             $type:ty
@@ -1491,14 +1368,13 @@ mod tests {
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.into_sealed_committed() };
 
-            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_err());
         }};
     }
 
     macro_rules! acp_from_entry_ok {
         (
-            $audit:expr,
             $qs:expr,
             $e:expr,
             $type:ty
@@ -1506,7 +1382,7 @@ mod tests {
             let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str($e);
             let ev1 = unsafe { e1.into_sealed_committed() };
 
-            let r1 = <$type>::try_from($audit, $qs, &ev1);
+            let r1 = <$type>::try_from($qs, &ev1);
             assert!(r1.is_ok());
             r1.unwrap()
         }};
@@ -1514,7 +1390,7 @@ mod tests {
 
     #[test]
     fn test_access_acp_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test parsing entries to acp. There so no point testing schema violations
             // because the schema system is well tested an robust. Instead we target
             // entry misconfigurations, such as missing classes required.
@@ -1526,7 +1402,6 @@ mod tests {
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1539,7 +1414,6 @@ mod tests {
             );
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1552,7 +1426,6 @@ mod tests {
             );
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1568,7 +1441,6 @@ mod tests {
 
             // "\"Self\""
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1590,11 +1462,10 @@ mod tests {
 
     #[test]
     fn test_access_acp_delete_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1613,7 +1484,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1635,13 +1505,12 @@ mod tests {
 
     #[test]
     fn test_access_acp_search_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing search access controls works.
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             // Missing class acp
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1662,7 +1531,6 @@ mod tests {
 
             // Missing class acs
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1683,7 +1551,6 @@ mod tests {
 
             // Missing attr acp_search_attr
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1703,7 +1570,6 @@ mod tests {
 
             // All good!
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1726,12 +1592,11 @@ mod tests {
 
     #[test]
     fn test_access_acp_modify_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing modify access controls works.
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1753,7 +1618,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1772,7 +1636,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1797,12 +1660,11 @@ mod tests {
 
     #[test]
     fn test_access_acp_create_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing create access controls works.
             let mut qs_write = qs.write(duration_from_epoch_now());
 
             acp_from_entry_err!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1823,7 +1685,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1842,7 +1703,6 @@ mod tests {
             );
 
             acp_from_entry_ok!(
-                audit,
                 &mut qs_write,
                 r#"{
                     "attrs": {
@@ -1866,7 +1726,7 @@ mod tests {
 
     #[test]
     fn test_access_acp_compound_parser() {
-        run_test!(|qs: &QueryServer, audit: &mut AuditScope| {
+        run_test!(|qs: &QueryServer| {
             // Test that parsing compound access controls works. This means that
             // given a single &str, we can evaluate all types from a single record.
             // This is valid, and could exist, IE a rule to allow create, search and modify
@@ -1900,10 +1760,10 @@ mod tests {
                     }
                 }"#;
 
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlCreate);
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlDelete);
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlModify);
-            acp_from_entry_ok!(audit, &mut qs_write, e, AccessControlSearch);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlCreate);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlDelete);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlModify);
+            acp_from_entry_ok!(&mut qs_write, e, AccessControlSearch);
         })
     }
 
@@ -1919,11 +1779,9 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search", uuid::Uuid::new_v4(), None);
             let res = acw
-                .search_filter_entries(&mut audit, $se, $entries)
+                .search_filter_entries(&mut $se, $entries)
                 .expect("op failed");
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2021,14 +1879,13 @@ mod tests {
             acw.update_search($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_search_reduce", uuid::Uuid::new_v4(), None);
             // We still have to reduce the entries to be sure that we are good.
             let res = acw
-                .search_filter_entries(&mut audit, $se, $entries)
+                .search_filter_entries(&mut $se, $entries)
                 .expect("operation failed");
             // Now on the reduced entries, reduce the entries attrs.
             let reduced = acw
-                .search_filter_entry_attributes(&mut audit, $se, res)
+                .search_filter_entry_attributes(&mut $se, res)
                 .expect("operation failed");
 
             // Help the type checker for the expect set.
@@ -2036,8 +1893,6 @@ mod tests {
                 .into_iter()
                 .map(|e| unsafe { e.into_reduced() })
                 .collect();
-
-            audit.write_log();
 
             debug!("expect --> {:?}", expect_set);
             debug!("result --> {:?}", reduced);
@@ -2144,12 +1999,10 @@ mod tests {
             acw.update_modify($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_modify", uuid::Uuid::new_v4(), None);
             let res = acw
-                .modify_allow_operation(&mut audit, $me, $entries)
+                .modify_allow_operation(&mut $me, $entries)
                 .expect("op failed");
 
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2308,12 +2161,10 @@ mod tests {
             acw.update_create($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_create", uuid::Uuid::new_v4(), None);
             let res = acw
-                .create_allow_operation(&mut audit, $ce, $entries)
+                .create_allow_operation(&mut $ce, $entries)
                 .expect("op failed");
 
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.
@@ -2428,12 +2279,10 @@ mod tests {
             acw.update_delete($controls).expect("Failed to update");
             let acw = acw;
 
-            let mut audit = AuditScope::new("test_acp_delete", uuid::Uuid::new_v4(), None);
             let res = acw
-                .delete_allow_operation(&mut audit, $de, $entries)
+                .delete_allow_operation($de, $entries)
                 .expect("op failed");
 
-            audit.write_log();
             debug!("result --> {:?}", res);
             debug!("expect --> {:?}", $expect);
             // should be ok, and same as expect.

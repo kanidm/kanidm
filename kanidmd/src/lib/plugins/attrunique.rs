@@ -9,13 +9,13 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::schema::SchemaTransaction;
 use kanidm_proto::v1::{ConsistencyError, PluginError};
+use tracing::trace;
 
 use std::collections::BTreeMap;
 
 pub struct AttrUnique;
 
 fn get_cand_attr_set<VALID, STATE>(
-    au: &mut AuditScope,
     cand: &[Entry<VALID, STATE>],
     attr: &str,
 ) -> Result<BTreeMap<PartialValue, PartialValue>, OperationError> {
@@ -37,8 +37,7 @@ fn get_cand_attr_set<VALID, STATE>(
                         match cand_attr.insert(v, uuid.clone()) {
                             None => Ok(()),
                             Some(vr) => {
-                                ladmin_error!(
-                                    au,
+                                admin_error!(
                                     "ava already exists -> {:?}: {:?} on {:?}",
                                     attr,
                                     vr,
@@ -57,21 +56,20 @@ fn get_cand_attr_set<VALID, STATE>(
 }
 
 fn enforce_unique<STATE>(
-    au: &mut AuditScope,
     qs: &QueryServerWriteTransaction,
     cand: &[Entry<EntryInvalid, STATE>],
     attr: &str,
 ) -> Result<(), OperationError> {
-    ltrace!(au, "{:?}", attr);
+    trace!(?attr);
 
     // Build a set of all the value -> uuid for the cands.
     // If already exist, reject due to dup.
-    let cand_attr = get_cand_attr_set(au, cand, attr).map_err(|e| {
-        ladmin_error!(au, "failed to get cand attr set {:?}", e);
+    let cand_attr = get_cand_attr_set(cand, attr).map_err(|e| {
+        admin_error!(err = ?e, "failed to get cand attr set");
         e
     })?;
 
-    ltrace!(au, "{:?}", cand_attr);
+    trace!(?cand_attr);
 
     // No candidates to check!
     if cand_attr.is_empty() {
@@ -93,11 +91,11 @@ fn enforce_unique<STATE>(
             .collect()
     ));
 
-    ltrace!(au, "{:?}", filt_in);
+    trace!(?filt_in);
 
     // If any results, reject.
-    let conflict_cand = qs.internal_exists(au, filt_in).map_err(|e| {
-        ladmin_error!(au, "internal exists error {:?}", e);
+    let conflict_cand = qs.internal_exists(filt_in).map_err(|e| {
+        admin_error!("internal exists error {:?}", e);
         e
     })?;
 
@@ -117,7 +115,6 @@ impl Plugin for AttrUnique {
     }
 
     fn pre_create_transform(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
@@ -130,12 +127,11 @@ impl Plugin for AttrUnique {
 
         let r: Result<(), OperationError> = uniqueattrs
             .iter()
-            .try_for_each(|attr| enforce_unique(au, qs, cand, attr.as_str()));
+            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
         r
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
@@ -148,19 +144,16 @@ impl Plugin for AttrUnique {
 
         let r: Result<(), OperationError> = uniqueattrs
             .iter()
-            .try_for_each(|attr| enforce_unique(au, qs, cand, attr.as_str()));
+            .try_for_each(|attr| enforce_unique(qs, cand, attr.as_str()));
         r
     }
 
-    fn verify(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         // Only check live entries, not recycled.
         let filt_in = filter!(f_pres("class"));
 
         let all_cand = match qs
-            .internal_search(au, filt_in)
+            .internal_search(filt_in)
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(all_cand) => all_cand,
@@ -178,14 +171,14 @@ impl Plugin for AttrUnique {
 
         for attr in uniqueattrs.iter() {
             // We do a fully in memory check.
-            if get_cand_attr_set(au, &all_cand, attr.as_str()).is_err() {
+            if get_cand_attr_set(&all_cand, attr.as_str()).is_err() {
                 res.push(Err(ConsistencyError::DuplicateUniqueAttribute(
                     attr.to_string(),
                 )))
             }
         }
 
-        ltrace!(au, "{:?}", res);
+        trace!(?res);
 
         res
     }
@@ -221,7 +214,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -249,7 +242,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -295,7 +288,7 @@ mod tests {
                 Modify::Present(AttrString::from("name"), Value::new_iname("testgroup_a"))
             ]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -338,7 +331,7 @@ mod tests {
                 Modify::Present(AttrString::from("name"), Value::new_iname("testgroup"))
             ]),
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 

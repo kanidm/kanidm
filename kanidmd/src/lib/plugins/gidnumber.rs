@@ -21,10 +21,7 @@ lazy_static! {
 
 pub struct GidNumber {}
 
-fn apply_gidnumber<T: Clone>(
-    au: &mut AuditScope,
-    e: &mut Entry<EntryInvalid, T>,
-) -> Result<(), OperationError> {
+fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), OperationError> {
     if (e.attribute_equality("class", &CLASS_POSIXGROUP)
         || e.attribute_equality("class", &CLASS_POSIXACCOUNT))
         && !e.attribute_pres("gidnumber")
@@ -33,7 +30,7 @@ fn apply_gidnumber<T: Clone>(
             .get_uuid()
             .ok_or(OperationError::InvalidEntryState)
             .map_err(|e| {
-                ladmin_error!(au, "Invalid Entry State - Missing UUID");
+                admin_error!("Invalid Entry State - Missing UUID");
                 e
             })?;
 
@@ -47,7 +44,7 @@ fn apply_gidnumber<T: Clone>(
         }
 
         let gid_v = Value::new_uint32(gid);
-        ladmin_info!(au, "Generated {} for {:?}", gid, u_ref);
+        admin_info!("Generated {} for {:?}", gid, u_ref);
         e.set_ava("gidnumber", btreeset![gid_v]);
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {
@@ -71,26 +68,24 @@ impl Plugin for GidNumber {
     }
 
     fn pre_create_transform(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         for e in cand.iter_mut() {
-            apply_gidnumber(au, e)?;
+            apply_gidnumber(e)?;
         }
 
         Ok(())
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         for e in cand.iter_mut() {
-            apply_gidnumber(au, e)?;
+            apply_gidnumber(e)?;
         }
 
         Ok(())
@@ -101,14 +96,9 @@ impl Plugin for GidNumber {
 mod tests {
     use crate::prelude::*;
 
-    fn check_gid(
-        au: &mut AuditScope,
-        qs_write: &QueryServerWriteTransaction,
-        uuid: &str,
-        gid: u32,
-    ) {
+    fn check_gid(qs_write: &QueryServerWriteTransaction, uuid: &str, gid: u32) {
         let u = Uuid::parse_str(uuid).unwrap();
-        let e = qs_write.internal_search_uuid(au, &u).unwrap();
+        let e = qs_write.internal_search_uuid(&u).unwrap();
         let gidnumber = e.get_ava_single("gidnumber").unwrap();
         let ex_gid = Value::new_uint32(gid);
         assert!(ex_gid == gidnumber);
@@ -136,8 +126,7 @@ mod tests {
             preload,
             create,
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
-                au,
+            |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 0x997ef244
@@ -169,8 +158,7 @@ mod tests {
             preload,
             create,
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
-                au,
+            |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 10001
@@ -201,8 +189,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_pres("class", &Value::new_class("posixgroup"))]),
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
-                au,
+            |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 0x997ef244
@@ -234,8 +221,7 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             modlist!([m_purge("gidnumber")]),
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
-                au,
+            |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 0x997ef244
@@ -270,8 +256,7 @@ mod tests {
                 m_pres("gidnumber", &Value::new_uint32(2000))
             ]),
             None,
-            |au, qs_write: &QueryServerWriteTransaction| check_gid(
-                au,
+            |qs_write: &QueryServerWriteTransaction| check_gid(
                 qs_write,
                 "83a0927f-3de1-45ec-bea0-2f7b997ef244",
                 2000
@@ -303,7 +288,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -331,7 +316,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -359,7 +344,7 @@ mod tests {
             preload,
             create,
             None,
-            |_, _| {}
+            |_| {}
         );
     }
 }

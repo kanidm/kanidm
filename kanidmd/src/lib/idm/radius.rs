@@ -27,7 +27,6 @@ pub(crate) struct RadiusAccount {
 
 impl RadiusAccount {
     pub(crate) fn try_from_entry_reduced(
-        au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Self, OperationError> {
@@ -60,7 +59,7 @@ impl RadiusAccount {
                 OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
             })?;
 
-        let groups = Group::try_from_account_entry_red_ro(au, value, qs)?;
+        let groups = Group::try_from_account_entry_red_ro(value, qs)?;
 
         let valid_from = value.get_ava_single_datetime("account_valid_from");
 

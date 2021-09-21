@@ -21,7 +21,6 @@ impl PasswordChangeEvent {
     }
 
     pub fn from_idm_account_set_password(
-        _audit: &mut AuditScope,
         ident: Identity,
         cleartext: String,
         // qs: &QueryServerWriteTransaction,
@@ -36,7 +35,6 @@ impl PasswordChangeEvent {
     }
 
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -67,7 +65,6 @@ impl UnixPasswordChangeEvent {
     }
 
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -89,7 +86,6 @@ pub struct GeneratePasswordEvent {
 
 impl GeneratePasswordEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -106,7 +102,6 @@ pub struct GenerateBackupCodeEvent {
 
 impl GenerateBackupCodeEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -129,7 +124,6 @@ pub struct RemoveBackupCodeEvent {
 
 impl RemoveBackupCodeEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -153,7 +147,6 @@ pub struct RegenerateRadiusSecretEvent {
 
 impl RegenerateRadiusSecretEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -177,7 +170,6 @@ pub struct RadiusAuthTokenEvent {
 
 impl RadiusAuthTokenEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
@@ -201,7 +193,6 @@ pub struct UnixUserTokenEvent {
 
 impl UnixUserTokenEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
@@ -225,7 +216,6 @@ pub struct UnixGroupTokenEvent {
 
 impl UnixGroupTokenEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
@@ -267,7 +257,6 @@ impl UnixUserAuthEvent {
     }
 
     pub fn from_parts(
-        _audit: &mut AuditScope,
         ident: Identity,
         target: Uuid,
         cleartext: String,
@@ -288,7 +277,6 @@ pub struct GenerateTotpEvent {
 
 impl GenerateTotpEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -314,7 +302,6 @@ pub struct VerifyTotpEvent {
 
 impl VerifyTotpEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -351,7 +338,6 @@ pub struct AcceptSha1TotpEvent {
 
 impl AcceptSha1TotpEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -384,7 +370,6 @@ pub struct RemoveTotpEvent {
 
 impl RemoveTotpEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -409,7 +394,6 @@ pub struct WebauthnInitRegisterEvent {
 
 impl WebauthnInitRegisterEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -443,7 +427,6 @@ pub struct WebauthnDoRegisterEvent {
 
 impl WebauthnDoRegisterEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -479,7 +462,6 @@ pub struct RemoveWebauthnEvent {
 
 impl RemoveWebauthnEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerWriteTransaction,
         ident: Identity,
         target: Uuid,
@@ -512,7 +494,6 @@ pub struct CredentialStatusEvent {
 
 impl CredentialStatusEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
@@ -536,7 +517,6 @@ pub struct ReadBackupCodeEvent {
 
 impl ReadBackupCodeEvent {
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &QueryServerReadTransaction,
         ident: Identity,
         target: Uuid,
@@ -571,7 +551,6 @@ impl LdapAuthEvent {
     */
 
     pub fn from_parts(
-        _audit: &mut AuditScope,
         // qs: &mut QueryServerReadTransaction,
         // uat: Option<UserAuthToken>,
         target: Uuid,

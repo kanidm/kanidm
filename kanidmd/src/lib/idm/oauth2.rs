@@ -248,7 +248,6 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 impl Oauth2ResourceServersReadTransaction {
     pub fn check_oauth2_authorisation(
         &self,
-        audit: &mut AuditScope,
         ident: &Identity,
         uat: &UserAuthToken,
         auth_req: &AuthorisationRequest,
@@ -259,22 +258,18 @@ impl Oauth2ResourceServersReadTransaction {
         // * is within it's valid time window.
 
         if auth_req.response_type != "code" {
-            ladmin_warning!(audit, "Invalid oauth2 response_type (should be 'code')");
+            admin_warn!("Invalid oauth2 response_type (should be 'code')");
             return Err(Oauth2Error::UnsupportedResponseType);
         }
 
         // CodeChallengeMethod must be S256
         if auth_req.code_challenge_method != CodeChallengeMethod::S256 {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 code_challenge_method (must be 'S256')"
-            );
+            admin_warn!("Invalid oauth2 code_challenge_method (must be 'S256')");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         let o2rs = self.inner.rs_set.get(&auth_req.client_id).ok_or_else(|| {
-            ladmin_warning!(
-                audit,
+            admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );
             Oauth2Error::InvalidRequest
@@ -293,10 +288,9 @@ impl Oauth2ResourceServersReadTransaction {
             Oauth2RS::Basic(rsbasic) => {
                 // redirect_uri must be part of the client_id origin.
                 if auth_req.redirect_uri.origin() != rsbasic.origin {
-                    ladmin_warning!(
-                        audit,
-                        "Invalid oauth2 redirect_uri (must be related to origin of {:?})",
-                        rsbasic.origin
+                    admin_warn!(
+                        origin = ?rsbasic.origin,
+                        "Invalid oauth2 redirect_uri (must be related to origin of)"
                     );
                     return Err(Oauth2Error::InvalidRequest);
                 }
@@ -313,7 +307,7 @@ impl Oauth2ResourceServersReadTransaction {
         };
 
         let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
-            ladmin_error!(audit, "Unable to encode consent data {:?}", e);
+            admin_error!(err = ?e, "Unable to encode consent data");
             Oauth2Error::ServerError(OperationError::SerdeJsonError)
         })?;
 
@@ -331,7 +325,6 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn check_oauth2_authorise_permit(
         &self,
-        audit: &mut AuditScope,
         ident: &Identity,
         uat: &UserAuthToken,
         consent_token: &str,
@@ -343,31 +336,25 @@ impl Oauth2ResourceServersReadTransaction {
             .fernet
             .decrypt_at_time(consent_token, Some(300), ct.as_secs())
             .map_err(|_| {
-                ladmin_error!(audit, "Failed to decrypt consent request");
+                admin_error!("Failed to decrypt consent request");
                 OperationError::CryptographyError
             })
             .and_then(|data| {
                 serde_json::from_slice(&data).map_err(|e| {
-                    ladmin_error!(audit, "Failed to deserialise consent request - {:?}", e);
+                    admin_error!(err = ?e, "Failed to deserialise consent request");
                     OperationError::SerdeJsonError
                 })
             })?;
 
         // Validate that the ident_id matches our current ident.
         if consent_req.ident_id != ident.get_event_origin_id() {
-            lsecurity!(
-                audit,
-                "consent request ident id does not match the identity of our UAT."
-            );
+            security_info!("consent request ident id does not match the identity of our UAT.");
             return Err(OperationError::InvalidSessionState);
         }
 
         // Validate that the session id matches our uat.
         if consent_req.session_id != uat.session_id {
-            lsecurity!(
-                audit,
-                "consent request sessien id does not match the session id of our UAT."
-            );
+            security_info!("consent request sessien id does not match the session id of our UAT.");
             return Err(OperationError::InvalidSessionState);
         }
 
@@ -375,7 +362,7 @@ impl Oauth2ResourceServersReadTransaction {
         let o2rs_fernet = match self.inner.rs_set.get(&consent_req.client_id) {
             Some(Oauth2RS::Basic(rsbasic)) => &rsbasic.token_fernet,
             None => {
-                ladmin_error!(audit, "Invalid consent request oauth2 client_id");
+                admin_error!("Invalid consent request oauth2 client_id");
                 return Err(OperationError::InvalidRequestState);
             }
         };
@@ -390,7 +377,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         // Encrypt the exchange token with the fernet key of the client resource server
         let code_data = serde_json::to_vec(&xchg_code).map_err(|e| {
-            ladmin_error!(audit, "Unable to encode xchg_code data {:?}", e);
+            admin_error!(err = ?e, "Unable to encode xchg_code data");
             OperationError::SerdeJsonError
         })?;
 
@@ -405,28 +392,24 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn check_oauth2_token_exchange(
         &self,
-        audit: &mut AuditScope,
         client_authz: &str,
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         if token_req.grant_type != "authorization_code" {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 grant_type (should be 'authorization_code')"
-            );
+            admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         // Check the client_authz
         let authz = base64::decode(&client_authz)
             .map_err(|_| {
-                ladmin_error!(audit, "Basic authz invalid base64");
+                admin_error!("Basic authz invalid base64");
                 Oauth2Error::AuthenticationRequired
             })
             .and_then(|data| {
                 String::from_utf8(data).map_err(|_| {
-                    ladmin_error!(audit, "Basic authz invalid utf8");
+                    admin_error!("Basic authz invalid utf8");
                     Oauth2Error::AuthenticationRequired
                 })
             })?;
@@ -436,17 +419,17 @@ impl Oauth2ResourceServersReadTransaction {
         let mut split_iter = authz.split(':');
 
         let client_id = split_iter.next().ok_or_else(|| {
-            ladmin_error!(audit, "Basic authz invalid format (corrupt input?)");
+            admin_error!("Basic authz invalid format (corrupt input?)");
             Oauth2Error::AuthenticationRequired
         })?;
         let secret = split_iter.next().ok_or_else(|| {
-            ladmin_error!(audit, "Basic authz invalid format (missing ':' seperator?)");
+            admin_error!("Basic authz invalid format (missing ':' seperator?)");
             Oauth2Error::AuthenticationRequired
         })?;
 
         // Get the o2rs for the handle.
         let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
-            ladmin_warning!(audit, "Invalid oauth2 client_id");
+            admin_warn!("Invalid oauth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
 
@@ -454,7 +437,7 @@ impl Oauth2ResourceServersReadTransaction {
         let o2rs_fernet = match o2rs {
             Oauth2RS::Basic(rsbasic) => {
                 if rsbasic.authz_secret != secret {
-                    lsecurity!(audit, "Invalid oauth2 client_id secret");
+                    security_info!("Invalid oauth2 client_id secret");
                     return Err(Oauth2Error::AuthenticationRequired);
                 }
                 // We are authenticated! Yay! Now we can actually check things ...
@@ -468,12 +451,12 @@ impl Oauth2ResourceServersReadTransaction {
         let code_xchg: TokenExchangeCode = o2rs_fernet
             .decrypt_at_time(&token_req.code, Some(60), ct.as_secs())
             .map_err(|_| {
-                ladmin_error!(audit, "Failed to decrypt token exchange request");
+                admin_error!("Failed to decrypt token exchange request");
                 Oauth2Error::InvalidRequest
             })
             .and_then(|data| {
                 serde_json::from_slice(&data).map_err(|e| {
-                    ladmin_error!(audit, "Failed to deserialise token exchange code - {:?}", e);
+                    admin_error!("Failed to deserialise token exchange code - {:?}", e);
                     Oauth2Error::InvalidRequest
                 })
             })?;
@@ -484,19 +467,13 @@ impl Oauth2ResourceServersReadTransaction {
         let code_verifier_hash: Vec<u8> = hasher.finish().iter().copied().collect();
 
         if code_xchg.code_challenge.0 != code_verifier_hash {
-            lsecurity!(
-                audit,
-                "PKCE code verification failed - this may indicate malicious activity"
-            );
+            security_info!("PKCE code verification failed - this may indicate malicious activity");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         // Validate the redirect_uri is the same as the original.
         if token_req.redirect_uri != code_xchg.redirect_uri {
-            ladmin_warning!(
-                audit,
-                "Invalid oauth2 redirect_uri (differs from original request uri)"
-            );
+            security_info!("Invalid oauth2 redirect_uri (differs from original request uri)");
             return Err(Oauth2Error::InvalidRequest);
         }
 
@@ -508,8 +485,7 @@ impl Oauth2ResourceServersReadTransaction {
             // Becomes a duration.
             (code_xchg.uat.expiry - odt_ct).whole_seconds() as u32
         } else {
-            lsecurity!(
-                audit,
+            security_info!(
                 "User Auth Token has expired before we could publish the oauth2 response"
             );
             return Err(Oauth2Error::AccessDenied);
@@ -517,7 +493,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         let access_token = serde_json::to_vec(&code_xchg.uat)
             .map_err(|e| {
-                ladmin_error!(audit, "Unable to encode uat data {:?}", e);
+                admin_error!(err = ?e, "Unable to encode uat data");
                 Oauth2Error::ServerError(OperationError::SerdeJsonError)
             })
             .map(|data| o2rs_fernet.encrypt_at_time(&data, ct.as_secs()))?;
@@ -563,7 +539,6 @@ mod tests {
 
     macro_rules! good_authorisation_request {
         (
-            $audit:expr,
             $idms_prox_read:expr,
             $ident:expr,
             $uat:expr,
@@ -581,14 +556,13 @@ mod tests {
             };
 
             $idms_prox_read
-                .check_oauth2_authorisation($audit, $ident, $uat, &auth_req, $ct)
+                .check_oauth2_authorisation($ident, $uat, &auth_req, $ct)
                 .expect("Oauth2 authorisation failed")
         }};
     }
 
     // setup an oauth2 instance.
     fn setup_oauth2_resource_server(
-        audit: &mut AuditScope,
         idms: &IdmServer,
         ct: Duration,
     ) -> (String, UserAuthToken, Identity) {
@@ -608,11 +582,11 @@ mod tests {
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
-        assert!(idms_prox_write.qs_write.create(audit, &ce).is_ok());
+        assert!(idms_prox_write.qs_write.create(&ce).is_ok());
 
         let entry = idms_prox_write
             .qs_write
-            .internal_search_uuid(audit, &uuid)
+            .internal_search_uuid(&uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
             .get_ava_single_str("oauth2_rs_basic_secret")
@@ -621,17 +595,17 @@ mod tests {
 
         // Setup the uat we'll be using.
         let account = idms_prox_write
-            .target_to_account(audit, &UUID_ADMIN)
+            .target_to_account(&UUID_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
             .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
             .expect("Unable to create uat");
         let ident = idms_prox_write
-            .process_uat_to_identity(audit, &uat, ct)
+            .process_uat_to_identity(&uat, ct)
             .expect("Unable to process uat");
 
-        idms_prox_write.commit(audit).expect("failed to commit");
+        idms_prox_write.commit().expect("failed to commit");
 
         (secret, uat, ident)
     }
@@ -640,10 +614,9 @@ mod tests {
     fn test_idm_oauth2_basic_function() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -652,24 +625,12 @@ mod tests {
             // == Setup the authorisation request
             let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request = good_authorisation_request!(
-                audit,
-                idms_prox_read,
-                &ident,
-                &uat,
-                ct,
-                code_challenge
-            );
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
             // == Manually submit the consent token to the permit for the permit_success
             let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(
-                    audit,
-                    &ident,
-                    &uat,
-                    &consent_request.consent_token,
-                    ct,
-                )
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
                 .expect("Failed to perform oauth2 permit");
 
             // Check we are reflecting the CSRF properly.
@@ -688,7 +649,7 @@ mod tests {
             };
 
             let token_response = idms_prox_read
-                .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                 .expect("Failed to perform oauth2 token exchange");
 
             // 🎉 We got a token! In the future we can then check introspection from this point.
@@ -700,11 +661,10 @@ mod tests {
     fn test_idm_oauth2_invalid_authorisation_requests() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -723,7 +683,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorisation(audit, &ident, &uat, &auth_req, ct)
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::UnsupportedResponseType
             );
@@ -741,7 +701,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorisation(audit, &ident, &uat, &auth_req, ct)
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -759,7 +719,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorisation(audit, &ident, &uat, &auth_req, ct)
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -770,23 +730,22 @@ mod tests {
     fn test_idm_oauth2_invalid_authorisation_permit_requests() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
                 let account = idms_prox_write
-                    .target_to_account(audit, &UUID_IDM_ADMIN)
+                    .target_to_account(&UUID_IDM_ADMIN)
                     .expect("account must exist");
                 let session_id = uuid::Uuid::new_v4();
                 let uat2 = account
                     .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
                     .expect("Unable to create uat");
                 let ident2 = idms_prox_write
-                    .process_uat_to_identity(audit, &uat2, ct)
+                    .process_uat_to_identity(&uat2, ct)
                     .expect("Unable to process uat");
                 (uat2, ident2)
             };
@@ -795,21 +754,14 @@ mod tests {
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request = good_authorisation_request!(
-                audit,
-                idms_prox_read,
-                &ident,
-                &uat,
-                ct,
-                code_challenge
-            );
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
             // Invalid permits
             //  * expired token, aka past ttl.
             assert!(
                 idms_prox_read
                     .check_oauth2_authorise_permit(
-                        audit,
                         &ident,
                         &uat,
                         &consent_request.consent_token,
@@ -826,7 +778,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_authorise_permit(
-                        audit,
                         &ident2,
                         &uat,
                         &consent_request.consent_token,
@@ -840,7 +791,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_authorise_permit(
-                        audit,
                         &ident,
                         &uat2,
                         &consent_request.consent_token,
@@ -856,10 +806,9 @@ mod tests {
     fn test_idm_oauth2_invalid_token_exchange_requests() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed,
-                       audit: &mut AuditScope| {
+                       _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, mut uat, ident) = setup_oauth2_resource_server(audit, idms, ct);
+            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct);
 
             // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
             // allows all our other tests to pass, but it means when we specifically put the
@@ -877,24 +826,12 @@ mod tests {
 
             // == Setup the authorisation request
             let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-            let consent_request = good_authorisation_request!(
-                audit,
-                idms_prox_read,
-                &ident,
-                &uat,
-                ct,
-                code_challenge
-            );
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
             // == Manually submit the consent token to the permit for the permit_success
             let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(
-                    audit,
-                    &ident,
-                    &uat,
-                    &consent_request.consent_token,
-                    ct,
-                )
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
                 .expect("Failed to perform oauth2 permit");
 
             // == Submit the token exchange code.
@@ -912,7 +849,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, "not base64", &token_req, ct)
+                    .check_oauth2_token_exchange("not base64", &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -921,7 +858,7 @@ mod tests {
             let client_authz = base64::encode(format!("test_resource_server {}", secret));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -930,7 +867,7 @@ mod tests {
             let client_authz = base64::encode(format!("NOT A REAL SERVER:{}", secret));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -939,7 +876,7 @@ mod tests {
             let client_authz = base64::encode("test_resource_server:12345");
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
@@ -950,7 +887,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_token_exchange(
-                        audit,
                         &client_authz,
                         &token_req,
                         ct + Duration::from_secs(TOKEN_EXPIRE)
@@ -964,7 +900,6 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_token_exchange(
-                        audit,
                         &client_authz,
                         &token_req,
                         ct + Duration::from_secs(UAT_EXPIRE)
@@ -983,7 +918,7 @@ mod tests {
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -998,7 +933,7 @@ mod tests {
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -1013,7 +948,7 @@ mod tests {
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(audit, &client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );

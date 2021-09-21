@@ -1,67 +1,69 @@
 macro_rules! setup_test {
-    (
-        $au:expr
-    ) => {{
+    () => {{
         use crate::utils::duration_from_epoch_now;
-        use env_logger;
 
+        /*
+        use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
             .is_test(true)
             .try_init();
+        */
+
+        let _ = crate::tracing_tree::test_init();
 
         // Create an in memory BE
-        let schema_outer = Schema::new($au).expect("Failed to init schema");
+        let schema_outer = Schema::new().expect("Failed to init schema");
         let idxmeta = {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be = Backend::new($au, BackendConfig::new_test(), idxmeta, false)
-            .expect("Failed to init BE");
+        let be =
+            Backend::new(BackendConfig::new_test(), idxmeta, false).expect("Failed to init BE");
 
-        let qs = QueryServer::new($au, be, schema_outer);
-        qs.initialise_helper($au, duration_from_epoch_now())
+        let qs = QueryServer::new(be, schema_outer);
+        qs.initialise_helper(duration_from_epoch_now())
             .expect("init failed!");
         qs
     }};
     (
-        $au:expr,
         $preload_entries:expr
     ) => {{
         use crate::utils::duration_from_epoch_now;
         use async_std::task;
-        use env_logger;
 
+        /*
+        use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
             .is_test(true)
             .try_init();
+        */
+        let _ = crate::tracing_tree::test_init();
 
         // Create an in memory BE
-        let schema_outer = Schema::new($au).expect("Failed to init schema");
+        let schema_outer = Schema::new().expect("Failed to init schema");
         let idxmeta = {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be = Backend::new($au, BackendConfig::new_test(), idxmeta, false)
-            .expect("Failed to init BE");
+        let be =
+            Backend::new(BackendConfig::new_test(), idxmeta, false).expect("Failed to init BE");
 
-        let qs = QueryServer::new($au, be, schema_outer);
-        qs.initialise_helper($au, duration_from_epoch_now())
+        let qs = QueryServer::new(be, schema_outer);
+        qs.initialise_helper(duration_from_epoch_now())
             .expect("init failed!");
 
         if !$preload_entries.is_empty() {
             let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
             qs_write
-                .internal_create($au, $preload_entries)
+                .internal_create($preload_entries)
                 .expect("Failed to preload entries");
-            assert!(qs_write.commit($au).is_ok());
+            assert!(qs_write.commit().is_ok());
         }
         qs
     }};
@@ -75,39 +77,36 @@ macro_rules! run_test_no_init {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
 
+        let _ = crate::tracing_tree::test_init();
+        /*
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
             .is_test(true)
             .try_init();
+        */
 
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
-
-        let schema_outer = Schema::new(&mut audit).expect("Failed to init schema");
+        let schema_outer = Schema::new().expect("Failed to init schema");
         let idxmeta = {
             let schema_txn = schema_outer.write_blocking();
             schema_txn.reload_idxmeta()
         };
-        let be = match Backend::new(&mut audit, BackendConfig::new_test(), idxmeta, false) {
+        let be = match Backend::new(BackendConfig::new_test(), idxmeta, false) {
             Ok(be) => be,
             Err(e) => {
-                audit.write_log();
                 error!("{:?}", e);
                 panic!()
             }
         };
-        let test_server = QueryServer::new(&mut audit, be, schema_outer);
+        let test_server = QueryServer::new(be, schema_outer);
 
-        $test_fn(&test_server, &mut audit);
+        $test_fn(&test_server);
         // Any needed teardown?
         // Make sure there are no errors.
-        // let verifications = test_server.verify(&mut audit);
-        // ltrace!(audit, "Verification result: {:?}", verifications);
+        // let verifications = test_server.verify();
         // assert!(verifications.len() == 0);
-        audit.write_log();
     }};
 }
 
@@ -120,26 +119,25 @@ macro_rules! run_test {
         #[allow(unused_imports)]
         use crate::utils::duration_from_epoch_now;
 
+        let _ = crate::tracing_tree::test_init();
+        /*
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
             .is_test(true)
             .try_init();
+        */
 
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
+        let test_server = setup_test!();
 
-        let test_server = setup_test!(&mut audit);
-
-        $test_fn(&test_server, &mut audit);
+        $test_fn(&test_server);
         // Any needed teardown?
         // Make sure there are no errors.
-        let verifications = test_server.verify(&mut audit);
-        ltrace!(audit, "Verification result: {:?}", verifications);
+        let verifications = test_server.verify();
+        trace!("Verification result: {:?}", verifications);
         assert!(verifications.len() == 0);
-        audit.write_log();
     }};
 }
 
@@ -176,37 +174,28 @@ macro_rules! run_idm_test_inner {
         #[allow(unused_imports)]
         use crate::schema::Schema;
 
+        let _ = crate::tracing_tree::test_init();
+        /*
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = crate::tracing_tree::test_init();
         let _ = env_logger::builder()
             .format_timestamp(None)
             .format_level(false)
             .is_test(true)
             .try_init();
+        */
 
-        let mut audit = AuditScope::new("run_test", uuid::Uuid::new_v4(), None);
+        let test_server = setup_test!();
 
-        let test_server = setup_test!(&mut audit);
+        let (test_idm_server, mut idms_delayed) =
+            IdmServer::new(test_server.clone(), "https://idm.example.com".to_string())
+                .expect("Failed to setup idms");
 
-        let (test_idm_server, mut idms_delayed) = IdmServer::new(
-            &mut audit,
-            test_server.clone(),
-            "https://idm.example.com".to_string(),
-        )
-        .expect("Failed to setup idms");
-
-        $test_fn(
-            &test_server,
-            &test_idm_server,
-            &mut idms_delayed,
-            &mut audit,
-        );
+        $test_fn(&test_server, &test_idm_server, &mut idms_delayed);
         // Any needed teardown?
         // Make sure there are no errors.
-        assert!(test_server.verify(&mut audit).len() == 0);
+        assert!(test_server.verify().len() == 0);
         idms_delayed.is_empty_or_panic();
-        audit
     }};
 }
 
@@ -214,8 +203,7 @@ macro_rules! run_idm_test_inner {
 macro_rules! run_idm_test {
     ($test_fn:expr) => {{
         let _ = crate::tracing_tree::test_init();
-        let audit = run_idm_test_inner!($test_fn);
-        audit.write_log();
+        run_idm_test_inner!($test_fn);
     }};
 }
 
@@ -225,7 +213,6 @@ where
         &crate::server::QueryServer,
         &crate::idm::server::IdmServer,
         &crate::idm::server::IdmServerDelayed,
-        &mut crate::audit::AuditScope,
     ),
 {
     let _ = run_idm_test_inner!(test_fn);
@@ -248,9 +235,8 @@ macro_rules! run_create_test {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_create_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_create_test", || {
-            let qs = setup_test!(&mut au, $preload_entries);
+        spanned!("plugins::macros::run_create_test", {
+            let qs = setup_test!($preload_entries);
 
             let ce = match $internal {
                 None => CreateEvent::new_internal($create_entries.clone()),
@@ -261,27 +247,25 @@ macro_rules! run_create_test {
 
             {
                 let qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.create(&mut au, &ce);
+                let r = qs_write.create(&ce);
                 debug!("test result: {:?}", r);
                 assert!(r == $expect);
-                $check(&mut au, &qs_write);
+                $check(&qs_write);
                 match r {
                     Ok(_) => {
-                        qs_write.commit(&mut au).expect("commit failure!");
+                        qs_write.commit().expect("commit failure!");
                     }
                     Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        admin_error!("Rolling back => {:?}", e);
                     }
                 }
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au);
+            let ver = qs.verify();
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
-        // Dump the raw audit log.
-        au.write_log();
     }};
 }
 
@@ -301,9 +285,8 @@ macro_rules! run_modify_test {
         use crate::prelude::*;
         use crate::schema::Schema;
 
-        let mut au = AuditScope::new("run_modify_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_modify_test", || {
-            let qs = setup_test!(&mut au, $preload_entries);
+        spanned!("plugins::macros::run_modify_test", {
+            let qs = setup_test!($preload_entries);
 
             let me = match $internal {
                 None => unsafe { ModifyEvent::new_internal_invalid($modify_filter, $modify_list) },
@@ -314,35 +297,29 @@ macro_rules! run_modify_test {
 
             {
                 let qs_write = qs.write(duration_from_epoch_now());
-                let r = lperf_segment!(
-                    &mut au,
-                    "plugins::macros::run_modify_test -> main_test",
-                    || { qs_write.modify(&mut au, &me) }
-                );
-                lperf_segment!(
-                    &mut au,
-                    "plugins::macros::run_modify_test -> post_test check",
-                    || { $check(&mut au, &qs_write) }
-                );
+                let r = spanned!("plugins::macros::run_modify_test -> main_test", {
+                    qs_write.modify(&me)
+                });
+                spanned!("plugins::macros::run_modify_test -> post_test check", {
+                    $check(&qs_write)
+                });
                 debug!("test result: {:?}", r);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {
-                        qs_write.commit(&mut au).expect("commit failure!");
+                        qs_write.commit().expect("commit failure!");
                     }
                     Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        admin_error!("Rolling back => {:?}", e);
                     }
                 }
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au);
+            let ver = qs.verify();
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
-        // Dump the raw audit log.
-        au.write_log();
     }};
 }
 
@@ -362,9 +339,8 @@ macro_rules! run_delete_test {
         use crate::schema::Schema;
         use crate::utils::duration_from_epoch_now;
 
-        let mut au = AuditScope::new("run_delete_test", uuid::Uuid::new_v4(), None);
-        lperf_segment!(&mut au, "plugins::macros::run_delete_test", || {
-            let qs = setup_test!(&mut au, $preload_entries);
+        spanned!("plugins::macros::run_delete_test", {
+            let qs = setup_test!($preload_entries);
 
             let de = match $internal {
                 Some(e_str) => unsafe {
@@ -375,27 +351,25 @@ macro_rules! run_delete_test {
 
             {
                 let qs_write = qs.write(duration_from_epoch_now());
-                let r = qs_write.delete(&mut au, &de);
+                let r = qs_write.delete(&de);
                 debug!("test result: {:?}", r);
-                $check(&mut au, &qs_write);
+                $check(&qs_write);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {
-                        qs_write.commit(&mut au).expect("commit failure!");
+                        qs_write.commit().expect("commit failure!");
                     }
                     Err(e) => {
-                        ladmin_error!(&mut au, "Rolling back => {:?}", e);
+                        admin_error!("Rolling back => {:?}", e);
                     }
                 }
             }
             // Make sure there are no errors.
             debug!("starting verification");
-            let ver = qs.verify(&mut au);
+            let ver = qs.verify();
             debug!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
-        // Dump the raw audit log.
-        au.write_log();
     }};
 }
 

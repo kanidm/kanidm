@@ -19,7 +19,7 @@ pub struct Group {
 
 // ! TRACING INTEGRATED
 macro_rules! try_from_account_e {
-    ($au:expr, $value:expr, $qs:expr) => {{
+    ($value:expr, $qs:expr) => {{
         let name = $value
             .get_ava_single_str("name")
             .map(str::to_string)
@@ -40,7 +40,7 @@ macro_rules! try_from_account_e {
                         .map(|u| f_eq("uuid", PartialValue::new_uuidr(u)))
                         .collect()
                 ));
-                let ges: Vec<_> = $qs.internal_search($au, f).map_err(|e| {
+                let ges: Vec<_> = $qs.internal_search(f).map_err(|e| {
                     admin_error!(?e, "internal search failed");
                     e
                 })?;
@@ -67,29 +67,26 @@ macro_rules! try_from_account_e {
 impl Group {
     // ! TRACING INTEGRATED
     pub fn try_from_account_entry_red_ro(
-        au: &mut AuditScope,
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_e!(au, value, qs)
+        try_from_account_e!(value, qs)
     }
 
     // ! TRACING INTEGRATED
     pub fn try_from_account_entry_ro(
-        au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
     ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_e!(au, value, qs)
+        try_from_account_e!(value, qs)
     }
 
     // ! TRACING INTEGRATED
     pub fn try_from_account_entry_rw(
-        au: &mut AuditScope,
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
     ) -> Result<Vec<Self>, OperationError> {
-        try_from_account_e!(au, value, qs)
+        try_from_account_e!(value, qs)
     }
 
     pub fn try_from_entry(

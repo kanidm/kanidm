@@ -46,17 +46,13 @@ impl Plugin for Protected {
     }
 
     fn pre_create(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // List of what we will commit that is valid?
         cand: &[Entry<EntrySealed, EntryNew>],
         ce: &CreateEvent,
     ) -> Result<(), OperationError> {
         if ce.ident.is_internal() {
-            ltrace!(
-                au,
-                "Internal operation, not enforcing system object protection"
-            );
+            trace!("Internal operation, not enforcing system object protection");
             return Ok(());
         }
 
@@ -76,17 +72,13 @@ impl Plugin for Protected {
     }
 
     fn pre_modify(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // Should these be EntrySealed?
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         me: &ModifyEvent,
     ) -> Result<(), OperationError> {
         if me.ident.is_internal() {
-            ltrace!(
-                au,
-                "Internal operation, not enforcing system object protection"
-            );
+            trace!("Internal operation, not enforcing system object protection");
             return Ok(());
         }
         // Prevent adding class: system, domain_info, tombstone, or recycled.
@@ -128,7 +120,7 @@ impl Plugin for Protected {
             c.attribute_equality("class", &PVCLASS_SYSTEM)
         });
 
-        ltrace!(au, "class: system -> {}", system_pres);
+        trace!("class: system -> {}", system_pres);
         // No system types being altered, return.
         if !system_pres {
             return Ok(());
@@ -148,17 +140,13 @@ impl Plugin for Protected {
     }
 
     fn pre_delete(
-        au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         // Should these be EntrySealed
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         de: &DeleteEvent,
     ) -> Result<(), OperationError> {
         if de.ident.is_internal() {
-            ltrace!(
-                au,
-                "Internal operation, not enforcing system object protection"
-            );
+            trace!("Internal operation, not enforcing system object protection");
             return Ok(());
         }
 
@@ -236,7 +224,7 @@ mod tests {
             preload,
             create,
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -266,7 +254,7 @@ mod tests {
                 m_pres("displayname", &Value::new_utf8s("system test")),
             ]),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -296,7 +284,7 @@ mod tests {
                 m_pres("must", &Value::new_iutf8("name")),
             ]),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -322,7 +310,7 @@ mod tests {
             preload,
             filter!(f_eq("name", PartialValue::new_iname("testperson"))),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -359,7 +347,7 @@ mod tests {
                 m_pres("domain_ssid", &Value::new_utf8s("NewExampleWifi")),
             ]),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -388,7 +376,7 @@ mod tests {
             preload,
             create,
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 
@@ -420,7 +408,7 @@ mod tests {
                 PartialValue::new_iname("domain_example.net.au")
             )),
             Some(JSON_ADMIN_V1),
-            |_, _| {}
+            |_| {}
         );
     }
 }

@@ -15,7 +15,6 @@ use libc::umask;
 // use crossbeam::channel::unbounded;
 use crate::prelude::*;
 use std::sync::Arc;
-use tokio::sync::mpsc::unbounded_channel as unbounded;
 
 use crate::config::Configuration;
 
@@ -23,7 +22,6 @@ use crate::config::Configuration;
 // use self::ctx::ServerCtx;
 use crate::actors::v1_read::QueryServerReadV1;
 use crate::actors::v1_write::QueryServerWriteV1;
-use crate::async_log;
 use crate::be::{Backend, BackendConfig, BackendTransaction, FsType};
 use crate::crypto::setup_tls;
 use crate::idm::server::{IdmServer, IdmServerDelayed};
@@ -53,7 +51,6 @@ fn setup_backend_vacuum(
     let schema_txn = schema.write();
     let idxmeta = schema_txn.reload_idxmeta();
 
-    let mut audit_be = AuditScope::new("backend_setup", uuid::Uuid::new_v4(), config.log_level);
     let pool_size: u32 = config.threads as u32;
     let fstype: FsType = if config
         .db_fs_type
@@ -73,9 +70,8 @@ fn setup_backend_vacuum(
         config.db_arc_size,
     );
 
-    let be = Backend::new(&mut audit_be, cfg, idxmeta, vacuum);
+    let be = Backend::new(cfg, idxmeta, vacuum);
     // debug!
-    audit_be.write_log();
     be
 }
 
@@ -84,13 +80,12 @@ fn setup_backend_vacuum(
 // form, this way we could have seperate Idm vs Qs threads, and dedicated
 // threads for write vs read
 fn setup_qs_idms(
-    audit: &mut AuditScope,
     be: Backend,
     schema: Schema,
     config: &Configuration,
 ) -> Result<(QueryServer, IdmServer, IdmServerDelayed), OperationError> {
     // Create a query_server implementation
-    let query_server = QueryServer::new(audit, be, schema);
+    let query_server = QueryServer::new(be, schema);
 
     // TODO #62: Should the IDM parts be broken out to the IdmServer?
     // What's important about this initial setup here is that it also triggers
@@ -100,24 +95,22 @@ fn setup_qs_idms(
     // Now search for the schema itself, and validate that the system
     // in memory matches the BE on disk, and that it's syntactically correct.
     // Write it out if changes are needed.
-    query_server.initialise_helper(audit, duration_from_epoch_now())?;
+    query_server.initialise_helper(duration_from_epoch_now())?;
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(audit, query_server.clone(), config.origin.clone())?;
+    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), config.origin.clone())?;
 
     Ok((query_server, idms, idms_delayed))
 }
 
 macro_rules! dbscan_setup_be {
     (
-        $audit:expr,
         $config:expr
     ) => {{
-        let schema = match Schema::new(&mut $audit) {
+        let schema = match Schema::new() {
             Ok(s) => s,
             Err(e) => {
-                $audit.write_log();
                 error!("Failed to setup in memory schema: {:?}", e);
                 std::process::exit(1);
             }
@@ -134,12 +127,7 @@ macro_rules! dbscan_setup_be {
 }
 
 pub fn dbscan_list_indexes_core(config: &Configuration) {
-    let mut audit = AuditScope::new(
-        "dbscan_list_indexes",
-        uuid::Uuid::new_v4(),
-        config.log_level,
-    );
-    let be = dbscan_setup_be!(audit, config);
+    let be = dbscan_setup_be!(config);
     let be_rotxn = be.read();
 
     match be_rotxn.list_indexes() {
@@ -150,19 +138,13 @@ pub fn dbscan_list_indexes_core(config: &Configuration) {
             })
         }
         Err(e) => {
-            audit.write_log();
             error!("Failed to retrieve index list: {:?}", e);
         }
     };
 }
 
 pub fn dbscan_list_id2entry_core(config: &Configuration) {
-    let mut audit = AuditScope::new(
-        "dbscan_list_id2entry",
-        uuid::Uuid::new_v4(),
-        config.log_level,
-    );
-    let be = dbscan_setup_be!(audit, config);
+    let be = dbscan_setup_be!(config);
     let be_rotxn = be.read();
 
     match be_rotxn.list_id2entry() {
@@ -173,26 +155,18 @@ pub fn dbscan_list_id2entry_core(config: &Configuration) {
             })
         }
         Err(e) => {
-            audit.write_log();
             error!("Failed to retrieve id2entry list: {:?}", e);
         }
     };
 }
 
 pub fn dbscan_list_index_analysis_core(config: &Configuration) {
-    let mut audit = AuditScope::new(
-        "dbscan_list_index_analysis",
-        uuid::Uuid::new_v4(),
-        config.log_level,
-    );
-
-    let _be = dbscan_setup_be!(audit, config);
+    let _be = dbscan_setup_be!(config);
     // TBD in after slopes merge.
 }
 
 pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
-    let mut audit = AuditScope::new("dbscan_list_index", uuid::Uuid::new_v4(), config.log_level);
-    let be = dbscan_setup_be!(audit, config);
+    let be = dbscan_setup_be!(config);
     let be_rotxn = be.read();
 
     match be_rotxn.list_index_content(index_name) {
@@ -203,36 +177,27 @@ pub fn dbscan_list_index_core(config: &Configuration, index_name: &str) {
             })
         }
         Err(e) => {
-            audit.write_log();
             error!("Failed to retrieve index list: {:?}", e);
         }
     };
 }
 
 pub fn dbscan_get_id2entry_core(config: &Configuration, id: u64) {
-    let mut audit = AuditScope::new(
-        "dbscan_get_id2entry",
-        uuid::Uuid::new_v4(),
-        config.log_level,
-    );
-    let be = dbscan_setup_be!(audit, config);
+    let be = dbscan_setup_be!(config);
     let be_rotxn = be.read();
 
     match be_rotxn.get_id2entry(id) {
         Ok((id, value)) => println!("{:>8}: {}", id, value),
         Err(e) => {
-            audit.write_log();
             error!("Failed to retrieve id2entry value: {:?}", e);
         }
     };
 }
 
 pub fn backup_server_core(config: &Configuration, dst_path: &str) {
-    let mut audit = AuditScope::new("backend_backup", uuid::Uuid::new_v4(), config.log_level);
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
-            audit.write_log();
             error!("Failed to setup in memory schema: {:?}", e);
             std::process::exit(1);
         }
@@ -247,8 +212,7 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
     };
 
     let be_ro_txn = be.read();
-    let r = be_ro_txn.backup(&mut audit, dst_path);
-    audit.write_log();
+    let r = be_ro_txn.backup(dst_path);
     match r {
         Ok(_) => info!("Backup success!"),
         Err(e) => {
@@ -260,14 +224,12 @@ pub fn backup_server_core(config: &Configuration, dst_path: &str) {
 }
 
 pub fn restore_server_core(config: &Configuration, dst_path: &str) {
-    let mut audit = AuditScope::new("backend_restore", uuid::Uuid::new_v4(), config.log_level);
     touch_file_or_quit(config.db_path.as_str());
 
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
-            audit.write_log();
             error!("Failed to setup in memory schema: {:?}", e);
             std::process::exit(1);
         }
@@ -282,12 +244,9 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     };
 
     let be_wr_txn = be.write();
-    let r = be_wr_txn
-        .restore(&mut audit, dst_path)
-        .and_then(|_| be_wr_txn.commit(&mut audit));
+    let r = be_wr_txn.restore(dst_path).and_then(|_| be_wr_txn.commit());
 
     if r.is_err() {
-        audit.write_log();
         error!("Failed to restore database: {:?}", r);
         std::process::exit(1);
     }
@@ -295,10 +254,9 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 
     info!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
         Ok(t) => t,
         Err(e) => {
-            audit.write_log();
             error!("Unable to setup query server or idm server -> {:?}", e);
             return;
         }
@@ -308,14 +266,11 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
     info!("Start reindex phase ...");
 
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
-    let r = qs_write
-        .reindex(&mut audit)
-        .and_then(|_| qs_write.commit(&mut audit));
+    let r = qs_write.reindex().and_then(|_| qs_write.commit());
 
     match r {
         Ok(_) => info!("Reindex Success!"),
         Err(e) => {
-            audit.write_log();
             error!("Restore failed: {:?}", e);
             std::process::exit(1);
         }
@@ -325,10 +280,9 @@ pub fn restore_server_core(config: &Configuration, dst_path: &str) {
 }
 
 pub fn reindex_server_core(config: &Configuration) {
-    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
     eprintln!("Start Index Phase 1 ...");
     // First, we provide the in-memory schema so that core attrs are indexed correctly.
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to setup in memory schema: {:?}", e);
@@ -346,44 +300,30 @@ pub fn reindex_server_core(config: &Configuration) {
 
     // Reindex only the core schema attributes to bootstrap the process.
     let be_wr_txn = be.write();
-    let r = be_wr_txn
-        .reindex(&mut audit)
-        .and_then(|_| be_wr_txn.commit(&mut audit));
+    let r = be_wr_txn.reindex().and_then(|_| be_wr_txn.commit());
 
     // Now that's done, setup a minimal qs and reindex from that.
     if r.is_err() {
-        audit.write_log();
         eprintln!("Failed to reindex database: {:?}", r);
         std::process::exit(1);
     }
     eprintln!("Index Phase 1 Success!");
 
-    audit.write_log();
-    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
-
     eprintln!("Attempting to init query server ...");
 
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
         Ok(t) => t,
         Err(e) => {
-            audit.write_log();
             error!("Unable to setup query server or idm server -> {:?}", e);
             return;
         }
     };
     eprintln!("Init Query Server Success!");
 
-    audit.write_log();
-    let mut audit = AuditScope::new("server_reindex", uuid::Uuid::new_v4(), config.log_level);
-
     eprintln!("Start Index Phase 2 ...");
 
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
-    let r = qs_write
-        .reindex(&mut audit)
-        .and_then(|_| qs_write.commit(&mut audit));
-
-    audit.write_log();
+    let r = qs_write.reindex().and_then(|_| qs_write.commit());
 
     match r {
         Ok(_) => eprintln!("Index Phase 2 Success!"),
@@ -395,9 +335,7 @@ pub fn reindex_server_core(config: &Configuration) {
 }
 
 pub fn vacuum_server_core(config: &Configuration) {
-    let mut audit = AuditScope::new("server_vacuum", uuid::Uuid::new_v4(), config.log_level);
-
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to setup in memory schema: {:?}", e);
@@ -409,8 +347,6 @@ pub fn vacuum_server_core(config: &Configuration) {
     // locking.
     let r = setup_backend_vacuum(config, &schema, true);
 
-    audit.write_log();
-
     match r {
         Ok(_) => eprintln!("Vacuum Success!"),
         Err(e) => {
@@ -421,9 +357,7 @@ pub fn vacuum_server_core(config: &Configuration) {
 }
 
 pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
-    let mut audit = AuditScope::new("domain_rename", uuid::Uuid::new_v4(), config.log_level);
-
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to setup in memory schema: {:?}", e);
@@ -440,10 +374,9 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (qs, _idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
+    let (qs, _idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
         Ok(t) => t,
         Err(e) => {
-            audit.write_log();
             error!("Unable to setup query server or idm server -> {:?}", e);
             return;
         }
@@ -451,8 +384,8 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
 
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
-        .domain_rename(&mut audit, new_domain_name)
-        .and_then(|_| qs_write.commit(&mut audit));
+        .domain_rename(new_domain_name)
+        .and_then(|_| qs_write.commit());
 
     match r {
         Ok(_) => info!("Domain Rename Success!"),
@@ -463,27 +396,9 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
     };
 }
 
-/*
-pub fn reset_sid_core(config: Configuration) {
-    let mut audit = AuditScope::new("reset_sid_core", uuid::Uuid::new_v4());
-    // Setup the be
-    let be = match setup_backend(&config) {
-        Ok(be) => be,
-        Err(e) => {
-            error!("Failed to setup BE: {:?}", e);
-            return;
-        }
-    };
-    let nsid = be.reset_db_s_uuid(&mut audit);
-    audit.write_log();
-    info!("New Server ID: {:?}", nsid);
-}
-*/
-
 pub fn verify_server_core(config: &Configuration) {
-    let mut audit = AuditScope::new("server_verify", uuid::Uuid::new_v4(), config.log_level);
     // setup the qs - without initialise!
-    let schema_mem = match Schema::new(&mut audit) {
+    let schema_mem = match Schema::new() {
         Ok(sc) => sc,
         Err(e) => {
             error!("Failed to setup in memory schema: {:?}", e);
@@ -498,12 +413,10 @@ pub fn verify_server_core(config: &Configuration) {
             return;
         }
     };
-    let server = QueryServer::new(&mut audit, be, schema_mem);
+    let server = QueryServer::new(be, schema_mem);
 
     // Run verifications.
-    let r = server.verify(&mut audit);
-
-    audit.write_log();
+    let r = server.verify();
 
     if r.is_empty() {
         eprintln!("Verification passed!");
@@ -519,9 +432,7 @@ pub fn verify_server_core(config: &Configuration) {
 }
 
 pub fn recover_account_core(config: &Configuration, name: &str) {
-    let mut audit = AuditScope::new("recover_account", uuid::Uuid::new_v4(), config.log_level);
-
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
             eprintln!("Failed to setup in memory schema: {:?}", e);
@@ -538,10 +449,9 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
         }
     };
     // setup the qs - *with* init of the migrations and schema.
-    let (_qs, idms, _idms_delayed) = match setup_qs_idms(&mut audit, be, schema, config) {
+    let (_qs, idms, _idms_delayed) = match setup_qs_idms(be, schema, config) {
         Ok(t) => t,
         Err(e) => {
-            audit.write_log();
             error!("Unable to setup query server or idm server -> {:?}", e);
             return;
         }
@@ -549,21 +459,18 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
 
     // Run the password change.
     let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
-    match idms_prox_write.recover_account(&mut audit, name, None) {
-        Ok(new_pw) => match idms_prox_write.commit(&mut audit) {
+    match idms_prox_write.recover_account(name, None) {
+        Ok(new_pw) => match idms_prox_write.commit() {
             Ok(()) => {
-                audit.write_log();
                 eprintln!("Password reset to -> {}", new_pw);
             }
             Err(e) => {
                 error!("A critical error during commit occured {:?}", e);
-                audit.write_log();
                 std::process::exit(1);
             }
         },
         Err(e) => {
             error!("Error during password reset -> {:?}", e);
-            audit.write_log();
             // abort the txn
             std::mem::drop(idms_prox_write);
             std::process::exit(1);
@@ -583,13 +490,9 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
     // Setup umask, so that every we touch or create is secure.
     let _ = unsafe { umask(0o0027) };
 
-    // The log task is spawned. It will only consume a single thread at a time.
-    let (log_tx, log_rx) = unbounded();
-    tokio::spawn(async_log::run(log_rx));
-
     // Similar, create a stats task which aggregates statistics from the
     // server as they come in.
-    let status_ref = StatusActor::start(log_tx.clone(), config.log_level);
+    let status_ref = StatusActor::start(config.log_level);
 
     // Setup TLS (if any)
     let _opt_tls_params = match setup_tls(&config) {
@@ -600,9 +503,7 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         }
     };
 
-    let mut audit = AuditScope::new("setup_qs_idms", uuid::Uuid::new_v4(), config.log_level);
-
-    let schema = match Schema::new(&mut audit) {
+    let schema = match Schema::new() {
         Ok(s) => s,
         Err(e) => {
             error!("Failed to setup in memory schema: {:?}", e);
@@ -619,10 +520,9 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         }
     };
     // Start the IDM server.
-    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(&mut audit, be, schema, &config) {
+    let (_qs, idms, mut idms_delayed) = match setup_qs_idms(be, schema, &config) {
         Ok(t) => t,
         Err(e) => {
-            audit.write_log();
             error!("Unable to setup query server or idm server -> {:?}", e);
             return Err(());
         }
@@ -643,10 +543,9 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         Some(itc) => {
             let mut idms_prox_write =
                 task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
-            match idms_prox_write.recover_account(&mut audit, "admin", Some(&itc.admin_password)) {
+            match idms_prox_write.recover_account("admin", Some(&itc.admin_password)) {
                 Ok(_) => {}
                 Err(e) => {
-                    audit.write_log();
                     error!(
                         "Unable to configure INTERGATION TEST admin account -> {:?}",
                         e
@@ -654,10 +553,9 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
                     return Err(());
                 }
             };
-            match idms_prox_write.commit(&mut audit) {
+            match idms_prox_write.commit() {
                 Ok(_) => {}
                 Err(e) => {
-                    audit.write_log();
                     error!("Unable to commit INTERGATION TEST setup -> {:?}", e);
                     return Err(());
                 }
@@ -666,18 +564,13 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
         None => {}
     }
 
-    let ldap = match LdapServer::new(&mut audit, &idms) {
+    let ldap = match LdapServer::new(&idms) {
         Ok(l) => l,
         Err(e) => {
-            audit.write_log();
             error!("Unable to start LdapServer -> {:?}", e);
             return Err(());
         }
     };
-
-    log_tx.send(audit).unwrap_or_else(|_| {
-        error!("CRITICAL: UNABLE TO COMMIT LOGS");
-    });
 
     // Arc the idms and ldap
     let idms_arc = Arc::new(idms);
@@ -685,16 +578,11 @@ pub async fn create_server_core(config: Configuration) -> Result<(), ()> {
 
     // Pass it to the actor for threading.
     // Start the read query server with the given be path: future config
-    let server_read_ref = QueryServerReadV1::start_static(
-        log_tx.clone(),
-        config.log_level,
-        idms_arc.clone(),
-        ldap_arc.clone(),
-    );
+    let server_read_ref =
+        QueryServerReadV1::start_static(config.log_level, idms_arc.clone(), ldap_arc.clone());
 
     // Create the server async write entry point.
-    let server_write_ref =
-        QueryServerWriteV1::start_static(log_tx.clone(), config.log_level, idms_arc.clone());
+    let server_write_ref = QueryServerWriteV1::start_static(config.log_level, idms_arc.clone());
 
     tokio::spawn(async move {
         idms_delayed.process_all(server_write_ref).await;

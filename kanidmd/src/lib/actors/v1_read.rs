@@ -1,4 +1,3 @@
-use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::{error, info, instrument, trace};
 
 use chrono::{DateTime, SecondsFormat, Utc};
@@ -42,22 +41,15 @@ use std::convert::TryFrom;
 // ===========================================================
 
 pub struct QueryServerReadV1 {
-    log: Sender<AuditScope>,
     pub log_level: Option<u32>,
     idms: Arc<IdmServer>,
     ldap: Arc<LdapServer>,
 }
 
 impl QueryServerReadV1 {
-    pub fn new(
-        log: Sender<AuditScope>,
-        log_level: Option<u32>,
-        idms: Arc<IdmServer>,
-        ldap: Arc<LdapServer>,
-    ) -> Self {
+    pub fn new(log_level: Option<u32>, idms: Arc<IdmServer>, ldap: Arc<LdapServer>) -> Self {
         info!("Starting query server v1 worker ...");
         QueryServerReadV1 {
-            log,
             log_level,
             idms,
             ldap,
@@ -65,12 +57,11 @@ impl QueryServerReadV1 {
     }
 
     pub fn start_static(
-        log: Sender<AuditScope>,
         log_level: Option<u32>,
         idms: Arc<IdmServer>,
         ldap: Arc<LdapServer>,
     ) -> &'static Self {
-        let x = Box::new(QueryServerReadV1::new(log, log_level, idms, ldap));
+        let x = Box::new(QueryServerReadV1::new(log_level, idms, ldap));
 
         let x_ref = Box::leak(x);
         &(*x_ref)
@@ -81,7 +72,6 @@ impl QueryServerReadV1 {
     // required complete. We still need to do certain validation steps, but
     // at this point our just is just to route to do_<action>
 
-    // ! TRACING INTEGRATED
     // ! For uuid, we should deprecate `RequestExtensions::new_eventid` and just manually call
     // ! `Uuid::new_v4().to_hyphenated().to_string()` instead of keeping a `Uuid` around.
     // ! Ideally, this function takes &self, uat, req, and then a `uuid` argument that is a `&str` of the hyphenated uuid.
@@ -98,7 +88,6 @@ impl QueryServerReadV1 {
         req: SearchRequest,
         eventid: Uuid,
     ) -> Result<SearchResponse, OperationError> {
-        let mut audit = AuditScope::new("search", eventid, self.log_level);
         // Begin a read
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
@@ -110,39 +99,27 @@ impl QueryServerReadV1 {
         // ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block
         // ! in order to not short-circuit the entire function.
         let res = spanned!("actors::v1_read::handle<SearchMessage>", {
-            lperf_op_segment!(&mut audit, "actors::v1_read::handle<SearchMessage>", || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        admin_error!(?e, "Invalid identity");
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(?e, "Invalid identity");
+                    e
+                })?;
 
-                // Make an event from the request
-                let search =
-                    SearchEvent::from_message(&mut audit, ident, &req, &idms_prox_read.qs_read)
-                        .map_err(|e| {
-                            admin_error!(?e, "Failed to begin search");
-                            ladmin_error!(audit, "Failed to begin search: {:?}", e);
-                            e
-                        })?;
+            // Make an event from the request
+            let search =
+                SearchEvent::from_message(ident, &req, &idms_prox_read.qs_read).map_err(|e| {
+                    admin_error!(?e, "Failed to begin search");
+                    e
+                })?;
 
-                trace!(?search, "Begin event");
-                ltrace!(audit, "Begin event {:?}", search);
+            trace!(?search, "Begin event");
 
-                let entries = idms_prox_read.qs_read.search_ext(&mut audit, &search)?;
+            let entries = idms_prox_read.qs_read.search_ext(&search)?;
 
-                SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
-                    .map(SearchResult::response)
-            })
+            SearchResult::new(&idms_prox_read.qs_read, &entries).map(SearchResult::response)
         });
-        // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
@@ -163,19 +140,15 @@ impl QueryServerReadV1 {
         // "on top" of the db server concept. In this case we check if
         // the credentials provided is sufficient to say if someone is
         // "authenticated" or not.
-        let mut audit = AuditScope::new("auth", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth_async().await;
-        // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthMessage>", || {
         security_info!(?sessionid, ?req, "Begin auth event");
-        lsecurity!(audit, "Begin auth event {:?} {:?}", sessionid, req);
 
         // Destructure it.
         // Convert the AuthRequest to an AuthEvent that the idm server
         // can use.
         let ae = AuthEvent::from_message(sessionid, req).map_err(|e| {
             admin_error!(err = ?e, "Failed to parse AuthEvent");
-            ladmin_error!(audit, "Failed to parse AuthEvent -> {:?}", e);
             e
         })?;
 
@@ -187,33 +160,28 @@ impl QueryServerReadV1 {
         // Generally things like auth denied are in Ok() msgs
         // so true errors should always trigger a rollback.
         let res = idm_auth
-            .auth(&mut audit, &ae, ct)
+            .auth(&ae, ct)
             .await
-            .and_then(|r| idm_auth.commit(&mut audit).map(|_| r));
+            .and_then(|r| idm_auth.commit().map(|_| r));
 
         security_info!(?res, "Sending auth result");
-        lsecurity!(audit, "Sending auth result -> {:?}", res);
-        // Build the result.
-        // r.map(|r| r.response())
-        // r
-        // });
-        // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "online_backup",
+        skip(self, msg, outpath, versions)
+        fields(uuid = ?msg.eventid)
+    )]
     pub async fn handle_online_backup(
         &self,
         msg: OnlineBackupEvent,
         outpath: &str,
         versions: usize,
     ) {
-        let mut audit = AuditScope::new("online backup", msg.eventid, self.log_level);
-
-        ltrace!(audit, "Begin online backup event {:?}", msg.eventid);
+        trace!(eventid = ?msg.eventid, "Begin online backup event");
 
         let now: DateTime<Utc> = Utc::now();
         let timestamp = now.to_rfc3339_opts(SecondsFormat::Secs, true);
@@ -228,27 +196,20 @@ impl QueryServerReadV1 {
             }
             false => {
                 let idms_prox_read = self.idms.proxy_read_async().await;
-                lperf_op_segment!(
-                    &mut audit,
-                    "actors::v1_read::handle<OnlineBackupEvent>",
-                    || {
-                        let res = idms_prox_read
-                            .qs_read
-                            .get_be_txn()
-                            .backup(&mut audit, &dest_file);
+                spanned!("actors::v1_read::handle<OnlineBackupEvent>", {
+                    let res = idms_prox_read.qs_read.get_be_txn().backup(&dest_file);
 
-                        match &res {
-                            Ok(()) => {
-                                info!("Online backup created {} successfully", dest_file);
-                            }
-                            Err(e) => {
-                                error!("Online backup failed to create {}: {:?}", dest_file, e);
-                            }
+                    match &res {
+                        Ok(()) => {
+                            info!("Online backup created {} successfully", dest_file);
                         }
-
-                        ladmin_info!(audit, "online backup result: {:?}", res);
+                        Err(e) => {
+                            error!("Online backup failed to create {}: {:?}", dest_file, e);
+                        }
                     }
-                );
+
+                    admin_info!(?res, "online backup result");
+                });
             }
         }
 
@@ -325,11 +286,6 @@ impl QueryServerReadV1 {
         } else {
             debug!("Online backup cleanup had no files to remove");
         };
-
-        // At the end of the event we send it for logging.
-        self.log.send(audit).unwrap_or_else(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-        });
     }
 
     #[instrument(
@@ -343,7 +299,6 @@ impl QueryServerReadV1 {
         uat: Option<String>,
         eventid: Uuid,
     ) -> Result<WhoamiResponse, OperationError> {
-        let mut audit = AuditScope::new("whoami", eventid, self.log_level);
         // TODO #62: Move this to IdmServer!!!
         // Begin a read
         let ct = duration_from_epoch_now();
@@ -356,60 +311,52 @@ impl QueryServerReadV1 {
         // ! However, if we want to do work after `res` is calculated, we need to pass `spanned` a closure instead of a block
         // ! in order to not short-circuit the entire function.
         let res = spanned!("actors::v1_read::handle<WhoamiMessage>", {
-            lperf_op_segment!(&mut audit, "actors::v1_read::handle<WhoamiMessage>", || {
-                // Make an event from the whoami request. This will process the event and
-                // generate a selfuuid search.
-                //
-                // This current handles the unauthenticated check, and will
-                // trigger the failure, but if we can manage to work out async
-                // then move this to core.rs, and don't allow Option<UAT> to get
-                // this far.
-                let (uat, ident) = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| {
-                        idms_prox_read
-                            .process_uat_to_identity(&mut audit, &uat, ct)
-                            .map(|i| (uat, i))
-                    })
-                    .map_err(|e| {
-                        admin_error!(?e, "Invalid identity");
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+            // Make an event from the whoami request. This will process the event and
+            // generate a selfuuid search.
+            //
+            // This current handles the unauthenticated check, and will
+            // trigger the failure, but if we can manage to work out async
+            // then move this to core.rs, and don't allow Option<UAT> to get
+            // this far.
+            let (uat, ident) = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| {
+                    idms_prox_read
+                        .process_uat_to_identity(&uat, ct)
+                        .map(|i| (uat, i))
+                })
+                .map_err(|e| {
+                    admin_error!(?e, "Invalid identity");
+                    e
+                })?;
 
-                let srch =
-                    SearchEvent::from_whoami_request(&mut audit, ident, &idms_prox_read.qs_read)
-                        .map_err(|e| {
-                            admin_error!(?e, "Failed to begin whoami");
-                            ladmin_error!(audit, "Failed to begin whoami: {:?}", e);
-                            e
-                        })?;
+            let srch =
+                SearchEvent::from_whoami_request(ident, &idms_prox_read.qs_read).map_err(|e| {
+                    admin_error!(?e, "Failed to begin whoami");
+                    e
+                })?;
 
-                trace!(search = ?srch, "Begin event");
-                ltrace!(audit, "Begin event {:?}", srch);
+            trace!(search = ?srch, "Begin event");
 
-                let mut entries = idms_prox_read.qs_read.search_ext(&mut audit, &srch)?;
+            let mut entries = idms_prox_read.qs_read.search_ext(&srch)?;
 
-                match entries.pop() {
-                    Some(e) if entries.is_empty() => {
-                        WhoamiResult::new(&mut audit, &idms_prox_read.qs_read, &e, uat)
-                            .map(WhoamiResult::response)
-                    }
-                    Some(_) => Err(OperationError::InvalidState), // Somehow matched multiple entries...
-                    _ => Err(OperationError::NoMatchingEntries),
+            match entries.pop() {
+                Some(e) if entries.is_empty() => {
+                    WhoamiResult::new(&idms_prox_read.qs_read, &e, uat).map(WhoamiResult::response)
                 }
-            })
+                Some(_) => Err(OperationError::InvalidState), // Somehow matched multiple entries...
+                _ => Err(OperationError::NoMatchingEntries),
+            }
         });
-        // Should we log the final result?
-        // At the end of the event we send it for logging.
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalsearch",
+        skip(self, uat, filter, attrs, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalsearch(
         &self,
         uat: Option<String>,
@@ -417,52 +364,47 @@ impl QueryServerReadV1 {
         attrs: Option<Vec<String>>,
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
-        let mut audit = AuditScope::new("internal_search_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<InternalSearchMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                // Make an event from the request
-                let srch = match SearchEvent::from_internal_message(
-                    &mut audit,
-                    ident,
-                    &filter,
-                    attrs.as_deref(),
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin internal api search: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                ltrace!(audit, "Begin event {:?}", srch);
-
-                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                    Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
-                        .map(|ok_sr| ok_sr.into_proto_array()),
-                    Err(e) => Err(e),
+        let res = spanned!("actors::v1_read::handle<InternalSearchMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
+            // Make an event from the request
+            let srch = match SearchEvent::from_internal_message(
+                ident,
+                &filter,
+                attrs.as_deref(),
+                &idms_prox_read.qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin internal api search: {:?}", e);
+                    return Err(e);
                 }
+            };
+
+            trace!(?srch, "Begin event");
+
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
+                    .map(|ok_sr| ok_sr.into_proto_array()),
+                Err(e) => Err(e),
             }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalsearchrecycled",
+        skip(self, uat, filter, attrs, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalsearchrecycled(
         &self,
         uat: Option<String>,
@@ -470,374 +412,341 @@ impl QueryServerReadV1 {
         attrs: Option<Vec<String>>,
         eventid: Uuid,
     ) -> Result<Vec<ProtoEntry>, OperationError> {
-        let mut audit = AuditScope::new("internal_search_recycle_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<InternalSearchRecycledMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                // Make an event from the request
-                let srch = match SearchEvent::from_internal_recycle_message(
-                    &mut audit,
-                    ident,
-                    &filter,
-                    attrs.as_deref(),
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin recycled search: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                ltrace!(audit, "Begin event {:?}", srch);
-
-                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                    Ok(entries) => SearchResult::new(&mut audit, &idms_prox_read.qs_read, &entries)
-                        .map(|ok_sr| ok_sr.into_proto_array()),
-                    Err(e) => Err(e),
+        let res = spanned!("actors::v1_read::handle<InternalSearchRecycledMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
+            // Make an event from the request
+            let srch = match SearchEvent::from_internal_recycle_message(
+                ident,
+                &filter,
+                attrs.as_deref(),
+                &idms_prox_read.qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin recycled search: {:?}", e);
+                    return Err(e);
                 }
+            };
+
+            trace!(?srch, "Begin event");
+
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(entries) => SearchResult::new(&idms_prox_read.qs_read, &entries)
+                    .map(|ok_sr| ok_sr.into_proto_array()),
+                Err(e) => Err(e),
             }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalradiusread",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalradiusread(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let mut audit = AuditScope::new("internal_radius_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<InternalRadiusReadMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<InternalRadiusReadMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
 
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Error resolving id to target");
-                        e
-                    })?;
+            let target_uuid = idms_prox_read
+                .qs_read
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!("Error resolving id to target");
+                    e
+                })?;
 
-                // Make an event from the request
-                let srch = match SearchEvent::from_target_uuid_request(
-                    &mut audit,
-                    ident,
-                    target_uuid,
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin radius read: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                ltrace!(audit, "Begin event {:?}", srch);
-
-                // We have to use search_ext to guarantee acs was applied.
-                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                    Ok(mut entries) => {
-                        let r = entries
-                            .pop()
-                            // From the entry, turn it into the value
-                            .and_then(|entry| {
-                                entry
-                                    .get_ava_single("radius_secret")
-                                    .and_then(|v| v.get_secret_str().map(str::to_string))
-                            });
-                        Ok(r)
-                    }
-                    Err(e) => Err(e),
+            // Make an event from the request
+            let srch = match SearchEvent::from_target_uuid_request(
+                ident,
+                target_uuid,
+                &idms_prox_read.qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin radius read: {:?}", e);
+                    return Err(e);
                 }
+            };
+
+            trace!(?srch, "Begin event");
+
+            // We have to use search_ext to guarantee acs was applied.
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(mut entries) => {
+                    let r = entries
+                        .pop()
+                        // From the entry, turn it into the value
+                        .and_then(|entry| {
+                            entry
+                                .get_ava_single("radius_secret")
+                                .and_then(|v| v.get_secret_str().map(str::to_string))
+                        });
+                    Ok(r)
+                }
+                Err(e) => Err(e),
             }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalradiustokenread",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalradiustokenread(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<RadiusAuthToken, OperationError> {
-        let mut audit = AuditScope::new(
-            "internal_radius_token_read_message",
-            eventid,
-            self.log_level,
-        );
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<InternalRadiusTokenReadMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<InternalRadiusTokenReadMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
 
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Error resolving id to target");
-                        e
-                    })?;
+            let target_uuid = idms_prox_read
+                .qs_read
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!("Error resolving id to target");
+                    e
+                })?;
 
-                // Make an event from the request
-                let rate = match RadiusAuthTokenEvent::from_parts(
-                    &mut audit,
-                    // &idms_prox_read.qs_read,
-                    ident,
-                    target_uuid,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin radius token read: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            // Make an event from the request
+            let rate = match RadiusAuthTokenEvent::from_parts(
+                // &idms_prox_read.qs_read,
+                ident,
+                target_uuid,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin radius token read: {:?}", e);
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin event {:?}", rate);
+            trace!(?rate, "Begin event");
 
-                idms_prox_read.get_radiusauthtoken(&mut audit, &rate, ct)
-            }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+            idms_prox_read.get_radiusauthtoken(&rate, ct)
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalunixusertokenread",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalunixusertokenread(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixUserToken, OperationError> {
-        let mut audit =
-            AuditScope::new("internal_unix_token_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = lperf_op_segment!(
-            &mut audit,
+        let res = spanned!(
             "actors::v1_read::handle<InternalUnixUserTokenReadMessage>",
-            || {
+            {
                 let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                    .validate_and_parse_uat(uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                     .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        admin_error!("Invalid identity: {:?}", e);
                         e
                     })?;
 
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .name_to_uuid(uuid_or_name.as_str())
                     .map_err(|e| {
-                        ladmin_info!(
-                            &mut audit,
-                            "Error resolving {} as gidnumber continuing ... {:?}",
-                            uuid_or_name,
-                            e
+                        admin_info!(
+                            err = ?e,
+                            "Error resolving {} as gidnumber continuing ...",
+                            uuid_or_name
                         );
                         e
                     })?;
 
                 // Make an event from the request
-                let rate = match UnixUserTokenEvent::from_parts(&mut audit, ident, target_uuid) {
+                let rate = match UnixUserTokenEvent::from_parts(ident, target_uuid) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin unix token read: {:?}", e);
+                        admin_error!("Failed to begin unix token read: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                ltrace!(audit, "Begin event {:?}", rate);
+                trace!(?rate, "Begin event");
 
-                idms_prox_read.get_unixusertoken(&mut audit, &rate, ct)
+                idms_prox_read.get_unixusertoken(&rate, ct)
             }
         );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalunixgrouptokenread",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalunixgrouptokenread(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<UnixGroupToken, OperationError> {
-        let mut audit = AuditScope::new(
-            "internal_unixgroup_token_read_message",
-            eventid,
-            self.log_level,
-        );
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
+        let res = spanned!(
             "actors::v1_read::handle<InternalUnixGroupTokenReadMessage>",
-            || {
+            {
                 let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
+                    .validate_and_parse_uat(uat.as_deref(), ct)
+                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
                     .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
+                        admin_error!("Invalid identity: {:?}", e);
                         e
                     })?;
 
                 let target_uuid = idms_prox_read
                     .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
+                    .name_to_uuid(uuid_or_name.as_str())
                     .map_err(|e| {
-                        ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
+                        admin_info!(err = ?e, "Error resolving as gidnumber continuing");
                         e
                     })?;
 
                 // Make an event from the request
                 let rate = match UnixGroupTokenEvent::from_parts(
-                    &mut audit,
                     // &idms_prox_read.qs_read,
                     ident,
                     target_uuid,
                 ) {
                     Ok(s) => s,
                     Err(e) => {
-                        ladmin_error!(audit, "Failed to begin unix group token read: {:?}", e);
+                        admin_error!("Failed to begin unix group token read: {:?}", e);
                         return Err(e);
                     }
                 };
 
-                ltrace!(audit, "Begin event {:?}", rate);
+                trace!(?rate, "Begin event");
 
-                idms_prox_read.get_unixgrouptoken(&mut audit, &rate)
+                idms_prox_read.get_unixgrouptoken(&rate)
             }
         );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalsshkeyread",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalsshkeyread(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<Vec<String>, OperationError> {
-        let mut audit = AuditScope::new("internal_sshkey_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<InternalSshKeyReadMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Error resolving id to target");
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<InternalSshKeyReadMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
+            let target_uuid = idms_prox_read
+                .qs_read
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!("Error resolving id to target");
+                    e
+                })?;
 
-                // Make an event from the request
-                let srch = match SearchEvent::from_target_uuid_request(
-                    &mut audit,
-                    ident,
-                    target_uuid,
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin ssh key read: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                ltrace!(audit, "Begin event {:?}", srch);
-
-                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                    Ok(mut entries) => {
-                        let r = entries
-                            .pop()
-                            // get the first entry
-                            .and_then(|e| {
-                                // From the entry, turn it into the value
-                                e.get_ava_iter_sshpubkeys("ssh_publickey")
-                                    .map(|i| i.map(|s| s.to_string()).collect())
-                            })
-                            .unwrap_or_else(|| {
-                                // No matching entry? Return none.
-                                Vec::new()
-                            });
-                        Ok(r)
-                    }
-                    Err(e) => Err(e),
+            // Make an event from the request
+            let srch = match SearchEvent::from_target_uuid_request(
+                ident,
+                target_uuid,
+                &idms_prox_read.qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin ssh key read: {:?}", e);
+                    return Err(e);
                 }
+            };
+
+            trace!(?srch, "Begin event");
+
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(mut entries) => {
+                    let r = entries
+                        .pop()
+                        // get the first entry
+                        .and_then(|e| {
+                            // From the entry, turn it into the value
+                            e.get_ava_iter_sshpubkeys("ssh_publickey")
+                                .map(|i| i.map(|s| s.to_string()).collect())
+                        })
+                        .unwrap_or_else(|| {
+                            // No matching entry? Return none.
+                            Vec::new()
+                        });
+                    Ok(r)
+                }
+                Err(e) => Err(e),
             }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "internalsshkeytagread",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_internalsshkeytagread(
         &self,
         uat: Option<String>,
@@ -845,75 +754,69 @@ impl QueryServerReadV1 {
         tag: String,
         eventid: Uuid,
     ) -> Result<Option<String>, OperationError> {
-        let mut audit =
-            AuditScope::new("internal_sshkey_tag_read_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<InternalSshKeyTagReadMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_info!(&mut audit, "Error resolving id to target");
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<InternalSshKeyTagReadMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
+            let target_uuid = idms_prox_read
+                .qs_read
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_info!("Error resolving id to target");
+                    e
+                })?;
 
-                // Make an event from the request
-                let srch = match SearchEvent::from_target_uuid_request(
-                    &mut audit,
-                    ident,
-                    target_uuid,
-                    &idms_prox_read.qs_read,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin sshkey tag read: {:?}", e);
-                        return Err(e);
-                    }
-                };
-
-                ltrace!(audit, "Begin event {:?}", srch);
-
-                match idms_prox_read.qs_read.search_ext(&mut audit, &srch) {
-                    Ok(mut entries) => {
-                        let r = entries
-                            .pop()
-                            // get the first entry
-                            .map(|e| {
-                                // From the entry, turn it into the value
-                                e.get_ava_set("ssh_publickey").and_then(|vs| {
-                                    // Get the one tagged value
-                                    vs.get_ssh_tag(&tag).map(str::to_string)
-                                })
-                            })
-                            .unwrap_or_else(|| {
-                                // No matching entry? Return none.
-                                None
-                            });
-                        Ok(r)
-                    }
-                    Err(e) => Err(e),
+            // Make an event from the request
+            let srch = match SearchEvent::from_target_uuid_request(
+                ident,
+                target_uuid,
+                &idms_prox_read.qs_read,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin sshkey tag read: {:?}", e);
+                    return Err(e);
                 }
+            };
+
+            trace!(?srch, "Begin event");
+
+            match idms_prox_read.qs_read.search_ext(&srch) {
+                Ok(mut entries) => {
+                    let r = entries
+                        .pop()
+                        // get the first entry
+                        .map(|e| {
+                            // From the entry, turn it into the value
+                            e.get_ava_set("ssh_publickey").and_then(|vs| {
+                                // Get the one tagged value
+                                vs.get_ssh_tag(&tag).map(str::to_string)
+                            })
+                        })
+                        .unwrap_or_else(|| {
+                            // No matching entry? Return none.
+                            None
+                        });
+                    Ok(r)
+                }
+                Err(e) => Err(e),
             }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "idmaccountunixauth",
+        skip(self, uat, uuid_or_name, cred, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmaccountunixauth(
         &self,
         uat: Option<String>,
@@ -921,320 +824,281 @@ impl QueryServerReadV1 {
         cred: String,
         eventid: Uuid,
     ) -> Result<Option<UnixUserToken>, OperationError> {
-        let mut audit = AuditScope::new("idm_account_unix_auth", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idm_auth = self.idms.auth_async().await;
-        // let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<IdmAccountUnixAuthMessage>", || {
+        // let res = spanned!("actors::v1_read::handle<IdmAccountUnixAuthMessage>", {
         // resolve the id
         let ident = idm_auth
-            .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-            .and_then(|uat| idm_auth.process_uat_to_identity(&mut audit, &uat, ct))
+            .validate_and_parse_uat(uat.as_deref(), ct)
+            .and_then(|uat| idm_auth.process_uat_to_identity(&uat, ct))
             .map_err(|e| {
-                ladmin_error!(audit, "Invalid identity: {:?}", e);
+                admin_error!(err = ?e, "Invalid identity");
                 e
             })?;
 
         let target_uuid = idm_auth
             .qs_read
-            .name_to_uuid(&mut audit, uuid_or_name.as_str())
+            .name_to_uuid(uuid_or_name.as_str())
             .map_err(|e| {
-                ladmin_info!(&mut audit, "Error resolving as gidnumber continuing ...");
+                admin_info!(err = ?e, "Error resolving as gidnumber continuing");
                 e
             })?;
         // Make an event from the request
-        let uuae = match UnixUserAuthEvent::from_parts(&mut audit, ident, target_uuid, cred) {
+        let uuae = match UnixUserAuthEvent::from_parts(ident, target_uuid, cred) {
             Ok(s) => s,
             Err(e) => {
-                ladmin_error!(audit, "Failed to begin unix auth: {:?}", e);
+                admin_error!(err = ?e, "Failed to begin unix auth");
                 return Err(e);
             }
         };
 
-        lsecurity!(audit, "Begin event {:?}", uuae);
+        security_info!(event = ?uuae, "Begin unix auth event");
 
         let res = idm_auth
-            .auth_unix(&mut audit, &uuae, ct)
+            .auth_unix(&uuae, ct)
             .await
-            .and_then(|r| idm_auth.commit(&mut audit).map(|_| r));
+            .and_then(|r| idm_auth.commit().map(|_| r));
 
-        lsecurity!(audit, "Sending result -> {:?}", res);
-        // res
-        // });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+        security_info!(?res, "Sending result");
+
+        // res });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialstatus",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmcredentialstatus(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<CredentialStatus, OperationError> {
-        let mut audit = AuditScope::new("idm_credential_status_message", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<IdmCredentialStatusMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Error resolving id to target");
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<IdmCredentialStatusMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+            let target_uuid = idms_prox_read
+                .qs_read
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
 
-                // Make an event from the request
-                let cse = match CredentialStatusEvent::from_parts(
-                    &mut audit,
-                    // &idms_prox_read.qs_read,
-                    ident,
-                    target_uuid,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin credential status read: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            // Make an event from the request
+            let cse = match CredentialStatusEvent::from_parts(
+                // &idms_prox_read.qs_read,
+                ident,
+                target_uuid,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin credential status read");
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin event {:?}", cse);
+            trace!(?cse, "Begin event");
 
-                idms_prox_read.get_credentialstatus(&mut audit, &cse)
-            }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+            idms_prox_read.get_credentialstatus(&cse)
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "idmbackupcodeview",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_idmbackupcodeview(
         &self,
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
     ) -> Result<BackupCodesView, OperationError> {
-        let mut audit = AuditScope::new("idm_backup_code_view", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let mut idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<IdmBackupCodeViewMessage>",
-            || {
-                let ident = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| idms_prox_read.process_uat_to_identity(&mut audit, &uat, ct))
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
-                let target_uuid = idms_prox_read
-                    .qs_read
-                    .name_to_uuid(&mut audit, uuid_or_name.as_str())
-                    .map_err(|e| {
-                        ladmin_error!(&mut audit, "Error resolving id to target");
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<IdmBackupCodeViewMessage>", {
+            let ident = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_read.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
+            let target_uuid = idms_prox_read
+                .qs_read
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!("Error resolving id to target");
+                    e
+                })?;
 
-                // Make an event from the request
-                let rbce = match ReadBackupCodeEvent::from_parts(
-                    &mut audit,
-                    // &idms_prox_read.qs_read,
-                    ident,
-                    target_uuid,
-                ) {
-                    Ok(s) => s,
-                    Err(e) => {
-                        ladmin_error!(audit, "Failed to begin backup code read: {:?}", e);
-                        return Err(e);
-                    }
-                };
+            // Make an event from the request
+            let rbce = match ReadBackupCodeEvent::from_parts(
+                // &idms_prox_read.qs_read,
+                ident,
+                target_uuid,
+            ) {
+                Ok(s) => s,
+                Err(e) => {
+                    admin_error!("Failed to begin backup code read: {:?}", e);
+                    return Err(e);
+                }
+            };
 
-                ltrace!(audit, "Begin event {:?}", rbce);
+            trace!(?rbce, "Begin event");
 
-                idms_prox_read.get_backup_codes(&mut audit, &rbce)
-            }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+            idms_prox_read.get_backup_codes(&rbce)
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "oauth2_authorise",
+        skip(self, uat, auth_req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_oauth2_authorise(
         &self,
         uat: Option<String>,
         auth_req: AuthorisationRequest,
         eventid: Uuid,
     ) -> Result<ConsentRequest, Oauth2Error> {
-        let mut audit = AuditScope::new("oauth2_authorise", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<Oauth2Authorise>",
-            || {
-                let (ident, uat) = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| {
-                        idms_prox_read
-                            .process_uat_to_identity(&mut audit, &uat, ct)
-                            .map(|ident| (ident, uat))
-                    })
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        Oauth2Error::AuthenticationRequired
-                    })?;
+        let res = spanned!("actors::v1_read::handle<Oauth2Authorise>", {
+            let (ident, uat) = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| {
+                    idms_prox_read
+                        .process_uat_to_identity(&uat, ct)
+                        .map(|ident| (ident, uat))
+                })
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    Oauth2Error::AuthenticationRequired
+                })?;
 
-                // Now we can send to the idm server for authorisation checking.
-                idms_prox_read.check_oauth2_authorisation(&mut audit, &ident, &uat, &auth_req, ct)
-            }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            Oauth2Error::ServerError(OperationError::InvalidState)
-        })?;
+            // Now we can send to the idm server for authorisation checking.
+            idms_prox_read.check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "oauth2_authorise_permit",
+        skip(self, uat, consent_req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_oauth2_authorise_permit(
         &self,
         uat: Option<String>,
         consent_req: String,
         eventid: Uuid,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
-        let mut audit = AuditScope::new("oauth2_authorise_permit", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<Oauth2AuthorisePermit>",
-            || {
-                let (ident, uat) = idms_prox_read
-                    .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
-                    .and_then(|uat| {
-                        idms_prox_read
-                            .process_uat_to_identity(&mut audit, &uat, ct)
-                            .map(|ident| (ident, uat))
-                    })
-                    .map_err(|e| {
-                        ladmin_error!(audit, "Invalid identity: {:?}", e);
-                        e
-                    })?;
+        let res = spanned!("actors::v1_read::handle<Oauth2AuthorisePermit>", {
+            let (ident, uat) = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| {
+                    idms_prox_read
+                        .process_uat_to_identity(&uat, ct)
+                        .map(|ident| (ident, uat))
+                })
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
 
-                idms_prox_read.check_oauth2_authorise_permit(
-                    &mut audit,
-                    &ident,
-                    &uat,
-                    &consent_req,
-                    ct,
-                )
-            }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
+            idms_prox_read.check_oauth2_authorise_permit(&ident, &uat, &consent_req, ct)
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "oauth2_authorise_permit",
+        skip(self, client_authz, token_req, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_oauth2_token_exchange(
         &self,
         client_authz: String,
         token_req: AccessTokenRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        let mut audit = AuditScope::new("oauth2_token_exchange", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<Oauth2TokenExchange>",
-            || {
-                // Now we can send to the idm server for authorisation checking.
-                idms_prox_read.check_oauth2_token_exchange(
-                    &mut audit,
-                    &client_authz,
-                    &token_req,
-                    ct,
-                )
-            }
-        );
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            Oauth2Error::ServerError(OperationError::InvalidState)
-        })?;
+        let res = spanned!("actors::v1_read::handle<Oauth2TokenExchange>", {
+            // Now we can send to the idm server for authorisation checking.
+            idms_prox_read.check_oauth2_token_exchange(&client_authz, &token_req, ct)
+        });
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "auth_valid",
+        skip(self, uat, eventid)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_auth_valid(
         &self,
         uat: Option<String>,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let mut audit = AuditScope::new("auth_valid", eventid, self.log_level);
         let ct = duration_from_epoch_now();
         let idms_prox_read = self.idms.proxy_read_async().await;
 
-        let res = lperf_op_segment!(&mut audit, "actors::v1_read::handle<AuthValid>", || {
+        let res = spanned!("actors::v1_read::handle<AuthValid>", {
             idms_prox_read
-                .validate_and_parse_uat(&mut audit, uat.as_deref(), ct)
+                .validate_and_parse_uat(uat.as_deref(), ct)
                 .map(|_| ())
                 .map_err(|e| {
-                    ladmin_error!(audit, "Invalid token: {:?}", e);
+                    admin_error!("Invalid token: {:?}", e);
                     e
                 })
         });
-        self.log.send(audit).map_err(|_| {
-            error!("CRITICAL: UNABLE TO COMMIT LOGS");
-            OperationError::InvalidState
-        })?;
         res
     }
 
-    // TODO (Quinn): instrument
+    #[instrument(
+        level = "trace",
+        name = "ldaprequest",
+        skip(self, eventid,  protomsg, uat)
+        fields(uuid = ?eventid)
+    )]
     pub async fn handle_ldaprequest(
         &self,
         eventid: Uuid,
-        mut audit: AuditScope,
         protomsg: LdapMsg,
         uat: Option<LdapBoundToken>,
     ) -> Option<LdapResponseState> {
-        /*
-        let res = lperf_op_segment!(
-            &mut audit,
-            "actors::v1_read::handle<LdapRequestMessage>",
-            || {
-        */
+        // let res = spanned!( "actors::v1_read::handle<LdapRequestMessage>", {
         let res = match ServerOps::try_from(protomsg) {
             Ok(server_op) => self
                 .ldap
-                .do_op(&mut audit, &self.idms, server_op, uat, &eventid)
+                .do_op(&self.idms, server_op, uat, &eventid)
                 .await
                 .unwrap_or_else(|e| {
-                    ladmin_error!(&mut audit, "do_op failed -> {:?}", e);
+                    admin_error!("do_op failed -> {:?}", e);
                     LdapResponseState::Disconnect(DisconnectionNotice::gen(
                         LdapResultCode::Other,
                         format!("Internal Server Error {:?}", &eventid).as_str(),
@@ -1245,18 +1109,7 @@ impl QueryServerReadV1 {
                 format!("Invalid Request {:?}", &eventid).as_str(),
             )),
         };
-        /*
-            }
-        );
-        */
-        if self.log.send(audit).is_err() {
-            error!("Unable to commit log -> {:?}", &eventid);
-            Some(LdapResponseState::Disconnect(DisconnectionNotice::gen(
-                LdapResultCode::Other,
-                format!("Internal Server Error {:?}", &eventid).as_str(),
-            )))
-        } else {
-            Some(res)
-        }
+        // });
+        Some(res)
     }
 }

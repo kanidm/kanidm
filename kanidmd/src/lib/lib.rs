@@ -34,8 +34,6 @@ pub mod macros;
 mod crypto;
 pub mod utils;
 #[macro_use]
-mod async_log;
-#[macro_use]
 pub mod audit;
 pub mod be;
 pub mod constants;
@@ -71,7 +69,6 @@ pub mod prelude {
     pub use url::Url;
     pub use uuid::Uuid;
 
-    pub use crate::audit::AuditScope;
     pub use crate::constants::*;
     pub use crate::filter::{Filter, FilterInvalid};
 

@@ -1,8 +1,8 @@
-use crate::audit::AuditScope;
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::identity::IdentityId;
 use crate::idm::account::Account;
+use crate::prelude::*;
 use kanidm_proto::v1::TotpSecret;
 use kanidm_proto::v1::{OperationError, SetCredentialResponse};
 use std::mem;
@@ -161,7 +161,6 @@ impl MfaRegSession {
     }
 
     pub fn webauthn_new(
-        au: &mut AuditScope,
         origin: IdentityId,
         account: Account,
         label: String,
@@ -171,7 +170,7 @@ impl MfaRegSession {
         let (chal, reg_state) = webauthn
             .generate_challenge_register(&account.name, false)
             .map_err(|e| {
-                ladmin_error!(au, "Unable to generate webauthn challenge -> {:?}", e);
+                admin_error!("Unable to generate webauthn challenge -> {:?}", e);
                 OperationError::Webauthn
             })?;
 
@@ -187,7 +186,6 @@ impl MfaRegSession {
 
     pub fn webauthn_step(
         &mut self,
-        au: &mut AuditScope,
         origin: &IdentityId,
         target: &Uuid,
         chal: &RegisterPublicKeyCredential,
@@ -206,7 +204,7 @@ impl MfaRegSession {
             MfaRegState::WebauthnInit(label, reg_state) => webauthn
                 .register_credential(chal, &reg_state, |_| Ok(false))
                 .map_err(|e| {
-                    ladmin_error!(au, "Unable to register webauthn credential -> {:?}", e);
+                    admin_error!("Unable to register webauthn credential -> {:?}", e);
                     OperationError::Webauthn
                 })
                 .map(|(cred, _)| (MfaRegNext::Success, Some(MfaRegCred::Webauthn(label, cred)))),

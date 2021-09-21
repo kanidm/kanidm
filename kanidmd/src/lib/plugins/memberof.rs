@@ -30,22 +30,18 @@ lazy_static! {
 pub struct MemberOf;
 
 fn do_memberof(
-    au: &mut AuditScope,
     qs: &QueryServerWriteTransaction,
     uuid: &Uuid,
     tgte: &mut EntryInvalidCommitted,
 ) -> Result<(), OperationError> {
     //  search where we are member
     let groups = qs
-        .internal_search(
-            au,
-            filter!(f_and!([
-                f_eq("class", CLASS_GROUP.clone()),
-                f_eq("member", PartialValue::new_refer(*uuid))
-            ])),
-        )
+        .internal_search(filter!(f_and!([
+            f_eq("class", CLASS_GROUP.clone()),
+            f_eq("member", PartialValue::new_refer(*uuid))
+        ])))
         .map_err(|e| {
-            ladmin_error!(au, "internal search failure -> {:?}", e);
+            admin_error!("internal search failure -> {:?}", e);
             e
         })?;
 
@@ -70,16 +66,14 @@ fn do_memberof(
     });
 
     if r.is_err() {
-        ladmin_error!(au, "Invalid valueset type -> {:?}", r);
+        admin_error!("Invalid valueset type -> {:?}", r);
     } else {
-        ltrace!(
-            au,
+        trace!(
             "Updating {:?} to be dir mo {:?}",
             uuid,
             tgte.get_ava_set("directmemberof")
         );
-        ltrace!(
-            au,
+        trace!(
             "Updating {:?} to be mo {:?}",
             uuid,
             tgte.get_ava_set("memberof")
@@ -90,14 +84,13 @@ fn do_memberof(
 
 #[allow(clippy::cognitive_complexity)]
 fn apply_memberof(
-    au: &mut AuditScope,
     qs: &QueryServerWriteTransaction,
     // TODO: Experiment with HashSet/BTreeSet here instead of vec.
     // May require https://github.com/rust-lang/rust/issues/62924 to allow poping
     mut group_affect: Vec<Uuid>,
 ) -> Result<(), OperationError> {
-    ltrace!(au, " => entering apply_memberof");
-    ltrace!(au, " => initial group_affect {:?}", group_affect);
+    trace!(" => entering apply_memberof");
+    trace!(" => initial group_affect {:?}", group_affect);
 
     // We can't cache groups, because we need to be continually writing
     // and querying them. But we can cache anything we find in the process
@@ -120,7 +113,7 @@ fn apply_memberof(
                 .collect()
         ));
 
-        let mut work_set = qs.internal_search_writeable(au, &filt)?;
+        let mut work_set = qs.internal_search_writeable(&filt)?;
         // Load the vecdeque with this batch.
 
         while let Some((pre, mut tgte)) = work_set.pop() {
@@ -130,14 +123,14 @@ fn apply_memberof(
                 // It's not a group, we'll deal with you later. We should NOT
                 // have seen this UUID before, as either we are on the first
                 // iteration OR the checks belowe should have filtered it out.
-                ltrace!(au, "not a group, delaying update to -> {:?}", guuid);
+                trace!("not a group, delaying update to -> {:?}", guuid);
                 other_cache.insert(guuid, (pre, tgte));
                 continue;
             }
 
-            ltrace!(au, "=> processing group update -> {:?}", guuid);
+            trace!("=> processing group update -> {:?}", guuid);
 
-            do_memberof(au, qs, &guuid, &mut tgte)?;
+            do_memberof(qs, &guuid, &mut tgte)?;
 
             // Did we change? Note we don't check if the class changed, only if mo changed.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
@@ -146,8 +139,7 @@ fn apply_memberof(
                 // Yes we changed - we now must process all our members, as they need to
                 // inherit changes. Some of these members COULD be non groups, but we
                 // handle that in the dbload step.
-                ltrace!(
-                    au,
+                trace!(
                     "{:?} changed, flagging members as groups to change. ",
                     guuid
                 );
@@ -159,16 +151,16 @@ fn apply_memberof(
                 pre_candidates.push(pre);
                 candidates.push(tgte);
             } else {
-                ltrace!(au, "{:?} stable", guuid);
+                trace!("{:?} stable", guuid);
             }
         }
 
         debug_assert!(pre_candidates.len() == candidates.len());
         // Write this stripe if populated.
         if !pre_candidates.is_empty() {
-            qs.internal_batch_modify(au, pre_candidates, candidates)
+            qs.internal_batch_modify(pre_candidates, candidates)
                 .map_err(|e| {
-                    ladmin_error!(au, "Failed to commit memberof group set {:?}", e);
+                    admin_error!("Failed to commit memberof group set {:?}", e);
                     e
                 })?;
         }
@@ -182,9 +174,9 @@ fn apply_memberof(
     other_cache
         .into_iter()
         .try_for_each(|(auuid, (pre, mut tgte))| {
-            ltrace!(au, "=> processing affected uuid {:?}", auuid);
+            trace!("=> processing affected uuid {:?}", auuid);
             debug_assert!(!tgte.attribute_equality("class", &CLASS_GROUP));
-            do_memberof(au, qs, &auuid, &mut tgte)?;
+            do_memberof(qs, &auuid, &mut tgte)?;
             // Only write if a change occured.
             if pre.get_ava_set("memberof") != tgte.get_ava_set("memberof")
                 || pre.get_ava_set("directmemberof") != tgte.get_ava_set("directmemberof")
@@ -197,7 +189,7 @@ fn apply_memberof(
 
     // Turn the other_cache into a write set.
     // Write the batch out in a single stripe.
-    qs.internal_batch_modify(au, pre_candidates, candidates)
+    qs.internal_batch_modify(pre_candidates, candidates)
     // Done! 🎉
 }
 
@@ -207,7 +199,6 @@ impl Plugin for MemberOf {
     }
 
     fn post_create(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &CreateEvent,
@@ -230,11 +221,10 @@ impl Plugin for MemberOf {
             .copied()
             .collect();
 
-        apply_memberof(au, qs, group_affect)
+        apply_memberof(qs, group_affect)
     }
 
     fn post_modify(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         pre_cand: &[Arc<Entry<EntrySealed, EntryCommitted>>],
         cand: &[Entry<EntrySealed, EntryCommitted>],
@@ -270,11 +260,10 @@ impl Plugin for MemberOf {
             .copied()
             .collect();
 
-        apply_memberof(au, qs, group_affect)
+        apply_memberof(qs, group_affect)
     }
 
     fn pre_delete(
-        _au: &mut AuditScope,
         _qs: &QueryServerWriteTransaction,
         cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
         _de: &DeleteEvent,
@@ -294,7 +283,6 @@ impl Plugin for MemberOf {
     }
 
     fn post_delete(
-        au: &mut AuditScope,
         qs: &QueryServerWriteTransaction,
         cand: &[Entry<EntrySealed, EntryCommitted>],
         _ce: &DeleteEvent,
@@ -315,19 +303,16 @@ impl Plugin for MemberOf {
             .copied()
             .collect();
 
-        apply_memberof(au, qs, group_affect)
+        apply_memberof(qs, group_affect)
     }
 
-    fn verify(
-        au: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Vec<Result<(), ConsistencyError>> {
+    fn verify(qs: &QueryServerReadTransaction) -> Vec<Result<(), ConsistencyError>> {
         let mut r = Vec::new();
 
         let filt_in = filter!(f_pres("class"));
 
         let all_cand = match qs
-            .internal_search(au, filt_in)
+            .internal_search(filt_in)
             .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
         {
             Ok(all_cand) => all_cand,
@@ -342,7 +327,7 @@ impl Plugin for MemberOf {
             ]));
 
             let direct_memberof = match qs
-                .internal_search(au, filt_in)
+                .internal_search(filt_in)
                 .map_err(|_| ConsistencyError::QueryServerSearchFailure)
             {
                 Ok(d_mo) => d_mo,
@@ -355,12 +340,7 @@ impl Plugin for MemberOf {
                 .map(|e| Value::new_refer(*e.get_uuid()))
                 .collect();
 
-            ltrace!(
-                au,
-                "DMO search groups {:?} -> {:?}",
-                e.get_uuid(),
-                d_groups_set
-            );
+            trace!("DMO search groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
 
             match (e.get_ava_set("directmemberof"), d_groups_set) {
                 (Some(edmos), Some(dmos)) => {
@@ -369,8 +349,7 @@ impl Plugin for MemberOf {
                         (Some(a), Some(b)) => {
                             let diff: Vec<_> = a.symmetric_difference(b).collect();
                             if !diff.is_empty() {
-                                ladmin_error!(
-                                    au,
+                                admin_error!(
                                     "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",
                                     e,
                                     diff
@@ -379,11 +358,7 @@ impl Plugin for MemberOf {
                             }
                         }
                         _ => {
-                            ladmin_error!(
-                                au,
-                                "MemberOfInvalid: Entry {}, DMO has incorrect syntax",
-                                e,
-                            );
+                            admin_error!("MemberOfInvalid: Entry {}, DMO has incorrect syntax", e,);
                             r.push(Err(ConsistencyError::MemberOfInvalid(e.get_id())));
                         }
                     }
@@ -392,8 +367,7 @@ impl Plugin for MemberOf {
                     // Ok
                 }
                 _ => {
-                    ladmin_error!(
-                        au,
+                    admin_error!(
                         "MemberOfInvalid directmemberof set and DMO search set differ in size: {}",
                         e.get_uuid()
                     );
@@ -463,7 +437,6 @@ mod tests {
 
     macro_rules! assert_memberof_int {
         (
-            $au:expr,
             $qs:expr,
             $ea:expr,
             $eb:expr,
@@ -474,9 +447,7 @@ mod tests {
                 f_eq("uuid", PartialValue::new_uuids($ea).unwrap()),
                 f_eq($mo, PartialValue::new_refer_s($eb).unwrap())
             ]));
-            let cands = $qs
-                .internal_search($au, filt)
-                .expect("Internal search failure");
+            let cands = $qs.internal_search(filt).expect("Internal search failure");
             debug!("assert_mo_cands {:?}", cands);
             assert!(cands.len() == $cand);
         }};
@@ -484,45 +455,41 @@ mod tests {
 
     macro_rules! assert_memberof {
         (
-            $au:expr,
             $qs:expr,
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($au, $qs, $ea, $eb, "memberof", 1);
+            assert_memberof_int!($qs, $ea, $eb, "memberof", 1);
         }};
     }
 
     macro_rules! assert_dirmemberof {
         (
-            $au:expr,
             $qs:expr,
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($au, $qs, $ea, $eb, "directmemberof", 1);
+            assert_memberof_int!($qs, $ea, $eb, "directmemberof", 1);
         }};
     }
 
     macro_rules! assert_not_memberof {
         (
-            $au:expr,
             $qs:expr,
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($au, $qs, $ea, $eb, "memberof", 0);
+            assert_memberof_int!($qs, $ea, $eb, "memberof", 0);
         }};
     }
 
     macro_rules! assert_not_dirmemberof {
         (
-            $au:expr,
             $qs:expr,
             $ea:expr,
             $eb:expr
         ) => {{
-            assert_memberof_int!($au, $qs, $ea, $eb, "directmemberof", 0);
+            assert_memberof_int!($qs, $ea, $eb, "directmemberof", 0);
         }};
     }
 
@@ -542,14 +509,14 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
             }
         );
     }
@@ -573,33 +540,33 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
                 // This is due to nestig, C should be MO both!
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -625,32 +592,32 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_memberof!(au, qs, UUID_A, UUID_A);
-                assert_memberof!(au, qs, UUID_A, UUID_B);
-                assert_memberof!(au, qs, UUID_A, UUID_C);
+                assert_memberof!(qs, UUID_A, UUID_A);
+                assert_memberof!(qs, UUID_A, UUID_B);
+                assert_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_memberof!(au, qs, UUID_B, UUID_B);
-                assert_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_memberof!(qs, UUID_B, UUID_B);
+                assert_memberof!(qs, UUID_B, UUID_C);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_memberof!(au, qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -683,48 +650,48 @@ mod tests {
             preload,
             create,
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_memberof!(au, qs, UUID_A, UUID_A);
-                assert_memberof!(au, qs, UUID_A, UUID_B);
-                assert_memberof!(au, qs, UUID_A, UUID_C);
-                assert_memberof!(au, qs, UUID_A, UUID_D);
+                assert_memberof!(qs, UUID_A, UUID_A);
+                assert_memberof!(qs, UUID_A, UUID_B);
+                assert_memberof!(qs, UUID_A, UUID_C);
+                assert_memberof!(qs, UUID_A, UUID_D);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_memberof!(au, qs, UUID_B, UUID_B);
-                assert_memberof!(au, qs, UUID_B, UUID_C);
-                assert_memberof!(au, qs, UUID_B, UUID_D);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_memberof!(qs, UUID_B, UUID_B);
+                assert_memberof!(qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_D);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_memberof!(au, qs, UUID_C, UUID_C);
-                assert_memberof!(au, qs, UUID_C, UUID_D);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_memberof!(qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_D);
 
-                assert_memberof!(au, qs, UUID_D, UUID_A);
-                assert_memberof!(au, qs, UUID_D, UUID_B);
-                assert_memberof!(au, qs, UUID_D, UUID_C);
-                assert_memberof!(au, qs, UUID_D, UUID_D);
+                assert_memberof!(qs, UUID_D, UUID_A);
+                assert_memberof!(qs, UUID_D, UUID_B);
+                assert_memberof!(qs, UUID_D, UUID_C);
+                assert_memberof!(qs, UUID_D, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_C);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_A, UUID_C);
+                assert_dirmemberof!(qs, UUID_A, UUID_D);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_D);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_D, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_B);
+                assert_dirmemberof!(qs, UUID_D, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_D);
             }
         );
     }
@@ -748,14 +715,14 @@ mod tests {
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
             }
         );
     }
@@ -783,32 +750,32 @@ mod tests {
                 Value::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -836,32 +803,32 @@ mod tests {
                 Value::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -892,32 +859,32 @@ mod tests {
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_memberof!(au, qs, UUID_A, UUID_A);
-                assert_memberof!(au, qs, UUID_A, UUID_B);
-                assert_memberof!(au, qs, UUID_A, UUID_C);
+                assert_memberof!(qs, UUID_A, UUID_A);
+                assert_memberof!(qs, UUID_A, UUID_B);
+                assert_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_memberof!(au, qs, UUID_B, UUID_B);
-                assert_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_memberof!(qs, UUID_B, UUID_B);
+                assert_memberof!(qs, UUID_B, UUID_C);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_memberof!(au, qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -958,48 +925,48 @@ mod tests {
                 Value::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_memberof!(au, qs, UUID_A, UUID_A);
-                assert_memberof!(au, qs, UUID_A, UUID_B);
-                assert_memberof!(au, qs, UUID_A, UUID_C);
-                assert_memberof!(au, qs, UUID_A, UUID_D);
+                assert_memberof!(qs, UUID_A, UUID_A);
+                assert_memberof!(qs, UUID_A, UUID_B);
+                assert_memberof!(qs, UUID_A, UUID_C);
+                assert_memberof!(qs, UUID_A, UUID_D);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_memberof!(au, qs, UUID_B, UUID_B);
-                assert_memberof!(au, qs, UUID_B, UUID_C);
-                assert_memberof!(au, qs, UUID_B, UUID_D);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_memberof!(qs, UUID_B, UUID_B);
+                assert_memberof!(qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_D);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_memberof!(au, qs, UUID_C, UUID_C);
-                assert_memberof!(au, qs, UUID_C, UUID_D);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_memberof!(qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_D);
 
-                assert_memberof!(au, qs, UUID_D, UUID_A);
-                assert_memberof!(au, qs, UUID_D, UUID_B);
-                assert_memberof!(au, qs, UUID_D, UUID_C);
-                assert_memberof!(au, qs, UUID_D, UUID_D);
+                assert_memberof!(qs, UUID_D, UUID_A);
+                assert_memberof!(qs, UUID_D, UUID_B);
+                assert_memberof!(qs, UUID_D, UUID_C);
+                assert_memberof!(qs, UUID_D, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_C);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_A, UUID_C);
+                assert_dirmemberof!(qs, UUID_A, UUID_D);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_D);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_D, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_B);
+                assert_dirmemberof!(qs, UUID_D, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_D);
             }
         );
     }
@@ -1026,14 +993,14 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
 
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
             }
         );
     }
@@ -1064,32 +1031,32 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_B).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_not_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_not_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_not_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_not_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -1121,32 +1088,32 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_C).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_not_memberof!(au, qs, UUID_C, UUID_A);
-                assert_not_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_not_memberof!(qs, UUID_C, UUID_A);
+                assert_not_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -1188,32 +1155,32 @@ mod tests {
                 PartialValue::new_refer_s(&UUID_A).unwrap()
             )]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -1279,48 +1246,48 @@ mod tests {
                 ),
             ]),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
-                assert_memberof!(au, qs, UUID_A, UUID_D);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
+                assert_memberof!(qs, UUID_A, UUID_D);
 
-                assert_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
-                assert_memberof!(au, qs, UUID_B, UUID_D);
+                assert_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
+                assert_memberof!(qs, UUID_B, UUID_D);
 
-                assert_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
-                assert_memberof!(au, qs, UUID_C, UUID_D);
+                assert_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
+                assert_memberof!(qs, UUID_C, UUID_D);
 
-                assert_not_memberof!(au, qs, UUID_D, UUID_A);
-                assert_not_memberof!(au, qs, UUID_D, UUID_B);
-                assert_not_memberof!(au, qs, UUID_D, UUID_C);
-                assert_not_memberof!(au, qs, UUID_D, UUID_D);
+                assert_not_memberof!(qs, UUID_D, UUID_A);
+                assert_not_memberof!(qs, UUID_D, UUID_B);
+                assert_not_memberof!(qs, UUID_D, UUID_C);
+                assert_not_memberof!(qs, UUID_D, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
+                assert_dirmemberof!(qs, UUID_A, UUID_D);
 
-                assert_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_D);
+                assert_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_D);
             }
         );
     }
@@ -1341,14 +1308,14 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
 
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
             }
         );
     }
@@ -1375,24 +1342,24 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_not_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_not_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_not_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -1419,24 +1386,24 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_C);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_C);
 
-                assert_not_memberof!(au, qs, UUID_C, UUID_A);
-                assert_not_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_not_memberof!(qs, UUID_C, UUID_A);
+                assert_not_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -1472,24 +1439,24 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_A).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_B, UUID_A);
-                assert_not_memberof!(au, qs, UUID_B, UUID_B);
-                assert_not_memberof!(au, qs, UUID_B, UUID_C);
+                assert_not_memberof!(qs, UUID_B, UUID_A);
+                assert_not_memberof!(qs, UUID_B, UUID_B);
+                assert_not_memberof!(qs, UUID_B, UUID_C);
 
-                assert_not_memberof!(au, qs, UUID_C, UUID_A);
-                assert_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
+                assert_not_memberof!(qs, UUID_C, UUID_A);
+                assert_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_B, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_B, UUID_C);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
             }
         );
     }
@@ -1538,38 +1505,38 @@ mod tests {
             preload,
             filter!(f_eq("uuid", PartialValue::new_uuids(&UUID_B).unwrap())),
             None,
-            |au: &mut AuditScope, qs: &QueryServerWriteTransaction| {
+            |qs: &QueryServerWriteTransaction| {
                 //                      V-- this uuid is
                 //                                  V-- memberof this UUID
-                assert_not_memberof!(au, qs, UUID_A, UUID_B);
-                assert_not_memberof!(au, qs, UUID_A, UUID_A);
-                assert_memberof!(au, qs, UUID_A, UUID_C);
-                assert_memberof!(au, qs, UUID_A, UUID_D);
+                assert_not_memberof!(qs, UUID_A, UUID_B);
+                assert_not_memberof!(qs, UUID_A, UUID_A);
+                assert_memberof!(qs, UUID_A, UUID_C);
+                assert_memberof!(qs, UUID_A, UUID_D);
 
-                assert_not_memberof!(au, qs, UUID_C, UUID_A);
-                assert_not_memberof!(au, qs, UUID_C, UUID_B);
-                assert_not_memberof!(au, qs, UUID_C, UUID_C);
-                assert_not_memberof!(au, qs, UUID_C, UUID_D);
+                assert_not_memberof!(qs, UUID_C, UUID_A);
+                assert_not_memberof!(qs, UUID_C, UUID_B);
+                assert_not_memberof!(qs, UUID_C, UUID_C);
+                assert_not_memberof!(qs, UUID_C, UUID_D);
 
-                assert_not_memberof!(au, qs, UUID_D, UUID_A);
-                assert_not_memberof!(au, qs, UUID_D, UUID_B);
-                assert_memberof!(au, qs, UUID_D, UUID_C);
-                assert_not_memberof!(au, qs, UUID_D, UUID_D);
+                assert_not_memberof!(qs, UUID_D, UUID_A);
+                assert_not_memberof!(qs, UUID_D, UUID_B);
+                assert_memberof!(qs, UUID_D, UUID_C);
+                assert_not_memberof!(qs, UUID_D, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_A, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_C);
-                assert_dirmemberof!(au, qs, UUID_A, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_A, UUID_B);
+                assert_dirmemberof!(qs, UUID_A, UUID_C);
+                assert_dirmemberof!(qs, UUID_A, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_D);
 
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_A);
-                assert_not_dirmemberof!(au, qs, UUID_C, UUID_B);
-                assert_dirmemberof!(au, qs, UUID_D, UUID_C);
-                assert_not_dirmemberof!(au, qs, UUID_D, UUID_D);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_A);
+                assert_not_dirmemberof!(qs, UUID_C, UUID_B);
+                assert_dirmemberof!(qs, UUID_D, UUID_C);
+                assert_not_dirmemberof!(qs, UUID_D, UUID_D);
             }
         );
     }

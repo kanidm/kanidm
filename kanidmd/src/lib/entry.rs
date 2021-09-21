@@ -256,7 +256,6 @@ impl Entry<EntryInit, EntryNew> {
     /// Consume a Protocol Entry from JSON, and validate and process the data into an internal
     /// [`Entry`] type.
     pub fn from_proto_entry(
-        audit: &mut AuditScope,
         e: &ProtoEntry,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -274,9 +273,8 @@ impl Entry<EntryInit, EntryNew> {
             .map(|(k, v)| {
                 trace!(?k, ?v, "attribute");
                 let nk = qs.get_schema().normalise_attr_name(k);
-                let nv = ValueSet::from_result_value_iter(
-                    v.iter().map(|vr| qs.clone_value(audit, &nk, vr)),
-                );
+                let nv =
+                    ValueSet::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&nk, vr)));
                 trace!(?nv, "new valueset transform");
                 match nv {
                     Ok(nvi) => Ok((nk, nvi)),
@@ -299,7 +297,6 @@ impl Entry<EntryInit, EntryNew> {
     /// Given a proto entry in JSON formed as a serialised string, processed that string
     /// into an Entry.
     pub fn from_proto_entry_str(
-        audit: &mut AuditScope,
         es: &str,
         qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
@@ -307,19 +304,18 @@ impl Entry<EntryInit, EntryNew> {
             if cfg!(test) {
                 if es.len() > 256 {
                     let (dsp_es, _) = es.split_at(255);
-                    ltrace!(audit, "Parsing -> {}...", dsp_es);
+                    trace!("Parsing -> {}...", dsp_es);
                 } else {
-                    ltrace!(audit, "Parsing -> {}", es);
+                    trace!("Parsing -> {}", es);
                 }
             }
             // str -> Proto entry
             let pe: ProtoEntry = serde_json::from_str(es).map_err(|e| {
-                ladmin_error!(audit, "SerdeJson Failure -> {:?}", e);
                 admin_error!(?e, "SerdeJson Failure");
                 OperationError::SerdeJsonError
             })?;
             // now call from_proto_entry
-            Self::from_proto_entry(audit, &pe, qs)
+            Self::from_proto_entry(&pe, qs)
         })
     }
 
@@ -1452,19 +1448,12 @@ impl Entry<EntryReduced, EntryCommitted> {
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
     // ! TRACING INTEGRATED
-    pub fn to_pe(
-        &self,
-        audit: &mut AuditScope,
-        qs: &QueryServerReadTransaction,
-    ) -> Result<ProtoEntry, OperationError> {
+    pub fn to_pe(&self, qs: &QueryServerReadTransaction) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
         let attrs: Result<_, _> = self
             .attrs
             .iter()
-            .map(|(k, vs)| {
-                qs.resolve_valueset(audit, vs)
-                    .map(|pvs| (k.to_string(), pvs))
-            })
+            .map(|(k, vs)| qs.resolve_valueset(vs).map(|pvs| (k.to_string(), pvs)))
             .collect();
         Ok(ProtoEntry { attrs: attrs? })
     }
@@ -1472,7 +1461,6 @@ impl Entry<EntryReduced, EntryCommitted> {
     /// Transform this reduced entry into an LDAP form that can be sent to clients.
     pub fn to_ldap(
         &self,
-        audit: &mut AuditScope,
         qs: &QueryServerReadTransaction,
         basedn: &str,
         // Did the client request all attributes?
@@ -1481,7 +1469,7 @@ impl Entry<EntryReduced, EntryCommitted> {
         // we need to remap everything to match.
         l_attrs: &[String],
     ) -> Result<LdapSearchResultEntry, OperationError> {
-        let rdn = qs.uuid_to_rdn(audit, self.get_uuid())?;
+        let rdn = qs.uuid_to_rdn(self.get_uuid())?;
 
         let dn = format!("{},{}", rdn, basedn);
 
@@ -1493,7 +1481,7 @@ impl Entry<EntryReduced, EntryCommitted> {
             .attrs
             .iter()
             .map(|(k, vs)| {
-                qs.resolve_valueset_ldap(audit, vs, basedn)
+                qs.resolve_valueset_ldap(vs, basedn)
                     .map(|pvs| (k.as_str(), pvs))
             })
             .collect();
