@@ -565,27 +565,6 @@
 <span id="565">565</span>
 <span id="566">566</span>
 <span id="567">567</span>
-<span id="568">568</span>
-<span id="569">569</span>
-<span id="570">570</span>
-<span id="571">571</span>
-<span id="572">572</span>
-<span id="573">573</span>
-<span id="574">574</span>
-<span id="575">575</span>
-<span id="576">576</span>
-<span id="577">577</span>
-<span id="578">578</span>
-<span id="579">579</span>
-<span id="580">580</span>
-<span id="581">581</span>
-<span id="582">582</span>
-<span id="583">583</span>
-<span id="584">584</span>
-<span id="585">585</span>
-<span id="586">586</span>
-<span id="587">587</span>
-<span id="588">588</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
 
@@ -610,7 +589,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_idm_account_set_password</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
@@ -625,7 +603,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -656,7 +633,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -678,7 +654,6 @@
 
 <span class="kw">impl</span> <span class="ident">GeneratePasswordEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -695,7 +670,6 @@
 
 <span class="kw">impl</span> <span class="ident">GenerateBackupCodeEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -718,7 +692,6 @@
 
 <span class="kw">impl</span> <span class="ident">RemoveBackupCodeEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -742,7 +715,6 @@
 
 <span class="kw">impl</span> <span class="ident">RegenerateRadiusSecretEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -766,7 +738,6 @@
 
 <span class="kw">impl</span> <span class="ident">RadiusAuthTokenEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -790,7 +761,6 @@
 
 <span class="kw">impl</span> <span class="ident">UnixUserTokenEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -814,7 +784,6 @@
 
 <span class="kw">impl</span> <span class="ident">UnixGroupTokenEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -856,7 +825,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
@@ -877,7 +845,6 @@
 
 <span class="kw">impl</span> <span class="ident">GenerateTotpEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -903,7 +870,6 @@
 
 <span class="kw">impl</span> <span class="ident">VerifyTotpEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -940,7 +906,6 @@
 
 <span class="kw">impl</span> <span class="ident">AcceptSha1TotpEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -973,7 +938,6 @@
 
 <span class="kw">impl</span> <span class="ident">RemoveTotpEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -998,7 +962,6 @@
 
 <span class="kw">impl</span> <span class="ident">WebauthnInitRegisterEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -1032,7 +995,6 @@
 
 <span class="kw">impl</span> <span class="ident">WebauthnDoRegisterEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -1068,7 +1030,6 @@
 
 <span class="kw">impl</span> <span class="ident">RemoveWebauthnEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -1101,7 +1062,6 @@
 
 <span class="kw">impl</span> <span class="ident">CredentialStatusEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -1125,7 +1085,6 @@
 
 <span class="kw">impl</span> <span class="ident">ReadBackupCodeEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
@@ -1160,7 +1119,6 @@
     */</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="comment">// qs: &amp;mut QueryServerReadTransaction,</span>
         <span class="comment">// uat: Option&lt;UserAuthToken&gt;,</span>
         <span class="ident">target</span>: <span class="ident">Uuid</span>,

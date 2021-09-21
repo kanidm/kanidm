@@ -381,20 +381,6 @@
 <span id="381">381</span>
 <span id="382">382</span>
 <span id="383">383</span>
-<span id="384">384</span>
-<span id="385">385</span>
-<span id="386">386</span>
-<span id="387">387</span>
-<span id="388">388</span>
-<span id="389">389</span>
-<span id="390">390</span>
-<span id="391">391</span>
-<span id="392">392</span>
-<span id="393">393</span>
-<span id="394">394</span>
-<span id="395">395</span>
-<span id="396">396</span>
-<span id="397">397</span>
 </pre><pre class="rust">
 <span class="comment">// Generate and manage spn&#39;s for all entries in the domain. Also deals with</span>
 <span class="comment">// the infrequent - but possible - case where a domain is renamed.</span>
@@ -424,7 +410,6 @@
 
     <span class="comment">// hook on pre-create and modify to generate / validate.</span>
     <span class="kw">fn</span> <span class="ident">pre_create_transform</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
@@ -443,7 +428,7 @@
             {
                 <span class="comment">// We do this in the loop so that we don&#39;t get it unless required.</span>
                 <span class="kw">if</span> <span class="ident">domain_name</span>.<span class="ident">is_none</span>() {
-                    <span class="ident">domain_name</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">qs</span>.<span class="ident">get_domain_name</span>(<span class="ident">au</span>)<span class="question-mark">?</span>);
+                    <span class="ident">domain_name</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">qs</span>.<span class="ident">get_domain_name</span>()<span class="question-mark">?</span>);
                 }
 
                 <span class="comment">// It should be impossible to hit this expect as the is_none case should cause it to be replaced above.</span>
@@ -451,8 +436,7 @@
                     .<span class="ident">as_ref</span>()
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(
-                            <span class="ident">au</span>,
+                        <span class="macro">admin_error!</span>(
                             <span class="string">&quot;Domain name option memory corruption may have occured. {:?}&quot;</span>,
                             <span class="ident">e</span>
                         );
@@ -463,14 +447,13 @@
                     .<span class="ident">generate_spn</span>(<span class="ident">some_domain_name</span>.<span class="ident">as_str</span>())
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(
-                            <span class="ident">au</span>,
+                        <span class="macro">admin_error!</span>(
                             <span class="string">&quot;Account or group missing name, unable to generate spn!? {:?}&quot;</span>,
                             <span class="ident">e</span>
                         );
                         <span class="ident">e</span>
                     })<span class="question-mark">?</span>;
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, <span class="ident">spn</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, <span class="ident">spn</span>);
                 <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="macro">btreeset!</span>[<span class="ident">spn</span>]);
             }
         }
@@ -478,7 +461,6 @@
     }
 
     <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
@@ -492,7 +474,7 @@
                 <span class="op">|</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">CLASS_ACCOUNT</span>)
             {
                 <span class="kw">if</span> <span class="ident">domain_name</span>.<span class="ident">is_none</span>() {
-                    <span class="ident">domain_name</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">qs</span>.<span class="ident">get_domain_name</span>(<span class="ident">au</span>)<span class="question-mark">?</span>);
+                    <span class="ident">domain_name</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">qs</span>.<span class="ident">get_domain_name</span>()<span class="question-mark">?</span>);
                 }
 
                 <span class="comment">// It should be impossible to hit this expect as the is_none case should cause it to be replaced above.</span>
@@ -500,8 +482,7 @@
                     .<span class="ident">as_ref</span>()
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(
-                            <span class="ident">au</span>,
+                        <span class="macro">admin_error!</span>(
                             <span class="string">&quot;Domain name option memory corruption may have occured. {:?}&quot;</span>,
                             <span class="ident">e</span>
                         );
@@ -512,14 +493,13 @@
                     .<span class="ident">generate_spn</span>(<span class="ident">some_domain_name</span>.<span class="ident">as_str</span>())
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">ladmin_error!</span>(
-                            <span class="ident">au</span>,
+                        <span class="macro">admin_error!</span>(
                             <span class="string">&quot;Account or group missing name, unable to generate spn!? {:?}&quot;</span>,
                             <span class="ident">e</span>
                         );
                         <span class="ident">e</span>
                     })<span class="question-mark">?</span>;
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, <span class="ident">spn</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, <span class="ident">spn</span>);
                 <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="macro">btreeset!</span>[<span class="ident">spn</span>]);
             }
         }
@@ -527,7 +507,6 @@
     }
 
     <span class="kw">fn</span> <span class="ident">post_modify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="comment">// List of what we modified that was valid?</span>
         <span class="ident">pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
@@ -554,8 +533,7 @@
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
         };
 
-        <span class="macro">ladmin_info!</span>(
-            <span class="ident">au</span>,
+        <span class="macro">admin_info!</span>(
             <span class="string">&quot;IMPORTANT!!! Changing domain name to \&quot;{:?}\&quot;. THIS MAY TAKE A LONG TIME ...&quot;</span>,
             <span class="ident">domain_name</span>
         );
@@ -563,7 +541,6 @@
         <span class="comment">// All we do is purge spn, and allow the plugin to recreate. Neat! It&#39;s also all still</span>
         <span class="comment">// within the transaction, just incase!</span>
         <span class="ident">qs</span>.<span class="ident">internal_modify</span>(
-            <span class="ident">au</span>,
             <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="macro">f_or!</span>([
                 <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;group&quot;</span>)),
                 <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;account&quot;</span>))
@@ -572,17 +549,14 @@
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Verify that all items with spn&#39;s have valid spns.</span>
         <span class="comment">//   We need to consider the case that an item has a different origin domain too,</span>
         <span class="comment">// so we should be able to verify that *those* spns validate to the trusted domain info</span>
         <span class="comment">// we have been sent also. It&#39;s not up to use to generate those though ...</span>
 
         <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-            .<span class="ident">get_domain_name</span>(<span class="ident">au</span>)
+            .<span class="ident">get_domain_name</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
             <span class="prelude-val">Ok</span>(<span class="ident">dn</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">dn</span>,
@@ -595,7 +569,7 @@
         ]));
 
         <span class="kw">let</span> <span class="ident">all_cand</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-            .<span class="ident">internal_search</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>)
+            .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
             <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
@@ -608,10 +582,9 @@
             <span class="kw">let</span> <span class="ident">g_spn</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">generate_spn</span>(<span class="ident">domain_name</span>.<span class="ident">as_str</span>()) {
                 <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">ladmin_error!</span>(
-                        <span class="ident">au</span>,
-                        <span class="string">&quot;Entry {:?} SPN could not be generated (missing name!?)&quot;</span>,
-                        <span class="ident">e</span>.<span class="ident">get_uuid</span>()
+                    <span class="macro">admin_error!</span>(
+                        <span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>.<span class="ident">get_uuid</span>(),
+                        <span class="string">&quot;Entry SPN could not be generated (missing name!?)&quot;</span>,
                     );
                     <span class="macro">debug_assert!</span>(<span class="bool-val">false</span>);
                     <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidSpn</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())));
@@ -620,12 +593,11 @@
             };
             <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">r_spn</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;verify spn: s {:?} == ex {:?} ?&quot;</span>, <span class="ident">r_spn</span>, <span class="ident">g_spn</span>);
+                    <span class="macro">trace!</span>(<span class="string">&quot;verify spn: s {:?} == ex {:?} ?&quot;</span>, <span class="ident">r_spn</span>, <span class="ident">g_spn</span>);
                     <span class="kw">if</span> <span class="ident">r_spn</span> <span class="op">!</span><span class="op">=</span> <span class="ident">g_spn</span> {
-                        <span class="macro">ladmin_error!</span>(
-                            <span class="ident">au</span>,
-                            <span class="string">&quot;Entry {:?} SPN does not match expected s {:?} != ex {:?}&quot;</span>,
-                            <span class="ident">e</span>.<span class="ident">get_uuid</span>(),
+                        <span class="macro">admin_error!</span>(
+                            <span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>.<span class="ident">get_uuid</span>(),
+                            <span class="string">&quot;Entry SPN does not match expected s {:?} != ex {:?}&quot;</span>,
                             <span class="ident">r_spn</span>,
                             <span class="ident">g_spn</span>,
                         );
@@ -634,7 +606,7 @@
                     }
                 }
                 <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Entry {:?} does not contain an SPN&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>(),);
+                    <span class="macro">admin_error!</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>.<span class="ident">get_uuid</span>(), <span class="string">&quot;Entry does not contain an SPN&quot;</span>);
                     <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidSpn</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())))
                 }
             }
@@ -669,7 +641,7 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_au</span>, <span class="ident">_qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="ident">_qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
         );
         <span class="comment">// We don&#39;t need a validator due to the fn verify above.</span>
     }
@@ -696,7 +668,7 @@
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testperson&quot;</span>))),
             <span class="macro">modlist!</span>([<span class="ident">m_purge</span>(<span class="string">&quot;spn&quot;</span>)]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -723,7 +695,7 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_au</span>, <span class="ident">_qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="ident">_qs_write</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
         );
     }
 
@@ -752,13 +724,13 @@
                 <span class="ident">m_pres</span>(<span class="string">&quot;spn&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">Value::new_spn_str</span>(<span class="string">&quot;invalid&quot;</span>, <span class="string">&quot;spn&quot;</span>))
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_spn_regen_domain_rename</span>() {
-        <span class="macro">run_test!</span>(<span class="op">|</span><span class="ident">server</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span><span class="op">|</span> {
+        <span class="macro">run_test!</span>(<span class="op">|</span><span class="ident">server</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
 
             <span class="kw">let</span> <span class="ident">ex1</span> <span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;admin&quot;</span>, <span class="string">&quot;example.com&quot;</span>);
@@ -766,7 +738,7 @@
             <span class="comment">// get the current domain name</span>
             <span class="comment">// check the spn on admin is admin@&lt;initial domain&gt;</span>
             <span class="kw">let</span> <span class="ident">e_pre</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">internal_search_uuid</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">e_pre_spn</span> <span class="op">=</span> <span class="ident">e_pre</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
@@ -776,12 +748,12 @@
             <span class="comment">// in the final version), but it will still call the same qs function to perform the</span>
             <span class="comment">// change.</span>
             <span class="ident">server_txn</span>
-                .<span class="ident">domain_rename</span>(<span class="ident">au</span>, <span class="string">&quot;new.example.com&quot;</span>)
+                .<span class="ident">domain_rename</span>(<span class="string">&quot;new.example.com&quot;</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;should not fail!&quot;</span>);
 
             <span class="comment">// check the spn on admin is admin@&lt;new domain&gt;</span>
             <span class="kw">let</span> <span class="ident">e_post</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">internal_search_uuid</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
+                .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">e_post_spn</span> <span class="op">=</span> <span class="ident">e_post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
@@ -789,7 +761,7 @@
             <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">ex2</span>);
             <span class="macro">assert!</span>(<span class="ident">e_post_spn</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ex2</span>);
 
-            <span class="ident">server_txn</span>.<span class="ident">commit</span>(<span class="ident">au</span>).<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
+            <span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
         });
     }
 }

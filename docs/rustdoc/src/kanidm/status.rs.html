@@ -26,15 +26,10 @@
 <span id="26">26</span>
 <span id="27">27</span>
 <span id="28">28</span>
-<span id="29">29</span>
-<span id="30">30</span>
-<span id="31">31</span>
-<span id="32">32</span>
 </pre><pre class="rust">
 <span class="doccomment">//! An actor that shows the servers current status and statistics. (TODO).</span>
 
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
-<span class="kw">use</span> <span class="ident">tokio::sync::mpsc::UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>;
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StatusRequestEvent</span> {
@@ -42,24 +37,21 @@
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">StatusActor</span> {
-    <span class="ident">log_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">AuditScope</span><span class="op">&gt;</span>,
-    <span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
+    <span class="ident">_log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">StatusActor</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start</span>(<span class="ident">log_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">AuditScope</span><span class="op">&gt;</span>, <span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
-        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">StatusActor</span> { <span class="ident">log_tx</span>, <span class="ident">log_level</span> });
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start</span>(<span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">StatusActor</span> {
+            <span class="ident">_log_level</span>: <span class="ident">log_level</span>,
+        });
 
         <span class="kw">let</span> <span class="ident">x_ptr</span> <span class="op">=</span> <span class="ident">Box::into_raw</span>(<span class="ident">x</span>);
         <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">x_ptr</span>) }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">event</span>: <span class="ident">StatusRequestEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">audit</span> <span class="op">=</span> <span class="ident">AuditScope::new</span>(<span class="string">&quot;status_handler&quot;</span>, <span class="ident">event</span>.<span class="ident">eventid</span>, <span class="self">self</span>.<span class="ident">log_level</span>);
-        <span class="macro">ladmin_info!</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>, <span class="string">&quot;status handler complete&quot;</span>);
-        <span class="self">self</span>.<span class="ident">log_tx</span>.<span class="ident">send</span>(<span class="ident">audit</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;CRITICAL: UNABLE TO COMMIT LOGS&quot;</span>);
-        });
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_event</span>: <span class="ident">StatusRequestEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="macro">admin_info!</span>(<span class="string">&quot;status handler complete&quot;</span>);
         <span class="bool-val">true</span>
     }
 }

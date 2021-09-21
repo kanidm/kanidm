@@ -91,9 +91,6 @@
 <span id="91">91</span>
 <span id="92">92</span>
 <span id="93">93</span>
-<span id="94">94</span>
-<span id="95">95</span>
-<span id="96">96</span>
 </pre><pre class="rust">
 <span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server</span>
 <span class="doccomment">//! which is used to process authentication, store identities and enforce access controls.</span>
@@ -131,8 +128,6 @@
 <span class="kw">mod</span> <span class="ident">crypto</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">utils</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">mod</span> <span class="ident">async_log</span>;
-<span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">audit</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">be</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">constants</span>;
@@ -168,7 +163,6 @@
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">url::Url</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::audit::AuditScope</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::constants</span>::<span class="kw-2">*</span>;
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 

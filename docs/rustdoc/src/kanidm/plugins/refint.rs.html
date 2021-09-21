@@ -699,17 +699,6 @@
 <span id="699">699</span>
 <span id="700">700</span>
 <span id="701">701</span>
-<span id="702">702</span>
-<span id="703">703</span>
-<span id="704">704</span>
-<span id="705">705</span>
-<span id="706">706</span>
-<span id="707">707</span>
-<span id="708">708</span>
-<span id="709">709</span>
-<span id="710">710</span>
-<span id="711">711</span>
-<span id="712">712</span>
 </pre><pre class="rust">
 <span class="comment">// Referential Integrity</span>
 <span class="comment">//</span>
@@ -741,13 +730,12 @@
 
 <span class="kw">impl</span> <span class="ident">ReferentialIntegrity</span> {
     <span class="kw">fn</span> <span class="ident">check_uuids_exist</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">inner</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">is_empty</span>() {
             <span class="comment">// There is nothing to check! Move on.</span>
-            <span class="macro">ladmin_info!</span>(<span class="ident">au</span>, <span class="string">&quot;no reference types modified, skipping check&quot;</span>);
+            <span class="macro">admin_info!</span>(<span class="string">&quot;no reference types modified, skipping check&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
 
@@ -757,8 +745,8 @@
         <span class="comment">// will fail. This will return the union of the inclusion after the</span>
         <span class="comment">// operationn.</span>
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_inc</span>(<span class="ident">inner</span>));
-        <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_exists</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;internal exists failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="kw">let</span> <span class="ident">b</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_exists</span>(<span class="ident">filt_in</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;internal exists failure&quot;</span>);
             <span class="ident">e</span>
         })<span class="question-mark">?</span>;
 
@@ -766,8 +754,7 @@
         <span class="kw">if</span> <span class="ident">b</span> {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
-            <span class="macro">ladmin_error!</span>(
-                <span class="ident">au</span>,
+            <span class="macro">admin_error!</span>(
                 <span class="string">&quot;UUID reference set size differs from query result size &lt;fast path, no uuid info available&gt;&quot;</span>
             );
             <span class="prelude-val">Err</span>(<span class="ident">OperationError::Plugin</span>(<span class="ident">PluginError::ReferentialIntegrity</span>(
@@ -797,7 +784,6 @@
     <span class="comment">// in complex scenarioes - It actually simplifies the check from &quot;could</span>
     <span class="comment">// be in cand AND db&quot; to simply &quot;is it in the DB?&quot;.</span>
     <span class="kw">fn</span> <span class="ident">post_create</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
@@ -825,19 +811,18 @@
                 });
                 <span class="prelude-val">Ok</span>(())
             } <span class="kw">else</span> {
-                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
-                <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
+                <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(
                     <span class="string">&quot;uuid could not become reference value&quot;</span>.<span class="ident">to_string</span>(),
                 ))
             }
         })<span class="question-mark">?</span>;
 
-        <span class="self">Self</span><span class="ident">::check_uuids_exist</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">i</span>)
+        <span class="self">Self</span><span class="ident">::check_uuids_exist</span>(<span class="ident">qs</span>, <span class="ident">i</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">post_modify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">_pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
@@ -861,8 +846,8 @@
             <span class="ident">v</span>.<span class="ident">to_ref_uuid</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">uuid</span><span class="op">|</span> <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>))
                 .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
-                    <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;reference value could not convert to reference uuid.&quot;</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.&quot;</span>);
                     <span class="ident">OperationError::InvalidAttribute</span>(
                         <span class="string">&quot;uuid could not become reference value&quot;</span>.<span class="ident">to_string</span>(),
                     )
@@ -873,11 +858,10 @@
 
         <span class="kw">let</span> <span class="ident">i</span> <span class="op">=</span> <span class="ident">i</span><span class="question-mark">?</span>;
 
-        <span class="self">Self</span><span class="ident">::check_uuids_exist</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">i</span>)
+        <span class="self">Self</span><span class="ident">::check_uuids_exist</span>(<span class="ident">qs</span>, <span class="ident">i</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">post_delete</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
@@ -908,14 +892,14 @@
                 .<span class="ident">collect</span>(),
         ));
 
-        <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;refint post_delete filter {:?}&quot;</span>, <span class="ident">filt</span>);
+        <span class="macro">trace!</span>(<span class="string">&quot;refint post_delete filter {:?}&quot;</span>, <span class="ident">filt</span>);
 
         <span class="kw">let</span> <span class="ident">removed_ids</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">cand</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">PartialValue::new_refer</span>(<span class="kw-2">*</span><span class="ident">e</span>.<span class="ident">get_uuid</span>()))
             .<span class="ident">collect</span>();
 
-        <span class="kw">let</span> <span class="ident">work_set</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_search_writeable</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">filt</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">work_set</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_search_writeable</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>)<span class="question-mark">?</span>;
 
         <span class="kw">let</span> (<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>) <span class="op">=</span> <span class="ident">work_set</span>
             .<span class="ident">into_iter</span>()
@@ -927,19 +911,16 @@
             })
             .<span class="ident">unzip</span>();
 
-        <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">au</span>, <span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
+        <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Get all entries as cand</span>
         <span class="comment">//      build a cand-uuid set</span>
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
 
         <span class="kw">let</span> <span class="ident">all_cand</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-            .<span class="ident">internal_search</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>)
+            .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
             <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
@@ -1008,7 +989,7 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1045,12 +1026,12 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(
-                        <span class="ident">au</span>,
-                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
-                    )
+                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+                        <span class="string">&quot;name&quot;</span>,
+                        <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>)
+                    )))
                     .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
                 <span class="kw">let</span> <span class="ident">_ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No cand&quot;</span>);
             }
@@ -1081,12 +1062,9 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="ident">qs</span>
-                    .<span class="ident">internal_search</span>(
-                        <span class="ident">au</span>,
-                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup&quot;</span>))),
-                    )
+                    .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup&quot;</span>))))
                     .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
                 <span class="kw">let</span> <span class="ident">_ue</span> <span class="op">=</span> <span class="ident">cands</span>.<span class="ident">first</span>().<span class="ident">expect</span>(<span class="string">&quot;No cand&quot;</span>);
             }
@@ -1128,7 +1106,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1158,7 +1136,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1206,7 +1184,7 @@
                 ),
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1243,7 +1221,7 @@
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
             <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>))]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1272,7 +1250,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1313,7 +1291,7 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="string">&quot;d2b496bd-8493-47b7-8142-f568b5cf47ee&quot;</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -1351,7 +1329,7 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
         );
     }
 
@@ -1393,7 +1371,7 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
         );
     }
 
@@ -1419,7 +1397,7 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="string">&quot;testgroup_b&quot;</span>))),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {}
         );
     }
 }

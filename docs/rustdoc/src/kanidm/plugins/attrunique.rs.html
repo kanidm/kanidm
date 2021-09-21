@@ -340,13 +340,6 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
-<span id="343">343</span>
-<span id="344">344</span>
-<span id="345">345</span>
-<span id="346">346</span>
-<span id="347">347</span>
-<span id="348">348</span>
-<span id="349">349</span>
 </pre><pre class="rust">
 <span class="comment">// Attribute uniqueness plugin. We read the schema and determine if the</span>
 <span class="comment">// value should be unique, and how to handle if it is not. This will</span>
@@ -359,13 +352,13 @@
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::schema::SchemaTransaction</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">PluginError</span>};
+<span class="kw">use</span> <span class="ident">tracing::trace</span>;
 
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AttrUnique</span>;
 
 <span class="kw">fn</span> <span class="ident">get_cand_attr_set</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span>(
-    <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
     <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span>],
     <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">PartialValue</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -387,8 +380,7 @@
                         <span class="kw">match</span> <span class="ident">cand_attr</span>.<span class="ident">insert</span>(<span class="ident">v</span>, <span class="ident">uuid</span>.<span class="ident">clone</span>()) {
                             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
                             <span class="prelude-val">Some</span>(<span class="ident">vr</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                                <span class="macro">ladmin_error!</span>(
-                                    <span class="ident">au</span>,
+                                <span class="macro">admin_error!</span>(
                                     <span class="string">&quot;ava already exists -&gt; {:?}: {:?} on {:?}&quot;</span>,
                                     <span class="ident">attr</span>,
                                     <span class="ident">vr</span>,
@@ -407,21 +399,20 @@
 }
 
 <span class="kw">fn</span> <span class="ident">enforce_unique</span><span class="op">&lt;</span><span class="ident">STATE</span><span class="op">&gt;</span>(
-    <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
     <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">STATE</span><span class="op">&gt;</span>],
     <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">attr</span>);
+    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">attr</span>);
 
     <span class="comment">// Build a set of all the value -&gt; uuid for the cands.</span>
     <span class="comment">// If already exist, reject due to dup.</span>
-    <span class="kw">let</span> <span class="ident">cand_attr</span> <span class="op">=</span> <span class="ident">get_cand_attr_set</span>(<span class="ident">au</span>, <span class="ident">cand</span>, <span class="ident">attr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;failed to get cand attr set {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="kw">let</span> <span class="ident">cand_attr</span> <span class="op">=</span> <span class="ident">get_cand_attr_set</span>(<span class="ident">cand</span>, <span class="ident">attr</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;failed to get cand attr set&quot;</span>);
         <span class="ident">e</span>
     })<span class="question-mark">?</span>;
 
-    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">cand_attr</span>);
+    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">cand_attr</span>);
 
     <span class="comment">// No candidates to check!</span>
     <span class="kw">if</span> <span class="ident">cand_attr</span>.<span class="ident">is_empty</span>() {
@@ -443,11 +434,11 @@
             .<span class="ident">collect</span>()
     ));
 
-    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">filt_in</span>);
+    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">filt_in</span>);
 
     <span class="comment">// If any results, reject.</span>
-    <span class="kw">let</span> <span class="ident">conflict_cand</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_exists</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;internal exists error {:?}&quot;</span>, <span class="ident">e</span>);
+    <span class="kw">let</span> <span class="ident">conflict_cand</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_exists</span>(<span class="ident">filt_in</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="macro">admin_error!</span>(<span class="string">&quot;internal exists error {:?}&quot;</span>, <span class="ident">e</span>);
         <span class="ident">e</span>
     })<span class="question-mark">?</span>;
 
@@ -467,7 +458,6 @@
     }
 
     <span class="kw">fn</span> <span class="ident">pre_create_transform</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
@@ -480,12 +470,11 @@
 
         <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">uniqueattrs</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> <span class="ident">enforce_unique</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">attr</span>.<span class="ident">as_str</span>()));
+            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> <span class="ident">enforce_unique</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">attr</span>.<span class="ident">as_str</span>()));
         <span class="ident">r</span>
     }
 
     <span class="kw">fn</span> <span class="ident">pre_modify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
@@ -498,19 +487,16 @@
 
         <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">uniqueattrs</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> <span class="ident">enforce_unique</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">attr</span>.<span class="ident">as_str</span>()));
+            .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">attr</span><span class="op">|</span> <span class="ident">enforce_unique</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">attr</span>.<span class="ident">as_str</span>()));
         <span class="ident">r</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Only check live entries, not recycled.</span>
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
 
         <span class="kw">let</span> <span class="ident">all_cand</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-            .<span class="ident">internal_search</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>)
+            .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
             <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
@@ -528,14 +514,14 @@
 
         <span class="kw">for</span> <span class="ident">attr</span> <span class="kw">in</span> <span class="ident">uniqueattrs</span>.<span class="ident">iter</span>() {
             <span class="comment">// We do a fully in memory check.</span>
-            <span class="kw">if</span> <span class="ident">get_cand_attr_set</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">all_cand</span>, <span class="ident">attr</span>.<span class="ident">as_str</span>()).<span class="ident">is_err</span>() {
+            <span class="kw">if</span> <span class="ident">get_cand_attr_set</span>(<span class="kw-2">&amp;</span><span class="ident">all_cand</span>, <span class="ident">attr</span>.<span class="ident">as_str</span>()).<span class="ident">is_err</span>() {
                 <span class="ident">res</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::DuplicateUniqueAttribute</span>(
                     <span class="ident">attr</span>.<span class="ident">to_string</span>(),
                 )))
             }
         }
 
-        <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;{:?}&quot;</span>, <span class="ident">res</span>);
+        <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">res</span>);
 
         <span class="ident">res</span>
     }
@@ -571,7 +557,7 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -599,7 +585,7 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -645,7 +631,7 @@
                 <span class="ident">Modify::Present</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;name&quot;</span>), <span class="ident">Value::new_iname</span>(<span class="string">&quot;testgroup_a&quot;</span>))
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 
@@ -688,7 +674,7 @@
                 <span class="ident">Modify::Present</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;name&quot;</span>), <span class="ident">Value::new_iname</span>(<span class="string">&quot;testgroup&quot;</span>))
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">|</span> {}
+            <span class="op">|</span><span class="kw">_</span><span class="op">|</span> {}
         );
     }
 

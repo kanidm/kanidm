@@ -184,16 +184,10 @@
 <span id="184">184</span>
 <span id="185">185</span>
 <span id="186">186</span>
-<span id="187">187</span>
-<span id="188">188</span>
-<span id="189">189</span>
-<span id="190">190</span>
-<span id="191">191</span>
 </pre><pre class="rust">
-<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude::AuditScope</span>;
-
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::actors::v1_read::QueryServerReadV1</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::ldap</span>::{<span class="ident">LdapBoundToken</span>, <span class="ident">LdapResponseState</span>};
+<span class="kw">use</span> <span class="kw">crate</span><span class="ident">::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">core::pin::Pin</span>;
 <span class="kw">use</span> <span class="ident">openssl::ssl</span>::{<span class="ident">Ssl</span>, <span class="ident">SslAcceptor</span>, <span class="ident">SslAcceptorBuilder</span>};
 <span class="kw">use</span> <span class="ident">tokio_openssl::SslStream</span>;
@@ -234,18 +228,14 @@
     <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="prelude-val">Ok</span>(<span class="ident">protomsg</span>)) <span class="op">=</span> <span class="ident">r</span>.<span class="ident">next</span>().<span class="kw">await</span> {
         <span class="comment">// Start the event</span>
         <span class="kw">let</span> <span class="ident">eventid</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">audit</span> <span class="op">=</span> <span class="ident">AuditScope::new</span>(<span class="string">&quot;ldap_request_message&quot;</span>, <span class="ident">eventid</span>, <span class="ident">qe_r_ref</span>.<span class="ident">log_level</span>);
         <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">uat</span>.<span class="ident">clone</span>();
         <span class="comment">// I&#39;d really have liked to have put this near the [LdapResponseState::Bind] but due to the handing of `audit` it isn&#39;t possible due to borrows, etc.</span>
-        <span class="macro">lsecurity!</span>(
-            <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">audit</span>,
-            <span class="string">&quot;LDAP client: {}:{}&quot;</span>,
-            <span class="ident">client_address</span>.<span class="ident">ip</span>(),
-            <span class="ident">client_address</span>.<span class="ident">port</span>()
+        <span class="macro">security_info!</span>(
+            <span class="ident">client_ip</span> <span class="op">=</span> <span class="op">%</span><span class="ident">client_address</span>.<span class="ident">ip</span>(),
+            <span class="ident">client_port</span> <span class="op">=</span> <span class="op">%</span><span class="ident">client_address</span>.<span class="ident">port</span>(),
+            <span class="string">&quot;LDAP client&quot;</span>
         );
-        <span class="kw">let</span> <span class="ident">qs_result</span> <span class="op">=</span> <span class="ident">qe_r_ref</span>
-            .<span class="ident">handle_ldaprequest</span>(<span class="ident">eventid</span>, <span class="ident">audit</span>, <span class="ident">protomsg</span>, <span class="ident">uat</span>)
-            .<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">qs_result</span> <span class="op">=</span> <span class="ident">qe_r_ref</span>.<span class="ident">handle_ldaprequest</span>(<span class="ident">eventid</span>, <span class="ident">protomsg</span>, <span class="ident">uat</span>).<span class="kw">await</span>;
 
         <span class="kw">match</span> <span class="ident">qs_result</span> {
             <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Unbind</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,

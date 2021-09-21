@@ -436,20 +436,6 @@
 <span id="436">436</span>
 <span id="437">437</span>
 <span id="438">438</span>
-<span id="439">439</span>
-<span id="440">440</span>
-<span id="441">441</span>
-<span id="442">442</span>
-<span id="443">443</span>
-<span id="444">444</span>
-<span id="445">445</span>
-<span id="446">446</span>
-<span id="447">447</span>
-<span id="448">448</span>
-<span id="449">449</span>
-<span id="450">450</span>
-<span id="451">451</span>
-<span id="452">452</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -573,27 +559,24 @@
 
 <span class="kw">impl</span> <span class="ident">UnixUserAccount</span> {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_rw</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">UnixGroup::try_from_account_entry_rw</span>(<span class="ident">au</span>, <span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">UnixGroup::try_from_account_entry_rw</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
     }
 
     <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_ro</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerReadTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">UnixGroup::try_from_account_entry_ro</span>(<span class="ident">au</span>, <span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">UnixGroup::try_from_account_entry_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
     }
 
     <span class="comment">/*
     pub(crate) fn try_from_entry_reduced(
-        au: &amp;mut AuditScope,
         value: &amp;Entry&lt;EntryReduced, EntryCommitted&gt;,
         qs: &amp;mut QueryServerReadTransaction,
     ) -&gt; Result&lt;Self, OperationError&gt; {
@@ -665,7 +648,6 @@
     <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">verify_unix_credential</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">async_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
@@ -686,7 +668,6 @@
                 <span class="ident">cred</span>.<span class="ident">password_ref</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">pw</span><span class="op">|</span> {
                     <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>)<span class="question-mark">?</span> {
                         <span class="macro">security_info!</span>(<span class="string">&quot;Successful unix cred handling&quot;</span>);
-                        <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Successful unix cred handling&quot;</span>);
                         <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">requires_upgrade</span>() {
                             <span class="ident">async_tx</span>
                                 .<span class="ident">send</span>(<span class="ident">DelayedAction::UnixPwUpgrade</span>(<span class="ident">UnixPasswordUpgrade</span> {
@@ -695,10 +676,6 @@
                                 }))
                                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                                     <span class="macro">admin_error!</span>(
-                                        <span class="string">&quot;failed to queue delayed action - unix password upgrade&quot;</span>
-                                    );
-                                    <span class="macro">ladmin_error!</span>(
-                                        <span class="ident">au</span>,
                                         <span class="string">&quot;failed to queue delayed action - unix password upgrade&quot;</span>
                                     );
                                     <span class="ident">OperationError::InvalidState</span>
@@ -711,7 +688,6 @@
                     } <span class="kw">else</span> {
                         <span class="comment">// Failed to auth</span>
                         <span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (denied)&quot;</span>);
-                        <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed unix cred handling (denied)&quot;</span>);
                         <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                     }
                 })
@@ -719,7 +695,6 @@
             <span class="comment">// They don&#39;t have a unix cred, fail the auth.</span>
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">security_info!</span>(<span class="string">&quot;Failed unix cred handling (no cred present)&quot;</span>);
-                <span class="macro">lsecurity!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed unix cred handling (no cred present)&quot;</span>);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             }
         }
@@ -785,7 +760,7 @@
 }
 
 <span class="macro">macro_rules!</span> <span class="ident">try_from_account_group_e</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {{
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {{
         <span class="comment">// First synthesise the self-group from the account.</span>
         <span class="comment">// We have already checked these, but paranoia is better than</span>
         <span class="comment">// complacency.</span>
@@ -840,7 +815,7 @@
                             .<span class="ident">collect</span>()
                     )
                 ]));
-                <span class="kw">let</span> <span class="ident">ges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="ident">f</span>)<span class="question-mark">?</span>;
+                <span class="kw">let</span> <span class="ident">ges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="ident">f</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">groups</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter::once</span>(<span class="prelude-val">Ok</span>(<span class="ident">upg</span>))
                     .<span class="ident">chain</span>(<span class="ident">ges</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">UnixGroup::try_from_entry</span>(<span class="ident">e</span>.<span class="ident">as_ref</span>())))
                     .<span class="ident">collect</span>();
@@ -856,25 +831,22 @@
 
 <span class="kw">impl</span> <span class="ident">UnixGroup</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_rw</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_group_e!</span>(<span class="ident">au</span>, <span class="ident">value</span>, <span class="ident">qs</span>)
+        <span class="macro">try_from_account_group_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
     }
 
     <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_from_account_entry_ro</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerReadTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="macro">try_from_account_group_e!</span>(<span class="ident">au</span>, <span class="ident">value</span>, <span class="ident">qs</span>)
+        <span class="macro">try_from_account_group_e!</span>(<span class="ident">value</span>, <span class="ident">qs</span>)
     }
 
     <span class="comment">/*
     pub fn try_from_account_entry_red_ro(
-        au: &amp;mut AuditScope,
         value: &amp;Entry&lt;EntryReduced, EntryCommitted&gt;,
         qs: &amp;mut QueryServerReadTransaction,
     ) -&gt; Result&lt;Vec&lt;Self&gt;, OperationError&gt; {

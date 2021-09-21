@@ -228,18 +228,6 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
-<span id="231">231</span>
-<span id="232">232</span>
-<span id="233">233</span>
-<span id="234">234</span>
-<span id="235">235</span>
-<span id="236">236</span>
-<span id="237">237</span>
-<span id="238">238</span>
-<span id="239">239</span>
-<span id="240">240</span>
-<span id="241">241</span>
-<span id="242">242</span>
 </pre><pre class="rust">
 <span class="doccomment">//! Modification expressions and validation. This is how `ModifyEvents` store and</span>
 <span class="doccomment">//! express the series of Modifications that should be applied. These are expressed</span>
@@ -292,16 +280,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Modify</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
-        <span class="ident">m</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoModify</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">m</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoModify</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="kw">match</span> <span class="ident">m</span> {
-            <span class="ident">ProtoModify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Modify::Present</span>(<span class="ident">a</span>.<span class="ident">into</span>(), <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">audit</span>, <span class="ident">a</span>, <span class="ident">v</span>)<span class="question-mark">?</span>),
-            <span class="ident">ProtoModify::Removed</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">Modify::Removed</span>(<span class="ident">a</span>.<span class="ident">into</span>(), <span class="ident">qs</span>.<span class="ident">clone_partialvalue</span>(<span class="ident">audit</span>, <span class="ident">a</span>, <span class="ident">v</span>)<span class="question-mark">?</span>)
-            }
+            <span class="ident">ProtoModify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Modify::Present</span>(<span class="ident">a</span>.<span class="ident">into</span>(), <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">a</span>, <span class="ident">v</span>)<span class="question-mark">?</span>),
+            <span class="ident">ProtoModify::Removed</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Modify::Removed</span>(<span class="ident">a</span>.<span class="ident">into</span>(), <span class="ident">qs</span>.<span class="ident">clone_partialvalue</span>(<span class="ident">a</span>, <span class="ident">v</span>)<span class="question-mark">?</span>),
             <span class="ident">ProtoModify::Purged</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Modify::Purged</span>(<span class="ident">a</span>.<span class="ident">into</span>()),
         })
     }
@@ -358,16 +340,11 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ml</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoModifyList</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// For each ProtoModify, do a from.</span>
-        <span class="kw">let</span> <span class="ident">inner</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ml</span>
-            .<span class="ident">mods</span>
-            .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">pm</span><span class="op">|</span> <span class="ident">Modify::from</span>(<span class="ident">audit</span>, <span class="ident">pm</span>, <span class="ident">qs</span>))
-            .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="ident">inner</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">ml</span>.<span class="ident">mods</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">pm</span><span class="op">|</span> <span class="ident">Modify::from</span>(<span class="ident">pm</span>, <span class="ident">qs</span>)).<span class="ident">collect</span>();
         <span class="kw">match</span> <span class="ident">inner</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ModifyList</span> {
                 <span class="ident">valid</span>: <span class="ident">ModifyInvalid</span>,
@@ -378,7 +355,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_patch</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">pe</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoEntry</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -390,7 +366,7 @@
             <span class="comment">// Now if there are vals, push those too.</span>
             <span class="comment">// For each value we want to now be present.</span>
             <span class="ident">vals</span>.<span class="ident">iter</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">val</span><span class="op">|</span> {
-                <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">audit</span>, <span class="ident">attr</span>, <span class="ident">val</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">resolved_v</span><span class="op">|</span> {
+                <span class="ident">qs</span>.<span class="ident">clone_value</span>(<span class="ident">attr</span>, <span class="ident">val</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">resolved_v</span><span class="op">|</span> {
                     <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="ident">attr</span>.<span class="ident">as_str</span>().<span class="ident">into</span>(), <span class="ident">resolved_v</span>));
                 })
             })

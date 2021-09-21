@@ -950,22 +950,6 @@
 <span id="950">950</span>
 <span id="951">951</span>
 <span id="952">952</span>
-<span id="953">953</span>
-<span id="954">954</span>
-<span id="955">955</span>
-<span id="956">956</span>
-<span id="957">957</span>
-<span id="958">958</span>
-<span id="959">959</span>
-<span id="960">960</span>
-<span id="961">961</span>
-<span id="962">962</span>
-<span id="963">963</span>
-<span id="964">964</span>
-<span id="965">965</span>
-<span id="966">966</span>
-<span id="967">967</span>
-<span id="968">968</span>
 </pre><pre class="rust">
 <span class="doccomment">//! An `event` is a self contained module of data, that contains all of the</span>
 <span class="doccomment">//! required information for any operation to proceed. While there are many</span>
@@ -1016,7 +1000,6 @@
 <span class="kw">impl</span> <span class="ident">SearchResult</span> {
     <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
         <span class="ident">entries</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -1026,7 +1009,7 @@
                 <span class="comment">// All the needed transforms for this result are done</span>
                 <span class="comment">// in search_ext. This is just an entry -&gt; protoentry</span>
                 <span class="comment">// step.</span>
-                <span class="ident">e</span>.<span class="ident">to_pe</span>(<span class="ident">audit</span>, <span class="ident">qs</span>)
+                <span class="ident">e</span>.<span class="ident">to_pe</span>(<span class="ident">qs</span>)
             })
             .<span class="ident">collect</span>();
         <span class="prelude-val">Ok</span>(<span class="ident">SearchResult</span> { <span class="ident">entries</span>: <span class="ident">entries</span><span class="question-mark">?</span> })
@@ -1058,12 +1041,11 @@
 <span class="kw">impl</span> <span class="ident">SearchEvent</span> {
     <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">SearchRequest</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ro</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ro</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="comment">// We do need to do this twice to account for the ignore_hidden</span>
         <span class="comment">// changes.</span>
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
@@ -1081,7 +1063,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_internal_message</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">String</span>]<span class="op">&gt;</span>,
@@ -1095,13 +1076,13 @@
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">r_attrs</span> {
             <span class="kw">if</span> <span class="ident">s</span>.<span class="ident">is_empty</span>() {
-                <span class="macro">lrequest_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;EmptyRequest for attributes&quot;</span>);
+                <span class="macro">request_error!</span>(<span class="string">&quot;EmptyRequest for attributes&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
             }
         }
 
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">lrequest_error!</span>(<span class="ident">audit</span>, <span class="string">&quot;filter schema violation -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="macro">request_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;filter schema violation&quot;</span>);
             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
         })<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">filter_orig</span>.<span class="ident">clone</span>().<span class="ident">into_ignore_hidden</span>();
@@ -1115,7 +1096,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_internal_recycle_message</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span>[<span class="ident">String</span>]<span class="op">&gt;</span>,
@@ -1148,7 +1128,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_whoami_request</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -1166,7 +1145,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_target_uuid_request</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
@@ -1251,14 +1229,13 @@
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">new_ext_impersonate_uuid</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">lf</span>: <span class="kw-2">&amp;</span><span class="ident">LdapFilter</span>,
         <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">AttrString</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Kanidm Filter from LdapFilter</span>
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ldap_ro</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="ident">lf</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_ldap_ro</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="ident">lf</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
             .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -1310,7 +1287,6 @@
 
 <span class="kw">impl</span> <span class="ident">CreateEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">CreateRequest</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
@@ -1318,7 +1294,7 @@
         <span class="kw">let</span> <span class="ident">rentries</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">req</span>
             .<span class="ident">entries</span>
             .<span class="ident">iter</span>()
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Entry::from_proto_entry</span>(<span class="ident">audit</span>, <span class="ident">e</span>, <span class="ident">qs</span>))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Entry::from_proto_entry</span>(<span class="ident">e</span>, <span class="ident">qs</span>))
             .<span class="ident">collect</span>();
         <span class="comment">// From ProtoEntry -&gt; Entry</span>
         <span class="comment">// What is the correct consuming iterator here? Can we</span>
@@ -1393,12 +1369,11 @@
 
 <span class="kw">impl</span> <span class="ident">DeleteEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteRequest</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_rw</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_rw</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
             .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -1411,7 +1386,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
@@ -1478,13 +1452,12 @@
 
 <span class="kw">impl</span> <span class="ident">ModifyEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_message</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">req</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyRequest</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_rw</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="ident">audit</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">modlist</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::from_rw</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">filter</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="kw-2">&amp;</span><span class="ident">req</span>.<span class="ident">modlist</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
             .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -1501,7 +1474,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
         <span class="ident">proto_ml</span>: <span class="kw-2">&amp;</span><span class="ident">ProtoModifyList</span>,
@@ -1512,7 +1484,7 @@
         <span class="comment">// Add any supplemental conditions we have.</span>
         <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">Filter::join_parts_and</span>(<span class="ident">f_uuid</span>, <span class="ident">filter</span>);
 
-        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="ident">audit</span>, <span class="ident">proto_ml</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">ModifyList::from</span>(<span class="ident">proto_ml</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">filter_orig</span> <span class="op">=</span> <span class="ident">f</span>
             .<span class="ident">validate</span>(<span class="ident">qs</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -1530,7 +1502,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_internal_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">ml</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
@@ -1553,7 +1524,6 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_target_uuid_attr_purge</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target_uuid</span>: <span class="ident">Uuid</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1817,13 +1787,12 @@ impl AuthResult {
 
 <span class="kw">impl</span> <span class="ident">WhoamiResult</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
-        <span class="ident">audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
         <span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">uat</span>: <span class="ident">UserAuthToken</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">WhoamiResult</span> {
-            <span class="ident">youare</span>: <span class="ident">e</span>.<span class="ident">to_pe</span>(<span class="ident">audit</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>,
+            <span class="ident">youare</span>: <span class="ident">e</span>.<span class="ident">to_pe</span>(<span class="ident">qs</span>)<span class="question-mark">?</span>,
             <span class="ident">uat</span>,
         })
     }
@@ -1912,7 +1881,6 @@ impl AuthResult {
 
 <span class="kw">impl</span> <span class="ident">ReviveRecycledEvent</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">from_parts</span>(
-        <span class="ident">_audit</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,

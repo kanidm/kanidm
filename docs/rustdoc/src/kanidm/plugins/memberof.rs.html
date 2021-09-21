@@ -1541,39 +1541,6 @@
 <span id="1541">1541</span>
 <span id="1542">1542</span>
 <span id="1543">1543</span>
-<span id="1544">1544</span>
-<span id="1545">1545</span>
-<span id="1546">1546</span>
-<span id="1547">1547</span>
-<span id="1548">1548</span>
-<span id="1549">1549</span>
-<span id="1550">1550</span>
-<span id="1551">1551</span>
-<span id="1552">1552</span>
-<span id="1553">1553</span>
-<span id="1554">1554</span>
-<span id="1555">1555</span>
-<span id="1556">1556</span>
-<span id="1557">1557</span>
-<span id="1558">1558</span>
-<span id="1559">1559</span>
-<span id="1560">1560</span>
-<span id="1561">1561</span>
-<span id="1562">1562</span>
-<span id="1563">1563</span>
-<span id="1564">1564</span>
-<span id="1565">1565</span>
-<span id="1566">1566</span>
-<span id="1567">1567</span>
-<span id="1568">1568</span>
-<span id="1569">1569</span>
-<span id="1570">1570</span>
-<span id="1571">1571</span>
-<span id="1572">1572</span>
-<span id="1573">1573</span>
-<span id="1574">1574</span>
-<span id="1575">1575</span>
-<span id="1576">1576</span>
 </pre><pre class="rust">
 <span class="comment">// Member Of</span>
 <span class="comment">//</span>
@@ -1607,22 +1574,18 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">MemberOf</span>;
 
 <span class="kw">fn</span> <span class="ident">do_memberof</span>(
-    <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
     <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     <span class="ident">tgte</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EntryInvalidCommitted</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
     <span class="comment">//  search where we are member</span>
     <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">qs</span>
-        .<span class="ident">internal_search</span>(
-            <span class="ident">au</span>,
-            <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
-                <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_GROUP</span>.<span class="ident">clone</span>()),
-                <span class="ident">f_eq</span>(<span class="string">&quot;member&quot;</span>, <span class="ident">PartialValue::new_refer</span>(<span class="kw-2">*</span><span class="ident">uuid</span>))
-            ])),
-        )
+        .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="macro">f_and!</span>([
+            <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">CLASS_GROUP</span>.<span class="ident">clone</span>()),
+            <span class="ident">f_eq</span>(<span class="string">&quot;member&quot;</span>, <span class="ident">PartialValue::new_refer</span>(<span class="kw-2">*</span><span class="ident">uuid</span>))
+        ])))
         .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;internal search failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="macro">admin_error!</span>(<span class="string">&quot;internal search failure -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">e</span>
         })<span class="question-mark">?</span>;
 
@@ -1647,16 +1610,14 @@
     });
 
     <span class="kw">if</span> <span class="ident">r</span>.<span class="ident">is_err</span>() {
-        <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Invalid valueset type -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
+        <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid valueset type -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
     } <span class="kw">else</span> {
-        <span class="macro">ltrace!</span>(
-            <span class="ident">au</span>,
+        <span class="macro">trace!</span>(
             <span class="string">&quot;Updating {:?} to be dir mo {:?}&quot;</span>,
             <span class="ident">uuid</span>,
             <span class="ident">tgte</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;directmemberof&quot;</span>)
         );
-        <span class="macro">ltrace!</span>(
-            <span class="ident">au</span>,
+        <span class="macro">trace!</span>(
             <span class="string">&quot;Updating {:?} to be mo {:?}&quot;</span>,
             <span class="ident">uuid</span>,
             <span class="ident">tgte</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;memberof&quot;</span>)
@@ -1667,14 +1628,13 @@
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
 <span class="kw">fn</span> <span class="ident">apply_memberof</span>(
-    <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
     <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     <span class="comment">// TODO: Experiment with HashSet/BTreeSet here instead of vec.</span>
     <span class="comment">// May require https://github.com/rust-lang/rust/issues/62924 to allow poping</span>
     <span class="kw-2">mut</span> <span class="ident">group_affect</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot; =&gt; entering apply_memberof&quot;</span>);
-    <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot; =&gt; initial group_affect {:?}&quot;</span>, <span class="ident">group_affect</span>);
+    <span class="macro">trace!</span>(<span class="string">&quot; =&gt; entering apply_memberof&quot;</span>);
+    <span class="macro">trace!</span>(<span class="string">&quot; =&gt; initial group_affect {:?}&quot;</span>, <span class="ident">group_affect</span>);
 
     <span class="comment">// We can&#39;t cache groups, because we need to be continually writing</span>
     <span class="comment">// and querying them. But we can cache anything we find in the process</span>
@@ -1697,7 +1657,7 @@
                 .<span class="ident">collect</span>()
         ));
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">work_set</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_search_writeable</span>(<span class="ident">au</span>, <span class="kw-2">&amp;</span><span class="ident">filt</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">work_set</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">internal_search_writeable</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>)<span class="question-mark">?</span>;
         <span class="comment">// Load the vecdeque with this batch.</span>
 
         <span class="kw">while</span> <span class="kw">let</span> <span class="prelude-val">Some</span>((<span class="ident">pre</span>, <span class="kw-2">mut</span> <span class="ident">tgte</span>)) <span class="op">=</span> <span class="ident">work_set</span>.<span class="ident">pop</span>() {
@@ -1707,14 +1667,14 @@
                 <span class="comment">// It&#39;s not a group, we&#39;ll deal with you later. We should NOT</span>
                 <span class="comment">// have seen this UUID before, as either we are on the first</span>
                 <span class="comment">// iteration OR the checks belowe should have filtered it out.</span>
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;not a group, delaying update to -&gt; {:?}&quot;</span>, <span class="ident">guuid</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;not a group, delaying update to -&gt; {:?}&quot;</span>, <span class="ident">guuid</span>);
                 <span class="ident">other_cache</span>.<span class="ident">insert</span>(<span class="ident">guuid</span>, (<span class="ident">pre</span>, <span class="ident">tgte</span>));
                 <span class="kw">continue</span>;
             }
 
-            <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;=&gt; processing group update -&gt; {:?}&quot;</span>, <span class="ident">guuid</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;=&gt; processing group update -&gt; {:?}&quot;</span>, <span class="ident">guuid</span>);
 
-            <span class="ident">do_memberof</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="kw-2">&amp;</span><span class="ident">guuid</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tgte</span>)<span class="question-mark">?</span>;
+            <span class="ident">do_memberof</span>(<span class="ident">qs</span>, <span class="kw-2">&amp;</span><span class="ident">guuid</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tgte</span>)<span class="question-mark">?</span>;
 
             <span class="comment">// Did we change? Note we don&#39;t check if the class changed, only if mo changed.</span>
             <span class="kw">if</span> <span class="ident">pre</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;memberof&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">tgte</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;memberof&quot;</span>)
@@ -1723,8 +1683,7 @@
                 <span class="comment">// Yes we changed - we now must process all our members, as they need to</span>
                 <span class="comment">// inherit changes. Some of these members COULD be non groups, but we</span>
                 <span class="comment">// handle that in the dbload step.</span>
-                <span class="macro">ltrace!</span>(
-                    <span class="ident">au</span>,
+                <span class="macro">trace!</span>(
                     <span class="string">&quot;{:?} changed, flagging members as groups to change. &quot;</span>,
                     <span class="ident">guuid</span>
                 );
@@ -1736,16 +1695,16 @@
                 <span class="ident">pre_candidates</span>.<span class="ident">push</span>(<span class="ident">pre</span>);
                 <span class="ident">candidates</span>.<span class="ident">push</span>(<span class="ident">tgte</span>);
             } <span class="kw">else</span> {
-                <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;{:?} stable&quot;</span>, <span class="ident">guuid</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;{:?} stable&quot;</span>, <span class="ident">guuid</span>);
             }
         }
 
         <span class="macro">debug_assert!</span>(<span class="ident">pre_candidates</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">len</span>());
         <span class="comment">// Write this stripe if populated.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">pre_candidates</span>.<span class="ident">is_empty</span>() {
-            <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">au</span>, <span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
+            <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">ladmin_error!</span>(<span class="ident">au</span>, <span class="string">&quot;Failed to commit memberof group set {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to commit memberof group set {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">e</span>
                 })<span class="question-mark">?</span>;
         }
@@ -1759,9 +1718,9 @@
     <span class="ident">other_cache</span>
         .<span class="ident">into_iter</span>()
         .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">auuid</span>, (<span class="ident">pre</span>, <span class="kw-2">mut</span> <span class="ident">tgte</span>))<span class="op">|</span> {
-            <span class="macro">ltrace!</span>(<span class="ident">au</span>, <span class="string">&quot;=&gt; processing affected uuid {:?}&quot;</span>, <span class="ident">auuid</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;=&gt; processing affected uuid {:?}&quot;</span>, <span class="ident">auuid</span>);
             <span class="macro">debug_assert!</span>(<span class="op">!</span><span class="ident">tgte</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">CLASS_GROUP</span>));
-            <span class="ident">do_memberof</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="kw-2">&amp;</span><span class="ident">auuid</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tgte</span>)<span class="question-mark">?</span>;
+            <span class="ident">do_memberof</span>(<span class="ident">qs</span>, <span class="kw-2">&amp;</span><span class="ident">auuid</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">tgte</span>)<span class="question-mark">?</span>;
             <span class="comment">// Only write if a change occured.</span>
             <span class="kw">if</span> <span class="ident">pre</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;memberof&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">tgte</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;memberof&quot;</span>)
                 <span class="op">|</span><span class="op">|</span> <span class="ident">pre</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;directmemberof&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="ident">tgte</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;directmemberof&quot;</span>)
@@ -1774,7 +1733,7 @@
 
     <span class="comment">// Turn the other_cache into a write set.</span>
     <span class="comment">// Write the batch out in a single stripe.</span>
-    <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">au</span>, <span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
+    <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
     <span class="comment">// Done! 🎉</span>
 }
 
@@ -1784,7 +1743,6 @@
     }
 
     <span class="kw">fn</span> <span class="ident">post_create</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
@@ -1807,11 +1765,10 @@
             .<span class="ident">copied</span>()
             .<span class="ident">collect</span>();
 
-        <span class="ident">apply_memberof</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">group_affect</span>)
+        <span class="ident">apply_memberof</span>(<span class="ident">qs</span>, <span class="ident">group_affect</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">post_modify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
@@ -1847,11 +1804,10 @@
             .<span class="ident">copied</span>()
             .<span class="ident">collect</span>();
 
-        <span class="ident">apply_memberof</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">group_affect</span>)
+        <span class="ident">apply_memberof</span>(<span class="ident">qs</span>, <span class="ident">group_affect</span>)
     }
 
     <span class="kw">fn</span> <span class="ident">pre_delete</span>(
-        <span class="ident">_au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
@@ -1871,7 +1827,6 @@
     }
 
     <span class="kw">fn</span> <span class="ident">post_delete</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
@@ -1892,19 +1847,16 @@
             .<span class="ident">copied</span>()
             .<span class="ident">collect</span>();
 
-        <span class="ident">apply_memberof</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">group_affect</span>)
+        <span class="ident">apply_memberof</span>(<span class="ident">qs</span>, <span class="ident">group_affect</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(
-        <span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>,
-        <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
 
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
 
         <span class="kw">let</span> <span class="ident">all_cand</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-            .<span class="ident">internal_search</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>)
+            .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
             <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
@@ -1919,7 +1871,7 @@
             ]));
 
             <span class="kw">let</span> <span class="ident">direct_memberof</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">qs</span>
-                .<span class="ident">internal_search</span>(<span class="ident">au</span>, <span class="ident">filt_in</span>)
+                .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ConsistencyError::QueryServerSearchFailure</span>)
             {
                 <span class="prelude-val">Ok</span>(<span class="ident">d_mo</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">d_mo</span>,
@@ -1932,12 +1884,7 @@
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">Value::new_refer</span>(<span class="kw-2">*</span><span class="ident">e</span>.<span class="ident">get_uuid</span>()))
                 .<span class="ident">collect</span>();
 
-            <span class="macro">ltrace!</span>(
-                <span class="ident">au</span>,
-                <span class="string">&quot;DMO search groups {:?} -&gt; {:?}&quot;</span>,
-                <span class="ident">e</span>.<span class="ident">get_uuid</span>(),
-                <span class="ident">d_groups_set</span>
-            );
+            <span class="macro">trace!</span>(<span class="string">&quot;DMO search groups {:?} -&gt; {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>(), <span class="ident">d_groups_set</span>);
 
             <span class="kw">match</span> (<span class="ident">e</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;directmemberof&quot;</span>), <span class="ident">d_groups_set</span>) {
                 (<span class="prelude-val">Some</span>(<span class="ident">edmos</span>), <span class="prelude-val">Some</span>(<span class="ident">dmos</span>)) <span class="op">=</span><span class="op">&gt;</span> {
@@ -1946,8 +1893,7 @@
                         (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">b</span>)) <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="kw">let</span> <span class="ident">diff</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">a</span>.<span class="ident">symmetric_difference</span>(<span class="ident">b</span>).<span class="ident">collect</span>();
                             <span class="kw">if</span> <span class="op">!</span><span class="ident">diff</span>.<span class="ident">is_empty</span>() {
-                                <span class="macro">ladmin_error!</span>(
-                                    <span class="ident">au</span>,
+                                <span class="macro">admin_error!</span>(
                                     <span class="string">&quot;MemberOfInvalid: Entry {}, DMO has inconsistencies -&gt; {:?}&quot;</span>,
                                     <span class="ident">e</span>,
                                     <span class="ident">diff</span>
@@ -1956,11 +1902,7 @@
                             }
                         }
                         <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
-                            <span class="macro">ladmin_error!</span>(
-                                <span class="ident">au</span>,
-                                <span class="string">&quot;MemberOfInvalid: Entry {}, DMO has incorrect syntax&quot;</span>,
-                                <span class="ident">e</span>,
-                            );
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;MemberOfInvalid: Entry {}, DMO has incorrect syntax&quot;</span>, <span class="ident">e</span>,);
                             <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::MemberOfInvalid</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())));
                         }
                     }
@@ -1969,8 +1911,7 @@
                     <span class="comment">// Ok</span>
                 }
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">ladmin_error!</span>(
-                        <span class="ident">au</span>,
+                    <span class="macro">admin_error!</span>(
                         <span class="string">&quot;MemberOfInvalid directmemberof set and DMO search set differ in size: {}&quot;</span>,
                         <span class="ident">e</span>.<span class="ident">get_uuid</span>()
                     );
@@ -2040,7 +1981,6 @@
 
     <span class="macro">macro_rules!</span> <span class="ident">assert_memberof_int</span> {
         (
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>,
@@ -2051,9 +1991,7 @@
                 <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>).<span class="ident">unwrap</span>()),
                 <span class="ident">f_eq</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">mo</span>, <span class="ident">PartialValue::new_refer_s</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>).<span class="ident">unwrap</span>())
             ]));
-            <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>
-                .<span class="ident">internal_search</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="ident">filt</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
+            <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="ident">filt</span>).<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;assert_mo_cands {:?}&quot;</span>, <span class="ident">cands</span>);
             <span class="macro">assert!</span>(<span class="ident">cands</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">cand</span>);
         }};
@@ -2061,45 +1999,41 @@
 
     <span class="macro">macro_rules!</span> <span class="ident">assert_memberof</span> {
         (
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
         ) <span class="op">=</span><span class="op">&gt;</span> {{
-            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;memberof&quot;</span>, <span class="number">1</span>);
+            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;memberof&quot;</span>, <span class="number">1</span>);
         }};
     }
 
     <span class="macro">macro_rules!</span> <span class="ident">assert_dirmemberof</span> {
         (
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
         ) <span class="op">=</span><span class="op">&gt;</span> {{
-            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;directmemberof&quot;</span>, <span class="number">1</span>);
+            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;directmemberof&quot;</span>, <span class="number">1</span>);
         }};
     }
 
     <span class="macro">macro_rules!</span> <span class="ident">assert_not_memberof</span> {
         (
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
         ) <span class="op">=</span><span class="op">&gt;</span> {{
-            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;memberof&quot;</span>, <span class="number">0</span>);
+            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;memberof&quot;</span>, <span class="number">0</span>);
         }};
     }
 
     <span class="macro">macro_rules!</span> <span class="ident">assert_not_dirmemberof</span> {
         (
-            <span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
         ) <span class="op">=</span><span class="op">&gt;</span> {{
-            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">au</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;directmemberof&quot;</span>, <span class="number">0</span>);
+            <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;directmemberof&quot;</span>, <span class="number">0</span>);
         }};
     }
 
@@ -2119,14 +2053,14 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
             }
         );
     }
@@ -2150,33 +2084,33 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
                 <span class="comment">// This is due to nestig, C should be MO both!</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2202,32 +2136,32 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2260,48 +2194,48 @@
             <span class="ident">preload</span>,
             <span class="ident">create</span>,
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
             }
         );
     }
@@ -2325,14 +2259,14 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_B</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
             }
         );
     }
@@ -2360,32 +2294,32 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_B</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2413,32 +2347,32 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_C</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2469,32 +2403,32 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_A</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2535,48 +2469,48 @@
                 <span class="ident">Value::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_A</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
             }
         );
     }
@@ -2603,14 +2537,14 @@
                 <span class="ident">PartialValue::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_B</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
             }
         );
     }
@@ -2641,32 +2575,32 @@
                 <span class="ident">PartialValue::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_B</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2698,32 +2632,32 @@
                 <span class="ident">PartialValue::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_C</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2765,32 +2699,32 @@
                 <span class="ident">PartialValue::new_refer_s</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_A</span>).<span class="ident">unwrap</span>()
             )]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2856,48 +2790,48 @@
                 ),
             ]),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
             }
         );
     }
@@ -2918,14 +2852,14 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_A</span>).<span class="ident">unwrap</span>())),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
             }
         );
     }
@@ -2952,24 +2886,24 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_A</span>).<span class="ident">unwrap</span>())),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -2996,24 +2930,24 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_B</span>).<span class="ident">unwrap</span>())),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -3049,24 +2983,24 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_A</span>).<span class="ident">unwrap</span>())),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_B</span>, <span class="ident">UUID_C</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
             }
         );
     }
@@ -3115,38 +3049,38 @@
             <span class="ident">preload</span>,
             <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_B</span>).<span class="ident">unwrap</span>())),
             <span class="prelude-val">None</span>,
-            <span class="op">|</span><span class="ident">au</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">AuditScope</span>, <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
+            <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span><span class="op">|</span> {
                 <span class="comment">//                      V-- this uuid is</span>
                 <span class="comment">//                                  V-- memberof this UUID</span>
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_memberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_memberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_A</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_D</span>);
 
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
-                <span class="macro">assert_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
-                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">au</span>, <span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_A</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_C</span>, <span class="ident">UUID_B</span>);
+                <span class="macro">assert_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_C</span>);
+                <span class="macro">assert_not_dirmemberof!</span>(<span class="ident">qs</span>, <span class="ident">UUID_D</span>, <span class="ident">UUID_D</span>);
             }
         );
     }
