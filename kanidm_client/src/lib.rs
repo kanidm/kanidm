@@ -846,22 +846,22 @@ impl KanidmClient {
     }
 
     // ==== domain_info (aka domain)
-    pub fn idm_domain_list(&self) -> Result<Vec<Entry>, ClientError> {
-        tokio_block_on(self.asclient.idm_domain_list())
-    }
-
-    pub fn idm_domain_get(&self, id: &str) -> Result<Entry, ClientError> {
-        tokio_block_on(self.asclient.idm_domain_get(id))
+    pub fn idm_domain_get(&self) -> Result<Entry, ClientError> {
+        tokio_block_on(self.asclient.idm_domain_get())
     }
 
     // pub fn idm_domain_get_attr
-    pub fn idm_domain_get_ssid(&self, id: &str) -> Result<String, ClientError> {
-        tokio_block_on(self.asclient.idm_domain_get_ssid(id))
+    pub fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
+        tokio_block_on(self.asclient.idm_domain_get_ssid())
     }
 
     // pub fn idm_domain_put_attr
-    pub fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<(), ClientError> {
-        tokio_block_on(self.asclient.idm_domain_set_ssid(id, ssid))
+    pub fn idm_domain_set_ssid(&self, ssid: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_domain_set_ssid(ssid))
+    }
+
+    pub fn idm_domain_reset_token_key(&self) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_domain_reset_token_key())
     }
 
     // ==== schema

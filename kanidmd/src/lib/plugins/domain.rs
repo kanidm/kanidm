@@ -6,8 +6,9 @@
 // relationships.
 use crate::plugins::Plugin;
 
-use crate::event::CreateEvent;
+use crate::event::{CreateEvent, ModifyEvent};
 use crate::prelude::*;
+use bundy::hs512::HS512;
 use kanidm_proto::v1::OperationError;
 use tracing::trace;
 
@@ -28,8 +29,7 @@ impl Plugin for Domain {
         cand: &mut Vec<Entry<EntryInvalid, EntryNew>>,
         _ce: &CreateEvent,
     ) -> Result<(), OperationError> {
-        trace!("Entering plugin_domain pre_create_transform");
-        cand.iter_mut().for_each(|e| {
+        cand.iter_mut().try_for_each(|e| {
             if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
                 && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
             {
@@ -43,11 +43,49 @@ impl Plugin for Domain {
                     e.set_ava("domain_name", btreeset![n]);
                     trace!("plugin_domain: Applying domain_name transform");
                 }
+                if !e.attribute_pres("domain_token_key") {
+                    let k = HS512::generate_key()
+                        .map(|k| Value::new_secret_str(&k))
+                        .map_err(|e| {
+                            admin_error!(err = ?e, "Failed to generate domain_token_key");
+                            OperationError::InvalidState
+                        })?;
+                    e.set_ava("domain_token_key", btreeset![k]);
+                    trace!("plugin_domain: Applying domain_token_key transform");
+                }
                 trace!(?e);
+                Ok(())
+            } else {
+                Ok(())
             }
-        });
-        trace!("Ending plugin_domain pre_create_transform");
-        Ok(())
+        })
+    }
+
+    fn pre_modify(
+        _qs: &QueryServerWriteTransaction,
+        cand: &mut Vec<Entry<EntryInvalid, EntryCommitted>>,
+        _me: &ModifyEvent,
+    ) -> Result<(), OperationError> {
+        cand.iter_mut().try_for_each(|e| {
+            if e.attribute_equality("class", &PVCLASS_DOMAIN_INFO)
+                && e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)
+            {
+                if !e.attribute_pres("domain_token_key") {
+                    let k = HS512::generate_key()
+                        .map(|k| Value::new_secret_str(&k))
+                        .map_err(|e| {
+                            admin_error!(err = ?e, "Failed to generate domain_token_key");
+                            OperationError::InvalidState
+                        })?;
+                    e.set_ava("domain_token_key", btreeset![k]);
+                    trace!("plugin_domain: Applying domain_token_key transform");
+                }
+                trace!(?e);
+                Ok(())
+            } else {
+                Ok(())
+            }
+        })
     }
 }
 

@@ -248,7 +248,7 @@ macro_rules! run_create_test {
             {
                 let qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.create(&ce);
-                debug!("test result: {:?}", r);
+                trace!("test result: {:?}", r);
                 assert!(r == $expect);
                 $check(&qs_write);
                 match r {
@@ -261,9 +261,9 @@ macro_rules! run_create_test {
                 }
             }
             // Make sure there are no errors.
-            debug!("starting verification");
+            trace!("starting verification");
             let ver = qs.verify();
-            debug!("verification -> {:?}", ver);
+            trace!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
     }};
@@ -303,7 +303,7 @@ macro_rules! run_modify_test {
                 spanned!("plugins::macros::run_modify_test -> post_test check", {
                     $check(&qs_write)
                 });
-                debug!("test result: {:?}", r);
+                trace!("test result: {:?}", r);
                 assert!(r == $expect);
                 match r {
                     Ok(_) => {
@@ -315,9 +315,9 @@ macro_rules! run_modify_test {
                 }
             }
             // Make sure there are no errors.
-            debug!("starting verification");
+            trace!("starting verification");
             let ver = qs.verify();
-            debug!("verification -> {:?}", ver);
+            trace!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
     }};
@@ -352,7 +352,7 @@ macro_rules! run_delete_test {
             {
                 let qs_write = qs.write(duration_from_epoch_now());
                 let r = qs_write.delete(&de);
-                debug!("test result: {:?}", r);
+                trace!("test result: {:?}", r);
                 $check(&qs_write);
                 assert!(r == $expect);
                 match r {
@@ -365,9 +365,9 @@ macro_rules! run_delete_test {
                 }
             }
             // Make sure there are no errors.
-            debug!("starting verification");
+            trace!("starting verification");
             let ver = qs.verify();
-            debug!("verification -> {:?}", ver);
+            trace!("verification -> {:?}", ver);
             assert!(ver.len() == 0);
         });
     }};

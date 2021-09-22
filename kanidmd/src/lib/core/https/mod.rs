@@ -553,11 +553,11 @@ pub fn create_https_server(
 
     let mut domain_route = appserver.at("/v1/domain");
     domain_route.at("/").get(domain_get);
-    domain_route.at("/:id").get(domain_id_get);
     domain_route
-        .at("/:id/_attr/:attr")
-        .get(domain_id_get_attr)
-        .put(domain_id_put_attr);
+        .at("/_attr/:attr")
+        .get(domain_get_attr)
+        .put(domain_put_attr)
+        .delete(domain_delete_attr);
 
     let mut recycle_route = appserver.at("/v1/recycle_bin");
     recycle_route.at("/").get(recycle_bin_get);

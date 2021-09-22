@@ -428,6 +428,10 @@ impl Entry<EntryInit, EntryNew> {
                         }).collect();
                         vs.unwrap()
                     }
+                    "domain_token_key" => {
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_secret_str(&v)).collect();
+                        vs.unwrap()
+                    }
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
                         let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_utf8(v)).collect();

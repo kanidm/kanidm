@@ -380,10 +380,24 @@ pub enum Oauth2Opt {
 }
 
 #[derive(Debug, StructOpt)]
+pub enum DomainOpt {
+    #[structopt(name = "show")]
+    /// Show information about this systems domain
+    Show(CommonOpt),
+    #[structopt(name = "reset_token_key")]
+    /// Reset this domain token signing key. This will cause all user sessions to be
+    /// invalidated (logged out).
+    ResetTokenKey(CommonOpt),
+}
+
+#[derive(Debug, StructOpt)]
 pub enum SystemOpt {
     #[structopt(name = "oauth2")]
     /// Configure and display oauth2/oidc resource server configuration
     Oauth2(Oauth2Opt),
+    #[structopt(name = "domain")]
+    /// Configure and display domain configuration
+    Domain(DomainOpt),
 }
 
 #[derive(Debug, StructOpt)]

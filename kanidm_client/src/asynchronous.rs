@@ -1318,18 +1318,13 @@ impl KanidmAsyncClient {
     }
 
     // ==== domain_info (aka domain)
-    pub async fn idm_domain_list(&self) -> Result<Vec<Entry>, ClientError> {
-        self.perform_get_request("/v1/domain").await
+    pub async fn idm_domain_get(&self) -> Result<Entry, ClientError> {
+        let r: Result<Vec<Entry>, ClientError> = self.perform_get_request("/v1/domain").await;
+        r.and_then(|mut v| v.pop().ok_or(ClientError::EmptyResponse))
     }
 
-    pub async fn idm_domain_get(&self, id: &str) -> Result<Entry, ClientError> {
-        self.perform_get_request(format!("/v1/domain/{}", id).as_str())
-            .await
-    }
-
-    // pub fn idm_domain_get_attr
-    pub async fn idm_domain_get_ssid(&self, id: &str) -> Result<String, ClientError> {
-        self.perform_get_request(format!("/v1/domain/{}/_attr/domain_ssid", id).as_str())
+    pub async fn idm_domain_get_ssid(&self) -> Result<String, ClientError> {
+        self.perform_get_request("/v1/domain/_attr/domain_ssid")
             .await
             .and_then(|mut r: Vec<String>|
                 // Get the first result
@@ -1339,13 +1334,14 @@ impl KanidmAsyncClient {
                 ))
     }
 
-    // pub fn idm_domain_put_attr
-    pub async fn idm_domain_set_ssid(&self, id: &str, ssid: &str) -> Result<(), ClientError> {
-        self.perform_put_request(
-            format!("/v1/domain/{}/_attr/domain_ssid", id).as_str(),
-            vec![ssid.to_string()],
-        )
-        .await
+    pub async fn idm_domain_set_ssid(&self, ssid: &str) -> Result<(), ClientError> {
+        self.perform_put_request("/v1/domain/_attr/domain_ssid", vec![ssid.to_string()])
+            .await
+    }
+
+    pub async fn idm_domain_reset_token_key(&self) -> Result<(), ClientError> {
+        self.perform_delete_request("/v1/domain/_attr/domain_token_key")
+            .await
     }
 
     // ==== schema

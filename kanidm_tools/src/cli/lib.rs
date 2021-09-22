@@ -17,6 +17,7 @@ include!("../opt/kanidm.rs");
 
 pub mod account;
 pub mod common;
+pub mod domain;
 pub mod group;
 pub mod oauth2;
 pub mod raw;
@@ -76,12 +77,14 @@ impl SystemOpt {
     pub fn debug(&self) -> bool {
         match self {
             SystemOpt::Oauth2(oopt) => oopt.debug(),
+            SystemOpt::Domain(dopt) => dopt.debug(),
         }
     }
 
     pub fn exec(&self) {
         match self {
             SystemOpt::Oauth2(oopt) => oopt.exec(),
+            SystemOpt::Domain(dopt) => dopt.exec(),
         }
     }
 }

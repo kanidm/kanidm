@@ -158,10 +158,11 @@ impl IdmServer {
         let (async_tx, async_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, pw_badlist_set, oauth2rs_set) = {
+        let (rp_id, token_key, pw_badlist_set, oauth2rs_set) = {
             let qs_read = task::block_on(qs.read_async());
             (
                 qs_read.get_domain_name()?,
+                qs_read.get_domain_token_key()?,
                 qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
@@ -198,12 +199,10 @@ impl IdmServer {
         });
 
         // Setup our auth token signing key.
-        let bundy_handle = HS512::generate_key()
-            .and_then(|bundy_key| HS512::from_str(&bundy_key))
-            .map_err(|e| {
-                admin_error!("Failed to generate uat_bundy_hmac - {:?}", e);
-                OperationError::InvalidState
-            })?;
+        let bundy_handle = HS512::from_str(&token_key).map_err(|e| {
+            admin_error!("Failed to generate uat_bundy_hmac - {:?}", e);
+            OperationError::InvalidState
+        })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
         let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set).map_err(|e| {
@@ -1943,15 +1942,29 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     .get_oauth2rs_set()
                     .and_then(|oauth2rs_set| self.oauth2rs.reload(oauth2rs_set))?;
             }
+            if self.qs_write.get_changed_domain() {
+                // reload token_key?
+                self.qs_write
+                    .get_domain_token_key()
+                    .and_then(|token_key| {
+                        HS512::from_str(&token_key).map_err(|e| {
+                            admin_error!("Failed to generate uat_bundy_hmac - {:?}", e);
+                            OperationError::InvalidState
+                        })
+                    })
+                    .map(|new_handle| {
+                        *self.uat_bundy_hmac = new_handle;
+                    })?;
+            }
             // Commit everything.
             self.oauth2rs.commit();
+            self.uat_bundy_hmac.commit();
             self.pw_badlist_cache.commit();
             self.mfareg_sessions.commit();
             self.qs_write.commit()
         })
     }
 
-    // TODO: tracing
     fn reload_password_badlist(&mut self) -> Result<(), OperationError> {
         match self.qs_write.get_password_badlist() {
             Ok(badlist_entry) => {
@@ -3803,5 +3816,45 @@ mod tests {
             // Does NOT have this
             assert!(!ident.has_claim("authclass_single"));
         })
+    }
+
+    #[test]
+    fn test_idm_bundy_uat_token_key_reload() {
+        run_idm_test!(
+            |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+                init_admin_w_password(qs, TEST_PASSWORD).expect("Failed to setup admin account");
+                let token = check_admin_password(idms, TEST_PASSWORD);
+                let idms_prox_read = idms.proxy_read();
+
+                // Check it's valid.
+                idms_prox_read
+                    .validate_and_parse_uat(Some(token.as_str()), ct)
+                    .expect("Failed to validate");
+
+                drop(idms_prox_read);
+
+                // Now reset the token_key - we can cheat and push this
+                // through the migrate 3 to 4 code.
+                let idms_prox_write = idms.proxy_write(ct.clone());
+                idms_prox_write
+                    .qs_write
+                    .migrate_3_to_4()
+                    .expect("Failed to reset domain token key");
+                assert!(idms_prox_write.commit().is_ok());
+                // Check the old token is invalid, due to reload.
+                let new_token = check_admin_password(idms, TEST_PASSWORD);
+
+                let idms_prox_read = idms.proxy_read();
+                assert!(idms_prox_read
+                    .validate_and_parse_uat(Some(token.as_str()), ct)
+                    .is_err());
+                // A new token will work due to the matching key.
+                idms_prox_read
+                    .validate_and_parse_uat(Some(new_token.as_str()), ct)
+                    .expect("Failed to validate");
+            }
+        )
     }
 }

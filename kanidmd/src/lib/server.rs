@@ -48,6 +48,7 @@ lazy_static! {
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
+    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -88,6 +89,7 @@ pub struct QueryServerWriteTransaction<'a> {
     changed_schema: Cell<bool>,
     changed_acp: Cell<bool>,
     changed_oauth2: Cell<bool>,
+    changed_domain: Cell<bool>,
     // Store the list of changed uuids for other invalidation needs?
     changed_uuid: Cell<HashSet<Uuid>>,
     _db_ticket: SemaphorePermit<'a>,
@@ -686,6 +688,19 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
+    fn get_domain_token_key(&self) -> Result<String, OperationError> {
+        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                e.get_ava_single_secret("domain_token_key")
+                    .map(str::to_string)
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Error getting domain token key");
+                e
+            })
+    }
+
     // ! TRACING INTEGRATED
     // This is a helper to get password badlist.
     fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
@@ -928,6 +943,7 @@ impl QueryServer {
             changed_schema: Cell::new(false),
             changed_acp: Cell::new(false),
             changed_oauth2: Cell::new(false),
+            changed_domain: Cell::new(false),
             changed_uuid: Cell::new(HashSet::new()),
             _db_ticket: db_ticket,
             _write_ticket: write_ticket,
@@ -1005,6 +1021,10 @@ impl QueryServer {
 
         if system_info_version < 3 {
             migrate_txn.migrate_2_to_3()?;
+        }
+
+        if system_info_version < 4 {
+            migrate_txn.migrate_3_to_4()?;
         }
 
         migrate_txn.commit()?;
@@ -1136,6 +1156,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
                 )
             }
+            if !self.changed_domain.get() {
+                self.changed_domain.set(
+                    commit_cand
+                        .iter()
+                        .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
+                )
+            }
 
             let cu = self.changed_uuid.as_ptr();
             unsafe {
@@ -1145,6 +1172,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 schema_reload = ?self.changed_schema,
                 acp_reload = ?self.changed_acp,
                 oauth2_reload = ?self.changed_oauth2,
+                domain_reload = ?self.changed_domain,
             );
 
             // We are complete, finalise logging and return
@@ -1266,6 +1294,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
                 )
             }
+            if !self.changed_domain.get() {
+                self.changed_domain.set(
+                    del_cand
+                        .iter()
+                        .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
+                )
+            }
 
             let cu = self.changed_uuid.as_ptr();
             unsafe {
@@ -1276,6 +1311,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 schema_reload = ?self.changed_schema,
                 acp_reload = ?self.changed_acp,
                 oauth2_reload = ?self.changed_oauth2,
+                domain_reload = ?self.changed_domain,
             );
 
             // Send result
@@ -1611,6 +1647,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
                 )
             }
+            if !self.changed_domain.get() {
+                self.changed_domain.set(
+                    norm_cand
+                        .iter()
+                        .chain(pre_candidates.iter().map(|e| e.as_ref()))
+                        .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
+                )
+            }
 
             let cu = self.changed_uuid.as_ptr();
             unsafe {
@@ -1626,6 +1670,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 schema_reload = ?self.changed_schema,
                 acp_reload = ?self.changed_acp,
                 oauth2_reload = ?self.changed_oauth2,
+                domain_reload = ?self.changed_domain,
             );
 
             // return
@@ -1758,6 +1803,13 @@ impl<'a> QueryServerWriteTransaction<'a> {
                         .any(|e| e.attribute_equality("class", &PVCLASS_OAUTH2_RS)),
                 )
             }
+            if !self.changed_domain.get() {
+                self.changed_domain.set(
+                    norm_cand
+                        .iter()
+                        .any(|e| e.attribute_equality("uuid", &PVUUID_DOMAIN_INFO)),
+                )
+            }
             let cu = self.changed_uuid.as_ptr();
             unsafe {
                 (*cu).extend(
@@ -1771,6 +1823,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                 schema_reload = ?self.changed_schema,
                 acp_reload = ?self.changed_acp,
                 oauth2_reload = ?self.changed_oauth2,
+                domain_reload = ?self.changed_domain,
             );
 
             trace!("Modify operation success");
@@ -1835,6 +1888,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     e
                 })
 
+            // Complete
+        })
+    }
+
+    /// Migrate 3 to 4 - this triggers a regen of the domains security token
+    /// as we previously did not have it in the entry.
+    pub fn migrate_3_to_4(&self) -> Result<(), OperationError> {
+        spanned!("server::migrate_3_to_4", {
+            admin_warn!("starting 3 to 4 migration.");
+            let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
+            let modlist = ModifyList::new_purge("domain_token_key");
+            self.internal_modify(&filter, &modlist)
             // Complete
         })
     }
@@ -2115,6 +2180,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_DOMAIN_NAME,
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
+            JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
             JSON_SCHEMA_ATTR_GIDNUMBER,
             JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
             JSON_SCHEMA_ATTR_LOGINSHELL,
@@ -2500,6 +2566,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     pub fn get_changed_ouath2(&self) -> bool {
         self.changed_oauth2.get()
+    }
+
+    pub fn get_changed_domain(&self) -> bool {
+        self.changed_domain.get()
     }
 
     pub fn commit(mut self) -> Result<(), OperationError> {
