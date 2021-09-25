@@ -20,6 +20,16 @@ buildx/kanidmd/simd:
 		$(ARGS) .
 	@docker buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
+buildx/kanidmd/x86_64_v3: ## build multiarch server images
+buildx/kanidmd/x86_64_v3:
+	@docker buildx build $(EXT_OPTS) --pull --push --platform "linux/amd64" \
+		--allow security.insecure \
+		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
+		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
+		--build-arg "KANIDM_FEATURES=" \
+		$(ARGS) .
+	@docker buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
+
 buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
 	@docker buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) \

@@ -142,8 +142,8 @@ pub const _STR_UUID_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY: &str =
     "00000000-0000-0000-0000-ffff00000084";
 pub const STR_UUID_SCHEMA_CLASS_OAUTH2_RS: &str = "00000000-0000-0000-0000-ffff00000085";
 pub const STR_UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC: &str = "00000000-0000-0000-0000-ffff00000086";
-
 pub const STR_UUID_SCHEMA_ATTR_CN: &str = "00000000-0000-0000-0000-ffff00000087";
+pub const STR_UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: &str = "00000000-0000-0000-0000-ffff00000088";
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.
@@ -321,4 +321,6 @@ lazy_static! {
         Uuid::parse_str(STR_UUID_SCHEMA_CLASS_OAUTH2_RS).unwrap();
     pub static ref UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC: Uuid =
         Uuid::parse_str(STR_UUID_SCHEMA_CLASS_OAUTH2_RS_BASIC).unwrap();
+    pub static ref UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: Uuid =
+        Uuid::parse_str(STR_UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY).unwrap();
 }

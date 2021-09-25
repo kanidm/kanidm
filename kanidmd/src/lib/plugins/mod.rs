@@ -166,6 +166,7 @@ impl Plugins {
                 .and_then(|_| password_import::PasswordImport::pre_modify(qs, cand, me))
                 .and_then(|_| oauth2::Oauth2Secrets::pre_modify(qs, cand, me))
                 .and_then(|_| gidnumber::GidNumber::pre_modify(qs, cand, me))
+                .and_then(|_| domain::Domain::pre_modify(qs, cand, me))
                 .and_then(|_| spn::Spn::pre_modify(qs, cand, me))
                 // attr unique should always be last
                 .and_then(|_| attrunique::AttrUnique::pre_modify(qs, cand, me))

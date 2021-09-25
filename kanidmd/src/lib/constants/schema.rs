@@ -274,6 +274,34 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
       ]
     }
 }"#;
+pub const JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The domains token signing key, which is shared between IDM servers."
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "domain_token_key"
+      ],
+      "syntax": [
+        "SECRET_UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000088"
+      ]
+    }
+}"#;
 
 pub const JSON_SCHEMA_ATTR_GIDNUMBER: &str = r#"{
     "attrs": {
@@ -748,7 +776,8 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
       "systemmust": [
         "name",
         "domain_uuid",
-        "domain_name"
+        "domain_name",
+        "domain_token_key"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000052"

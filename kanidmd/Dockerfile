@@ -2,7 +2,8 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS builder
 LABEL mantainer william@blackhats.net.au
 
-RUN zypper -vv ref && \
+RUN zypper ar obs://devel:languages:rust devel:languages:rust && \
+    zypper --gpg-auto-import-keys ref --force && \
     zypper dup -y && \
     zypper install -y \
         cargo \

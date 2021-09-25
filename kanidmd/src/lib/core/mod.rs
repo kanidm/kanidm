@@ -459,11 +459,9 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
 
     // Run the password change.
     let mut idms_prox_write = task::block_on(idms.proxy_write_async(duration_from_epoch_now()));
-    match idms_prox_write.recover_account(name, None) {
+    let new_pw = match idms_prox_write.recover_account(name, None) {
         Ok(new_pw) => match idms_prox_write.commit() {
-            Ok(()) => {
-                eprintln!("Password reset to -> {}", new_pw);
-            }
+            Ok(_) => new_pw,
             Err(e) => {
                 error!("A critical error during commit occured {:?}", e);
                 std::process::exit(1);
@@ -476,6 +474,7 @@ pub fn recover_account_core(config: &Configuration, name: &str) {
             std::process::exit(1);
         }
     };
+    eprintln!("Success - password reset to -> {}", new_pw);
 }
 
 pub async fn create_server_core(config: Configuration) -> Result<(), ()> {

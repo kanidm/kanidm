@@ -115,15 +115,15 @@ pub async fn json_rest_event_delete_id(
     to_tide_response(res, hvalue)
 }
 
-pub async fn json_rest_event_get_id_attr(
+pub async fn json_rest_event_get_attr(
     req: tide::Request<AppState>,
+    id: &str,
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
-    let id = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let uat = req.get_current_uat();
+    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id)));
 
-    let filter = Filter::join_parts_and(filter, filter_all!(f_id(id.as_str())));
     let (eventid, hvalue) = req.new_eventid();
 
     let attrs = Some(vec![attr.clone()]);
@@ -135,6 +135,14 @@ pub async fn json_rest_event_get_id_attr(
         .await
         .map(|mut event_result| event_result.pop().and_then(|mut e| e.attrs.remove(&attr)));
     to_tide_response(res, hvalue)
+}
+
+pub async fn json_rest_event_get_id_attr(
+    req: tide::Request<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> tide::Result {
+    let id = req.get_url_param("id")?;
+    json_rest_event_get_attr(req, id.as_str(), filter).await
 }
 
 pub async fn json_rest_event_post(
@@ -170,12 +178,12 @@ pub async fn json_rest_event_post_id_attr(
     to_tide_response(res, hvalue)
 }
 
-pub async fn json_rest_event_put_id_attr(
+pub async fn json_rest_event_put_attr(
     mut req: tide::Request<AppState>,
+    uuid_or_name: String,
     filter: Filter<FilterInvalid>,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
     let attr = req.get_url_param("attr")?;
     let values: Vec<String> = req.body_json().await?;
 
@@ -188,14 +196,31 @@ pub async fn json_rest_event_put_id_attr(
     to_tide_response(res, hvalue)
 }
 
+pub async fn json_rest_event_put_id_attr(
+    req: tide::Request<AppState>,
+    filter: Filter<FilterInvalid>,
+) -> tide::Result {
+    let uuid_or_name = req.get_url_param("id")?;
+    json_rest_event_put_attr(req, uuid_or_name, filter).await
+}
+
 pub async fn json_rest_event_delete_id_attr(
+    req: tide::Request<AppState>,
+    filter: Filter<FilterInvalid>,
+    attr: String,
+) -> tide::Result {
+    let uuid_or_name = req.get_url_param("id")?;
+    json_rest_event_delete_attr(req, filter, uuid_or_name, attr).await
+}
+
+pub async fn json_rest_event_delete_attr(
     mut req: tide::Request<AppState>,
     filter: Filter<FilterInvalid>,
+    uuid_or_name: String,
     // Seperate for account_delete_id_radius
     attr: String,
 ) -> tide::Result {
     let uat = req.get_current_uat();
-    let uuid_or_name = req.get_url_param("id")?;
     let (eventid, hvalue) = req.new_eventid();
 
     // TODO #211: Attempt to get an option Vec<String> here?
@@ -672,26 +697,24 @@ pub async fn group_get_id_unix_token(req: tide::Request<AppState>) -> tide::Resu
 }
 
 pub async fn domain_get(req: tide::Request<AppState>) -> tide::Result {
-    let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
+    let filter = filter_all!(f_eq("uuid", PartialValue::new_uuidr(&UUID_DOMAIN_INFO)));
     json_rest_event_get(req, filter, None).await
 }
 
-pub async fn domain_id_get(req: tide::Request<AppState>) -> tide::Result {
+pub async fn domain_get_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_id(req, filter, None).await
+    json_rest_event_get_attr(req, STR_UUID_DOMAIN_INFO, filter).await
 }
 
-pub async fn domain_id_get_attr(
-    req: tide::Request<AppState>,
-    // (path, session, state): (Path<(String, String)>, Session, Data<AppState>),
-) -> tide::Result {
+pub async fn domain_put_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_get_id_attr(req, filter).await
+    json_rest_event_put_attr(req, STR_UUID_DOMAIN_INFO.to_string(), filter).await
 }
 
-pub async fn domain_id_put_attr(req: tide::Request<AppState>) -> tide::Result {
+pub async fn domain_delete_attr(req: tide::Request<AppState>) -> tide::Result {
     let filter = filter_all!(f_eq("class", PartialValue::new_class("domain_info")));
-    json_rest_event_put_id_attr(req, filter).await
+    let attr = req.get_url_param("attr")?;
+    json_rest_event_delete_attr(req, filter, STR_UUID_DOMAIN_INFO.to_string(), attr).await
 }
 
 pub async fn recycle_bin_get(req: tide::Request<AppState>) -> tide::Result {
