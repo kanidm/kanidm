@@ -638,7 +638,6 @@
 <span id="638">638</span>
 <span id="639">639</span>
 <span id="640">640</span>
-<span id="641">641</span>
 </pre><pre class="rust">
 <span class="doccomment">//! These contain the server &quot;cores&quot;. These are able to startup the server</span>
 <span class="doccomment">//! (bootstrap) to a running state and then execute tasks. This is where modules</span>
@@ -1101,11 +1100,9 @@
 
     <span class="comment">// Run the password change.</span>
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_write_async</span>(<span class="ident">duration_from_epoch_now</span>()));
-    <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">recover_account</span>(<span class="ident">name</span>, <span class="prelude-val">None</span>) {
+    <span class="kw">let</span> <span class="ident">new_pw</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">recover_account</span>(<span class="ident">name</span>, <span class="prelude-val">None</span>) {
         <span class="prelude-val">Ok</span>(<span class="ident">new_pw</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">commit</span>() {
-            <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Password reset to -&gt; {}&quot;</span>, <span class="ident">new_pw</span>);
-            }
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">new_pw</span>,
             <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
                 <span class="macro">error!</span>(<span class="string">&quot;A critical error during commit occured {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
@@ -1118,6 +1115,7 @@
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         }
     };
+    <span class="macro">eprintln!</span>(<span class="string">&quot;Success - password reset to -&gt; {}&quot;</span>, <span class="ident">new_pw</span>);
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create_server_core</span>(<span class="ident">config</span>: <span class="ident">Configuration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {

@@ -898,7 +898,7 @@
             {
                 <span class="kw">let</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
                 <span class="macro">assert!</span>(<span class="ident">r</span> <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>);
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>(<span class="kw-2">&amp;</span><span class="ident">qs_write</span>);
                 <span class="kw">match</span> <span class="ident">r</span> {
@@ -911,9 +911,9 @@
                 }
             }
             <span class="comment">// Make sure there are no errors.</span>
-            <span class="macro">debug!</span>(<span class="string">&quot;starting verification&quot;</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
             <span class="kw">let</span> <span class="ident">ver</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">verify</span>();
-            <span class="macro">debug!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
             <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>);
         });
     }};
@@ -953,7 +953,7 @@
                 <span class="macro">spanned!</span>(<span class="string">&quot;plugins::macros::run_modify_test -&gt; post_test check&quot;</span>, {
                     <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>(<span class="kw-2">&amp;</span><span class="ident">qs_write</span>)
                 });
-                <span class="macro">debug!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
                 <span class="macro">assert!</span>(<span class="ident">r</span> <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>);
                 <span class="kw">match</span> <span class="ident">r</span> {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -965,9 +965,9 @@
                 }
             }
             <span class="comment">// Make sure there are no errors.</span>
-            <span class="macro">debug!</span>(<span class="string">&quot;starting verification&quot;</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
             <span class="kw">let</span> <span class="ident">ver</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">verify</span>();
-            <span class="macro">debug!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
             <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>);
         });
     }};
@@ -1002,7 +1002,7 @@
             {
                 <span class="kw">let</span> <span class="ident">qs_write</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">qs_write</span>.<span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="ident">de</span>);
-                <span class="macro">debug!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
+                <span class="macro">trace!</span>(<span class="string">&quot;test result: {:?}&quot;</span>, <span class="ident">r</span>);
                 <span class="macro-nonterminal">$</span><span class="macro-nonterminal">check</span>(<span class="kw-2">&amp;</span><span class="ident">qs_write</span>);
                 <span class="macro">assert!</span>(<span class="ident">r</span> <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>);
                 <span class="kw">match</span> <span class="ident">r</span> {
@@ -1015,9 +1015,9 @@
                 }
             }
             <span class="comment">// Make sure there are no errors.</span>
-            <span class="macro">debug!</span>(<span class="string">&quot;starting verification&quot;</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;starting verification&quot;</span>);
             <span class="kw">let</span> <span class="ident">ver</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">verify</span>();
-            <span class="macro">debug!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;verification -&gt; {:?}&quot;</span>, <span class="ident">ver</span>);
             <span class="macro">assert!</span>(<span class="ident">ver</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>);
         });
     }};

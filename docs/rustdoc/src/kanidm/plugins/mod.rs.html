@@ -219,6 +219,7 @@
 <span id="219">219</span>
 <span id="220">220</span>
 <span id="221">221</span>
+<span id="222">222</span>
 </pre><pre class="rust">
 <span class="doccomment">//! plugins allow an `Event` to be inspected and transformed during the write</span>
 <span class="doccomment">//! paths of the server. This allows richer expression of some concepts and</span>
@@ -388,6 +389,7 @@
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">password_import::PasswordImport::pre_modify</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">oauth2::Oauth2Secrets::pre_modify</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">gidnumber::GidNumber::pre_modify</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">domain::Domain::pre_modify</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">spn::Spn::pre_modify</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))
                 <span class="comment">// attr unique should always be last</span>
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">attrunique::AttrUnique::pre_modify</span>(<span class="ident">qs</span>, <span class="ident">cand</span>, <span class="ident">me</span>))

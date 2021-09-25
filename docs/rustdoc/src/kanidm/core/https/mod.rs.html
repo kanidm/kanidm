@@ -1169,11 +1169,11 @@
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">domain_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/domain&quot;</span>);
     <span class="ident">domain_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">domain_get</span>);
-    <span class="ident">domain_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id&quot;</span>).<span class="ident">get</span>(<span class="ident">domain_id_get</span>);
     <span class="ident">domain_route</span>
-        .<span class="ident">at</span>(<span class="string">&quot;/:id/_attr/:attr&quot;</span>)
-        .<span class="ident">get</span>(<span class="ident">domain_id_get_attr</span>)
-        .<span class="ident">put</span>(<span class="ident">domain_id_put_attr</span>);
+        .<span class="ident">at</span>(<span class="string">&quot;/_attr/:attr&quot;</span>)
+        .<span class="ident">get</span>(<span class="ident">domain_get_attr</span>)
+        .<span class="ident">put</span>(<span class="ident">domain_put_attr</span>)
+        .<span class="ident">delete</span>(<span class="ident">domain_delete_attr</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">recycle_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/recycle_bin&quot;</span>);
     <span class="ident">recycle_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">recycle_bin_get</span>);

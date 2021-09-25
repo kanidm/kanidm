@@ -894,6 +894,29 @@
 <span id="894">894</span>
 <span id="895">895</span>
 <span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::event::AuthResult</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
@@ -1012,15 +1035,15 @@
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_get_id_attr</span>(
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_get_attr</span>(
     <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
+    <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
     <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;attr&quot;</span>)<span class="question-mark">?</span>;
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
+    <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">Filter::join_parts_and</span>(<span class="ident">filter</span>, <span class="macro">filter_all!</span>(<span class="ident">f_id</span>(<span class="ident">id</span>)));
 
-    <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="ident">Filter::join_parts_and</span>(<span class="ident">filter</span>, <span class="macro">filter_all!</span>(<span class="ident">f_id</span>(<span class="ident">id</span>.<span class="ident">as_str</span>())));
     <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
 
     <span class="kw">let</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="ident">attr</span>.<span class="ident">clone</span>()]);
@@ -1032,6 +1055,14 @@
         .<span class="kw">await</span>
         .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">event_result</span><span class="op">|</span> <span class="ident">event_result</span>.<span class="ident">pop</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="kw-2">&amp;</span><span class="ident">attr</span>)));
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_get_id_attr</span>(
+    <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
+    <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">id</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
+    <span class="ident">json_rest_event_get_attr</span>(<span class="ident">req</span>, <span class="ident">id</span>.<span class="ident">as_str</span>(), <span class="ident">filter</span>).<span class="kw">await</span>
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_post</span>(
@@ -1067,12 +1098,12 @@
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_put_id_attr</span>(
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_put_attr</span>(
     <span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
+    <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
     <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
-    <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
     <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;attr&quot;</span>)<span class="question-mark">?</span>;
     <span class="kw">let</span> <span class="ident">values</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
 
@@ -1085,14 +1116,31 @@
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_put_id_attr</span>(
+    <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
+    <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
+    <span class="ident">json_rest_event_put_attr</span>(<span class="ident">req</span>, <span class="ident">uuid_or_name</span>, <span class="ident">filter</span>).<span class="kw">await</span>
+}
+
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_delete_id_attr</span>(
+    <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
+    <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
+    <span class="ident">attr</span>: <span class="ident">String</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
+    <span class="ident">json_rest_event_delete_attr</span>(<span class="ident">req</span>, <span class="ident">filter</span>, <span class="ident">uuid_or_name</span>, <span class="ident">attr</span>).<span class="kw">await</span>
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">json_rest_event_delete_attr</span>(
     <span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
     <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
+    <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
     <span class="comment">// Seperate for account_delete_id_radius</span>
     <span class="ident">attr</span>: <span class="ident">String</span>,
 ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
-    <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
     <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
 
     <span class="comment">// TODO #211: Attempt to get an option Vec&lt;String&gt; here?</span>
@@ -1569,26 +1617,24 @@
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;domain_info&quot;</span>)));
+    <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)));
     <span class="ident">json_rest_event_get</span>(<span class="ident">req</span>, <span class="ident">filter</span>, <span class="prelude-val">None</span>).<span class="kw">await</span>
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_id_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_get_attr</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;domain_info&quot;</span>)));
-    <span class="ident">json_rest_event_get_id</span>(<span class="ident">req</span>, <span class="ident">filter</span>, <span class="prelude-val">None</span>).<span class="kw">await</span>
+    <span class="ident">json_rest_event_get_attr</span>(<span class="ident">req</span>, <span class="ident">STR_UUID_DOMAIN_INFO</span>, <span class="ident">filter</span>).<span class="kw">await</span>
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_id_get_attr</span>(
-    <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
-    <span class="comment">// (path, session, state): (Path&lt;(String, String)&gt;, Session, Data&lt;AppState&gt;),</span>
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_put_attr</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;domain_info&quot;</span>)));
-    <span class="ident">json_rest_event_get_id_attr</span>(<span class="ident">req</span>, <span class="ident">filter</span>).<span class="kw">await</span>
+    <span class="ident">json_rest_event_put_attr</span>(<span class="ident">req</span>, <span class="ident">STR_UUID_DOMAIN_INFO</span>.<span class="ident">to_string</span>(), <span class="ident">filter</span>).<span class="kw">await</span>
 }
 
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_id_put_attr</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">domain_delete_attr</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;domain_info&quot;</span>)));
-    <span class="ident">json_rest_event_put_id_attr</span>(<span class="ident">req</span>, <span class="ident">filter</span>).<span class="kw">await</span>
+    <span class="kw">let</span> <span class="ident">attr</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;attr&quot;</span>)<span class="question-mark">?</span>;
+    <span class="ident">json_rest_event_delete_attr</span>(<span class="ident">req</span>, <span class="ident">filter</span>, <span class="ident">STR_UUID_DOMAIN_INFO</span>.<span class="ident">to_string</span>(), <span class="ident">attr</span>).<span class="kw">await</span>
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {

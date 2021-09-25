@@ -3962,6 +3962,76 @@
 <span id="3962">3962</span>
 <span id="3963">3963</span>
 <span id="3964">3964</span>
+<span id="3965">3965</span>
+<span id="3966">3966</span>
+<span id="3967">3967</span>
+<span id="3968">3968</span>
+<span id="3969">3969</span>
+<span id="3970">3970</span>
+<span id="3971">3971</span>
+<span id="3972">3972</span>
+<span id="3973">3973</span>
+<span id="3974">3974</span>
+<span id="3975">3975</span>
+<span id="3976">3976</span>
+<span id="3977">3977</span>
+<span id="3978">3978</span>
+<span id="3979">3979</span>
+<span id="3980">3980</span>
+<span id="3981">3981</span>
+<span id="3982">3982</span>
+<span id="3983">3983</span>
+<span id="3984">3984</span>
+<span id="3985">3985</span>
+<span id="3986">3986</span>
+<span id="3987">3987</span>
+<span id="3988">3988</span>
+<span id="3989">3989</span>
+<span id="3990">3990</span>
+<span id="3991">3991</span>
+<span id="3992">3992</span>
+<span id="3993">3993</span>
+<span id="3994">3994</span>
+<span id="3995">3995</span>
+<span id="3996">3996</span>
+<span id="3997">3997</span>
+<span id="3998">3998</span>
+<span id="3999">3999</span>
+<span id="4000">4000</span>
+<span id="4001">4001</span>
+<span id="4002">4002</span>
+<span id="4003">4003</span>
+<span id="4004">4004</span>
+<span id="4005">4005</span>
+<span id="4006">4006</span>
+<span id="4007">4007</span>
+<span id="4008">4008</span>
+<span id="4009">4009</span>
+<span id="4010">4010</span>
+<span id="4011">4011</span>
+<span id="4012">4012</span>
+<span id="4013">4013</span>
+<span id="4014">4014</span>
+<span id="4015">4015</span>
+<span id="4016">4016</span>
+<span id="4017">4017</span>
+<span id="4018">4018</span>
+<span id="4019">4019</span>
+<span id="4020">4020</span>
+<span id="4021">4021</span>
+<span id="4022">4022</span>
+<span id="4023">4023</span>
+<span id="4024">4024</span>
+<span id="4025">4025</span>
+<span id="4026">4026</span>
+<span id="4027">4027</span>
+<span id="4028">4028</span>
+<span id="4029">4029</span>
+<span id="4030">4030</span>
+<span id="4031">4031</span>
+<span id="4032">4032</span>
+<span id="4033">4033</span>
+<span id="4034">4034</span>
 </pre><pre class="rust">
 <span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
@@ -4013,6 +4083,7 @@
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_ACC</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;access_control_create&quot;</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_ACP</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;access_control_profile&quot;</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_OAUTH2_RS</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;oauth2_resource_server&quot;</span>);
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVUUID_DOMAIN_INFO</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVACP_ENABLE_FALSE</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_bool</span>(<span class="bool-val">false</span>);
 }
 
@@ -4053,6 +4124,7 @@
     <span class="ident">changed_schema</span>: <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
     <span class="ident">changed_acp</span>: <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
     <span class="ident">changed_oauth2</span>: <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
+    <span class="ident">changed_domain</span>: <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">bool</span><span class="op">&gt;</span>,
     <span class="comment">// Store the list of changed uuids for other invalidation needs?</span>
     <span class="ident">changed_uuid</span>: <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">_db_ticket</span>: <span class="ident">SemaphorePermit</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
@@ -4651,6 +4723,19 @@
             })
     }
 
+    <span class="kw">fn</span> <span class="ident">get_domain_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="ident">e</span>.<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;domain_token_key&quot;</span>)
+                    .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
+                    .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
+            })
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Error getting domain token key&quot;</span>);
+                <span class="ident">e</span>
+            })
+    }
+
     <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// This is a helper to get password badlist.</span>
     <span class="kw">fn</span> <span class="ident">get_password_badlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -4893,6 +4978,7 @@
             <span class="ident">changed_schema</span>: <span class="ident">Cell::new</span>(<span class="bool-val">false</span>),
             <span class="ident">changed_acp</span>: <span class="ident">Cell::new</span>(<span class="bool-val">false</span>),
             <span class="ident">changed_oauth2</span>: <span class="ident">Cell::new</span>(<span class="bool-val">false</span>),
+            <span class="ident">changed_domain</span>: <span class="ident">Cell::new</span>(<span class="bool-val">false</span>),
             <span class="ident">changed_uuid</span>: <span class="ident">Cell::new</span>(<span class="ident">HashSet::new</span>()),
             <span class="ident">_db_ticket</span>: <span class="ident">db_ticket</span>,
             <span class="ident">_write_ticket</span>: <span class="ident">write_ticket</span>,
@@ -4970,6 +5056,10 @@
 
         <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">3</span> {
             <span class="ident">migrate_txn</span>.<span class="ident">migrate_2_to_3</span>()<span class="question-mark">?</span>;
+        }
+
+        <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">4</span> {
+            <span class="ident">migrate_txn</span>.<span class="ident">migrate_3_to_4</span>()<span class="question-mark">?</span>;
         }
 
         <span class="ident">migrate_txn</span>.<span class="ident">commit</span>()<span class="question-mark">?</span>;
@@ -5101,6 +5191,13 @@
                         .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_OAUTH2_RS</span>)),
                 )
             }
+            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>() {
+                <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">set</span>(
+                    <span class="ident">commit_cand</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVUUID_DOMAIN_INFO</span>)),
+                )
+            }
 
             <span class="kw">let</span> <span class="ident">cu</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">changed_uuid</span>.<span class="ident">as_ptr</span>();
             <span class="kw">unsafe</span> {
@@ -5110,6 +5207,7 @@
                 <span class="ident">schema_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_schema</span>,
                 <span class="ident">acp_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_acp</span>,
                 <span class="ident">oauth2_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_oauth2</span>,
+                <span class="ident">domain_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_domain</span>,
             );
 
             <span class="comment">// We are complete, finalise logging and return</span>
@@ -5231,6 +5329,13 @@
                         .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_OAUTH2_RS</span>)),
                 )
             }
+            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>() {
+                <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">set</span>(
+                    <span class="ident">del_cand</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVUUID_DOMAIN_INFO</span>)),
+                )
+            }
 
             <span class="kw">let</span> <span class="ident">cu</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">changed_uuid</span>.<span class="ident">as_ptr</span>();
             <span class="kw">unsafe</span> {
@@ -5241,6 +5346,7 @@
                 <span class="ident">schema_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_schema</span>,
                 <span class="ident">acp_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_acp</span>,
                 <span class="ident">oauth2_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_oauth2</span>,
+                <span class="ident">domain_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_domain</span>,
             );
 
             <span class="comment">// Send result</span>
@@ -5576,6 +5682,14 @@
                         .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_OAUTH2_RS</span>)),
                 )
             }
+            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>() {
+                <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">set</span>(
+                    <span class="ident">norm_cand</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">chain</span>(<span class="ident">pre_candidates</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_ref</span>()))
+                        .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVUUID_DOMAIN_INFO</span>)),
+                )
+            }
 
             <span class="kw">let</span> <span class="ident">cu</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">changed_uuid</span>.<span class="ident">as_ptr</span>();
             <span class="kw">unsafe</span> {
@@ -5591,6 +5705,7 @@
                 <span class="ident">schema_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_schema</span>,
                 <span class="ident">acp_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_acp</span>,
                 <span class="ident">oauth2_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_oauth2</span>,
+                <span class="ident">domain_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_domain</span>,
             );
 
             <span class="comment">// return</span>
@@ -5723,6 +5838,13 @@
                         .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_OAUTH2_RS</span>)),
                 )
             }
+            <span class="kw">if</span> <span class="op">!</span><span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>() {
+                <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">set</span>(
+                    <span class="ident">norm_cand</span>
+                        .<span class="ident">iter</span>()
+                        .<span class="ident">any</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;uuid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVUUID_DOMAIN_INFO</span>)),
+                )
+            }
             <span class="kw">let</span> <span class="ident">cu</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">changed_uuid</span>.<span class="ident">as_ptr</span>();
             <span class="kw">unsafe</span> {
                 (<span class="kw-2">*</span><span class="ident">cu</span>).<span class="ident">extend</span>(
@@ -5736,6 +5858,7 @@
                 <span class="ident">schema_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_schema</span>,
                 <span class="ident">acp_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_acp</span>,
                 <span class="ident">oauth2_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_oauth2</span>,
+                <span class="ident">domain_reload</span> <span class="op">=</span> <span class="question-mark">?</span><span class="self">self</span>.<span class="ident">changed_domain</span>,
             );
 
             <span class="macro">trace!</span>(<span class="string">&quot;Modify operation success&quot;</span>);
@@ -5800,6 +5923,18 @@
                     <span class="ident">e</span>
                 })
 
+            <span class="comment">// Complete</span>
+        })
+    }
+
+    <span class="doccomment">/// Migrate 3 to 4 - this triggers a regen of the domains security token</span>
+    <span class="doccomment">/// as we previously did not have it in the entry.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_3_to_4</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_3_to_4&quot;</span>, {
+            <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 3 to 4 migration.&quot;</span>);
+            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, (<span class="kw-2">*</span><span class="ident">PVUUID_DOMAIN_INFO</span>).<span class="ident">clone</span>()));
+            <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge</span>(<span class="string">&quot;domain_token_key&quot;</span>);
+            <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">modlist</span>)
             <span class="comment">// Complete</span>
         })
     }
@@ -6080,6 +6215,7 @@
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_NAME</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_UUID</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_SSID</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY</span>,
             <span class="ident">JSON_SCHEMA_ATTR_GIDNUMBER</span>,
             <span class="ident">JSON_SCHEMA_ATTR_BADLIST_PASSWORD</span>,
             <span class="ident">JSON_SCHEMA_ATTR_LOGINSHELL</span>,
@@ -6465,6 +6601,10 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_ouath2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">changed_oauth2</span>.<span class="ident">get</span>()
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_domain</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {

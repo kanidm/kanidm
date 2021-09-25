@@ -417,6 +417,20 @@
 <span id="417">417</span>
 <span id="418">418</span>
 <span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
 </pre><pre class="rust">
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
@@ -800,10 +814,24 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DomainOpt</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
+    <span class="doccomment">/// Show information about this systems domain</span>
+    <span class="ident">Show</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_token_key&quot;</span>)]</span>
+    <span class="doccomment">/// Reset this domain token signing key. This will cause all user sessions to be</span>
+    <span class="doccomment">/// invalidated (logged out).</span>
+    <span class="ident">ResetTokenKey</span>(<span class="ident">CommonOpt</span>),
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SystemOpt</span> {
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2&quot;</span>)]</span>
     <span class="doccomment">/// Configure and display oauth2/oidc resource server configuration</span>
     <span class="ident">Oauth2</span>(<span class="ident">Oauth2Opt</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain&quot;</span>)]</span>
+    <span class="doccomment">/// Configure and display domain configuration</span>
+    <span class="ident">Domain</span>(<span class="ident">DomainOpt</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>

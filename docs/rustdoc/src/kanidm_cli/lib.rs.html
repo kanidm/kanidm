@@ -131,6 +131,9 @@
 <span id="131">131</span>
 <span id="132">132</span>
 <span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
+<span id="136">136</span>
 </pre><pre class="rust">
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
@@ -151,6 +154,7 @@
 
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">account</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">common</span>;
+<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">domain</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">group</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">raw</span>;
@@ -210,12 +214,14 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">SystemOpt::Oauth2</span>(<span class="ident">oopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">oopt</span>.<span class="ident">debug</span>(),
+            <span class="ident">SystemOpt::Domain</span>(<span class="ident">dopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">dopt</span>.<span class="ident">debug</span>(),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">SystemOpt::Oauth2</span>(<span class="ident">oopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">oopt</span>.<span class="ident">exec</span>(),
+            <span class="ident">SystemOpt::Domain</span>(<span class="ident">dopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">dopt</span>.<span class="ident">exec</span>(),
         }
     }
 }

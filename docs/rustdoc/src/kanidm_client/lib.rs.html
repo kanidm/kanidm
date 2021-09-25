@@ -1782,22 +1782,22 @@
     }
 
     <span class="comment">// ==== domain_info (aka domain)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_list</span>())
-    }
-
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_get</span>(<span class="ident">id</span>))
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_get</span>())
     }
 
     <span class="comment">// pub fn idm_domain_get_attr</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_get_ssid</span>(<span class="ident">id</span>))
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_get_ssid</span>())
     }
 
     <span class="comment">// pub fn idm_domain_put_attr</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_set_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">ssid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_set_ssid</span>(<span class="ident">id</span>, <span class="ident">ssid</span>))
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_set_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ssid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_set_ssid</span>(<span class="ident">ssid</span>))
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_reset_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_reset_token_key</span>())
     }
 
     <span class="comment">// ==== schema</span>
