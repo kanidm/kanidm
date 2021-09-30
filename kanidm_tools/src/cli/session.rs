@@ -12,6 +12,8 @@ use std::io::{self, BufReader, BufWriter, Write};
 use std::path::PathBuf;
 use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, WebauthnAuthenticator};
 
+use dialoguer::{theme::ColorfulTheme, Select};
+
 static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
 
@@ -112,25 +114,25 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
     })
 }
 
-fn get_index_choice(len: usize) -> Result<u8, ClientError> {
-    loop {
-        let mut buffer = String::new();
-        if let Err(e) = io::stdin().read_line(&mut buffer) {
-            eprintln!("Failed to read from stdin -> {:?}", e);
-            return Err(ClientError::SystemError);
-        };
-        let response = buffer.trim();
-        match response.parse::<u8>() {
-            Ok(i) => {
-                if (i as usize) < len {
-                    return Ok(i);
-                } else {
-                    eprintln!("Choice must be less than {}", len);
-                }
-            }
-            Err(_) => eprintln!("Invalid Number"),
-        };
-    }
+/// An interactive dialog to choose from given options
+fn get_index_choice_dialoguer(msg: &str, options: &Vec<String>) -> usize {
+
+    let user_select = Select::with_theme(&ColorfulTheme::default())
+        .with_prompt(&msg)
+        .default(0)
+        .items(&options)
+        .interact();
+
+    let selection = match user_select {
+        Err(error) => {
+            eprintln!("Failed to handle user input: {:?}", error);
+        std::process::exit(1);
+        }
+        Ok(value) => value,
+    };
+    debug!("Index of the chosen menu item: {:?}", selection);
+
+    selection
 }
 
 impl LoginOpt {
@@ -231,18 +233,17 @@ impl LoginOpt {
                     .get(0)
                     .expect("can not fail - bounds already checked.")
             }
-            len => {
-                println!("Please choose how you want to authenticate:");
-                for (i, val) in mechs.iter().enumerate() {
-                    println!("{}: {}", i, val)
+            _ => {
+                let mut options = Vec::new();
+                for val in mechs.iter() {
+                    options.push(val.to_string());
                 }
-                let mech_idx = get_index_choice(len).unwrap_or_else(|e| {
-                    error!("Error getting index choice -> {:?}", e);
-                    std::process::exit(1);
-                });
+                let msg = "Please choose how you want to authenticate:";
+                let selection = get_index_choice_dialoguer(&msg, &options);
+
                 #[allow(clippy::expect_used)]
                 mechs
-                    .get(mech_idx as usize)
+                    .get(selection as usize)
                     .expect("can not fail - bounds already checked.")
             }
         };
@@ -270,18 +271,17 @@ impl LoginOpt {
                         .get(0)
                         .expect("can not fail - bounds already checked.")
                 }
-                len => {
-                    println!("Please choose what credential to provide:");
-                    for (i, val) in allowed.iter().enumerate() {
-                        println!("{}: {}", i, val)
+                _ => {
+                    let mut options = Vec::new();
+                    for val in allowed.iter() {
+                        options.push(val.to_string());
                     }
-                    let idx = get_index_choice(len).unwrap_or_else(|e| {
-                        error!("Error getting index choice -> {:?}", e);
-                        std::process::exit(1);
-                    });
+                    let msg = "Please choose what credential to provide:";
+                    let selection = get_index_choice_dialoguer(&msg, &options);
+
                     #[allow(clippy::expect_used)]
                     allowed
-                        .get(idx as usize)
+                        .get(selection as usize)
                         .expect("can not fail - bounds already checked.")
                 }
             };
