@@ -460,6 +460,8 @@
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 <span class="kw">use</span> <span class="ident">webauthn_authenticator_rs</span>::{<span class="ident">u2fhid::U2FHid</span>, <span class="ident">RequestChallengeResponse</span>, <span class="ident">WebauthnAuthenticator</span>};
 
+<span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">theme::ColorfulTheme</span>, <span class="ident">Select</span>};
+
 <span class="kw">static</span> <span class="ident">TOKEN_DIR</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;~/.cache&quot;</span>;
 <span class="kw">static</span> <span class="ident">TOKEN_PATH</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;~/.cache/kanidm_tokens&quot;</span>;
 
@@ -560,25 +562,25 @@
     })
 }
 
-<span class="kw">fn</span> <span class="ident">get_index_choice</span>(<span class="ident">len</span>: <span class="ident">usize</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">u8</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-    <span class="kw">loop</span> {
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">String::new</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">buffer</span>) {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::SystemError</span>);
-        };
-        <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="ident">buffer</span>.<span class="ident">trim</span>();
-        <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">parse</span>::<span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">i</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">if</span> (<span class="ident">i</span> <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">&lt;</span> <span class="ident">len</span> {
-                    <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">i</span>);
-                } <span class="kw">else</span> {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;Choice must be less than {}&quot;</span>, <span class="ident">len</span>);
-                }
-            }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Invalid Number&quot;</span>),
-        };
-    }
+<span class="doccomment">/// An interactive dialog to choose from given options</span>
+<span class="kw">fn</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="ident">msg</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
+
+    <span class="kw">let</span> <span class="ident">user_select</span> <span class="op">=</span> <span class="ident">Select::with_theme</span>(<span class="kw-2">&amp;</span><span class="ident">ColorfulTheme::default</span>())
+        .<span class="ident">with_prompt</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>)
+        .<span class="ident">default</span>(<span class="number">0</span>)
+        .<span class="ident">items</span>(<span class="kw-2">&amp;</span><span class="ident">options</span>)
+        .<span class="ident">interact</span>();
+
+    <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">user_select</span> {
+        <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to handle user input: {:?}&quot;</span>, <span class="ident">error</span>);
+        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+        }
+        <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">value</span>,
+    };
+    <span class="macro">debug!</span>(<span class="string">&quot;Index of the chosen menu item: {:?}&quot;</span>, <span class="ident">selection</span>);
+
+    <span class="ident">selection</span>
 }
 
 <span class="kw">impl</span> <span class="ident">LoginOpt</span> {
@@ -679,18 +681,17 @@
                     .<span class="ident">get</span>(<span class="number">0</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
             }
-            <span class="ident">len</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">println!</span>(<span class="string">&quot;Please choose how you want to authenticate:&quot;</span>);
-                <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">val</span>) <span class="kw">in</span> <span class="ident">mechs</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                    <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="ident">i</span>, <span class="ident">val</span>)
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">mechs</span>.<span class="ident">iter</span>() {
+                    <span class="ident">options</span>.<span class="ident">push</span>(<span class="ident">val</span>.<span class="ident">to_string</span>());
                 }
-                <span class="kw">let</span> <span class="ident">mech_idx</span> <span class="op">=</span> <span class="ident">get_index_choice</span>(<span class="ident">len</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Error getting index choice -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
-                });
+                <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="string">&quot;Please choose how you want to authenticate:&quot;</span>;
+                <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>, <span class="kw-2">&amp;</span><span class="ident">options</span>);
+
                 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                 <span class="ident">mechs</span>
-                    .<span class="ident">get</span>(<span class="ident">mech_idx</span> <span class="kw">as</span> <span class="ident">usize</span>)
+                    .<span class="ident">get</span>(<span class="ident">selection</span> <span class="kw">as</span> <span class="ident">usize</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
             }
         };
@@ -718,18 +719,17 @@
                         .<span class="ident">get</span>(<span class="number">0</span>)
                         .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
                 }
-                <span class="ident">len</span> <span class="op">=</span><span class="op">&gt;</span> {
-                    <span class="macro">println!</span>(<span class="string">&quot;Please choose what credential to provide:&quot;</span>);
-                    <span class="kw">for</span> (<span class="ident">i</span>, <span class="ident">val</span>) <span class="kw">in</span> <span class="ident">allowed</span>.<span class="ident">iter</span>().<span class="ident">enumerate</span>() {
-                        <span class="macro">println!</span>(<span class="string">&quot;{}: {}&quot;</span>, <span class="ident">i</span>, <span class="ident">val</span>)
+                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
+                    <span class="kw">for</span> <span class="ident">val</span> <span class="kw">in</span> <span class="ident">allowed</span>.<span class="ident">iter</span>() {
+                        <span class="ident">options</span>.<span class="ident">push</span>(<span class="ident">val</span>.<span class="ident">to_string</span>());
                     }
-                    <span class="kw">let</span> <span class="ident">idx</span> <span class="op">=</span> <span class="ident">get_index_choice</span>(<span class="ident">len</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">error!</span>(<span class="string">&quot;Error getting index choice -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
-                    });
+                    <span class="kw">let</span> <span class="ident">msg</span> <span class="op">=</span> <span class="string">&quot;Please choose what credential to provide:&quot;</span>;
+                    <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="kw-2">&amp;</span><span class="ident">msg</span>, <span class="kw-2">&amp;</span><span class="ident">options</span>);
+
                     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                     <span class="ident">allowed</span>
-                        .<span class="ident">get</span>(<span class="ident">idx</span> <span class="kw">as</span> <span class="ident">usize</span>)
+                        .<span class="ident">get</span>(<span class="ident">selection</span> <span class="kw">as</span> <span class="ident">usize</span>)
                         .<span class="ident">expect</span>(<span class="string">&quot;can not fail - bounds already checked.&quot;</span>)
                 }
             };
