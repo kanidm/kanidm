@@ -1,6 +1,7 @@
-use std::convert::TryFrom;
+use num_enum::{IntoPrimitive, TryFromPrimitive};
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, IntoPrimitive, TryFromPrimitive)]
+#[repr(u64)]
 pub enum EventTag {
     AdminError,
     AdminWarn,
@@ -49,55 +50,6 @@ impl EventTag {
             RequestTrace | FilterTrace | PerfTrace => "📍",
             SecurityCritical => "🔐",
             SecurityAccess => "🔓",
-        }
-    }
-}
-
-impl From<EventTag> for u64 {
-    fn from(tag: EventTag) -> Self {
-        use EventTag::*;
-        match tag {
-            AdminError => 0,
-            AdminWarn => 1,
-            AdminInfo => 2,
-            RequestError => 3,
-            RequestWarn => 4,
-            RequestInfo => 5,
-            RequestTrace => 6,
-            SecurityCritical => 7,
-            SecurityInfo => 8,
-            SecurityAccess => 9,
-            FilterError => 10,
-            FilterWarn => 11,
-            FilterInfo => 12,
-            FilterTrace => 13,
-            PerfTrace => 14,
-        }
-    }
-}
-
-impl TryFrom<u64> for EventTag {
-    type Error = ();
-
-    fn try_from(value: u64) -> Result<Self, Self::Error> {
-        use EventTag::*;
-        match value {
-            0 => Ok(AdminError),
-            1 => Ok(AdminWarn),
-            2 => Ok(AdminInfo),
-            3 => Ok(RequestError),
-            4 => Ok(RequestWarn),
-            5 => Ok(RequestInfo),
-            6 => Ok(RequestTrace),
-            7 => Ok(SecurityCritical),
-            8 => Ok(SecurityInfo),
-            9 => Ok(SecurityAccess),
-            10 => Ok(FilterError),
-            11 => Ok(FilterWarn),
-            12 => Ok(FilterInfo),
-            13 => Ok(FilterTrace),
-            14 => Ok(PerfTrace),
-            _ => Err(()),
         }
     }
 }
