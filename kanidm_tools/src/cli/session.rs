@@ -116,7 +116,6 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
 
 /// An interactive dialog to choose from given options
 fn get_index_choice_dialoguer(msg: &str, options: &Vec<String>) -> usize {
-
     let user_select = Select::with_theme(&ColorfulTheme::default())
         .with_prompt(msg)
         .default(0)
@@ -126,7 +125,7 @@ fn get_index_choice_dialoguer(msg: &str, options: &Vec<String>) -> usize {
     let selection = match user_select {
         Err(error) => {
             eprintln!("Failed to handle user input: {:?}", error);
-        std::process::exit(1);
+            std::process::exit(1);
         }
         Ok(value) => value,
     };

@@ -97,6 +97,8 @@ filetime = "0.2"
 tracing = { version = "0.1", features = ["attributes", "release_max_level_info"] }
 tracing-subscriber = "0.2"
 tracing-serde = "0.1"
+num_enum = "0.5.4"
+
 
 [features]
 simd_support = [ "concread/simd_support" ]
