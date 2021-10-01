@@ -16,6 +16,35 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 # Release Notes
 
+## 2021-10-01 - Kanidm 1.1.0-alpha6
+
+This is the sixth alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+It's also a special release as Kanidm has just turned 3 years old! Thank you all
+for helping to bring the project this far! 🎉 🦀
+
+### Release Highlights
+
+* Support backup codes as MFA in case of lost TOTP/Webauthn
+* Dynamic menus on CLI for usernames when multiple sessions exist
+* Dynamic menus on CLI for auth factors when choices exist
+* Better handle missing resources for web ui elements at server startup
+* Add WAL checkpointing to improve disk usage
+* Oauth2 user interface flows for simple authorisation scenarioes
+* Improve entry memory usage based on valueset rewrite
+* Allow online backups to be scheduled and taken
+* Reliability improvements for unixd components with missing sockets
+* Error message improvements for humans
+* Improve client address logging for auditing
+* Add strict HTTP resource headers for incoming/outgoing requests
+* Replace rustls with openssl for HTTPS endpoint
+* Remove auditscope in favour of the new tracing logging subsystem
+* Reduce server memory usage with entry tracking improvements
+* Improvements to performance with high cache sizes
+* Session tokens persist over a session restart
+
 ## 2021-07-07 - Kanidm 1.1.0-alpha5
 
 This is the fifth alpha series release of the Kanidm Identity Management

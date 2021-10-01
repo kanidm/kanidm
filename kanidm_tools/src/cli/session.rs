@@ -118,7 +118,7 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
 fn get_index_choice_dialoguer(msg: &str, options: &Vec<String>) -> usize {
 
     let user_select = Select::with_theme(&ColorfulTheme::default())
-        .with_prompt(&msg)
+        .with_prompt(msg)
         .default(0)
         .items(&options)
         .interact();

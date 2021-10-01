@@ -14,7 +14,7 @@
 
 * Update RELEASE_NOTES.md
 
-* cargo release --no-dev-version --skip-push --skip-publish --skip-tag  1.1.0-alpha.4
+* cargo release --no-dev-version --skip-push --skip-publish --skip-tag  1.1.0-alpha.X
 * git rebase -i HEAD~X
 * git tag v1.1.0-alpha.x
 

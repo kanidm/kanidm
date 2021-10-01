@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_tools"
-version = "1.1.0-alpha.5"
+version = "1.1.0-alpha.6"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 default-run = "kanidm"
@@ -34,7 +34,7 @@ rpassword = "5.0"
 structopt = { version = "0.3", default-features = false }
 libc = "0.2"
 log = "0.4"
-env_logger = "0.8"
+env_logger = "0.9"
 serde = "1.0"
 serde_json = "1.0"
 shellexpand = "2.0"
@@ -45,7 +45,7 @@ bundy = "0.1"
 
 zxcvbn = "2.0"
 
-dialoguer =  "0.5.1"
+dialoguer =  "0.8"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.9"
 # webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs/" }

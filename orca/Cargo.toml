@@ -1,6 +1,6 @@
 [package]
 name = "orca"
-version = "1.1.0-alpha.5"
+version = "1.1.0-alpha.6"
 authors = ["William Brown <william@blackhats.net.au>"]
 edition = "2018"
 license = "MPL-2.0"
@@ -25,7 +25,7 @@ serde_json = "1.0"
 serde_derive = "1.0"
 
 log = "0.4"
-env_logger = "0.8"
+env_logger = "0.9"
 rand = "0.8"
 toml = "0.5"
 
@@ -44,5 +44,5 @@ ldap3_server = "^0.1.7"
 crossbeam = "0.8"
 async-std = { version = "1.6", features = ["tokio1"] }
 
-mathru = "0.9"
+mathru = "0.10"
 
