@@ -444,7 +444,6 @@
 <span id="444">444</span>
 <span id="445">445</span>
 <span id="446">446</span>
-<span id="447">447</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::common::prompt_for_username_get_username</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">LoginOpt</span>, <span class="ident">LogoutOpt</span>, <span class="ident">SessionOpt</span>};
@@ -564,7 +563,6 @@
 
 <span class="doccomment">/// An interactive dialog to choose from given options</span>
 <span class="kw">fn</span> <span class="ident">get_index_choice_dialoguer</span>(<span class="ident">msg</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">options</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">usize</span> {
-
     <span class="kw">let</span> <span class="ident">user_select</span> <span class="op">=</span> <span class="ident">Select::with_theme</span>(<span class="kw-2">&amp;</span><span class="ident">ColorfulTheme::default</span>())
         .<span class="ident">with_prompt</span>(<span class="ident">msg</span>)
         .<span class="ident">default</span>(<span class="number">0</span>)
@@ -574,7 +572,7 @@
     <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">user_select</span> {
         <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to handle user input: {:?}&quot;</span>, <span class="ident">error</span>);
-        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">value</span>,
     };
