@@ -151,4 +151,13 @@ impl Identity {
                 .attribute_equality("claim", &PartialValue::new_iutf8(claim)),
         }
     }
+
+    pub fn is_memberof(&self, group: Uuid) -> bool {
+        match &self.origin {
+            IdentType::Internal => false,
+            IdentType::User(u) => u
+                .entry
+                .attribute_equality("memberof", &PartialValue::new_refer(group)),
+        }
+    }
 }

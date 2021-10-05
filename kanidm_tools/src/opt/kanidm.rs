@@ -354,10 +354,16 @@ pub enum SelfOpt {
 
 #[derive(Debug, StructOpt)]
 pub struct Oauth2BasicCreateOpt {
-    #[structopt(name = "origin")]
-    origin: String,
     #[structopt(flatten)]
     nopt: Named,
+    #[structopt(name = "displayname")]
+    displayname: String,
+    #[structopt(name = "origin")]
+    origin: String,
+    #[structopt(name = "required_group")]
+    required_group: String,
+    #[structopt(name = "implicit_scopes")]
+    imp_scopes: Vec<String>,
 }
 
 #[derive(Debug, StructOpt)]

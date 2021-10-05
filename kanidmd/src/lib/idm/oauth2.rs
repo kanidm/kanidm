@@ -12,6 +12,7 @@ use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
+use std::collections::BTreeSet;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -77,6 +78,8 @@ struct ConsentToken {
     pub code_challenge: Base64UrlSafeData,
     // Where the RS wants us to go back to.
     pub redirect_uri: Url,
+    // The scopes being granted
+    pub scopes: Vec<String>,
 }
 
 // consent token?
@@ -90,6 +93,8 @@ struct TokenExchangeCode {
     pub code_challenge: Base64UrlSafeData,
     // The original redirect uri
     pub redirect_uri: Url,
+    // The scopes being granted
+    pub scopes: Vec<String>,
 }
 
 // consentPermitResponse
@@ -320,13 +325,38 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // scopes
+        // user authorisation - must be in the group.
+        if !ident.is_memberof(o2rs.required_group) {
+            admin_warn!(
+                %ident,
+                ?o2rs.required_group,
+                "Identity is not a member of the required authorisation group"
+            );
+            return Err(Oauth2Error::AccessDenied);
+        }
 
+        // scopes
         // Which are implicit?
         // Which are required?
         // Which are soft?
 
-        // user authorisation filter
+        let req_scopes: BTreeSet<_> = auth_req.scope.split_ascii_whitespace().collect();
+        let imp_scopes: BTreeSet<_> = o2rs.implicit_scopes.iter().map(|s| s.as_str()).collect();
+
+        // Needs to use s.to_string due to &&str which can't use the str::to_string
+        let avail_scopes: Vec<String> = req_scopes
+            .intersection(&imp_scopes)
+            .map(|s| s.to_string())
+            .collect();
+
+        if avail_scopes.len() != req_scopes.len() {
+            admin_warn!(
+                %ident,
+                %auth_req.scope,
+                "Identity does not have access to the requested scopes"
+            );
+            return Err(Oauth2Error::AccessDenied);
+        }
 
         // Subseqent we then return an encrypted session handle which allows
         // the user to indicate their consent to this authorisation.
@@ -340,6 +370,7 @@ impl Oauth2ResourceServersReadTransaction {
             state: auth_req.state.clone(),
             code_challenge: auth_req.code_challenge.clone(),
             redirect_uri: auth_req.redirect_uri.clone(),
+            scopes: avail_scopes.clone(),
         };
 
         let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
@@ -354,7 +385,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         Ok(ConsentRequest {
             client_name: o2rs.displayname.clone(),
-            scopes: Vec::new(),
+            scopes: avail_scopes,
             consent_token,
         })
     }
@@ -410,6 +441,7 @@ impl Oauth2ResourceServersReadTransaction {
             uat: uat.clone(),
             code_challenge: consent_req.code_challenge,
             redirect_uri: consent_req.redirect_uri.clone(),
+            scopes: consent_req.scopes,
         };
 
         // Encrypt the exchange token with the fernet key of the client resource server
@@ -524,6 +556,12 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         };
 
+        let scope = if code_xchg.scopes.is_empty() {
+            None
+        } else {
+            Some(code_xchg.scopes.join(" "))
+        };
+
         // If we are type == Uat, then we re-use the same encryption material here.
         let access_token_data = serde_json::to_vec(&code_xchg.uat).map_err(|e| {
             admin_error!(err = ?e, "Unable to encode uat data");
@@ -541,7 +579,7 @@ impl Oauth2ResourceServersReadTransaction {
             token_type: "bearer".to_string(),
             expires_in,
             refresh_token: None,
-            scope: None,
+            scope,
         })
     }
 }
@@ -655,6 +693,24 @@ mod tests {
         (secret, uat, ident)
     }
 
+    fn setup_anon(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
+        let mut idms_prox_write = idms.proxy_write(ct);
+        let account = idms_prox_write
+            .target_to_account(&UUID_IDM_ADMIN)
+            .expect("account must exist");
+        let session_id = uuid::Uuid::new_v4();
+        let uat = account
+            .to_userauthtoken(session_id, ct, AuthType::Anonymous)
+            .expect("Unable to create uat");
+        let ident = idms_prox_write
+            .process_uat_to_identity(&uat, ct)
+            .expect("Unable to process uat");
+
+        idms_prox_write.commit().expect("failed to commit");
+
+        (uat, ident)
+    }
+
     #[test]
     fn test_idm_oauth2_basic_function() {
         run_idm_test!(|_qs: &QueryServer,
@@ -711,6 +767,10 @@ mod tests {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
             let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
+            let (anon_uat, anon_ident) = setup_anon(idms, ct);
+
+            // Need a uat from a user not in the group. Probs anonymous.
+
             let idms_prox_read = idms.proxy_read();
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
@@ -756,10 +816,10 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: Base64UrlSafeData(vec![1, 2, 3]),
-                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-                scope: "".to_string(),
+                scope: "read".to_string(),
             };
 
             assert!(
@@ -767,6 +827,43 @@ mod tests {
                     .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
+            );
+
+            // Requested scope is not available
+            let auth_req = AuthorisationRequest {
+                response_type: "code".to_string(),
+                client_id: "test_resource_server".to_string(),
+                state: Base64UrlSafeData(vec![1, 2, 3]),
+                code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                code_challenge_method: CodeChallengeMethod::S256,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                scope: "invalid_scope".to_string(),
+            };
+
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                    .unwrap_err()
+                    == Oauth2Error::AccessDenied
+            );
+
+            // Not a member of the group.
+
+            let auth_req = AuthorisationRequest {
+                response_type: "code".to_string(),
+                client_id: "test_resource_server".to_string(),
+                state: Base64UrlSafeData(vec![1, 2, 3]),
+                code_challenge: Base64UrlSafeData(code_challenge),
+                code_challenge_method: CodeChallengeMethod::S256,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                scope: "read".to_string(),
+            };
+
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorisation(&anon_ident, &anon_uat, &auth_req, ct)
+                    .unwrap_err()
+                    == Oauth2Error::AccessDenied
             );
         })
     }

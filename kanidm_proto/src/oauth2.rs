@@ -31,6 +31,7 @@ pub struct AuthorisationRequest {
 pub struct ConsentRequest {
     // A pretty-name of the client
     pub client_name: String,
+    // A list of scopes requested / to be issued.
     pub scopes: Vec<String>,
     // The users displayname (?)
     // pub display_name: String,

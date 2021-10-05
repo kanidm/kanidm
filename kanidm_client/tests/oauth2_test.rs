@@ -43,7 +43,7 @@ fn test_oauth2_basic_flow() {
                 "test_integration",
                 "Test Integration",
                 "https://demo.example.com",
-                "idm_admins",
+                "system_admins",
                 vec!["read", "email"],
             )
             .expect("Failed to create oauth2 config");
@@ -96,7 +96,7 @@ fn test_oauth2_basic_flow() {
                     ("code_challenge", pkce_code_challenge.as_str()),
                     ("code_challenge_method", "S256"),
                     ("redirect_uri", "https://demo.example.com/oauth2/flow"),
-                    ("scope", "mail+name+test"),
+                    ("scope", "email read"),
                 ])
                 .send()
                 .await
