@@ -1593,6 +1593,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    pub fn get_ava_as_oauthscopes(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_oauthscope_iter())
+    }
+
+    #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
     pub fn get_ava_as_str(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_str_iter())
@@ -1692,6 +1697,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     pub fn get_ava_single_uuid(&self, attr: &str) -> Option<&Uuid> {
         self.attrs.get(attr).and_then(|vs| vs.to_uuid_single())
+    }
+
+    pub fn get_ava_single_refer(&self, attr: &str) -> Option<&Uuid> {
+        self.attrs.get(attr).and_then(|vs| vs.to_refer_single())
     }
 
     #[inline(always)]

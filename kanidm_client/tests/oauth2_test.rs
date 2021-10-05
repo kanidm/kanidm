@@ -39,7 +39,13 @@ fn test_oauth2_basic_flow() {
 
         // Create an oauth2 application integration.
         rsclient
-            .idm_oauth2_rs_basic_create("test_integration", "https://demo.example.com")
+            .idm_oauth2_rs_basic_create(
+                "test_integration",
+                "Test Integration",
+                "https://demo.example.com",
+                "idm_admins",
+                vec!["read", "email"],
+            )
             .expect("Failed to create oauth2 config");
 
         let oauth2_config = rsclient

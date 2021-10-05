@@ -891,8 +891,21 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_oauth2_rs_list())
     }
 
-    pub fn idm_oauth2_rs_basic_create(&self, name: &str, origin: &str) -> Result<(), ClientError> {
-        tokio_block_on(self.asclient.idm_oauth2_rs_basic_create(name, origin))
+    pub fn idm_oauth2_rs_basic_create(
+        &self,
+        name: &str,
+        displayname: &str,
+        origin: &str,
+        required_group: &str,
+        scopes: Vec<&str>,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_basic_create(
+            name,
+            displayname,
+            origin,
+            required_group,
+            scopes,
+        ))
     }
 
     pub fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
@@ -903,14 +916,20 @@ impl KanidmClient {
         &self,
         id: &str,
         name: Option<&str>,
+        displayname: Option<&str>,
         origin: Option<&str>,
+        required_group: Option<&str>,
+        scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
     ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_oauth2_rs_update(
             id,
             name,
+            displayname,
             origin,
+            required_group,
+            scopes,
             reset_secret,
             reset_token_key,
         ))

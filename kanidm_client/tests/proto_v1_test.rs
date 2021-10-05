@@ -1073,7 +1073,13 @@ fn test_server_rest_oauth2_basic_lifecycle() {
 
         // Create a new oauth2 config
         rsclient
-            .idm_oauth2_rs_basic_create("test_integration", "https://demo.example.com")
+            .idm_oauth2_rs_basic_create(
+                "test_integration",
+                "Test Integration",
+                "https://demo.example.com",
+                "idm_admins",
+                vec!["read", "email"],
+            )
             .expect("Failed to create oauth2 config");
 
         // List, there is what we created.
@@ -1091,12 +1097,12 @@ fn test_server_rest_oauth2_basic_lifecycle() {
             .flatten()
             .expect("Failed to retrieve test_integration config");
 
+        eprintln!("{:?}", oauth2_config);
+
         // What can we see?
         assert!(oauth2_config.attrs.contains_key("oauth2_rs_basic_secret"));
         // This is present, but redacted.
-        assert!(oauth2_config
-            .attrs
-            .contains_key("oauth2_rs_basic_token_key"));
+        assert!(oauth2_config.attrs.contains_key("oauth2_rs_token_key"));
 
         // Mod delete the secret/key and check them again.
         // Check we can patch the oauth2_rs_name / oauth2_rs_origin
@@ -1104,7 +1110,10 @@ fn test_server_rest_oauth2_basic_lifecycle() {
             .idm_oauth2_rs_update(
                 "test_integration",
                 None,
+                Some("Test Integration"),
                 Some("https://new_demo.example.com"),
+                None,
+                None,
                 true,
                 true,
             )

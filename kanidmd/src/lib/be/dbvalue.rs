@@ -137,6 +137,14 @@ pub struct DbValueEmailAddressV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct DbValueOauthScopeMapV1 {
+    #[serde(rename = "u")]
+    pub refer: Uuid,
+    #[serde(rename = "m")]
+    pub data: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueV1 {
     #[serde(rename = "U8")]
     Utf8(String),
@@ -176,6 +184,10 @@ pub enum DbValueV1 {
     EmailAddress(DbValueEmailAddressV1),
     #[serde(rename = "UR")]
     Url(Url),
+    #[serde(rename = "OS")]
+    OauthScope(String),
+    #[serde(rename = "OM")]
+    OauthScopeMap(DbValueOauthScopeMapV1),
 }
 
 #[cfg(test)]

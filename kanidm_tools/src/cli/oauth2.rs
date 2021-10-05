@@ -28,13 +28,16 @@ impl Oauth2Opt {
                 }
             }
             Oauth2Opt::CreateBasic(cbopt) => {
-                let client = cbopt.nopt.copt.to_client();
+                let _client = cbopt.nopt.copt.to_client();
+                unimplemented!();
+                /*
                 match client
                     .idm_oauth2_rs_basic_create(cbopt.nopt.name.as_str(), cbopt.origin.as_str())
                 {
                     Ok(_) => println!("Success"),
                     Err(e) => eprintln!("Error -> {:?}", e),
                 }
+                */
             }
             Oauth2Opt::Delete(nopt) => {
                 let client = nopt.copt.to_client();

@@ -14,6 +14,7 @@ use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
 use std::sync::Arc;
 use time::OffsetDateTime;
+use tracing::trace;
 use url::{Origin, Url};
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
@@ -103,30 +104,41 @@ pub struct AuthorisePermitSuccess {
     pub code: String,
 }
 
-// The cache structure
+#[derive(Debug, Clone)]
+pub enum Oauth2RSTokenFormat {
+    Uat,
+}
 
 #[derive(Clone)]
-pub struct Oauth2RSBasic {
+pub struct Oauth2RS {
     name: String,
+    displayname: String,
     uuid: Uuid,
     origin: Origin,
+    required_group: Uuid,
+    implicit_scopes: Vec<String>,
+    // scope group map (hard)
+    // scope group map (soft)
+    // Client Auth Type (basic is all we support for now.
     authz_secret: String,
+    // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
+    // What format we issue tokens as. By default prefer ANYTHING except jwt.
+    token_format: Oauth2RSTokenFormat,
 }
 
-impl std::fmt::Debug for Oauth2RSBasic {
+impl std::fmt::Debug for Oauth2RS {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        f.debug_struct("Oauth2RSBasic")
+        f.debug_struct("Oauth2RS")
             .field("name", &self.name)
+            .field("displayname", &self.displayname)
             .field("uuid", &self.uuid)
             .field("origin", &self.origin)
+            .field("required_group", &self.required_group)
+            .field("implicit_scopes", &self.implicit_scopes)
+            .field("token_format", &self.token_format)
             .finish()
     }
-}
-
-#[derive(Debug, Clone)]
-pub enum Oauth2RS {
-    Basic(Oauth2RSBasic),
 }
 
 #[derive(Clone)]
@@ -186,44 +198,68 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
         let rs_set: Result<HashMap<_, _>, _> = value
             .into_iter()
             .map(|ent| {
+                let uuid = *ent.get_uuid();
+                admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
                 if !ent.attribute_equality("class", &CLASS_OAUTH2) {
+                    admin_error!("Missing class oauth2_resource_server");
                     // Check we have oauth2_resource_server class
                     Err(OperationError::InvalidEntryState)
                 } else if ent.attribute_equality("class", &CLASS_OAUTH2_BASIC) {
                     // If we have oauth2_resource_server_basic
                     // Now we know we can load the attrs.
-                    let uuid = *ent.get_uuid();
+                    trace!("name");
                     let name = ent
                         .get_ava_single_str("oauth2_rs_name")
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
+                    trace!("displayname");
+                    let displayname = ent
+                        .get_ava_single_str("displayname")
+                        .map(str::to_string)
+                        .ok_or(OperationError::InvalidValueState)?;
+                    trace!("origin");
                     let origin = ent
                         .get_ava_single_url("oauth2_rs_origin")
                         .map(|url| url.origin())
                         .ok_or(OperationError::InvalidValueState)?;
+                    trace!("authz_secret");
                     let authz_secret = ent
                         .get_ava_single_str("oauth2_rs_basic_secret")
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
+                    trace!("token_key");
                     let token_fernet = ent
-                        .get_ava_single_secret("oauth2_rs_basic_token_key")
+                        .get_ava_single_secret("oauth2_rs_token_key")
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key| {
                             Fernet::new(key).ok_or(OperationError::CryptographyError)
                         })?;
 
-                    // Currently unsure if this is how I want to handle this.
-                    // let oauth2_rs_account_filter = ent.get_ava_single_protofilter("oauth2_rs_account_filter")
+                    trace!("required_group");
+                    let required_group = ent
+                        .get_ava_single_refer("oauth2_rs_required_group")
+                        .copied()
+                        .ok_or(OperationError::InvalidValueState)?;
+
+                    trace!("implicit_scopes");
+                    let implicit_scopes = ent
+                        .get_ava_as_oauthscopes("oauth2_rs_implicit_scopes")
+                        .map(|iter| iter.map(str::to_string).collect())
+                        .unwrap_or_else(|| Vec::new());
 
                     let client_id = name.clone();
-                    let rscfg = Oauth2RS::Basic(Oauth2RSBasic {
+                    let rscfg = Oauth2RS {
                         name,
+                        displayname,
                         uuid,
                         origin,
+                        required_group,
+                        implicit_scopes,
                         authz_secret,
                         token_fernet,
-                    });
+                        token_format: Oauth2RSTokenFormat::Uat,
+                    };
 
                     Ok((client_id, rscfg))
                 } else {
@@ -275,7 +311,20 @@ impl Oauth2ResourceServersReadTransaction {
             Oauth2Error::InvalidRequest
         })?;
 
+        // redirect_uri must be part of the client_id origin.
+        if auth_req.redirect_uri.origin() != o2rs.origin {
+            admin_warn!(
+                origin = ?o2rs.origin,
+                "Invalid oauth2 redirect_uri (must be related to origin of)"
+            );
+            return Err(Oauth2Error::InvalidRequest);
+        }
+
         // scopes
+
+        // Which are implicit?
+        // Which are required?
+        // Which are soft?
 
         // user authorisation filter
 
@@ -283,19 +332,6 @@ impl Oauth2ResourceServersReadTransaction {
         // the user to indicate their consent to this authorisation.
         //
         // This session handle is what we use in "permit" to generate the redirect.
-
-        match o2rs {
-            Oauth2RS::Basic(rsbasic) => {
-                // redirect_uri must be part of the client_id origin.
-                if auth_req.redirect_uri.origin() != rsbasic.origin {
-                    admin_warn!(
-                        origin = ?rsbasic.origin,
-                        "Invalid oauth2 redirect_uri (must be related to origin of)"
-                    );
-                    return Err(Oauth2Error::InvalidRequest);
-                }
-            }
-        };
 
         let consent_req = ConsentToken {
             client_id: auth_req.client_id.clone(),
@@ -317,7 +353,7 @@ impl Oauth2ResourceServersReadTransaction {
             .encrypt_at_time(&consent_data, ct.as_secs());
 
         Ok(ConsentRequest {
-            client_name: auth_req.client_id.clone(),
+            client_name: o2rs.displayname.clone(),
             scopes: Vec::new(),
             consent_token,
         })
@@ -359,13 +395,14 @@ impl Oauth2ResourceServersReadTransaction {
         }
 
         // Get the resource server config based on this client_id.
-        let o2rs_fernet = match self.inner.rs_set.get(&consent_req.client_id) {
-            Some(Oauth2RS::Basic(rsbasic)) => &rsbasic.token_fernet,
-            None => {
+        let o2rs = self
+            .inner
+            .rs_set
+            .get(&consent_req.client_id)
+            .ok_or_else(|| {
                 admin_error!("Invalid consent request oauth2 client_id");
-                return Err(OperationError::InvalidRequestState);
-            }
-        };
+                OperationError::InvalidRequestState
+            })?;
 
         // Extract the state, code challenge, redirect_uri
 
@@ -381,7 +418,7 @@ impl Oauth2ResourceServersReadTransaction {
             OperationError::SerdeJsonError
         })?;
 
-        let code = o2rs_fernet.encrypt_at_time(&code_data, ct.as_secs());
+        let code = o2rs.token_fernet.encrypt_at_time(&code_data, ct.as_secs());
 
         Ok(AuthorisePermitSuccess {
             redirect_uri: consent_req.redirect_uri,
@@ -434,21 +471,17 @@ impl Oauth2ResourceServersReadTransaction {
         })?;
 
         // check the secret.
-        let o2rs_fernet = match o2rs {
-            Oauth2RS::Basic(rsbasic) => {
-                if rsbasic.authz_secret != secret {
-                    security_info!("Invalid oauth2 client_id secret");
-                    return Err(Oauth2Error::AuthenticationRequired);
-                }
-                // We are authenticated! Yay! Now we can actually check things ...
-                &rsbasic.token_fernet
-            }
-        };
+        if o2rs.authz_secret != secret {
+            security_info!("Invalid oauth2 client_id secret");
+            return Err(Oauth2Error::AuthenticationRequired);
+        }
+        // We are authenticated! Yay! Now we can actually check things ...
 
         // Check the token_req is within the valid time, and correctly signed for
         // this client.
 
-        let code_xchg: TokenExchangeCode = o2rs_fernet
+        let code_xchg: TokenExchangeCode = o2rs
+            .token_fernet
             .decrypt_at_time(&token_req.code, Some(60), ct.as_secs())
             .map_err(|_| {
                 admin_error!("Failed to decrypt token exchange request");
@@ -491,12 +524,17 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         };
 
-        let access_token = serde_json::to_vec(&code_xchg.uat)
-            .map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode uat data");
-                Oauth2Error::ServerError(OperationError::SerdeJsonError)
-            })
-            .map(|data| o2rs_fernet.encrypt_at_time(&data, ct.as_secs()))?;
+        // If we are type == Uat, then we re-use the same encryption material here.
+        let access_token_data = serde_json::to_vec(&code_xchg.uat).map_err(|e| {
+            admin_error!(err = ?e, "Unable to encode uat data");
+            Oauth2Error::ServerError(OperationError::SerdeJsonError)
+        })?;
+
+        let access_token = match o2rs.token_format {
+            Oauth2RSTokenFormat::Uat => o2rs
+                .token_fernet
+                .encrypt_at_time(&access_token_data, ct.as_secs()),
+        };
 
         Ok(AccessTokenResponse {
             access_token,
@@ -576,9 +614,16 @@ mod tests {
             ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::new_uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read")),
+            // System admins
+            (
+                "oauth2_rs_required_group",
+                Value::new_refer_s("00000000-0000-0000-0000-000000000019").expect("invalid uuid")
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);

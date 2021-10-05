@@ -196,6 +196,8 @@ impl SchemaAttribute {
             SyntaxType::DateTime => v.is_datetime(),
             SyntaxType::EmailAddress => v.is_email_address(),
             SyntaxType::Url => v.is_url(),
+            SyntaxType::OauthScope => v.is_oauthscope(),
+            SyntaxType::OauthScopeMap => v.is_oauthscopemap(),
         };
         if r {
             Ok(())
@@ -245,6 +247,8 @@ impl SchemaAttribute {
             SyntaxType::DateTime => ava.is_datetime(),
             SyntaxType::EmailAddress => ava.is_email_address(),
             SyntaxType::Url => ava.is_url(),
+            SyntaxType::OauthScope => ava.is_oauthscope(),
+            SyntaxType::OauthScopeMap => ava.is_oauthscopemap(),
         };
         if valid {
             Ok(())

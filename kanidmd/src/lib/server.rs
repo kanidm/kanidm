@@ -513,6 +513,8 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::EmailAddress => Ok(Value::new_email_address_s(value)),
                     SyntaxType::Url => Value::new_url_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
+                    SyntaxType::OauthScope => Ok(Value::new_oauthscope(value)),
+                    SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
                 }
             }
             None => {
@@ -589,6 +591,24 @@ pub trait QueryServerTransaction<'a> {
                                 )
                             })
                     }
+                    SyntaxType::OauthScopeMap => {
+                        // See comments above.
+                        PartialValue::new_oauthscopemap_s(value)
+                            .or_else(|| {
+                                let un = self
+                                    .name_to_uuid(value)
+                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
+                                Some(PartialValue::new_oauthscopemap(un))
+                            })
+                            // I think this is unreachable due to how the .or_else works.
+                            // See above case for how to avoid having unreachable code
+                            .ok_or_else(|| {
+                                OperationError::InvalidAttribute(
+                                    "Invalid Reference syntax".to_string(),
+                                )
+                            })
+                    }
+
                     SyntaxType::JSON_FILTER => {
                         PartialValue::new_json_filter_s(value).ok_or_else(|| {
                             OperationError::InvalidAttribute("Invalid Filter syntax".to_string())
@@ -620,6 +640,7 @@ pub trait QueryServerTransaction<'a> {
                             "Invalid Url (whatwg/url) syntax".to_string(),
                         )
                     }),
+                    SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
                 }
             }
             None => {
@@ -2189,9 +2210,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM,
             JSON_SCHEMA_ATTR_OAUTH2_RS_NAME,
             JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_ACCOUNT_FILTER,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_REQUIRED_GROUP,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
             JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
-            JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY,
+            JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,
