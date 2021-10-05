@@ -1869,10 +1869,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             // Get the schema attribute type out.
             match schema.is_multivalue(k) {
                 Ok(r) => {
-                    if !r || !vs.is_empty() {
+                    if !r || k == "systemmust" || k == "systemmay"  {
                         // As this is single value, purge then present to maintain this
-                        // invariant. Alternately if it's actually got values present
-                        // in the assert, clear it too.
+                        // invariant.
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
