@@ -1764,7 +1764,9 @@ impl<'a> Iterator for ProtoIter<'a> {
             ProtoIter::EmailAddress(iter) => iter.next().cloned(),
             ProtoIter::Url(iter) => iter.next().map(|i| i.to_string()),
             ProtoIter::OauthScope(iter) => iter.next().cloned(),
-            ProtoIter::OauthScopeMap(iter) => iter.next().map(|(u, m)| format!("{}: {:?}", u, m)),
+            ProtoIter::OauthScopeMap(iter) => iter
+                .next()
+                .map(|(u, m)| format!("{}: {:?}", ValueSet::uuid_to_proto_string(u), m)),
         }
     }
 }

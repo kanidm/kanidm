@@ -665,6 +665,19 @@ pub trait QueryServerTransaction<'a> {
                 })
                 .collect();
             v
+        } else if let Some(r_map) = value.as_oauthscopemap() {
+            let v: Result<Vec<_>, _> = r_map
+                .iter()
+                .map(|(u, m)| {
+                    let nv = self.uuid_to_spn(u)?;
+                    let u = match nv {
+                        Some(v) => v.to_proto_string_clone(),
+                        None => ValueSet::uuid_to_proto_string(u),
+                    };
+                    Ok(format!("{}: {:?}", u, m))
+                })
+                .collect();
+            v
         } else {
             let v: Vec<_> = value.to_proto_string_clone_iter().collect();
             Ok(v)
