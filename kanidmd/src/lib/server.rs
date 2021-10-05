@@ -2070,7 +2070,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // NOTE: gen modlist IS schema aware and will handle multivalue
         // correctly!
-        trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
+        admin_info!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
         let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
             Some(f) => f,

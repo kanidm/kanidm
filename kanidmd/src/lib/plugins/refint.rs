@@ -21,6 +21,7 @@ use crate::modify::Modify;
 use crate::schema::SchemaTransaction;
 use kanidm_proto::v1::{ConsistencyError, PluginError};
 use std::sync::Arc;
+use tracing::trace;
 
 // NOTE: This *must* be after base.rs!!!
 
@@ -33,7 +34,7 @@ impl ReferentialIntegrity {
     ) -> Result<(), OperationError> {
         if inner.is_empty() {
             // There is nothing to check! Move on.
-            admin_info!("no reference types modified, skipping check");
+            trace!("no reference types modified, skipping check");
             return Ok(());
         }
 
