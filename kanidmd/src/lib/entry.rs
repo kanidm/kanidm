@@ -1598,6 +1598,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     }
 
     #[inline(always)]
+    pub fn get_ava_as_oauthscopemaps(
+        &self,
+        attr: &str,
+    ) -> Option<&std::collections::BTreeMap<Uuid, std::collections::BTreeSet<String>>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_oauthscopemap())
+    }
+
+    #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
     pub fn get_ava_as_str(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
         self.get_ava_set(attr).and_then(|vs| vs.as_str_iter())
@@ -1869,7 +1877,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             // Get the schema attribute type out.
             match schema.is_multivalue(k) {
                 Ok(r) => {
-                    if !r || k == "systemmust" || k == "systemmay"  {
+                    if !r || k == "systemmust" || k == "systemmay" {
                         // As this is single value, purge then present to maintain this
                         // invariant.
                         mods.push_mod(Modify::Purged(k.clone()));
@@ -1918,19 +1926,31 @@ where
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
         // It would be great to remove these extra allocations, but they
         // really don't cost much :(
-        self.attrs.entry(AttrString::from(attr)).and_modify(|v| {
-            // Here we need to actually do a check/binary search ...
-            v.remove(value);
-        });
+        let rm = if let Some(vs) = self.attrs.get_mut(attr) {
+            vs.remove(value);
+            vs.is_empty()
+        } else {
+            false
+        };
+        //
+        if rm {
+            self.attrs.remove(attr);
+        };
     }
 
     // Need something that can remove by difference?
     pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
-        if let Some(vs) = self.attrs.get_mut(attr) {
+        let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             values.iter().for_each(|k| {
                 vs.remove(k);
-            })
-        }
+            });
+            vs.is_empty()
+        } else {
+            false
+        };
+        if rm {
+            self.attrs.remove(attr);
+        };
     }
 
     /// Remove all values of this attribute from the entry.
@@ -2244,13 +2264,13 @@ mod tests {
         e.apply_modlist(&present_single_mods);
         assert!(e.attribute_equality("attr", &PartialValue::new_iutf8("value")));
         e.apply_modlist(&remove_mods);
-        assert!(e.attrs.get("attr").unwrap().is_empty());
+        assert!(e.attrs.get("attr").is_none());
 
         let remove_empty_mods = remove_mods;
 
         e.apply_modlist(&remove_empty_mods);
 
-        assert!(e.attrs.get("attr").unwrap().is_empty());
+        assert!(e.attrs.get("attr").is_none());
     }
 
     #[test]

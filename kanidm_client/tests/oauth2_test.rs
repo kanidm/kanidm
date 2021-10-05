@@ -43,10 +43,20 @@ fn test_oauth2_basic_flow() {
                 "test_integration",
                 "Test Integration",
                 "https://demo.example.com",
-                "system_admins",
-                vec!["read", "email"],
             )
             .expect("Failed to create oauth2 config");
+
+        rsclient
+            .idm_oauth2_rs_update(
+                "test_integration",
+                None,
+                None,
+                None,
+                Some(vec!["read", "email"]),
+                false,
+                false,
+            )
+            .expect("Failed to update oauth2 config");
 
         let oauth2_config = rsclient
             .idm_oauth2_rs_get("test_integration")

@@ -572,7 +572,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: &str = r#"{
     }
 }"#;
 
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_REQUIRED_GROUP: &str = r#"{
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -580,7 +580,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_REQUIRED_GROUP: &str = r#"{
         "attributetype"
       ],
       "description": [
-        "A reference to the group required to access the associated oauth2 resource server"
+        "A reference to a group mapped to scopes for the associated oauth2 resource server"
       ],
       "index": [
         "EQUALITY"
@@ -589,13 +589,13 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_REQUIRED_GROUP: &str = r#"{
         "false"
       ],
       "multivalue": [
-        "false"
+        "true"
       ],
       "attributename": [
-        "oauth2_rs_required_group"
+        "oauth2_rs_scope_map"
       ],
       "syntax": [
-        "REFERENCE_UUID"
+        "OAUTH_SCOPE_MAP"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000082"
@@ -669,7 +669,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: &str = r#"{
         "attributetype"
       ],
       "description": [
-        "An oauth2 resource servers scopes that are implicitly granted"
+        "An oauth2 resource servers scopes that are implicitly granted to all users"
       ],
       "index": [],
       "unique": [
@@ -909,14 +909,14 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
         "oauth2_resource_server"
       ],
       "systemmay": [
-        "description"
+        "description",
+        "oauth2_rs_scope_map",
+        "oauth2_rs_implicit_scopes"
       ],
       "systemmust": [
         "oauth2_rs_name",
         "displayname",
         "oauth2_rs_origin",
-        "oauth2_rs_required_group",
-        "oauth2_rs_implicit_scopes",
         "oauth2_rs_token_key"
       ],
       "uuid": [

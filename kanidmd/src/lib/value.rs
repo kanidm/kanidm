@@ -47,7 +47,7 @@ lazy_static! {
     };
     static ref OAUTHSCOPE_RE: Regex = {
         #[allow(clippy::expect_used)]
-        Regex::new("^[0-9a-fA-F_]+$").expect("Invalid oauthscope regex found")
+        Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
         // Must not contain whitespace.
     };
 }

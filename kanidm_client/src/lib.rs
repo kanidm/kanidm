@@ -896,16 +896,11 @@ impl KanidmClient {
         name: &str,
         displayname: &str,
         origin: &str,
-        required_group: &str,
-        scopes: Vec<&str>,
     ) -> Result<(), ClientError> {
-        tokio_block_on(self.asclient.idm_oauth2_rs_basic_create(
-            name,
-            displayname,
-            origin,
-            required_group,
-            scopes,
-        ))
+        tokio_block_on(
+            self.asclient
+                .idm_oauth2_rs_basic_create(name, displayname, origin),
+        )
     }
 
     pub fn idm_oauth2_rs_get(&self, id: &str) -> Result<Option<Entry>, ClientError> {
@@ -918,7 +913,6 @@ impl KanidmClient {
         name: Option<&str>,
         displayname: Option<&str>,
         origin: Option<&str>,
-        required_group: Option<&str>,
         scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
@@ -928,11 +922,26 @@ impl KanidmClient {
             name,
             displayname,
             origin,
-            required_group,
             scopes,
             reset_secret,
             reset_token_key,
         ))
+    }
+
+    pub fn idm_oauth2_rs_create_scope_map(
+        &self,
+        id: &str,
+        group: &str,
+        scopes: Vec<&str>,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(
+            self.asclient
+                .idm_oauth2_rs_create_scope_map(id, group, scopes),
+        )
+    }
+
+    pub fn idm_oauth2_rs_delete_scope_map(&self, id: &str, group: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_delete_scope_map(id, group))
     }
 
     pub fn idm_oauth2_rs_delete(&self, id: &str) -> Result<(), ClientError> {

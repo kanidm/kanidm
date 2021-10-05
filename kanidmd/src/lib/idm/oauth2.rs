@@ -12,7 +12,7 @@ use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -120,7 +120,7 @@ pub struct Oauth2RS {
     displayname: String,
     uuid: Uuid,
     origin: Origin,
-    required_group: Uuid,
+    scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     implicit_scopes: Vec<String>,
     // scope group map (hard)
     // scope group map (soft)
@@ -139,7 +139,7 @@ impl std::fmt::Debug for Oauth2RS {
             .field("displayname", &self.displayname)
             .field("uuid", &self.uuid)
             .field("origin", &self.origin)
-            .field("required_group", &self.required_group)
+            .field("scope_maps", &self.scope_maps)
             .field("implicit_scopes", &self.implicit_scopes)
             .field("token_format", &self.token_format)
             .finish()
@@ -241,11 +241,11 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                             Fernet::new(key).ok_or(OperationError::CryptographyError)
                         })?;
 
-                    trace!("required_group");
-                    let required_group = ent
-                        .get_ava_single_refer("oauth2_rs_required_group")
-                        .copied()
-                        .ok_or(OperationError::InvalidValueState)?;
+                    trace!("scope_maps");
+                    let scope_maps = ent
+                        .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                        .cloned()
+                        .unwrap_or_else(|| BTreeMap::new());
 
                     trace!("implicit_scopes");
                     let implicit_scopes = ent
@@ -259,7 +259,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         displayname,
                         uuid,
                         origin,
-                        required_group,
+                        scope_maps,
                         implicit_scopes,
                         authz_secret,
                         token_fernet,
@@ -325,27 +325,33 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // user authorisation - must be in the group.
-        if !ident.is_memberof(o2rs.required_group) {
-            admin_warn!(
-                %ident,
-                ?o2rs.required_group,
-                "Identity is not a member of the required authorisation group"
-            );
-            return Err(Oauth2Error::AccessDenied);
-        }
-
-        // scopes
-        // Which are implicit?
-        // Which are required?
-        // Which are soft?
-
+        // scopes - you need to have every requested scope or this req is denied.
         let req_scopes: BTreeSet<_> = auth_req.scope.split_ascii_whitespace().collect();
-        let imp_scopes: BTreeSet<_> = o2rs.implicit_scopes.iter().map(|s| s.as_str()).collect();
+        if req_scopes.is_empty() {
+            admin_error!("Invalid oauth2 request - must contain at least one requested scope");
+            return Err(Oauth2Error::InvalidRequest);
+        }
+        let uat_scopes: BTreeSet<_> = o2rs
+            .implicit_scopes
+            .iter()
+            .map(|s| s.as_str())
+            .chain(
+                o2rs.scope_maps
+                    .iter()
+                    .filter_map(|(u, m)| {
+                        if ident.is_memberof(*u) {
+                            Some(m.iter().map(|s| s.as_str()))
+                        } else {
+                            None
+                        }
+                    })
+                    .flatten(),
+            )
+            .collect();
 
         // Needs to use s.to_string due to &&str which can't use the str::to_string
         let avail_scopes: Vec<String> = req_scopes
-            .intersection(&imp_scopes)
+            .intersection(&uat_scopes)
             .map(|s| s.to_string())
             .collect();
 
@@ -628,7 +634,7 @@ mod tests {
                 code_challenge: Base64UrlSafeData($code_challenge),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "".to_string(),
+                scope: "test".to_string(),
             };
 
             $idms_prox_read
@@ -657,11 +663,11 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read")),
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("test")),
             // System admins
             (
-                "oauth2_rs_required_group",
-                Value::new_refer_s("00000000-0000-0000-0000-000000000019").expect("invalid uuid")
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(*UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
@@ -783,7 +789,7 @@ mod tests {
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "".to_string(),
+                scope: "test".to_string(),
             };
 
             assert!(
@@ -801,7 +807,7 @@ mod tests {
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "".to_string(),
+                scope: "test".to_string(),
             };
 
             assert!(
@@ -819,7 +825,7 @@ mod tests {
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-                scope: "read".to_string(),
+                scope: "test".to_string(),
             };
 
             assert!(
@@ -837,7 +843,7 @@ mod tests {
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "invalid_scope".to_string(),
+                scope: "invalid_scope read".to_string(),
             };
 
             assert!(
@@ -856,7 +862,7 @@ mod tests {
                 code_challenge: Base64UrlSafeData(code_challenge),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "read".to_string(),
+                scope: "read test".to_string(),
             };
 
             assert!(

@@ -202,6 +202,7 @@ impl SchemaAttribute {
         if r {
             Ok(())
         } else {
+            trace!(?a, ?self, ?v, "validate_pv InvalidAttributeSyntax");
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -215,6 +216,12 @@ impl SchemaAttribute {
             let pv: &PartialValue = v.borrow();
             self.validate_partialvalue(a, pv)
         } else {
+            trace!(
+                ?a,
+                ?self,
+                ?v,
+                "value validation failure - InvalidAttributeSyntax"
+            );
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -224,6 +231,7 @@ impl SchemaAttribute {
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
             // lrequest_error!("Ava len > 1 on single value attribute!");
+            admin_error!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
@@ -253,7 +261,7 @@ impl SchemaAttribute {
         if valid {
             Ok(())
         } else {
-            trace!(?a, "InvalidAttributeSyntax");
+            admin_error!(?a, "validate_ava - InvalidAttributeSyntax");
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -1841,6 +1849,7 @@ mod tests {
 
     #[test]
     fn test_schema_entries() {
+        let _ = crate::tracing_tree::test_init();
         // Given an entry, assert it's schema is valid
         // We do
         let schema_outer = Schema::new().expect("failed to create schema");

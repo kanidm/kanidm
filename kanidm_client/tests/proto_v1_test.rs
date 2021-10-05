@@ -1077,8 +1077,6 @@ fn test_server_rest_oauth2_basic_lifecycle() {
                 "test_integration",
                 "Test Integration",
                 "https://demo.example.com",
-                "idm_admins",
-                vec!["read", "email"],
             )
             .expect("Failed to create oauth2 config");
 
@@ -1112,8 +1110,7 @@ fn test_server_rest_oauth2_basic_lifecycle() {
                 None,
                 Some("Test Integration"),
                 Some("https://new_demo.example.com"),
-                None,
-                None,
+                Some(vec!["read", "email"]),
                 true,
                 true,
             )
@@ -1126,6 +1123,34 @@ fn test_server_rest_oauth2_basic_lifecycle() {
             .expect("Failed to retrieve test_integration config");
 
         assert!(oauth2_config_updated != oauth2_config);
+
+        // Check that we can add scope maps and delete them.
+        rsclient
+            .idm_oauth2_rs_create_scope_map("test_integration", "system_admins", vec!["a", "b"])
+            .expect("Failed to create scope map");
+
+        let oauth2_config_updated2 = rsclient
+            .idm_oauth2_rs_get("test_integration")
+            .ok()
+            .flatten()
+            .expect("Failed to retrieve test_integration config");
+
+        assert!(oauth2_config_updated != oauth2_config_updated2);
+
+        rsclient
+            .idm_oauth2_rs_delete_scope_map("test_integration", "system_admins")
+            .expect("Failed to delete scope map");
+
+        let oauth2_config_updated3 = rsclient
+            .idm_oauth2_rs_get("test_integration")
+            .ok()
+            .flatten()
+            .expect("Failed to retrieve test_integration config");
+
+        eprintln!("{:?}", oauth2_config_updated);
+        eprintln!("{:?}", oauth2_config_updated3);
+
+        assert!(oauth2_config_updated == oauth2_config_updated3);
 
         // Delete the config
         rsclient

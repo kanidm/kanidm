@@ -1147,6 +1147,13 @@ impl ValueSet {
         }
     }
 
+    pub fn as_oauthscopemap(&self) -> Option<&BTreeMap<Uuid, BTreeSet<String>>> {
+        match &self.inner {
+            I::OauthScopeMap(map) => Some(map),
+            _ => None,
+        }
+    }
+
     pub fn to_proto_string_clone_iter(&self) -> ProtoIter<'_> {
         // to_proto_string_clone
         match &self.inner {

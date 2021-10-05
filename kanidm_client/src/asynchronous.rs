@@ -1380,8 +1380,6 @@ impl KanidmAsyncClient {
         name: &str,
         displayname: &str,
         origin: &str,
-        required_group: &str,
-        scopes: Vec<&str>,
     ) -> Result<(), ClientError> {
         let mut new_oauth2_rs = Entry::default();
         new_oauth2_rs
@@ -1393,14 +1391,6 @@ impl KanidmAsyncClient {
         new_oauth2_rs
             .attrs
             .insert("oauth2_rs_origin".to_string(), vec![origin.to_string()]);
-        new_oauth2_rs.attrs.insert(
-            "oauth2_rs_required_group".to_string(),
-            vec![required_group.to_string()],
-        );
-        new_oauth2_rs.attrs.insert(
-            "oauth2_rs_implicit_scopes".to_string(),
-            scopes.into_iter().map(str::to_string).collect(),
-        );
         self.perform_post_request("/v1/oauth2/_basic", new_oauth2_rs)
             .await
     }
@@ -1416,7 +1406,6 @@ impl KanidmAsyncClient {
         name: Option<&str>,
         displayname: Option<&str>,
         origin: Option<&str>,
-        required_group: Option<&str>,
         scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
@@ -1440,12 +1429,6 @@ impl KanidmAsyncClient {
                 .attrs
                 .insert("oauth2_rs_origin".to_string(), vec![neworigin.to_string()]);
         }
-        if let Some(newgroup) = required_group {
-            update_oauth2_rs.attrs.insert(
-                "oauth2_rs_required_group".to_string(),
-                vec![newgroup.to_string()],
-            );
-        }
         if let Some(newscopes) = scopes {
             update_oauth2_rs.attrs.insert(
                 "oauth2_rs_implicit_scopes".to_string(),
@@ -1464,6 +1447,29 @@ impl KanidmAsyncClient {
         }
 
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_create_scope_map(
+        &self,
+        id: &str,
+        group: &str,
+        scopes: Vec<&str>,
+    ) -> Result<(), ClientError> {
+        let scopes: Vec<String> = scopes.into_iter().map(str::to_string).collect();
+        self.perform_post_request(
+            format!("/v1/oauth2/{}/_scopemap/{}", id, group).as_str(),
+            scopes,
+        )
+        .await
+    }
+
+    pub async fn idm_oauth2_rs_delete_scope_map(
+        &self,
+        id: &str,
+        group: &str,
+    ) -> Result<(), ClientError> {
+        self.perform_delete_request(format!("/v1/oauth2/{}/_scopemap/{}", id, group).as_str())
             .await
     }
 

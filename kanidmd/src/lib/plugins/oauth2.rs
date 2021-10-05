@@ -74,11 +74,7 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read")),
-            (
-                "oauth2_rs_required_group",
-                Value::new_refer_s("00000000-0000-0000-0000-000000000019").expect("invalid uuid")
-            )
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read"))
         );
 
         let create = vec![e];
@@ -114,10 +110,6 @@ mod tests {
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
             ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read")),
-            (
-                "oauth2_rs_required_group",
-                Value::new_refer_s("00000000-0000-0000-0000-000000000019").expect("invalid uuid")
-            ),
             ("oauth2_rs_basic_secret", Value::new_utf8s("12345")),
             ("oauth2_rs_token_key", Value::new_secret_str("12345"))
         );

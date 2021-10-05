@@ -360,10 +360,32 @@ pub struct Oauth2BasicCreateOpt {
     displayname: String,
     #[structopt(name = "origin")]
     origin: String,
-    #[structopt(name = "required_group")]
-    required_group: String,
-    #[structopt(name = "implicit_scopes")]
-    imp_scopes: Vec<String>,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct Oauth2SetImplicitScopes {
+    #[structopt(flatten)]
+    nopt: Named,
+    #[structopt(name = "scopes")]
+    scopes: Vec<String>,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct Oauth2CreateScopeMapOpt {
+    #[structopt(flatten)]
+    nopt: Named,
+    #[structopt(name = "group")]
+    group: String,
+    #[structopt(name = "scopes")]
+    scopes: Vec<String>,
+}
+
+#[derive(Debug, StructOpt)]
+pub struct Oauth2DeleteScopeMapOpt {
+    #[structopt(flatten)]
+    nopt: Named,
+    #[structopt(name = "group")]
+    group: String,
 }
 
 #[derive(Debug, StructOpt)]
@@ -380,6 +402,18 @@ pub enum Oauth2Opt {
     #[structopt(name = "create")]
     /// Create a new oauth2 resource server
     CreateBasic(Oauth2BasicCreateOpt),
+    #[structopt(name = "set_implict_scopes")]
+    /// Set the list of scopes that are granted to all valid accounts.
+    SetImplictScopes(Oauth2SetImplicitScopes),
+    #[structopt(name = "create_scope_map")]
+    /// Add a new mapping from a group to what scopes it provides
+    CreateScopeMap(Oauth2CreateScopeMapOpt),
+    #[structopt(name = "delete_scope_map")]
+    /// Remove a mapping from groups to scopes
+    DeleteScopeMap(Oauth2DeleteScopeMapOpt),
+    #[structopt(name = "reset_secrets")]
+    /// Reset the secrets associated to this resource server
+    ResetSecrets(Named),
     #[structopt(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),
