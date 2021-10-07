@@ -1613,7 +1613,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&Uuid`.
-    pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<impl Iterator<Item = &Uuid>> {
+    pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<Box<dyn Iterator<Item = &Uuid> + '_>> {
         // If any value is NOT a reference, it's filtered out.
         self.get_ava_set(attr).and_then(|vs| vs.as_ref_uuid_iter())
     }
@@ -1879,7 +1879,9 @@ impl<VALID, STATE> Entry<VALID, STATE> {
                 Ok(r) => {
                     if !r || k == "systemmust" || k == "systemmay" {
                         // As this is single value, purge then present to maintain this
-                        // invariant.
+                        // invariant. The other situation we purge is within schema with
+                        // the system types where we need to be able to express REMOVAL
+                        // of attributes, thus we need the purge.
                         mods.push_mod(Modify::Purged(k.clone()));
                     }
                 }
@@ -1924,8 +1926,6 @@ where
 
     /// Remove an attribute-value pair from this entry.
     fn remove_ava(&mut self, attr: &str, value: &PartialValue) {
-        // It would be great to remove these extra allocations, but they
-        // really don't cost much :(
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             vs.remove(value);
             vs.is_empty()
@@ -1938,7 +1938,6 @@ where
         };
     }
 
-    // Need something that can remove by difference?
     pub(crate) fn remove_avas(&mut self, attr: &str, values: &BTreeSet<PartialValue>) {
         let rm = if let Some(vs) = self.attrs.get_mut(attr) {
             values.iter().for_each(|k| {

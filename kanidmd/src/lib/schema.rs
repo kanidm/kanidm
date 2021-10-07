@@ -197,7 +197,7 @@ impl SchemaAttribute {
             SyntaxType::EmailAddress => v.is_email_address(),
             SyntaxType::Url => v.is_url(),
             SyntaxType::OauthScope => v.is_oauthscope(),
-            SyntaxType::OauthScopeMap => v.is_oauthscopemap(),
+            SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
         };
         if r {
             Ok(())
@@ -478,7 +478,7 @@ impl<'a> SchemaWriteTransaction<'a> {
         // No, they'll over-write each other ... but we do need name uniqueness.
         attributetypes.into_iter().for_each(|a| {
             // Update the unique and ref caches.
-            if a.syntax == SyntaxType::REFERENCE_UUID {
+            if a.syntax == SyntaxType::REFERENCE_UUID || a.syntax == SyntaxType::OauthScopeMap {
                 self.ref_cache.insert(a.name.clone(), a.clone());
             }
             if a.unique {

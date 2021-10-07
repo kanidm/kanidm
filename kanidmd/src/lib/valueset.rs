@@ -496,7 +496,8 @@ impl ValueSet {
             (I::OauthScope(set), PartialValue::OauthScope(u)) => {
                 set.remove(u);
             }
-            (I::OauthScopeMap(set), PartialValue::OauthScopeMap(u)) => {
+            (I::OauthScopeMap(set), PartialValue::OauthScopeMap(u))
+            | (I::OauthScopeMap(set), PartialValue::Refer(u)) => {
                 set.remove(u);
             }
             (_, _) => {
@@ -530,7 +531,8 @@ impl ValueSet {
             (I::EmailAddress(set), PartialValue::EmailAddress(e)) => set.contains(e.as_str()),
             (I::Url(set), PartialValue::Url(u)) => set.contains(u),
             (I::OauthScope(set), PartialValue::OauthScope(u)) => set.contains(u),
-            (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u)) => map.contains_key(u),
+            (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u))
+            | (I::OauthScopeMap(map), PartialValue::Refer(u)) => map.contains_key(u),
             _ => false,
         }
     }
@@ -1126,9 +1128,10 @@ impl ValueSet {
     }
 
     // Value::Refer
-    pub fn as_ref_uuid_iter(&self) -> Option<impl Iterator<Item = &Uuid>> {
+    pub fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = &Uuid> + '_>> {
         match &self.inner {
-            I::Refer(set) => Some(set.iter()),
+            I::Refer(set) => Some(Box::new(set.iter())),
+            I::OauthScopeMap(map) => Some(Box::new(map.keys())),
             _ => None,
         }
     }

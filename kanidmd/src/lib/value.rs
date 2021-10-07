@@ -1491,6 +1491,7 @@ impl Value {
     pub fn to_ref_uuid(&self) -> Option<&Uuid> {
         match &self.pv {
             PartialValue::Refer(u) => Some(u),
+            PartialValue::OauthScopeMap(u) => Some(u),
             _ => None,
         }
     }
@@ -1733,8 +1734,6 @@ impl Value {
             PartialValue::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
             PartialValue::OauthScopeMap(_) => match &self.data {
                 Some(v) => match v.as_ref() {
-                    // Check it's really an sshkey in the supplemental
-                    // data.
                     DataValue::OauthScopeMap(m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
                     _ => false,
                 },

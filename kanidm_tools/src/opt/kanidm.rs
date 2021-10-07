@@ -402,7 +402,7 @@ pub enum Oauth2Opt {
     #[structopt(name = "create")]
     /// Create a new oauth2 resource server
     CreateBasic(Oauth2BasicCreateOpt),
-    #[structopt(name = "set_implict_scopes")]
+    #[structopt(name = "set_implicit_scopes")]
     /// Set the list of scopes that are granted to all valid accounts.
     SetImplictScopes(Oauth2SetImplicitScopes),
     #[structopt(name = "create_scope_map")]

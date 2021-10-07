@@ -110,7 +110,7 @@ impl Plugin for ReferentialIntegrity {
                 });
                 Ok(())
             } else {
-                admin_error!("reference value could not convert to reference uuid.");
+                admin_error!(?vs, "reference value could not convert to reference uuid.");
                 admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                 Err(OperationError::InvalidAttribute(
                     "uuid could not become reference value".to_string(),
@@ -145,7 +145,7 @@ impl Plugin for ReferentialIntegrity {
             v.to_ref_uuid()
                 .map(|uuid| PartialValue::new_uuid(*uuid))
                 .ok_or_else(|| {
-                    admin_error!("reference value could not convert to reference uuid.");
+                    admin_error!(?v, "reference value could not convert to reference uuid.");
                     admin_error!("If you are sure the name/uuid/spn exist, and that this is in error, you should run a verify task.");
                     OperationError::InvalidAttribute(
                         "uuid could not become reference value".to_string(),
@@ -697,6 +697,63 @@ mod tests {
             filter!(f_eq("name", PartialValue::new_iname("testgroup_b"))),
             None,
             |_qs: &QueryServerWriteTransaction| {}
+        );
+    }
+
+    #[test]
+    fn test_delete_remove_reference_oauth2() {
+        // Oauth2 types are also capable of uuid referencing to groups for their
+        // scope maps, so we need to check that when the group is deleted, that the
+        // scope map is also appropriately affected.
+        let ea: Entry<EntryInit, EntryNew> = entry_init!(
+            ("class", Value::new_class("object")),
+            ("class", Value::new_class("oauth2_resource_server")),
+            ("class", Value::new_class("oauth2_resource_server_basic")),
+            ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
+            (
+                "oauth2_rs_origin",
+                Value::new_url_s("https://demo.example.com").unwrap()
+            ),
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("test")),
+            (
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(
+                    Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid"),
+                    btreeset!["read".to_string()]
+                )
+            )
+        );
+
+        let eb: Entry<EntryInit, EntryNew> = entry_init!(
+            ("class", Value::new_class("group")),
+            ("name", Value::new_iname("testgroup")),
+            (
+                "uuid",
+                Value::new_uuids("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid")
+            ),
+            ("description", Value::new_utf8s("testgroup"))
+        );
+
+        let preload = vec![ea, eb];
+
+        run_delete_test!(
+            Ok(()),
+            preload,
+            filter!(f_eq("name", PartialValue::new_iname("testgroup"))),
+            None,
+            |qs: &QueryServerWriteTransaction| {
+                let cands = qs
+                    .internal_search(filter!(f_eq(
+                        "oauth2_rs_name",
+                        PartialValue::new_iname("test_resource_server")
+                    )))
+                    .expect("Internal search failure");
+                let ue = cands.first().expect("No entry");
+                assert!(ue
+                    .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
+                    .is_none())
+            }
         );
     }
 }
