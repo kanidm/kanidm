@@ -228,6 +228,10 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
 </pre><pre class="rust">
 <span class="doccomment">//! Modification expressions and validation. This is how `ModifyEvents` store and</span>
 <span class="doccomment">//! express the series of Modifications that should be applied. These are expressed</span>
@@ -329,6 +333,10 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_append</span>(<span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">v</span>: <span class="ident">Value</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="self">Self</span><span class="ident">::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Present</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">v</span>)])
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_remove</span>(<span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">pv</span>: <span class="ident">PartialValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="self">Self</span><span class="ident">::new_list</span>(<span class="macro">vec!</span>[<span class="ident">Modify::Removed</span>(<span class="ident">AttrString::from</span>(<span class="ident">attr</span>), <span class="ident">pv</span>)])
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_purge</span>(<span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {

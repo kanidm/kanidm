@@ -431,6 +431,46 @@
 <span id="431">431</span>
 <span id="432">432</span>
 <span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
 </pre><pre class="rust">
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
@@ -788,10 +828,38 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2BasicCreateOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;origin&quot;</span>)]</span>
-    <span class="ident">origin</span>: <span class="ident">String</span>,
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
+    <span class="ident">displayname</span>: <span class="ident">String</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;origin&quot;</span>)]</span>
+    <span class="ident">origin</span>: <span class="ident">String</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetImplicitScopes</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">nopt</span>: <span class="ident">Named</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
+    <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2CreateScopeMapOpt</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">nopt</span>: <span class="ident">Named</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
+    <span class="ident">group</span>: <span class="ident">String</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
+    <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2DeleteScopeMapOpt</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">nopt</span>: <span class="ident">Named</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
+    <span class="ident">group</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
@@ -808,6 +876,18 @@
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
     <span class="doccomment">/// Create a new oauth2 resource server</span>
     <span class="ident">CreateBasic</span>(<span class="ident">Oauth2BasicCreateOpt</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_implicit_scopes&quot;</span>)]</span>
+    <span class="doccomment">/// Set the list of scopes that are granted to all valid accounts.</span>
+    <span class="ident">SetImplictScopes</span>(<span class="ident">Oauth2SetImplicitScopes</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_scope_map&quot;</span>)]</span>
+    <span class="doccomment">/// Add a new mapping from a group to what scopes it provides</span>
+    <span class="ident">CreateScopeMap</span>(<span class="ident">Oauth2CreateScopeMapOpt</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_scope_map&quot;</span>)]</span>
+    <span class="doccomment">/// Remove a mapping from groups to scopes</span>
+    <span class="ident">DeleteScopeMap</span>(<span class="ident">Oauth2DeleteScopeMapOpt</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_secrets&quot;</span>)]</span>
+    <span class="doccomment">/// Reset the secrets associated to this resource server</span>
+    <span class="ident">ResetSecrets</span>(<span class="ident">Named</span>),
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="doccomment">/// Delete a oauth2 resource server</span>
     <span class="ident">Delete</span>(<span class="ident">Named</span>),

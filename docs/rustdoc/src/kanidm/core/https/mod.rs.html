@@ -613,6 +613,11 @@
 <span id="613">613</span>
 <span id="614">614</span>
 <span id="615">615</span>
+<span id="616">616</span>
+<span id="617">617</span>
+<span id="618">618</span>
+<span id="619">619</span>
+<span id="620">620</span>
 </pre><pre class="rust">
 <span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
@@ -1064,6 +1069,11 @@
         <span class="comment">// .put(oauth2_id_put)</span>
         .<span class="ident">patch</span>(<span class="ident">oauth2_id_patch</span>)
         .<span class="ident">delete</span>(<span class="ident">oauth2_id_delete</span>);
+
+    <span class="ident">oauth2_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_scopemap/:group&quot;</span>)
+        .<span class="ident">post</span>(<span class="ident">oauth2_id_scopemap_post</span>)
+        .<span class="ident">delete</span>(<span class="ident">oauth2_id_scopemap_delete</span>);
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">self_route</span> <span class="op">=</span> <span class="ident">appserver</span>.<span class="ident">at</span>(<span class="string">&quot;/v1/self&quot;</span>);
     <span class="ident">self_route</span>.<span class="ident">at</span>(<span class="string">&quot;/&quot;</span>).<span class="ident">get</span>(<span class="ident">whoami</span>);

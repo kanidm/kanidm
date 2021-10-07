@@ -3851,13 +3851,6 @@
 <span id="3851">3851</span>
 <span id="3852">3852</span>
 <span id="3853">3853</span>
-<span id="3854">3854</span>
-<span id="3855">3855</span>
-<span id="3856">3856</span>
-<span id="3857">3857</span>
-<span id="3858">3858</span>
-<span id="3859">3859</span>
-<span id="3860">3860</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::softlock::CredSoftLock</span>;
@@ -5016,7 +5009,6 @@
         }
     }
 
-    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Account</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Get the account</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
@@ -5033,23 +5025,18 @@
 
         <span class="comment">// Deny the change if the account is anonymous!</span>
         <span class="kw">if</span> <span class="ident">account</span>.<span class="ident">is_anonymous</span>() {
+            <span class="macro">admin_warn!</span>(<span class="string">&quot;Unable to convert anonymous to account during write txn&quot;</span>);
             <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">account</span>)
         }
     }
 
-    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">pce</span>: <span class="kw-2">&amp;</span><span class="ident">PasswordChangeEvent</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
-
-        <span class="comment">// Deny the change if the account is anonymous!</span>
-        <span class="kw">if</span> <span class="ident">account</span>.<span class="ident">is_anonymous</span>() {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>);
-        }
 
         <span class="comment">// Get the modifications we *want* to perform.</span>
         <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">account</span>
@@ -5118,7 +5105,6 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="comment">// TODO: tracing</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_unix_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">pce</span>: <span class="kw-2">&amp;</span><span class="ident">UnixPasswordChangeEvent</span>,

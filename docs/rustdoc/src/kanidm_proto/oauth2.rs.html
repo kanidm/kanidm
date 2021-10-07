@@ -85,6 +85,7 @@
 <span id="85">85</span>
 <span id="86">86</span>
 <span id="87">87</span>
+<span id="88">88</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="ident">url::Url</span>;
 <span class="kw">use</span> <span class="ident">webauthn_rs::base64_data::Base64UrlSafeData</span>;
@@ -119,6 +120,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ConsentRequest</span> {
     <span class="comment">// A pretty-name of the client</span>
     <span class="kw">pub</span> <span class="ident">client_name</span>: <span class="ident">String</span>,
+    <span class="comment">// A list of scopes requested / to be issued.</span>
     <span class="kw">pub</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="comment">// The users displayname (?)</span>
     <span class="comment">// pub display_name: String,</span>

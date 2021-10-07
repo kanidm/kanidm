@@ -4032,6 +4032,41 @@
 <span id="4032">4032</span>
 <span id="4033">4033</span>
 <span id="4034">4034</span>
+<span id="4035">4035</span>
+<span id="4036">4036</span>
+<span id="4037">4037</span>
+<span id="4038">4038</span>
+<span id="4039">4039</span>
+<span id="4040">4040</span>
+<span id="4041">4041</span>
+<span id="4042">4042</span>
+<span id="4043">4043</span>
+<span id="4044">4044</span>
+<span id="4045">4045</span>
+<span id="4046">4046</span>
+<span id="4047">4047</span>
+<span id="4048">4048</span>
+<span id="4049">4049</span>
+<span id="4050">4050</span>
+<span id="4051">4051</span>
+<span id="4052">4052</span>
+<span id="4053">4053</span>
+<span id="4054">4054</span>
+<span id="4055">4055</span>
+<span id="4056">4056</span>
+<span id="4057">4057</span>
+<span id="4058">4058</span>
+<span id="4059">4059</span>
+<span id="4060">4060</span>
+<span id="4061">4061</span>
+<span id="4062">4062</span>
+<span id="4063">4063</span>
+<span id="4064">4064</span>
+<span id="4065">4065</span>
+<span id="4066">4066</span>
+<span id="4067">4067</span>
+<span id="4068">4068</span>
+<span id="4069">4069</span>
 </pre><pre class="rust">
 <span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
@@ -4548,6 +4583,8 @@
                     <span class="ident">SyntaxType::EmailAddress</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_email_address_s</span>(<span class="ident">value</span>)),
                     <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_url_s</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Url (whatwg/url) syntax&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_oauthscope</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Oauth Scope Maps can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
                 }
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -4624,6 +4661,24 @@
                                 )
                             })
                     }
+                    <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="comment">// See comments above.</span>
+                        <span class="ident">PartialValue::new_oauthscopemap_s</span>(<span class="ident">value</span>)
+                            .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
+                                    .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
+                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_oauthscopemap</span>(<span class="ident">un</span>))
+                            })
+                            <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
+                            <span class="comment">// See above case for how to avoid having unreachable code</span>
+                            .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                                <span class="ident">OperationError::InvalidAttribute</span>(
+                                    <span class="string">&quot;Invalid Reference syntax&quot;</span>.<span class="ident">to_string</span>(),
+                                )
+                            })
+                    }
+
                     <span class="ident">SyntaxType::JSON_FILTER</span> <span class="op">=</span><span class="op">&gt;</span> {
                         <span class="ident">PartialValue::new_json_filter_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                             <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Filter syntax&quot;</span>.<span class="ident">to_string</span>())
@@ -4655,6 +4710,7 @@
                             <span class="string">&quot;Invalid Url (whatwg/url) syntax&quot;</span>.<span class="ident">to_string</span>(),
                         )
                     }),
+                    <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_oauthscope</span>(<span class="ident">value</span>)),
                 }
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -4676,6 +4732,19 @@
                         <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()),
                         <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">ur</span>)),
                     }
+                })
+                .<span class="ident">collect</span>();
+            <span class="ident">v</span>
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">r_map</span>) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">as_oauthscopemap</span>() {
+            <span class="kw">let</span> <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">r_map</span>
+                .<span class="ident">iter</span>()
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">m</span>)<span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">u</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">nv</span> {
+                        <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>(),
+                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">u</span>),
+                    };
+                    <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{}: {:?}&quot;</span>, <span class="ident">u</span>, <span class="ident">m</span>))
                 })
                 .<span class="ident">collect</span>();
             <span class="ident">v</span>
@@ -6084,7 +6153,7 @@
         <span class="comment">//</span>
         <span class="comment">// NOTE: gen modlist IS schema aware and will handle multivalue</span>
         <span class="comment">// correctly!</span>
-        <span class="macro">trace!</span>(<span class="string">&quot;internal_migrate_or_create operating on {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>());
+        <span class="macro">admin_info!</span>(<span class="string">&quot;internal_migrate_or_create operating on {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>());
 
         <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">filter_from_attrs</span>(<span class="kw-2">&amp;</span>[<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>)]) {
             <span class="prelude-val">Some</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
@@ -6224,9 +6293,10 @@
             <span class="ident">JSON_SCHEMA_ATTR_ACCOUNT_VALID_FROM</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_NAME</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN</span>,
-            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_ACCOUNT_FILTER</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET</span>,
-            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY</span>,
             <span class="ident">JSON_SCHEMA_CLASS_PERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_GROUP</span>,
             <span class="ident">JSON_SCHEMA_CLASS_ACCOUNT</span>,

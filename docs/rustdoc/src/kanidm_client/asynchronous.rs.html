@@ -1453,6 +1453,46 @@
 <span id="1453">1453</span>
 <span id="1454">1454</span>
 <span id="1455">1455</span>
+<span id="1456">1456</span>
+<span id="1457">1457</span>
+<span id="1458">1458</span>
+<span id="1459">1459</span>
+<span id="1460">1460</span>
+<span id="1461">1461</span>
+<span id="1462">1462</span>
+<span id="1463">1463</span>
+<span id="1464">1464</span>
+<span id="1465">1465</span>
+<span id="1466">1466</span>
+<span id="1467">1467</span>
+<span id="1468">1468</span>
+<span id="1469">1469</span>
+<span id="1470">1470</span>
+<span id="1471">1471</span>
+<span id="1472">1472</span>
+<span id="1473">1473</span>
+<span id="1474">1474</span>
+<span id="1475">1475</span>
+<span id="1476">1476</span>
+<span id="1477">1477</span>
+<span id="1478">1478</span>
+<span id="1479">1479</span>
+<span id="1480">1480</span>
+<span id="1481">1481</span>
+<span id="1482">1482</span>
+<span id="1483">1483</span>
+<span id="1484">1484</span>
+<span id="1485">1485</span>
+<span id="1486">1486</span>
+<span id="1487">1487</span>
+<span id="1488">1488</span>
+<span id="1489">1489</span>
+<span id="1490">1490</span>
+<span id="1491">1491</span>
+<span id="1492">1492</span>
+<span id="1493">1493</span>
+<span id="1494">1494</span>
+<span id="1495">1495</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClientBuilder</span>, <span class="ident">APPLICATION_JSON</span>, <span class="ident">KOPID</span>, <span class="ident">KSESSIONID</span>};
 <span class="kw">use</span> <span class="ident">reqwest::header::CONTENT_TYPE</span>;
@@ -2834,12 +2874,16 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_basic_create</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">displayname</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">origin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry::default</span>();
         <span class="ident">new_oauth2_rs</span>
             .<span class="ident">attrs</span>
             .<span class="ident">insert</span>(<span class="string">&quot;oauth2_rs_name&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">vec!</span>[<span class="ident">name</span>.<span class="ident">to_string</span>()]);
+        <span class="ident">new_oauth2_rs</span>
+            .<span class="ident">attrs</span>
+            .<span class="ident">insert</span>(<span class="string">&quot;displayname&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">vec!</span>[<span class="ident">displayname</span>.<span class="ident">to_string</span>()]);
         <span class="ident">new_oauth2_rs</span>
             .<span class="ident">attrs</span>
             .<span class="ident">insert</span>(<span class="string">&quot;oauth2_rs_origin&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">vec!</span>[<span class="ident">origin</span>.<span class="ident">to_string</span>()]);
@@ -2856,7 +2900,9 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">name</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
+        <span class="ident">displayname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
         <span class="ident">origin</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
+        <span class="ident">scopes</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">reset_secret</span>: <span class="ident">bool</span>,
         <span class="ident">reset_token_key</span>: <span class="ident">bool</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
@@ -2869,10 +2915,21 @@
                 .<span class="ident">attrs</span>
                 .<span class="ident">insert</span>(<span class="string">&quot;oauth2_rs_name&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">vec!</span>[<span class="ident">newname</span>.<span class="ident">to_string</span>()]);
         }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">newdisplayname</span>) <span class="op">=</span> <span class="ident">displayname</span> {
+            <span class="ident">update_oauth2_rs</span>
+                .<span class="ident">attrs</span>
+                .<span class="ident">insert</span>(<span class="string">&quot;displayname&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">vec!</span>[<span class="ident">newdisplayname</span>.<span class="ident">to_string</span>()]);
+        }
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">neworigin</span>) <span class="op">=</span> <span class="ident">origin</span> {
             <span class="ident">update_oauth2_rs</span>
                 .<span class="ident">attrs</span>
                 .<span class="ident">insert</span>(<span class="string">&quot;oauth2_rs_origin&quot;</span>.<span class="ident">to_string</span>(), <span class="macro">vec!</span>[<span class="ident">neworigin</span>.<span class="ident">to_string</span>()]);
+        }
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">newscopes</span>) <span class="op">=</span> <span class="ident">scopes</span> {
+            <span class="ident">update_oauth2_rs</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(
+                <span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="ident">newscopes</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>(),
+            );
         }
         <span class="kw">if</span> <span class="ident">reset_secret</span> {
             <span class="ident">update_oauth2_rs</span>
@@ -2882,10 +2939,33 @@
         <span class="kw">if</span> <span class="ident">reset_token_key</span> {
             <span class="ident">update_oauth2_rs</span>
                 .<span class="ident">attrs</span>
-                .<span class="ident">insert</span>(<span class="string">&quot;oauth2_rs_basic_token_key&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">Vec::new</span>());
+                .<span class="ident">insert</span>(<span class="string">&quot;oauth2_rs_token_key&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">Vec::new</span>());
         }
 
         <span class="self">self</span>.<span class="ident">perform_patch_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/oauth2/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), <span class="ident">update_oauth2_rs</span>)
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_create_scope_map</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">scopes</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>();
+        <span class="self">self</span>.<span class="ident">perform_post_request</span>(
+            <span class="macro">format!</span>(<span class="string">&quot;/v1/oauth2/{}/_scopemap/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">group</span>).<span class="ident">as_str</span>(),
+            <span class="ident">scopes</span>,
+        )
+        .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete_scope_map</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+        <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/oauth2/{}/_scopemap/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">group</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
