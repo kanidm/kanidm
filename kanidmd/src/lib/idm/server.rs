@@ -1155,7 +1155,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    // TODO: tracing
     pub(crate) fn target_to_account(&mut self, target: &Uuid) -> Result<Account, OperationError> {
         // Get the account
         let account = self
@@ -1172,23 +1171,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Deny the change if the account is anonymous!
         if account.is_anonymous() {
+            admin_warn!("Unable to convert anonymous to account during write txn");
             Err(OperationError::SystemProtectedObject)
         } else {
             Ok(account)
         }
     }
 
-    // TODO: tracing
     pub fn set_account_password(
         &mut self,
         pce: &PasswordChangeEvent,
     ) -> Result<(), OperationError> {
         let account = self.target_to_account(&pce.target)?;
-
-        // Deny the change if the account is anonymous!
-        if account.is_anonymous() {
-            return Err(OperationError::SystemProtectedObject);
-        }
 
         // Get the modifications we *want* to perform.
         let modlist = account
@@ -1257,7 +1251,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
-    // TODO: tracing
     pub fn set_unix_account_password(
         &mut self,
         pce: &UnixPasswordChangeEvent,

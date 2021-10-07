@@ -196,10 +196,13 @@ impl SchemaAttribute {
             SyntaxType::DateTime => v.is_datetime(),
             SyntaxType::EmailAddress => v.is_email_address(),
             SyntaxType::Url => v.is_url(),
+            SyntaxType::OauthScope => v.is_oauthscope(),
+            SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
         };
         if r {
             Ok(())
         } else {
+            trace!(?a, ?self, ?v, "validate_pv InvalidAttributeSyntax");
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -213,6 +216,12 @@ impl SchemaAttribute {
             let pv: &PartialValue = v.borrow();
             self.validate_partialvalue(a, pv)
         } else {
+            trace!(
+                ?a,
+                ?self,
+                ?v,
+                "value validation failure - InvalidAttributeSyntax"
+            );
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -222,6 +231,7 @@ impl SchemaAttribute {
         // Check multivalue
         if !self.multivalue && ava.len() > 1 {
             // lrequest_error!("Ava len > 1 on single value attribute!");
+            admin_error!("Ava len > 1 on single value attribute!");
             return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
@@ -245,11 +255,13 @@ impl SchemaAttribute {
             SyntaxType::DateTime => ava.is_datetime(),
             SyntaxType::EmailAddress => ava.is_email_address(),
             SyntaxType::Url => ava.is_url(),
+            SyntaxType::OauthScope => ava.is_oauthscope(),
+            SyntaxType::OauthScopeMap => ava.is_oauthscopemap(),
         };
         if valid {
             Ok(())
         } else {
-            trace!(?a, "InvalidAttributeSyntax");
+            admin_error!(?a, "validate_ava - InvalidAttributeSyntax");
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -466,7 +478,7 @@ impl<'a> SchemaWriteTransaction<'a> {
         // No, they'll over-write each other ... but we do need name uniqueness.
         attributetypes.into_iter().for_each(|a| {
             // Update the unique and ref caches.
-            if a.syntax == SyntaxType::REFERENCE_UUID {
+            if a.syntax == SyntaxType::REFERENCE_UUID || a.syntax == SyntaxType::OauthScopeMap {
                 self.ref_cache.insert(a.name.clone(), a.clone());
             }
             if a.unique {
@@ -1837,6 +1849,7 @@ mod tests {
 
     #[test]
     fn test_schema_entries() {
+        let _ = crate::tracing_tree::test_init();
         // Given an entry, assert it's schema is valid
         // We do
         let schema_outer = Schema::new().expect("failed to create schema");

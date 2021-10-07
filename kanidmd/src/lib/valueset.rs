@@ -12,7 +12,8 @@ use time::OffsetDateTime;
 use tracing::trace;
 
 use crate::be::dbvalue::{
-    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueTaggedStringV1, DbValueV1,
+    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1, DbValueTaggedStringV1,
+    DbValueV1,
 };
 use crate::value::DataValue;
 
@@ -22,7 +23,6 @@ use crate::value::DataValue;
 enum I {
     Utf8(BTreeSet<String>),
     Iutf8(BTreeSet<String>),
-    // Could be AttrString?
     Iname(BTreeSet<String>),
     Uuid(BTreeSet<Uuid>),
     Bool(SmolSet<[bool; 1]>),
@@ -40,6 +40,8 @@ enum I {
     DateTime(SmolSet<[OffsetDateTime; 1]>),
     EmailAddress(BTreeSet<String>),
     Url(SmolSet<[Url; 1]>),
+    OauthScope(BTreeSet<String>),
+    OauthScopeMap(BTreeMap<Uuid, BTreeSet<String>>),
 }
 
 pub struct ValueSet {
@@ -110,6 +112,11 @@ impl ValueSet {
                 PartialValue::DateTime(dt) => I::DateTime(smolset![dt]),
                 PartialValue::EmailAddress(e) => I::EmailAddress(btreeset![e]),
                 PartialValue::Url(u) => I::Url(smolset![u]),
+                PartialValue::OauthScope(x) => I::OauthScope(btreeset![x]),
+                PartialValue::OauthScopeMap(u) => match data.map(|b| (*b).clone()) {
+                    Some(DataValue::OauthScopeMap(c)) => I::OauthScopeMap(btreemap![(u, c)]),
+                    _ => unreachable!(),
+                },
             },
         }
     }
@@ -167,6 +174,20 @@ impl ValueSet {
             (I::DateTime(set), PartialValue::DateTime(dt)) => Ok(set.insert(dt)),
             (I::EmailAddress(set), PartialValue::EmailAddress(e)) => Ok(set.insert(e)),
             (I::Url(set), PartialValue::Url(u)) => Ok(set.insert(u)),
+            (I::OauthScope(set), PartialValue::OauthScope(u)) => Ok(set.insert(u)),
+            (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    match data.map(|b| (*b).clone()) {
+                        Some(DataValue::OauthScopeMap(k)) => Ok({
+                            e.insert(k);
+                            true
+                        }),
+                        _ => Err(OperationError::InvalidValueState),
+                    }
+                } else {
+                    Ok(false)
+                }
+            }
             (_, _) => Err(OperationError::InvalidValueState),
         }
     }
@@ -241,6 +262,12 @@ impl ValueSet {
             }
             (I::Url(a), I::Url(b)) => {
                 mergesets!(a, b)
+            }
+            (I::OauthScope(a), I::OauthScope(b)) => {
+                mergesets!(a, b)
+            }
+            (I::OauthScopeMap(a), I::OauthScopeMap(b)) => {
+                mergemaps!(a, b)
             }
             // I think that in this case, we need to specify self / everything as we are changing
             // type and we need to potentially purge everything, so we just return the left side.
@@ -328,6 +355,12 @@ impl ValueSet {
                     set.insert(i);
                 });
             }
+            I::OauthScope(set) => {
+                set.extend(iter.filter_map(|v| v.to_oauthscope()));
+            }
+            I::OauthScopeMap(map) => {
+                map.extend(iter.filter_map(|v| v.to_oauthscopemap()));
+            }
         }
     }
 
@@ -389,6 +422,12 @@ impl ValueSet {
             }
             I::Url(set) => {
                 set.clear();
+            }
+            I::OauthScope(set) => {
+                set.clear();
+            }
+            I::OauthScopeMap(map) => {
+                map.clear();
             }
         };
         debug_assert!(self.is_empty());
@@ -454,6 +493,13 @@ impl ValueSet {
             (I::Url(set), PartialValue::Url(u)) => {
                 set.remove(u);
             }
+            (I::OauthScope(set), PartialValue::OauthScope(u)) => {
+                set.remove(u);
+            }
+            (I::OauthScopeMap(set), PartialValue::OauthScopeMap(u))
+            | (I::OauthScopeMap(set), PartialValue::Refer(u)) => {
+                set.remove(u);
+            }
             (_, _) => {
                 debug_assert!(false)
             }
@@ -484,6 +530,9 @@ impl ValueSet {
             (I::DateTime(set), PartialValue::DateTime(dt)) => set.contains(dt),
             (I::EmailAddress(set), PartialValue::EmailAddress(e)) => set.contains(e.as_str()),
             (I::Url(set), PartialValue::Url(u)) => set.contains(u),
+            (I::OauthScope(set), PartialValue::OauthScope(u)) => set.contains(u),
+            (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u))
+            | (I::OauthScopeMap(map), PartialValue::Refer(u)) => map.contains_key(u),
             _ => false,
         }
     }
@@ -526,6 +575,8 @@ impl ValueSet {
             I::DateTime(set) => set.len(),
             I::EmailAddress(set) => set.len(),
             I::Url(set) => set.len(),
+            I::OauthScope(set) => set.len(),
+            I::OauthScopeMap(set) => set.len(),
         }
     }
 
@@ -574,6 +625,13 @@ impl ValueSet {
             I::EmailAddress(set) => set.iter().cloned().collect(),
             // Don't you dare comment on this quinn, it's a URL not a str.
             I::Url(set) => set.iter().map(|u| u.to_string()).collect(),
+            // Should we index this?
+            // I::OauthScope(set) => set.iter().map(|u| u.to_string()).collect(),
+            I::OauthScope(_set) => vec![],
+            I::OauthScopeMap(map) => map
+                .keys()
+                .map(|u| u.to_hyphenated_ref().to_string())
+                .collect(),
         }
     }
 
@@ -756,6 +814,30 @@ impl ValueSet {
                     Some(ValueSet { inner: I::Url(x) })
                 }
             }
+            (I::OauthScope(a), I::OauthScope(b)) => {
+                let x: BTreeSet<_> = a.difference(b).cloned().collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::OauthScope(x),
+                    })
+                }
+            }
+            (I::OauthScopeMap(a), I::OauthScopeMap(b)) => {
+                let x: BTreeMap<_, _> = a
+                    .iter()
+                    .filter(|(k, _)| b.contains_key(k))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::OauthScopeMap(x),
+                    })
+                }
+            }
             // I think that in this case, we need to specify self / everything as we are changing
             // type and we need to potentially purge everything, so we just return the left side.
             _ => Some(self.clone()),
@@ -858,6 +940,17 @@ impl ValueSet {
                 .map(|s| s.as_str())
                 .map(Value::new_email_address_s),
             I::Url(set) => set.iter().take(1).next().cloned().map(Value::new_url),
+            I::OauthScope(set) => set
+                .iter()
+                .take(1)
+                .next()
+                .map(|s| s.as_str())
+                .map(Value::new_oauthscope),
+            I::OauthScopeMap(map) => map
+                .iter()
+                .take(1)
+                .next()
+                .map(|(u, s)| Value::new_oauthscopemap(*u, s.clone())),
         }
     }
 
@@ -872,6 +965,19 @@ impl ValueSet {
     pub fn to_uuid_single(&self) -> Option<&Uuid> {
         match &self.inner {
             I::Uuid(set) => {
+                if set.len() == 1 {
+                    set.iter().take(1).next()
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
+    pub fn to_refer_single(&self) -> Option<&Uuid> {
+        match &self.inner {
+            I::Refer(set) => {
                 if set.len() == 1 {
                     set.iter().take(1).next()
                 } else {
@@ -1022,9 +1128,10 @@ impl ValueSet {
     }
 
     // Value::Refer
-    pub fn as_ref_uuid_iter(&self) -> Option<impl Iterator<Item = &Uuid>> {
+    pub fn as_ref_uuid_iter(&self) -> Option<Box<dyn Iterator<Item = &Uuid> + '_>> {
         match &self.inner {
-            I::Refer(set) => Some(set.iter()),
+            I::Refer(set) => Some(Box::new(set.iter())),
+            I::OauthScopeMap(map) => Some(Box::new(map.keys())),
             _ => None,
         }
     }
@@ -1032,6 +1139,20 @@ impl ValueSet {
     pub fn as_sshpubkey_str_iter(&self) -> Option<impl Iterator<Item = &str>> {
         match &self.inner {
             I::SshKey(set) => Some(set.values().map(|s| s.as_str())),
+            _ => None,
+        }
+    }
+
+    pub fn as_oauthscope_iter(&self) -> Option<impl Iterator<Item = &str>> {
+        match &self.inner {
+            I::OauthScope(set) => Some(set.iter().map(|s| s.as_str())),
+            _ => None,
+        }
+    }
+
+    pub fn as_oauthscopemap(&self) -> Option<&BTreeMap<Uuid, BTreeSet<String>>> {
+        match &self.inner {
+            I::OauthScopeMap(map) => Some(map),
             _ => None,
         }
     }
@@ -1058,6 +1179,8 @@ impl ValueSet {
             I::DateTime(set) => ProtoIter::DateTime(set.iter()),
             I::EmailAddress(set) => ProtoIter::EmailAddress(set.iter()),
             I::Url(set) => ProtoIter::Url(set.iter()),
+            I::OauthScope(set) => ProtoIter::OauthScope(set.iter()),
+            I::OauthScopeMap(set) => ProtoIter::OauthScopeMap(set.iter()),
         }
     }
 
@@ -1082,6 +1205,8 @@ impl ValueSet {
             I::DateTime(set) => DbValueV1Iter::DateTime(set.iter()),
             I::EmailAddress(set) => DbValueV1Iter::EmailAddress(set.iter()),
             I::Url(set) => DbValueV1Iter::Url(set.iter()),
+            I::OauthScope(set) => DbValueV1Iter::OauthScope(set.iter()),
+            I::OauthScopeMap(set) => DbValueV1Iter::OauthScopeMap(set.iter()),
         }
     }
 
@@ -1106,6 +1231,8 @@ impl ValueSet {
             I::DateTime(set) => PartialValueIter::DateTime(set.iter()),
             I::EmailAddress(set) => PartialValueIter::EmailAddress(set.iter()),
             I::Url(set) => PartialValueIter::Url(set.iter()),
+            I::OauthScope(set) => PartialValueIter::OauthScope(set.iter()),
+            I::OauthScopeMap(set) => PartialValueIter::OauthScopeMap(set.iter()),
         }
     }
 
@@ -1130,6 +1257,8 @@ impl ValueSet {
             I::DateTime(set) => ValueIter::DateTime(set.iter()),
             I::EmailAddress(set) => ValueIter::EmailAddress(set.iter()),
             I::Url(set) => ValueIter::Url(set.iter()),
+            I::OauthScope(set) => ValueIter::OauthScope(set.iter()),
+            I::OauthScopeMap(set) => ValueIter::OauthScopeMap(set.iter()),
         }
     }
 
@@ -1230,6 +1359,14 @@ impl ValueSet {
         matches!(self.inner, I::Url(_))
     }
 
+    pub fn is_oauthscope(&self) -> bool {
+        matches!(self.inner, I::OauthScope(_))
+    }
+
+    pub fn is_oauthscopemap(&self) -> bool {
+        matches!(self.inner, I::OauthScopeMap(_))
+    }
+
     pub fn migrate_iutf8_iname(&mut self) -> Result<(), OperationError> {
         // Swap iutf8 to Iname internally.
         let ninner = match &self.inner {
@@ -1269,6 +1406,8 @@ impl PartialEq for ValueSet {
             (I::DateTime(a), I::DateTime(b)) => a.eq(b),
             (I::EmailAddress(a), I::EmailAddress(b)) => a.eq(b),
             (I::Url(a), I::Url(b)) => a.eq(b),
+            (I::OauthScope(a), I::OauthScope(b)) => a.eq(b),
+            (I::OauthScopeMap(a), I::OauthScopeMap(b)) => a.eq(b),
             _ => false,
         }
     }
@@ -1329,6 +1468,8 @@ pub enum ValueIter<'a> {
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
     Url(SmolSetIter<'a, [Url; 1]>),
+    OauthScope(std::collections::btree_set::Iter<'a, String>),
+    OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
 }
 
 impl<'a> Iterator for ValueIter<'a> {
@@ -1372,6 +1513,10 @@ impl<'a> Iterator for ValueIter<'a> {
                 iter.next().map(|i| Value::new_email_address_s(i.as_str()))
             }
             ValueIter::Url(iter) => iter.next().map(|i| Value::from(i.clone())),
+            ValueIter::OauthScope(iter) => iter.next().map(|i| Value::new_oauthscope(i)),
+            ValueIter::OauthScopeMap(iter) => iter
+                .next()
+                .map(|(group, scopes)| Value::new_oauthscopemap(*group, scopes.clone())),
         }
     }
 }
@@ -1396,6 +1541,8 @@ pub enum PartialValueIter<'a> {
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
     Url(SmolSetIter<'a, [Url; 1]>),
+    OauthScope(std::collections::btree_set::Iter<'a, String>),
+    OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
 }
 
 impl<'a> Iterator for PartialValueIter<'a> {
@@ -1447,6 +1594,12 @@ impl<'a> Iterator for PartialValueIter<'a> {
                 .next()
                 .map(|i| PartialValue::new_email_address_s(i.as_str())),
             PartialValueIter::Url(iter) => iter.next().map(|i| PartialValue::from(i.clone())),
+            PartialValueIter::OauthScope(iter) => {
+                iter.next().map(|i| PartialValue::new_oauthscope(i))
+            }
+            PartialValueIter::OauthScopeMap(iter) => iter
+                .next()
+                .map(|(group, _scopes)| PartialValue::new_oauthscopemap(*group)),
         }
     }
 }
@@ -1471,6 +1624,8 @@ pub enum DbValueV1Iter<'a> {
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
     Url(SmolSetIter<'a, [Url; 1]>),
+    OauthScope(std::collections::btree_set::Iter<'a, String>),
+    OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
 }
 
 impl<'a> Iterator for DbValueV1Iter<'a> {
@@ -1529,6 +1684,15 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
                 .next()
                 .map(|i| DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: i.clone() })),
             DbValueV1Iter::Url(iter) => iter.next().map(|i| DbValueV1::Url(i.clone())),
+            DbValueV1Iter::OauthScope(iter) => {
+                iter.next().map(|i| DbValueV1::OauthScope(i.clone()))
+            }
+            DbValueV1Iter::OauthScopeMap(iter) => iter.next().map(|(u, m)| {
+                DbValueV1::OauthScopeMap(DbValueOauthScopeMapV1 {
+                    refer: *u,
+                    data: m.iter().cloned().collect(),
+                })
+            }),
         }
     }
 }
@@ -1553,6 +1717,8 @@ pub enum ProtoIter<'a> {
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
     Url(SmolSetIter<'a, [Url; 1]>),
+    OauthScope(std::collections::btree_set::Iter<'a, String>),
+    OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
 }
 
 impl<'a> Iterator for ProtoIter<'a> {
@@ -1600,6 +1766,10 @@ impl<'a> Iterator for ProtoIter<'a> {
             }),
             ProtoIter::EmailAddress(iter) => iter.next().cloned(),
             ProtoIter::Url(iter) => iter.next().map(|i| i.to_string()),
+            ProtoIter::OauthScope(iter) => iter.next().cloned(),
+            ProtoIter::OauthScopeMap(iter) => iter
+                .next()
+                .map(|(u, m)| format!("{}: {:?}", ValueSet::uuid_to_proto_string(u), m)),
         }
     }
 }

@@ -4,7 +4,7 @@ The monitoring design of Kanidm is still very much in its infancy - [take part i
 
 ## kanidmd
 
-kanidmd currently responds to HTTP GET requests at the `/status` endpoint with a JSON object of either "true" or "false". `true` indicates that the platform is responding to requests. 
+kanidmd currently responds to HTTP GET requests at the `/status` endpoint with a JSON object of either "true" or "false". `true` indicates that the platform is responding to requests.
 
 | URL | `<hostname>/status` |
 | --- | --- |

@@ -572,7 +572,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ORIGIN: &str = r#"{
     }
 }"#;
 
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ACCOUNT_FILTER: &str = r#"{
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_SCOPE_MAP: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -580,20 +580,22 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_ACCOUNT_FILTER: &str = r#"{
         "attributetype"
       ],
       "description": [
-        "A filter describing who may access the associated oauth2 resource server"
+        "A reference to a group mapped to scopes for the associated oauth2 resource server"
       ],
-      "index": [],
+      "index": [
+        "EQUALITY"
+      ],
       "unique": [
         "false"
       ],
       "multivalue": [
-        "false"
+        "true"
       ],
       "attributename": [
-        "oauth2_rs_account_filter"
+        "oauth2_rs_scope_map"
       ],
       "syntax": [
-        "JSON_FILTER"
+        "OAUTH_SCOPE_MAP"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000082"
@@ -630,7 +632,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET: &str = r#"{
     }
 }"#;
 
-pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY: &str = r#"{
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY: &str = r#"{
     "attrs": {
       "class": [
         "object",
@@ -638,7 +640,7 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY: &str = r#"{
         "attributetype"
       ],
       "description": [
-        "An oauth2 basic resource servers unique token signing key"
+        "An oauth2 resource servers unique token signing key"
       ],
       "index": [],
       "unique": [
@@ -648,13 +650,42 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_TOKEN_KEY: &str = r#"{
         "false"
       ],
       "attributename": [
-        "oauth2_rs_basic_token_key"
+        "oauth2_rs_token_key"
       ],
       "syntax": [
         "SECRET_UTF8STRING"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000084"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "An oauth2 resource servers scopes that are implicitly granted to all users"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "oauth2_rs_implicit_scopes"
+      ],
+      "syntax": [
+        "OAUTH_SCOPE"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000089"
       ]
     }
 }"#;
@@ -879,11 +910,14 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
       ],
       "systemmay": [
         "description",
-        "oauth2_rs_account_filter"
+        "oauth2_rs_scope_map",
+        "oauth2_rs_implicit_scopes"
       ],
       "systemmust": [
         "oauth2_rs_name",
-        "oauth2_rs_origin"
+        "displayname",
+        "oauth2_rs_origin",
+        "oauth2_rs_token_key"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000085"
@@ -901,15 +935,14 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS_BASIC: &str = r#"
         "classtype"
       ],
       "description": [
-        "The class representing a configured Oauth2 Resource Server"
+        "The class representing a configured Oauth2 Resource Server authenticated with http basic"
       ],
       "classname": [
         "oauth2_resource_server_basic"
       ],
       "systemmay": [],
       "systemmust": [
-        "oauth2_rs_basic_secret",
-        "oauth2_rs_basic_token_key"
+        "oauth2_rs_basic_secret"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000086"

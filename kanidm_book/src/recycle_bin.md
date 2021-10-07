@@ -40,9 +40,10 @@ An entry can be revived with:
 
 The recycle bin is a best effort to restore your data - there are some cases where
 the revived entries may not be the same as their were when they were deleted. This
-generally revolves around reference types such as group membership.
+generally revolves around reference types such as group membership, or when the reference
+type includes supplemental map data such as the oauth2 scope map type.
 
-An example of this is the following steps:
+An example of this data loss is the following steps:
 
     add user1
     add group1
@@ -63,7 +64,7 @@ membership of user1 in group1 would be lost in this process. To explain why:
     revive user1 // re-add groups based on directmemberof (empty set)
     revive group1 // no members
 
-This issue could be looked at again in the future, but for now we think that deletes of
+These issues could be looked at again in the future, but for now we think that deletes of
 groups is rare - we expect recycle bin to save you in "opps" moments, and in a majority
 of cases you may delete a group or a user and then restore them. To handle this series
 of steps requires extra code complexity in how we flag operations. For more,

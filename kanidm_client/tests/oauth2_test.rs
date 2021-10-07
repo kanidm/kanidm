@@ -39,8 +39,24 @@ fn test_oauth2_basic_flow() {
 
         // Create an oauth2 application integration.
         rsclient
-            .idm_oauth2_rs_basic_create("test_integration", "https://demo.example.com")
+            .idm_oauth2_rs_basic_create(
+                "test_integration",
+                "Test Integration",
+                "https://demo.example.com",
+            )
             .expect("Failed to create oauth2 config");
+
+        rsclient
+            .idm_oauth2_rs_update(
+                "test_integration",
+                None,
+                None,
+                None,
+                Some(vec!["read", "email"]),
+                false,
+                false,
+            )
+            .expect("Failed to update oauth2 config");
 
         let oauth2_config = rsclient
             .idm_oauth2_rs_get("test_integration")
@@ -90,7 +106,7 @@ fn test_oauth2_basic_flow() {
                     ("code_challenge", pkce_code_challenge.as_str()),
                     ("code_challenge_method", "S256"),
                     ("redirect_uri", "https://demo.example.com/oauth2/flow"),
-                    ("scope", "mail+name+test"),
+                    ("scope", "email read"),
                 ])
                 .send()
                 .await
