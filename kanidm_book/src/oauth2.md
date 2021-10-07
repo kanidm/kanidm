@@ -54,6 +54,12 @@ In general Kanidm requires that your resource server supports:
 * HTTP basic authentication to the authorisation server
 * PKCE code verification to prevent certain token attack classes
 
+Kanidm will expose it's oauth2 apis at the urls:
+
+* auth url: https://idm.example.com/ui/oauth2
+* token url: https://idm.example.com/oauth2/token
+* token inspect url: https://idm.example.com/oauth2/inspect
+
 ### Scope Relationships
 
 For an authorisation to proceed, the resource server will request a list of scopes, which are
