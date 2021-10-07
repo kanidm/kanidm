@@ -10,9 +10,6 @@ about authorised sessions. This extends oauth from an authorisation only system
 to a system capable of identity and authorisation. Two primary methods of this
 exist today: rfc7662 token introspection, and openid connect.
 
-We consider rfc7662 token introspection the more secure standard over openid connect,
-but openid connect will be supported due to it's widespread use.
-
 ## How Does Oauth2 Work?
 
 A user wishes to access a service (resource, resource server). The resource
