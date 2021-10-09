@@ -944,7 +944,7 @@
                 }
                 <span class="ident">AccountPosix::SetPassword</span>(<span class="ident">aopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
-                    <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">password_prompt</span>(<span class="string">&quot;Enter new unit (sudo) password: &quot;</span>) {
+                    <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">password_prompt</span>(<span class="string">&quot;Enter new posix (sudo) password: &quot;</span>) {
                         <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>,
                         <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
                             <span class="macro">println!</span>(<span class="string">&quot;Passwords do not match&quot;</span>);

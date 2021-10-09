@@ -2878,6 +2878,12 @@
 <span id="2878">2878</span>
 <span id="2879">2879</span>
 <span id="2880">2880</span>
+<span id="2881">2881</span>
+<span id="2882">2882</span>
+<span id="2883">2883</span>
+<span id="2884">2884</span>
+<span id="2885">2885</span>
+<span id="2886">2886</span>
 </pre><pre class="rust">
 <span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
@@ -4754,10 +4760,13 @@
         });
     }
 
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DB_BACKUP_FILE_NAME</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;./.backup_test.json&quot;</span>;
-
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_be_backup_restore</span>() {
+        <span class="kw">let</span> <span class="ident">db_backup_file_name</span> <span class="op">=</span> <span class="macro">format!</span>(
+            <span class="string">&quot;{}/.backup_test.json&quot;</span>,
+            <span class="macro">option_env!</span>(<span class="string">&quot;OUT_DIR&quot;</span>).<span class="ident">unwrap_or</span>(<span class="string">&quot;/tmp&quot;</span>)
+        );
+        <span class="macro">eprintln!</span>(<span class="string">&quot; ⚠️   {}&quot;</span>, <span class="ident">db_backup_file_name</span>);
         <span class="macro">run_test!</span>(<span class="op">|</span><span class="ident">be</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">BackendWriteTransaction</span><span class="op">|</span> {
             <span class="comment">// First create some entries (3?)</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
@@ -4781,7 +4790,7 @@
             <span class="macro">assert!</span>(<span class="macro">entry_exists!</span>(<span class="ident">be</span>, <span class="ident">e2</span>));
             <span class="macro">assert!</span>(<span class="macro">entry_exists!</span>(<span class="ident">be</span>, <span class="ident">e3</span>));
 
-            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">fs::remove_file</span>(<span class="ident">DB_BACKUP_FILE_NAME</span>);
+            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">fs::remove_file</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>);
 
             <span class="kw">match</span> <span class="ident">result</span> {
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -4795,17 +4804,20 @@
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
             }
 
-            <span class="ident">be</span>.<span class="ident">backup</span>(<span class="ident">DB_BACKUP_FILE_NAME</span>).<span class="ident">expect</span>(<span class="string">&quot;Backup failed!&quot;</span>);
-            <span class="ident">be</span>.<span class="ident">restore</span>(<span class="ident">DB_BACKUP_FILE_NAME</span>).<span class="ident">expect</span>(<span class="string">&quot;Restore failed!&quot;</span>);
+            <span class="ident">be</span>.<span class="ident">backup</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>).<span class="ident">expect</span>(<span class="string">&quot;Backup failed!&quot;</span>);
+            <span class="ident">be</span>.<span class="ident">restore</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>).<span class="ident">expect</span>(<span class="string">&quot;Restore failed!&quot;</span>);
 
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">verify</span>().<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>);
         });
     }
 
-    <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">DB_BACKUP2_FILE_NAME</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;./.backup2_test.json&quot;</span>;
-
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_be_backup_restore_tampered</span>() {
+        <span class="kw">let</span> <span class="ident">db_backup_file_name</span> <span class="op">=</span> <span class="macro">format!</span>(
+            <span class="string">&quot;{}/.backup2_test.json&quot;</span>,
+            <span class="macro">option_env!</span>(<span class="string">&quot;OUT_DIR&quot;</span>).<span class="ident">unwrap_or</span>(<span class="string">&quot;/tmp&quot;</span>)
+        );
+        <span class="macro">eprintln!</span>(<span class="string">&quot; ⚠️   {}&quot;</span>, <span class="ident">db_backup_file_name</span>);
         <span class="macro">run_test!</span>(<span class="op">|</span><span class="ident">be</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">BackendWriteTransaction</span><span class="op">|</span> {
             <span class="comment">// First create some entries (3?)</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
@@ -4829,7 +4841,7 @@
             <span class="macro">assert!</span>(<span class="macro">entry_exists!</span>(<span class="ident">be</span>, <span class="ident">e2</span>));
             <span class="macro">assert!</span>(<span class="macro">entry_exists!</span>(<span class="ident">be</span>, <span class="ident">e3</span>));
 
-            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">fs::remove_file</span>(<span class="ident">DB_BACKUP2_FILE_NAME</span>);
+            <span class="kw">let</span> <span class="ident">result</span> <span class="op">=</span> <span class="ident">fs::remove_file</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>);
 
             <span class="kw">match</span> <span class="ident">result</span> {
                 <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
@@ -4843,17 +4855,17 @@
                 <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> (),
             }
 
-            <span class="ident">be</span>.<span class="ident">backup</span>(<span class="ident">DB_BACKUP2_FILE_NAME</span>).<span class="ident">expect</span>(<span class="string">&quot;Backup failed!&quot;</span>);
+            <span class="ident">be</span>.<span class="ident">backup</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>).<span class="ident">expect</span>(<span class="string">&quot;Backup failed!&quot;</span>);
 
             <span class="comment">// Now here, we need to tamper with the file.</span>
-            <span class="kw">let</span> <span class="ident">serialized_string</span> <span class="op">=</span> <span class="ident">fs::read_to_string</span>(<span class="ident">DB_BACKUP2_FILE_NAME</span>).<span class="ident">unwrap</span>();
+            <span class="kw">let</span> <span class="ident">serialized_string</span> <span class="op">=</span> <span class="ident">fs::read_to_string</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>).<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">dbentries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DbEntry</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">serde_json::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">serialized_string</span>).<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">dbentries</span>.<span class="ident">pop</span>();
 
             <span class="kw">let</span> <span class="ident">serialized_entries_str</span> <span class="op">=</span> <span class="ident">serde_json::to_string_pretty</span>(<span class="kw-2">&amp;</span><span class="ident">dbentries</span>).<span class="ident">unwrap</span>();
-            <span class="ident">fs::write</span>(<span class="ident">DB_BACKUP2_FILE_NAME</span>, <span class="ident">serialized_entries_str</span>).<span class="ident">unwrap</span>();
+            <span class="ident">fs::write</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>, <span class="ident">serialized_entries_str</span>).<span class="ident">unwrap</span>();
 
-            <span class="ident">be</span>.<span class="ident">restore</span>(<span class="ident">DB_BACKUP2_FILE_NAME</span>).<span class="ident">expect</span>(<span class="string">&quot;Restore failed!&quot;</span>);
+            <span class="ident">be</span>.<span class="ident">restore</span>(<span class="kw-2">&amp;</span><span class="ident">db_backup_file_name</span>).<span class="ident">expect</span>(<span class="string">&quot;Restore failed!&quot;</span>);
 
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">verify</span>().<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span>);
         });
