@@ -1014,33 +1014,41 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
         "acp_search_attr": [
             "class",
             "description",
+            "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
-            "oauth2_rs_account_filter",
+            "oauth2_rs_scope_map",
+            "oauth2_rs_implicit_scopes",
             "oauth2_rs_basic_secret",
-            "oauth2_rs_basic_token_key"
+            "oauth2_rs_token_key"
         ],
         "acp_modify_removedattr": [
             "description",
+            "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
-            "oauth2_rs_account_filter",
+            "oauth2_rs_scope_map",
+            "oauth2_rs_implicit_scopes",
             "oauth2_rs_basic_secret",
-            "oauth2_rs_basic_token_key"
+            "oauth2_rs_token_key"
         ],
         "acp_modify_presentattr": [
             "description",
+            "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
-            "oauth2_rs_account_filter"
+            "oauth2_rs_scope_map",
+            "oauth2_rs_implicit_scopes"
         ],
         "acp_modify_class": [],
         "acp_create_attr": [
             "class",
             "description",
+            "displayname",
             "oauth2_rs_name",
             "oauth2_rs_origin",
-            "oauth2_rs_account_filter"
+            "oauth2_rs_scope_map",
+            "oauth2_rs_implicit_scopes"
         ],
         "acp_create_class": ["oauth2_resource_server", "oauth2_resource_server_basic", "object"]
     }

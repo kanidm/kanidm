@@ -20,11 +20,11 @@ macro_rules! oauth2_transform {
                 let v = Value::new_utf8(password_from_random());
                 $e.add_ava("oauth2_rs_basic_secret", v);
             }
-            if !$e.attribute_pres("oauth2_rs_basic_token_key") {
+            if !$e.attribute_pres("oauth2_rs_token_key") {
                 security_info!("regenerating oauth2 token key");
                 let k = fernet::Fernet::generate_key();
                 let v = Value::new_secret_str(&k);
-                $e.add_ava("oauth2_rs_basic_token_key", v);
+                $e.add_ava("oauth2_rs_token_key", v);
             }
         }
         Ok(())
@@ -68,11 +68,13 @@ mod tests {
             ("class", Value::new_class("oauth2_resource_server")),
             ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::new_uuid(uuid)),
+            ("displayname", Value::new_utf8s("test_resource_server")),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
-            )
+            ),
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read"))
         );
 
         let create = vec![e];
@@ -87,7 +89,7 @@ mod tests {
                     .internal_search_uuid(&uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
-                assert!(e.attribute_pres("oauth2_rs_basic_token_key"));
+                assert!(e.attribute_pres("oauth2_rs_token_key"));
             }
         );
     }
@@ -102,12 +104,14 @@ mod tests {
             ("class", Value::new_class("oauth2_resource_server_basic")),
             ("uuid", Value::new_uuid(uuid)),
             ("oauth2_rs_name", Value::new_iname("test_resource_server")),
+            ("displayname", Value::new_utf8s("test_resource_server")),
             (
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read")),
             ("oauth2_rs_basic_secret", Value::new_utf8s("12345")),
-            ("oauth2_rs_basic_token_key", Value::new_secret_str("12345"))
+            ("oauth2_rs_token_key", Value::new_secret_str("12345"))
         );
 
         let preload = vec![e];
@@ -118,7 +122,7 @@ mod tests {
             filter!(f_eq("uuid", PartialValue::new_uuid(uuid))),
             ModifyList::new_list(vec![
                 Modify::Purged(AttrString::from("oauth2_rs_basic_secret"),),
-                Modify::Purged(AttrString::from("oauth2_rs_basic_token_key"),)
+                Modify::Purged(AttrString::from("oauth2_rs_token_key"),)
             ]),
             None,
             |qs: &QueryServerWriteTransaction| {
@@ -126,10 +130,10 @@ mod tests {
                     .internal_search_uuid(&uuid)
                     .expect("failed to get oauth2 config");
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
-                assert!(e.attribute_pres("oauth2_rs_basic_token_key"));
+                assert!(e.attribute_pres("oauth2_rs_token_key"));
                 // Check the values are different.
                 assert!(e.get_ava_single_str("oauth2_rs_basic_secret") != Some("12345"));
-                assert!(e.get_ava_single_secret("oauth2_rs_basic_token_key") != Some("12345"));
+                assert!(e.get_ava_single_secret("oauth2_rs_token_key") != Some("12345"));
             }
         );
     }

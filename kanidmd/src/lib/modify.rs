@@ -100,6 +100,10 @@ impl ModifyList<ModifyInvalid> {
         Self::new_list(vec![Modify::Present(AttrString::from(attr), v)])
     }
 
+    pub fn new_remove(attr: &str, pv: PartialValue) -> Self {
+        Self::new_list(vec![Modify::Removed(AttrString::from(attr), pv)])
+    }
+
     pub fn new_purge(attr: &str) -> Self {
         Self::new_list(vec![m_purge(attr)])
     }

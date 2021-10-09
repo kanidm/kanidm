@@ -13,7 +13,6 @@ help:
 buildx/kanidmd/simd: ## build multiarch server images
 buildx/kanidmd/simd:
 	@docker buildx build $(EXT_OPTS) --pull --push --platform "linux/amd64" \
-		--allow security.insecure \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
 		--build-arg "KANIDM_FEATURES=simd_support" \
@@ -23,7 +22,6 @@ buildx/kanidmd/simd:
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
 buildx/kanidmd/x86_64_v3:
 	@docker buildx build $(EXT_OPTS) --pull --push --platform "linux/amd64" \
-		--allow security.insecure \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
 		--build-arg "KANIDM_FEATURES=" \
@@ -33,7 +31,6 @@ buildx/kanidmd/x86_64_v3:
 buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
 	@docker buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) \
-		--allow security.insecure \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \

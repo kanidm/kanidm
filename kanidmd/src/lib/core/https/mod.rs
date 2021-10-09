@@ -449,6 +449,11 @@ pub fn create_https_server(
         .patch(oauth2_id_patch)
         .delete(oauth2_id_delete);
 
+    oauth2_route
+        .at("/:id/_scopemap/:group")
+        .post(oauth2_id_scopemap_post)
+        .delete(oauth2_id_scopemap_delete);
+
     let mut self_route = appserver.at("/v1/self");
     self_route.at("/").get(whoami);
 

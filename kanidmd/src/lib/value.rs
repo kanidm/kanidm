@@ -4,13 +4,15 @@
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
 use crate::be::dbvalue::{
-    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueTaggedStringV1, DbValueV1,
+    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1, DbValueTaggedStringV1,
+    DbValueV1,
 };
 use crate::credential::Credential;
 use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
 use std::borrow::Borrow;
+use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
 use std::str::FromStr;
@@ -42,6 +44,11 @@ lazy_static! {
     static ref NSUNIQUEID_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
+    };
+    static ref OAUTHSCOPE_RE: Regex = {
+        #[allow(clippy::expect_used)]
+        Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
+        // Must not contain whitespace.
     };
 }
 
@@ -136,6 +143,8 @@ pub enum SyntaxType {
     DateTime,
     EmailAddress,
     Url,
+    OauthScope,
+    OauthScopeMap,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -164,6 +173,8 @@ impl TryFrom<&str> for SyntaxType {
             "DATETIME" => Ok(SyntaxType::DateTime),
             "EMAIL_ADDRESS" => Ok(SyntaxType::EmailAddress),
             "URL" => Ok(SyntaxType::Url),
+            "OAUTH_SCOPE" => Ok(SyntaxType::OauthScope),
+            "OAUTH_SCOPE_MAP" => Ok(SyntaxType::OauthScopeMap),
             _ => Err(()),
         }
     }
@@ -193,6 +204,8 @@ impl TryFrom<usize> for SyntaxType {
             16 => Ok(SyntaxType::DateTime),
             17 => Ok(SyntaxType::EmailAddress),
             18 => Ok(SyntaxType::Url),
+            19 => Ok(SyntaxType::OauthScope),
+            20 => Ok(SyntaxType::OauthScopeMap),
             _ => Err(()),
         }
     }
@@ -220,6 +233,8 @@ impl SyntaxType {
             SyntaxType::DateTime => 16,
             SyntaxType::EmailAddress => 17,
             SyntaxType::Url => 18,
+            SyntaxType::OauthScope => 19,
+            SyntaxType::OauthScopeMap => 20,
         }
     }
 }
@@ -246,6 +261,8 @@ impl fmt::Display for SyntaxType {
             SyntaxType::DateTime => "DATETIME",
             SyntaxType::EmailAddress => "EMAIL_ADDRESS",
             SyntaxType::Url => "URL",
+            SyntaxType::OauthScope => "OAUTH_SCOPE",
+            SyntaxType::OauthScopeMap => "OAUTH_SCOPE_MAP",
         })
     }
 }
@@ -255,6 +272,7 @@ pub enum DataValue {
     Cred(Credential),
     SshKey(String),
     SecretValue(String),
+    OauthScopeMap(BTreeSet<String>),
 }
 
 impl std::fmt::Debug for DataValue {
@@ -263,6 +281,7 @@ impl std::fmt::Debug for DataValue {
             DataValue::Cred(_) => write!(f, "DataValue::Cred(_)"),
             DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
             DataValue::SecretValue(_) => write!(f, "DataValue::SecretValue(_)"),
+            DataValue::OauthScopeMap(_) => write!(f, "DataValue::OauthScopeMap(_)"),
         }
     }
 }
@@ -297,6 +316,8 @@ pub enum PartialValue {
     DateTime(OffsetDateTime),
     EmailAddress(String),
     Url(Url),
+    OauthScope(String),
+    OauthScopeMap(Uuid),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -590,6 +611,29 @@ impl PartialValue {
         matches!(self, PartialValue::Url(_))
     }
 
+    pub fn new_oauthscope(s: &str) -> Self {
+        PartialValue::OauthScope(s.to_string())
+    }
+
+    pub fn is_oauthscope(&self) -> bool {
+        matches!(self, PartialValue::OauthScope(_))
+    }
+
+    pub fn new_oauthscopemap(u: Uuid) -> Self {
+        PartialValue::OauthScopeMap(u)
+    }
+
+    pub fn new_oauthscopemap_s(us: &str) -> Option<Self> {
+        match Uuid::parse_str(us) {
+            Ok(u) => Some(PartialValue::OauthScopeMap(u)),
+            Err(_) => None,
+        }
+    }
+
+    pub fn is_oauthscopemap(&self) -> bool {
+        matches!(self, PartialValue::OauthScopeMap(_))
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -652,6 +696,8 @@ impl PartialValue {
                 odt.format(time::Format::Rfc3339)
             }
             PartialValue::Url(u) => u.to_string(),
+            PartialValue::OauthScope(u) => u.to_string(),
+            PartialValue::OauthScopeMap(u) => u.to_hyphenated_ref().to_string(),
         }
     }
 
@@ -1191,6 +1237,28 @@ impl Value {
         self.pv.is_url()
     }
 
+    pub fn new_oauthscope(s: &str) -> Self {
+        Value {
+            pv: PartialValue::new_oauthscope(s),
+            data: None,
+        }
+    }
+
+    pub fn is_oauthscope(&self) -> bool {
+        self.pv.is_oauthscope()
+    }
+
+    pub fn new_oauthscopemap(u: Uuid, m: BTreeSet<String>) -> Self {
+        Value {
+            pv: PartialValue::new_oauthscopemap(u),
+            data: Some(Box::new(DataValue::OauthScopeMap(m))),
+        }
+    }
+
+    pub fn is_oauthscopemap(&self) -> bool {
+        self.pv.is_oauthscopemap()
+    }
+
     pub fn lessthan(&self, s: &PartialValue) -> bool {
         self.pv.lessthan(s)
     }
@@ -1294,6 +1362,16 @@ impl Value {
                 pv: PartialValue::Url(u),
                 data: None,
             }),
+            DbValueV1::OauthScope(s) => Ok(Value {
+                pv: PartialValue::OauthScope(s),
+                data: None,
+            }),
+            DbValueV1::OauthScopeMap(osm) => Ok(Value {
+                pv: PartialValue::OauthScopeMap(osm.refer),
+                data: Some(Box::new(DataValue::OauthScopeMap(
+                    osm.data.into_iter().collect(),
+                ))),
+            }),
         }
     }
 
@@ -1369,6 +1447,17 @@ impl Value {
                 DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: mail.clone() })
             }
             PartialValue::Url(u) => DbValueV1::Url(u.clone()),
+            PartialValue::OauthScope(s) => DbValueV1::OauthScope(s.clone()),
+            PartialValue::OauthScopeMap(u) => {
+                let data = match &self.data {
+                    Some(v) => match v.as_ref() {
+                        DataValue::OauthScopeMap(m) => m.iter().cloned().collect(),
+                        _ => unreachable!(),
+                    },
+                    None => unreachable!(),
+                };
+                DbValueV1::OauthScopeMap(DbValueOauthScopeMapV1 { refer: *u, data })
+            }
         }
     }
 
@@ -1402,6 +1491,7 @@ impl Value {
     pub fn to_ref_uuid(&self) -> Option<&Uuid> {
         match &self.pv {
             PartialValue::Refer(u) => Some(u),
+            PartialValue::OauthScopeMap(u) => Some(u),
             _ => None,
         }
     }
@@ -1517,6 +1607,20 @@ impl Value {
         }
     }
 
+    pub fn to_oauthscope(self) -> Option<String> {
+        match self.pv {
+            PartialValue::OauthScope(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_oauthscopemap(self) -> Option<(Uuid, BTreeSet<String>)> {
+        match (self.pv, self.data.map(|b| (*b).clone())) {
+            (PartialValue::OauthScopeMap(u), Some(DataValue::OauthScopeMap(m))) => Some((u, m)),
+            _ => None,
+        }
+    }
+
     pub fn migrate_iutf8_iname(self) -> Option<Self> {
         match self.pv {
             PartialValue::Iutf8(v) => Some(Value {
@@ -1580,6 +1684,16 @@ impl Value {
                 odt.format(time::Format::Rfc3339)
             }
             PartialValue::Url(u) => u.to_string(),
+            PartialValue::OauthScope(s) => s.to_string(),
+            PartialValue::OauthScopeMap(u) => match &self.data {
+                Some(v) => match v.as_ref() {
+                    DataValue::OauthScopeMap(m) => {
+                        format!("{}: {:?}", u, m)
+                    }
+                    _ => format!("{}: corrupted value tag", u),
+                },
+                None => format!("{}: corrupted value", u),
+            },
         }
     }
 
@@ -1617,6 +1731,14 @@ impl Value {
             PartialValue::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
             PartialValue::EmailAddress(mail) => validator::validate_email(mail.as_str()),
             // PartialValue::Url validated through parsing.
+            PartialValue::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
+            PartialValue::OauthScopeMap(_) => match &self.data {
+                Some(v) => match v.as_ref() {
+                    DataValue::OauthScopeMap(m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
+                    _ => false,
+                },
+                None => false,
+            },
             _ => true,
         }
     }
@@ -1629,7 +1751,7 @@ impl Value {
             | PartialValue::Iname(s)
             | PartialValue::Nsuniqueid(s)
             | PartialValue::EmailAddress(s) => vec![s.clone()],
-            PartialValue::Refer(u) | PartialValue::Uuid(u) => {
+            PartialValue::Refer(u) | PartialValue::Uuid(u) | PartialValue::OauthScopeMap(u) => {
                 vec![u.to_hyphenated_ref().to_string()]
             }
             PartialValue::Bool(b) => vec![b.to_string()],
@@ -1651,6 +1773,7 @@ impl Value {
                 vec![odt.format(time::Format::Rfc3339)]
             }
             PartialValue::Url(u) => vec![u.to_string()],
+            PartialValue::OauthScope(_) => vec![],
         }
     }
 }

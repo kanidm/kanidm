@@ -1121,6 +1121,129 @@ impl QueryServerWriteV1 {
         res
     }
 
+    #[instrument(
+        level = "trace",
+        name = "oauth2_scopemap_create",
+        skip(self, uat, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_scopemap_create(
+        &self,
+        uat: Option<String>,
+        group: String,
+        scopes: Vec<String>,
+        filter: Filter<FilterInvalid>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        // Because this is from internal, we can generate a real modlist, rather
+        // than relying on the proto ones.
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
+        spanned!("handle_oauth2_scopemap_create", {
+            let ct = duration_from_epoch_now();
+
+            let ident = idms_prox_write
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+
+            let group_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(group.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving group name to target");
+                    e
+                })?;
+
+            let ml = ModifyList::new_append(
+                "oauth2_rs_scope_map",
+                Value::new_oauthscopemap(group_uuid, scopes.into_iter().collect()),
+            );
+
+            let mdf = match ModifyEvent::from_internal_parts(
+                ident,
+                &ml,
+                &filter,
+                &idms_prox_write.qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin modify");
+                    return Err(e);
+                }
+            };
+
+            trace!(?mdf, "Begin modify event");
+
+            idms_prox_write
+                .qs_write
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
+        })
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "oauth2_scopemap_delete",
+        skip(self, uat, filter, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_scopemap_delete(
+        &self,
+        uat: Option<String>,
+        group: String,
+        filter: Filter<FilterInvalid>,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let idms_prox_write = self.idms.proxy_write_async(duration_from_epoch_now()).await;
+        spanned!("handle_oauth2_scopemap_create", {
+            let ct = duration_from_epoch_now();
+
+            let ident = idms_prox_write
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+
+            let group_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(group.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving group name to target");
+                    e
+                })?;
+
+            let ml = ModifyList::new_remove(
+                "oauth2_rs_scope_map",
+                PartialValue::new_oauthscopemap(group_uuid),
+            );
+
+            let mdf = match ModifyEvent::from_internal_parts(
+                ident,
+                &ml,
+                &filter,
+                &idms_prox_write.qs_write,
+            ) {
+                Ok(m) => m,
+                Err(e) => {
+                    admin_error!(err = ?e, "Failed to begin modify");
+                    return Err(e);
+                }
+            };
+
+            trace!(?mdf, "Begin modify event");
+
+            idms_prox_write
+                .qs_write
+                .modify(&mdf)
+                .and_then(|_| idms_prox_write.commit().map(|_| ()))
+        })
+    }
+
     // ===== These below are internal only event types. =====
     #[instrument(
         level = "trace",

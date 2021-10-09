@@ -69,6 +69,40 @@ pub async fn oauth2_id_patch(mut req: tide::Request<AppState>) -> tide::Result {
     to_tide_response(res, hvalue)
 }
 
+pub async fn oauth2_id_scopemap_post(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let id = req.get_url_param("id")?;
+    let group = req.get_url_param("group")?;
+
+    let scopes: Vec<String> = req.body_json().await?;
+
+    let filter = oauth2_id(&id);
+
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_oauth2_scopemap_create(uat, group, scopes, filter, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn oauth2_id_scopemap_delete(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let id = req.get_url_param("id")?;
+    let group = req.get_url_param("group")?;
+
+    let filter = oauth2_id(&id);
+
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_oauth2_scopemap_delete(uat, group, filter, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
     // Delete this
     let uat = req.get_current_uat();
