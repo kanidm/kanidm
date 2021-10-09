@@ -1873,10 +1873,13 @@ mod tests {
         });
     }
 
-    pub const DB_BACKUP_FILE_NAME: &'static str = "./.backup_test.json";
-
     #[test]
     fn test_be_backup_restore() {
+        let db_backup_file_name = format!(
+            "{}/.backup_test.json",
+            option_env!("OUT_DIR").unwrap_or("/tmp")
+        );
+        eprintln!(" ⚠️   {}", db_backup_file_name);
         run_test!(|be: &mut BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -1900,7 +1903,7 @@ mod tests {
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
 
-            let result = fs::remove_file(DB_BACKUP_FILE_NAME);
+            let result = fs::remove_file(&db_backup_file_name);
 
             match result {
                 Err(e) => {
@@ -1914,17 +1917,20 @@ mod tests {
                 _ => (),
             }
 
-            be.backup(DB_BACKUP_FILE_NAME).expect("Backup failed!");
-            be.restore(DB_BACKUP_FILE_NAME).expect("Restore failed!");
+            be.backup(&db_backup_file_name).expect("Backup failed!");
+            be.restore(&db_backup_file_name).expect("Restore failed!");
 
             assert!(be.verify().len() == 0);
         });
     }
 
-    pub const DB_BACKUP2_FILE_NAME: &'static str = "./.backup2_test.json";
-
     #[test]
     fn test_be_backup_restore_tampered() {
+        let db_backup_file_name = format!(
+            "{}/.backup2_test.json",
+            option_env!("OUT_DIR").unwrap_or("/tmp")
+        );
+        eprintln!(" ⚠️   {}", db_backup_file_name);
         run_test!(|be: &mut BackendWriteTransaction| {
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -1948,7 +1954,7 @@ mod tests {
             assert!(entry_exists!(be, e2));
             assert!(entry_exists!(be, e3));
 
-            let result = fs::remove_file(DB_BACKUP2_FILE_NAME);
+            let result = fs::remove_file(&db_backup_file_name);
 
             match result {
                 Err(e) => {
@@ -1962,17 +1968,17 @@ mod tests {
                 _ => (),
             }
 
-            be.backup(DB_BACKUP2_FILE_NAME).expect("Backup failed!");
+            be.backup(&db_backup_file_name).expect("Backup failed!");
 
             // Now here, we need to tamper with the file.
-            let serialized_string = fs::read_to_string(DB_BACKUP2_FILE_NAME).unwrap();
+            let serialized_string = fs::read_to_string(&db_backup_file_name).unwrap();
             let mut dbentries: Vec<DbEntry> = serde_json::from_str(&serialized_string).unwrap();
             let _ = dbentries.pop();
 
             let serialized_entries_str = serde_json::to_string_pretty(&dbentries).unwrap();
-            fs::write(DB_BACKUP2_FILE_NAME, serialized_entries_str).unwrap();
+            fs::write(&db_backup_file_name, serialized_entries_str).unwrap();
 
-            be.restore(DB_BACKUP2_FILE_NAME).expect("Restore failed!");
+            be.restore(&db_backup_file_name).expect("Restore failed!");
 
             assert!(be.verify().len() == 0);
         });
