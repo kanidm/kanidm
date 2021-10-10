@@ -479,7 +479,7 @@ mod tests {
                 ),
                 Modify::Present(
                     AttrString::from("member"),
-                    Value::new_refer(*UUID_DOES_NOT_EXIST)
+                    Value::new_refer(UUID_DOES_NOT_EXIST)
                 ),
             ]),
             None,

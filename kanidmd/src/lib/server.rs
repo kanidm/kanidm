@@ -480,7 +480,7 @@ pub trait QueryServerTransaction<'a> {
                                 // all subsequent filter tests because it ... well, doesn't exist.
                                 let un = self
                                     .name_to_uuid( value)
-                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
                                 Some(Value::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -492,7 +492,7 @@ pub trait QueryServerTransaction<'a> {
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid( value)
-                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
                                 Some(Value::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -554,7 +554,7 @@ pub trait QueryServerTransaction<'a> {
                                 // all subsequent filter tests because it ... well, doesn't exist.
                                 let un = self
                                     .name_to_uuid(value)
-                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -580,7 +580,7 @@ pub trait QueryServerTransaction<'a> {
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid(value)
-                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -597,7 +597,7 @@ pub trait QueryServerTransaction<'a> {
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid(value)
-                                    .unwrap_or_else(|_| *UUID_DOES_NOT_EXIST);
+                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_oauthscopemap(un))
                             })
                             // I think this is unreachable due to how the .or_else works.

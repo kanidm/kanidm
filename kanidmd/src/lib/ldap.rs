@@ -344,7 +344,7 @@ impl LdapServer {
         let target_uuid: Uuid = if dn.is_empty() {
             if pw.is_empty() {
                 security_info!("✅ LDAP Bind success anonymous");
-                *UUID_ANONYMOUS
+                UUID_ANONYMOUS
             } else {
                 security_info!("❌ LDAP Bind failure anonymous");
                 // Yeah-nahhhhh
@@ -567,7 +567,7 @@ mod tests {
                 let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_t.uuid == *UUID_ANONYMOUS);
+                assert!(anon_t.uuid == UUID_ANONYMOUS);
                 assert!(task::block_on(ldaps.do_bind(idms, "", "test"))
                     .unwrap()
                     .is_none());
@@ -746,7 +746,7 @@ mod tests {
                 let anon_t = task::block_on(ldaps.do_bind(idms, "", ""))
                     .unwrap()
                     .unwrap();
-                assert!(anon_t.uuid == *UUID_ANONYMOUS);
+                assert!(anon_t.uuid == UUID_ANONYMOUS);
 
                 // Check that when we request *, we get default list.
                 let sr = SearchRequest {

@@ -540,7 +540,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("class"),
                 SchemaAttribute {
                     name: AttrString::from("class"),
-                    uuid: *UUID_SCHEMA_ATTR_CLASS,
+                    uuid: UUID_SCHEMA_ATTR_CLASS,
                     description: String::from("The set of classes defining an object"),
                     multivalue: true,
                     unique: false,
@@ -553,7 +553,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("uuid"),
                 SchemaAttribute {
                     name: AttrString::from("uuid"),
-                    uuid: *UUID_SCHEMA_ATTR_UUID,
+                    uuid: UUID_SCHEMA_ATTR_UUID,
                     description: String::from("The universal unique id of the object"),
                     multivalue: false,
                     // Uniqueness is handled by base.rs, not attrunique here due to
@@ -568,7 +568,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("last_modified_cid"),
                 SchemaAttribute {
                     name: AttrString::from("last_modified_cid"),
-                    uuid: *UUID_SCHEMA_ATTR_LAST_MOD_CID,
+                    uuid: UUID_SCHEMA_ATTR_LAST_MOD_CID,
                     description: String::from("The cid of the last change to this object"),
                     multivalue: false,
                     // Uniqueness is handled by base.rs, not attrunique here due to
@@ -583,7 +583,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("name"),
                 SchemaAttribute {
                     name: AttrString::from("name"),
-                    uuid: *UUID_SCHEMA_ATTR_NAME,
+                    uuid: UUID_SCHEMA_ATTR_NAME,
                     description: String::from("The shortform name of an object"),
                     multivalue: false,
                     unique: true,
@@ -596,7 +596,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("spn"),
                 SchemaAttribute {
                     name: AttrString::from("spn"),
-                    uuid: *UUID_SCHEMA_ATTR_SPN,
+                    uuid: UUID_SCHEMA_ATTR_SPN,
                     description: String::from(
                         "The Security Principal Name of an object, unique across all domain trusts",
                     ),
@@ -611,7 +611,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("attributename"),
                 SchemaAttribute {
                     name: AttrString::from("attributename"),
-                    uuid: *UUID_SCHEMA_ATTR_ATTRIBUTENAME,
+                    uuid: UUID_SCHEMA_ATTR_ATTRIBUTENAME,
                     description: String::from("The name of a schema attribute"),
                     multivalue: false,
                     unique: true,
@@ -624,7 +624,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("classname"),
                 SchemaAttribute {
                     name: AttrString::from("classname"),
-                    uuid: *UUID_SCHEMA_ATTR_CLASSNAME,
+                    uuid: UUID_SCHEMA_ATTR_CLASSNAME,
                     description: String::from("The name of a schema class"),
                     multivalue: false,
                     unique: true,
@@ -637,7 +637,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("description"),
                 SchemaAttribute {
                     name: AttrString::from("description"),
-                    uuid: *UUID_SCHEMA_ATTR_DESCRIPTION,
+                    uuid: UUID_SCHEMA_ATTR_DESCRIPTION,
                     description: String::from("A description of an attribute, object or class"),
                     multivalue: false,
                     unique: false,
@@ -648,7 +648,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             );
             self.attributes.insert(AttrString::from("multivalue"), SchemaAttribute {
                 name: AttrString::from("multivalue"),
-                uuid: *UUID_SCHEMA_ATTR_MULTIVALUE,
+                uuid: UUID_SCHEMA_ATTR_MULTIVALUE,
                 description: String::from("If true, this attribute is able to store multiple values rather than just a single value."),
                 multivalue: false,
                 unique: false,
@@ -658,7 +658,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             });
             self.attributes.insert(AttrString::from("phantom"), SchemaAttribute {
                 name: AttrString::from("phantom"),
-                uuid: *UUID_SCHEMA_ATTR_PHANTOM,
+                uuid: UUID_SCHEMA_ATTR_PHANTOM,
                 description: String::from("If true, this attribute must NOT be present in any may/must sets of a class as. This represents generated attributes."),
                 multivalue: false,
                 unique: false,
@@ -668,7 +668,7 @@ impl<'a> SchemaWriteTransaction<'a> {
             });
             self.attributes.insert(AttrString::from("unique"), SchemaAttribute {
                 name: AttrString::from("unique"),
-                uuid: *UUID_SCHEMA_ATTR_UNIQUE,
+                uuid: UUID_SCHEMA_ATTR_UNIQUE,
                 description: String::from("If true, this attribute must store a unique value through out the database."),
                 multivalue: false,
                 unique: false,
@@ -680,7 +680,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("index"),
                 SchemaAttribute {
                     name: AttrString::from("index"),
-                    uuid: *UUID_SCHEMA_ATTR_INDEX,
+                    uuid: UUID_SCHEMA_ATTR_INDEX,
                     description: String::from(
                         "Describe the indexes to apply to instances of this attribute.",
                     ),
@@ -695,7 +695,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("syntax"),
                 SchemaAttribute {
                     name: AttrString::from("syntax"),
-                    uuid: *UUID_SCHEMA_ATTR_SYNTAX,
+                    uuid: UUID_SCHEMA_ATTR_SYNTAX,
                     description: String::from(
                         "Describe the syntax of this attribute. This affects indexing and sorting.",
                     ),
@@ -710,7 +710,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("systemmay"),
                 SchemaAttribute {
                     name: AttrString::from("systemmay"),
-                    uuid: *UUID_SCHEMA_ATTR_SYSTEMMAY,
+                    uuid: UUID_SCHEMA_ATTR_SYSTEMMAY,
                     description: String::from(
                         "A list of system provided optional attributes this class can store.",
                     ),
@@ -725,7 +725,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("may"),
                 SchemaAttribute {
                     name: AttrString::from("may"),
-                    uuid: *UUID_SCHEMA_ATTR_MAY,
+                    uuid: UUID_SCHEMA_ATTR_MAY,
                     description: String::from(
                         "A user modifiable list of optional attributes this class can store.",
                     ),
@@ -740,7 +740,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("systemmust"),
                 SchemaAttribute {
                     name: AttrString::from("systemmust"),
-                    uuid: *UUID_SCHEMA_ATTR_SYSTEMMUST,
+                    uuid: UUID_SCHEMA_ATTR_SYSTEMMUST,
                     description: String::from(
                         "A list of system provided required attributes this class must store.",
                     ),
@@ -755,7 +755,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("must"),
                 SchemaAttribute {
                     name: AttrString::from("must"),
-                    uuid: *UUID_SCHEMA_ATTR_MUST,
+                    uuid: UUID_SCHEMA_ATTR_MUST,
                     description: String::from(
                         "A user modifiable list of required attributes this class must store.",
                     ),
@@ -772,7 +772,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_enable"),
                 SchemaAttribute {
                     name: AttrString::from("acp_enable"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_ENABLE,
+                    uuid: UUID_SCHEMA_ATTR_ACP_ENABLE,
                     description: String::from("A flag to determine if this ACP is active for application. True is enabled, and enforce. False is checked but not enforced."),
                     multivalue: false,
                     unique: false,
@@ -786,7 +786,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_receiver"),
                 SchemaAttribute {
                     name: AttrString::from("acp_receiver"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_RECEIVER,
+                    uuid: UUID_SCHEMA_ATTR_ACP_RECEIVER,
                     description: String::from(
                         "Who the ACP applies to, constraining or allowing operations.",
                     ),
@@ -801,7 +801,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_targetscope"),
                 SchemaAttribute {
                     name: AttrString::from("acp_targetscope"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_TARGETSCOPE,
+                    uuid: UUID_SCHEMA_ATTR_ACP_TARGETSCOPE,
                     description: String::from(
                         "The effective targets of the ACP, IE what will be acted upon.",
                     ),
@@ -816,7 +816,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_search_attr"),
                 SchemaAttribute {
                     name: AttrString::from("acp_search_attr"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR,
+                    uuid: UUID_SCHEMA_ATTR_ACP_SEARCH_ATTR,
                     description: String::from("The attributes that may be viewed or searched by the reciever on targetscope."),
                     multivalue: true,
                     unique: false,
@@ -829,7 +829,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_create_class"),
                 SchemaAttribute {
                     name: AttrString::from("acp_create_class"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_CREATE_CLASS,
+                    uuid: UUID_SCHEMA_ATTR_ACP_CREATE_CLASS,
                     description: String::from(
                         "The set of classes that can be created on a new entry.",
                     ),
@@ -844,7 +844,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_create_attr"),
                 SchemaAttribute {
                     name: AttrString::from("acp_create_attr"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_CREATE_ATTR,
+                    uuid: UUID_SCHEMA_ATTR_ACP_CREATE_ATTR,
                     description: String::from(
                         "The set of attribute types that can be created on an entry.",
                     ),
@@ -860,7 +860,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_modify_removedattr"),
                 SchemaAttribute {
                     name: AttrString::from("acp_modify_removedattr"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR,
+                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_REMOVEDATTR,
                     description: String::from("The set of attribute types that could be removed or purged in a modification."),
                     multivalue: true,
                     unique: false,
@@ -873,7 +873,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_modify_presentattr"),
                 SchemaAttribute {
                     name: AttrString::from("acp_modify_presentattr"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR,
+                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_PRESENTATTR,
                     description: String::from("The set of attribute types that could be added or asserted in a modification."),
                     multivalue: true,
                     unique: false,
@@ -886,7 +886,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("acp_modify_class"),
                 SchemaAttribute {
                     name: AttrString::from("acp_modify_class"),
-                    uuid: *UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS,
+                    uuid: UUID_SCHEMA_ATTR_ACP_MODIFY_CLASS,
                     description: String::from("The set of class values that could be asserted or added to an entry. Only applies to modify::present operations on class."),
                     multivalue: true,
                     unique: false,
@@ -900,7 +900,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("memberof"),
                 SchemaAttribute {
                     name: AttrString::from("memberof"),
-                    uuid: *UUID_SCHEMA_ATTR_MEMBEROF,
+                    uuid: UUID_SCHEMA_ATTR_MEMBEROF,
                     description: String::from("reverse group membership of the object"),
                     multivalue: true,
                     unique: false,
@@ -913,7 +913,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("directmemberof"),
                 SchemaAttribute {
                     name: AttrString::from("directmemberof"),
-                    uuid: *UUID_SCHEMA_ATTR_DIRECTMEMBEROF,
+                    uuid: UUID_SCHEMA_ATTR_DIRECTMEMBEROF,
                     description: String::from("reverse direct group membership of the object"),
                     multivalue: true,
                     unique: false,
@@ -926,7 +926,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("member"),
                 SchemaAttribute {
                     name: AttrString::from("member"),
-                    uuid: *UUID_SCHEMA_ATTR_MEMBER,
+                    uuid: UUID_SCHEMA_ATTR_MEMBER,
                     description: String::from("List of members of the group"),
                     multivalue: true,
                     unique: false,
@@ -940,7 +940,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("version"),
                 SchemaAttribute {
                     name: AttrString::from("version"),
-                    uuid: *UUID_SCHEMA_ATTR_VERSION,
+                    uuid: UUID_SCHEMA_ATTR_VERSION,
                     description: String::from(
                         "The systems internal migration version for provided objects",
                     ),
@@ -956,7 +956,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("domain"),
                 SchemaAttribute {
                     name: AttrString::from("domain"),
-                    uuid: *UUID_SCHEMA_ATTR_DOMAIN,
+                    uuid: UUID_SCHEMA_ATTR_DOMAIN,
                     description: String::from("A DNS Domain name entry."),
                     multivalue: true,
                     unique: false,
@@ -969,7 +969,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("claim"),
                 SchemaAttribute {
                     name: AttrString::from("claim"),
-                    uuid: *UUID_SCHEMA_ATTR_CLAIM,
+                    uuid: UUID_SCHEMA_ATTR_CLAIM,
                     description: String::from(
                         "The string identifier of an extracted claim that can be filtered",
                     ),
@@ -984,7 +984,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("password_import"),
                 SchemaAttribute {
                     name: AttrString::from("password_import"),
-                    uuid: *UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
+                    uuid: UUID_SCHEMA_ATTR_PASSWORD_IMPORT,
                     description: String::from("An imported password hash from an external system."),
                     multivalue: true,
                     unique: false,
@@ -999,7 +999,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("dn"),
                 SchemaAttribute {
                     name: AttrString::from("dn"),
-                    uuid: *UUID_SCHEMA_ATTR_DN,
+                    uuid: UUID_SCHEMA_ATTR_DN,
                     description: String::from("An LDAP Compatible DN"),
                     multivalue: false,
                     unique: false,
@@ -1012,7 +1012,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("entrydn"),
                 SchemaAttribute {
                     name: AttrString::from("entrydn"),
-                    uuid: *UUID_SCHEMA_ATTR_ENTRYDN,
+                    uuid: UUID_SCHEMA_ATTR_ENTRYDN,
                     description: String::from("An LDAP Compatible EntryDN"),
                     multivalue: false,
                     unique: false,
@@ -1025,7 +1025,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("entryuuid"),
                 SchemaAttribute {
                     name: AttrString::from("entryuuid"),
-                    uuid: *UUID_SCHEMA_ATTR_ENTRYUUID,
+                    uuid: UUID_SCHEMA_ATTR_ENTRYUUID,
                     description: String::from("An LDAP Compatible entryUUID"),
                     multivalue: false,
                     unique: false,
@@ -1038,7 +1038,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("objectclass"),
                 SchemaAttribute {
                     name: AttrString::from("objectclass"),
-                    uuid: *UUID_SCHEMA_ATTR_OBJECTCLASS,
+                    uuid: UUID_SCHEMA_ATTR_OBJECTCLASS,
                     description: String::from("An LDAP Compatible objectClass"),
                     multivalue: true,
                     unique: false,
@@ -1051,7 +1051,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("cn"),
                 SchemaAttribute {
                     name: AttrString::from("cn"),
-                    uuid: *UUID_SCHEMA_ATTR_CN,
+                    uuid: UUID_SCHEMA_ATTR_CN,
                     description: String::from("An LDAP Compatible objectClass"),
                     multivalue: false,
                     unique: false,
@@ -1064,7 +1064,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("keys"),
                 SchemaAttribute {
                     name: AttrString::from("keys"),
-                    uuid: *UUID_SCHEMA_ATTR_KEYS,
+                    uuid: UUID_SCHEMA_ATTR_KEYS,
                     description: String::from("An LDAP Compatible keys (ssh)"),
                     multivalue: true,
                     unique: false,
@@ -1077,7 +1077,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("sshpublickey"),
                 SchemaAttribute {
                     name: AttrString::from("sshpublickey"),
-                    uuid: *UUID_SCHEMA_ATTR_SSHPUBLICKEY,
+                    uuid: UUID_SCHEMA_ATTR_SSHPUBLICKEY,
                     description: String::from("An LDAP Compatible sshPublicKey"),
                     multivalue: true,
                     unique: false,
@@ -1090,7 +1090,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("email"),
                 SchemaAttribute {
                     name: AttrString::from("email"),
-                    uuid: *UUID_SCHEMA_ATTR_EMAIL,
+                    uuid: UUID_SCHEMA_ATTR_EMAIL,
                     description: String::from("An LDAP Compatible email"),
                     multivalue: true,
                     unique: false,
@@ -1103,7 +1103,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("emailaddress"),
                 SchemaAttribute {
                     name: AttrString::from("emailaddress"),
-                    uuid: *UUID_SCHEMA_ATTR_EMAILADDRESS,
+                    uuid: UUID_SCHEMA_ATTR_EMAILADDRESS,
                     description: String::from("An LDAP Compatible emailAddress"),
                     multivalue: true,
                     unique: false,
@@ -1116,7 +1116,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("uidnumber"),
                 SchemaAttribute {
                     name: AttrString::from("uidnumber"),
-                    uuid: *UUID_SCHEMA_ATTR_UIDNUMBER,
+                    uuid: UUID_SCHEMA_ATTR_UIDNUMBER,
                     description: String::from("An LDAP Compatible uidNumber"),
                     multivalue: false,
                     unique: false,
@@ -1131,7 +1131,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("attributetype"),
                 SchemaClass {
                     name: AttrString::from("attributetype"),
-                    uuid: *UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
+                    uuid: UUID_SCHEMA_CLASS_ATTRIBUTETYPE,
                     description: String::from("Definition of a schema attribute"),
                     systemmay: vec![AttrString::from("phantom"), AttrString::from("index")],
                     may: vec![],
@@ -1150,7 +1150,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("classtype"),
                 SchemaClass {
                     name: AttrString::from("classtype"),
-                    uuid: *UUID_SCHEMA_CLASS_CLASSTYPE,
+                    uuid: UUID_SCHEMA_CLASS_CLASSTYPE,
                     description: String::from("Definition of a schema classtype"),
                     systemmay: vec![
                         AttrString::from("systemmay"),
@@ -1171,7 +1171,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("object"),
                 SchemaClass {
                     name: AttrString::from("object"),
-                    uuid: *UUID_SCHEMA_CLASS_OBJECT,
+                    uuid: UUID_SCHEMA_CLASS_OBJECT,
                     description: String::from(
                         "A system created class that all objects must contain",
                     ),
@@ -1189,7 +1189,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("memberof"),
                 SchemaClass {
                     name: AttrString::from("memberof"),
-                    uuid: *UUID_SCHEMA_CLASS_MEMBEROF,
+                    uuid: UUID_SCHEMA_CLASS_MEMBEROF,
                     description: String::from("Class that is dynamically added to recepients of memberof or directmemberof"),
                     systemmay: vec![
                         AttrString::from("memberof"),
@@ -1204,7 +1204,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("extensibleobject"),
                 SchemaClass {
                     name: AttrString::from("extensibleobject"),
-                    uuid: *UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT,
+                    uuid: UUID_SCHEMA_CLASS_EXTENSIBLEOBJECT,
                     description: String::from(
                         "A class type that has green hair and turns off all rules ...",
                     ),
@@ -1219,7 +1219,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("recycled"),
                 SchemaClass {
                     name: AttrString::from("recycled"),
-                    uuid: *UUID_SCHEMA_CLASS_RECYCLED,
+                    uuid: UUID_SCHEMA_CLASS_RECYCLED,
                     description: String::from("An object that has been deleted, but still recoverable via the revive operation. Recycled objects are not modifiable, only revivable."),
                     systemmay: vec![],
                     may: vec![],
@@ -1231,7 +1231,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("tombstone"),
                 SchemaClass {
                     name: AttrString::from("tombstone"),
-                    uuid: *UUID_SCHEMA_CLASS_TOMBSTONE,
+                    uuid: UUID_SCHEMA_CLASS_TOMBSTONE,
                     description: String::from("An object that is purged from the recycle bin. This is a system internal state. Tombstones have no attributes beside UUID."),
                     systemmay: vec![],
                     may: vec![],
@@ -1247,7 +1247,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("system_info"),
                 SchemaClass {
                     name: AttrString::from("system_info"),
-                    uuid: *UUID_SCHEMA_CLASS_SYSTEM_INFO,
+                    uuid: UUID_SCHEMA_CLASS_SYSTEM_INFO,
                     description: String::from("System metadata object class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1265,7 +1265,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("access_control_profile"),
                 SchemaClass {
                     name: AttrString::from("access_control_profile"),
-                    uuid: *UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
+                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_PROFILE,
                     description: String::from("System Access Control Profile Class"),
                     systemmay: vec![
                         AttrString::from("acp_enable"),
@@ -1284,7 +1284,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("access_control_search"),
                 SchemaClass {
                     name: AttrString::from("access_control_search"),
-                    uuid: *UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
+                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_SEARCH,
                     description: String::from("System Access Control Search Class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1296,7 +1296,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("access_control_delete"),
                 SchemaClass {
                     name: AttrString::from("access_control_delete"),
-                    uuid: *UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
+                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_DELETE,
                     description: String::from("System Access Control DELETE Class"),
                     systemmay: vec![],
                     may: vec![],
@@ -1308,7 +1308,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("access_control_modify"),
                 SchemaClass {
                     name: AttrString::from("access_control_modify"),
-                    uuid: *UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY,
+                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_MODIFY,
                     description: String::from("System Access Control Modify Class"),
                     systemmay: vec![
                         AttrString::from("acp_modify_removedattr"),
@@ -1324,7 +1324,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("access_control_create"),
                 SchemaClass {
                     name: AttrString::from("access_control_create"),
-                    uuid: *UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE,
+                    uuid: UUID_SCHEMA_CLASS_ACCESS_CONTROL_CREATE,
                     description: String::from("System Access Control Create Class"),
                     systemmay: vec![
                         AttrString::from("acp_create_class"),
@@ -1339,7 +1339,7 @@ impl<'a> SchemaWriteTransaction<'a> {
                 AttrString::from("system"),
                 SchemaClass {
                     name: AttrString::from("system"),
-                    uuid: *UUID_SCHEMA_CLASS_SYSTEM,
+                    uuid: UUID_SCHEMA_CLASS_SYSTEM,
                     description: String::from("A class denoting that a type is system generated and protected. It has special internal behaviour."),
                     systemmay: vec![],
                     may: vec![],

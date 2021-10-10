@@ -96,10 +96,11 @@ impl Plugin for Base {
             }
         }
 
+        //? [Quinn] Now that we have raw UUID constants, can we fix improve this part??
         // Setup UUIDS because lazy_static can't create a type valid for range.
         let uuid_admin = *UUID_ADMIN;
-        let uuid_anonymous = *UUID_ANONYMOUS;
-        let uuid_does_not_exist = *UUID_DOES_NOT_EXIST;
+        let uuid_anonymous = UUID_ANONYMOUS;
+        let uuid_does_not_exist = UUID_DOES_NOT_EXIST;
 
         // Check that the system-protected range is not in the cand_uuid, unless we are
         // an internal operation.

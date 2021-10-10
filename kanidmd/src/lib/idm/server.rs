@@ -813,7 +813,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             })?;
 
         // if anonymous
-        if lae.target == *UUID_ANONYMOUS {
+        if lae.target == UUID_ANONYMOUS {
             let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
@@ -828,7 +828,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
-                uuid: *UUID_ANONYMOUS,
+                uuid: UUID_ANONYMOUS,
                 effective_uat: account
                     .to_userauthtoken(tracing_id, ct, AuthType::Anonymous)
                     .ok_or(OperationError::InvalidState)

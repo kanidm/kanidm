@@ -172,7 +172,7 @@ impl UnixUserAccount {
     }
 
     pub fn is_anonymous(&self) -> bool {
-        self.uuid == *UUID_ANONYMOUS
+        self.uuid == UUID_ANONYMOUS
     }
 
     pub(crate) fn gen_password_mod(

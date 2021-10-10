@@ -225,7 +225,7 @@ impl Account {
     pub fn primary_cred_uuid(&self) -> Uuid {
         match &self.primary {
             Some(cred) => cred.uuid,
-            None => *UUID_ANONYMOUS,
+            None => UUID_ANONYMOUS,
         }
     }
 
@@ -236,7 +236,7 @@ impl Account {
     }
 
     pub fn is_anonymous(&self) -> bool {
-        self.uuid == *UUID_ANONYMOUS
+        self.uuid == UUID_ANONYMOUS
     }
 
     pub(crate) fn gen_generatedpassword_recover_mod(
