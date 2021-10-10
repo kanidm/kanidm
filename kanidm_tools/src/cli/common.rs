@@ -75,7 +75,7 @@ impl CommonOpt {
                     #[allow(clippy::expect_used)]
                     let (f_uname, f_token) = tokens.iter().next().expect("Memory Corruption");
                     // else pick the first token
-                    info!("Using cached token for name {}", f_uname);
+                    debug!("Using cached token for name {}", f_uname);
                     f_token.clone()
                 } else {
                     // Unable to automatically select the user because multiple tokens exist
@@ -148,7 +148,7 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
     match tokens.iter().nth(selection) {
         Some(value) => {
             let (f_uname, f_token) = value;
-            info!("Using cached token for name {}", f_uname);
+            debug!("Using cached token for name {}", f_uname);
             debug!("Cached token: {}", f_token);
             Ok((f_uname.to_string(), f_token.to_string()))
         }
