@@ -262,7 +262,7 @@
                     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
                     <span class="kw">let</span> (<span class="ident">f_uname</span>, <span class="ident">f_token</span>) <span class="op">=</span> <span class="ident">tokens</span>.<span class="ident">iter</span>().<span class="ident">next</span>().<span class="ident">expect</span>(<span class="string">&quot;Memory Corruption&quot;</span>);
                     <span class="comment">// else pick the first token</span>
-                    <span class="macro">info!</span>(<span class="string">&quot;Using cached token for name {}&quot;</span>, <span class="ident">f_uname</span>);
+                    <span class="macro">debug!</span>(<span class="string">&quot;Using cached token for name {}&quot;</span>, <span class="ident">f_uname</span>);
                     <span class="ident">f_token</span>.<span class="ident">clone</span>()
                 } <span class="kw">else</span> {
                     <span class="comment">// Unable to automatically select the user because multiple tokens exist</span>
@@ -335,7 +335,7 @@
     <span class="kw">match</span> <span class="ident">tokens</span>.<span class="ident">iter</span>().<span class="ident">nth</span>(<span class="ident">selection</span>) {
         <span class="prelude-val">Some</span>(<span class="ident">value</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="kw">let</span> (<span class="ident">f_uname</span>, <span class="ident">f_token</span>) <span class="op">=</span> <span class="ident">value</span>;
-            <span class="macro">info!</span>(<span class="string">&quot;Using cached token for name {}&quot;</span>, <span class="ident">f_uname</span>);
+            <span class="macro">debug!</span>(<span class="string">&quot;Using cached token for name {}&quot;</span>, <span class="ident">f_uname</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;Cached token: {}&quot;</span>, <span class="ident">f_token</span>);
             <span class="prelude-val">Ok</span>((<span class="ident">f_uname</span>.<span class="ident">to_string</span>(), <span class="ident">f_token</span>.<span class="ident">to_string</span>()))
         }
