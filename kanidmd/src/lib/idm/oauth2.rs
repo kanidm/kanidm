@@ -667,7 +667,7 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(*UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
