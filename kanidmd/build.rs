@@ -18,11 +18,6 @@ include!("src/server/opt.rs");
 include!("../profiles/syntax.rs");
 
 fn main() {
-    let outdir = match env::var_os("OUT_DIR") {
-        None => return,
-        Some(outdir) => outdir,
-    };
-
     // check to see if the rust version matches the rust minimum version we require for this build
     let rust_minver = match read_to_string("../RUST_MSRV") {
         Ok(value) => value,
@@ -35,8 +30,26 @@ fn main() {
         panic!("This crate requires rustc >= {}, quitting.", rust_minver);
     }
 
-    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Bash, outdir.clone());
-    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, outdir);
+    let outdir = match env::var_os("OUT_DIR") {
+        None => return,
+        Some(outdir) => outdir,
+    };
+
+    // Will be the form /Volumes/ramdisk/rs/debug/build/kanidm-8aadc4b0821e9fe7/out
+    // We want to get to /Volumes/ramdisk/rs/debug/completions
+    let comp_dir = PathBuf::from(outdir)
+        .ancestors()
+        .skip(2)
+        .next()
+        .map(|p| p.join("completions"))
+        .expect("Unable to process completions path");
+
+    if !comp_dir.exists() {
+        std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
+    }
+
+    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Bash, comp_dir.clone());
+    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, comp_dir);
 
     // transform any requested paths for our server. We do this by reading
     // our profile that we have been provided.
