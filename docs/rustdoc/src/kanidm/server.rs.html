@@ -4550,7 +4550,7 @@
                                 <span class="comment">// all subsequent filter tests because it ... well, doesn&#39;t exist.</span>
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>( <span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">Value::new_uuid</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4562,7 +4562,7 @@
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>( <span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">Value::new_refer</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4624,7 +4624,7 @@
                                 <span class="comment">// all subsequent filter tests because it ... well, doesn&#39;t exist.</span>
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_uuid</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4650,7 +4650,7 @@
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_refer</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4667,7 +4667,7 @@
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_oauthscopemap</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>

@@ -643,6 +643,7 @@
 <span id="643">643</span>
 <span id="644">644</span>
 <span id="645">645</span>
+<span id="646">646</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::plugins::Plugin</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
@@ -742,10 +743,11 @@
             }
         }
 
+        <span class="comment">//? [Quinn] Now that we have raw UUID constants, can we fix improve this part??</span>
         <span class="comment">// Setup UUIDS because lazy_static can&#39;t create a type valid for range.</span>
         <span class="kw">let</span> <span class="ident">uuid_admin</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>;
-        <span class="kw">let</span> <span class="ident">uuid_anonymous</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ANONYMOUS</span>;
-        <span class="kw">let</span> <span class="ident">uuid_does_not_exist</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_DOES_NOT_EXIST</span>;
+        <span class="kw">let</span> <span class="ident">uuid_anonymous</span> <span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span>;
+        <span class="kw">let</span> <span class="ident">uuid_does_not_exist</span> <span class="op">=</span> <span class="ident">UUID_DOES_NOT_EXIST</span>;
 
         <span class="comment">// Check that the system-protected range is not in the cand_uuid, unless we are</span>
         <span class="comment">// an internal operation.</span>

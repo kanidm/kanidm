@@ -717,7 +717,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Uuid</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="prelude-val">Some</span>(<span class="ident">cred</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cred</span>.<span class="ident">uuid</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">UUID_ANONYMOUS</span>,
+            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">UUID_ANONYMOUS</span>,
         }
     }
 
@@ -728,7 +728,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ANONYMOUS</span>
+        <span class="self">self</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span>
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_generatedpassword_recover_mod</span>(
