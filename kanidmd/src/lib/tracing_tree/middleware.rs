@@ -48,13 +48,23 @@ impl TreeMiddleware {
         }
         req.set_ext(TreeMiddlewareFinished);
 
+        let host = req.host().unwrap_or("-").to_string();
+
         let path = req.url().path().to_string();
         let method = req.method();
+        let remote_address = req.remote().unwrap_or("-").to_string();
 
+        let host = host.as_str();
         let path = path.as_str();
         let method = method.as_ref();
-
-        request_info!(http.method = method, path, "Request received");
+        let remote_address = remote_address.as_str();
+        request_info!(
+            http.host = host,
+            http.method = method,
+            path,
+            src = remote_address,
+            "Request received"
+        );
 
         let response = next.run(req).await;
         let status = response.status();
