@@ -153,7 +153,7 @@ Each of these controls one of the four stages of PAM. The content should look li
     auth        required      pam_deny.so
 
     # /etc/pam.d/common-password-pc
-    password    requisite   pam_cracklib.so
+    password    requisite   pam_pwquality.so
     password    [default=1 ignore=ignore success=ok] pam_localuser.so
     password    required    pam_unix.so use_authtok nullok shadow try_first_pass
     password    required    pam_kanidm.so
