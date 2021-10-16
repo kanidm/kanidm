@@ -65,7 +65,7 @@ Kanidm will expose it's oauth2 apis at the urls:
 For an authorisation to proceed, the resource server will request a list of scopes, which are
 unique to that resource server. For example, when a user wishes to login to the admin panel
 of the resource server, it may request the "admin" scope from kanidm for authorisation. But when
-a user wants to login, it may only request "acces" as a scope from kanidm.
+a user wants to login, it may only request "access" as a scope from kanidm.
 
 As each resource server may have it's own scopes and understanding of these, Kanidm isolates
 scopes to each resource server connected to Kanidm. Kanidm has two methods of granting scopes to accounts (users).

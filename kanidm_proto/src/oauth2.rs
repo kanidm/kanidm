@@ -79,6 +79,41 @@ pub struct AccessTokenResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct AccessTokenIntrospectRequest {
+    pub token: String,
+    /// https://datatracker.ietf.org/doc/html/rfc7009#section-4.1.2
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_type_hint: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct AccessTokenIntrospectResponse {
+    pub active: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub scope: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub client_id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub username: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub token_type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub exp: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iat: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nbf: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub sub: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub aud: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub iss: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub jti: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct ErrorResponse {
     pub error: String,
     #[serde(skip_serializing_if = "Option::is_none")]

@@ -20,7 +20,7 @@ use url::{Origin, Url};
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
 pub use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod,
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod,
     ConsentRequest, ErrorResponse,
 };
 

@@ -2,6 +2,7 @@ use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_tide_response, AppState, RequestExtensions};
 use crate::idm::oauth2::{
     AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess, ErrorResponse, Oauth2Error,
+    AccessTokenIntrospectRequest
 };
 use crate::prelude::*;
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -401,7 +402,24 @@ pub async fn get_openid_configuration(_req: tide::Request<AppState>) -> tide::Re
     Ok(res)
 }
 
-/*
-pub async fn oauth2_token_introspect_get(req: tide::Request<AppState>) -> tide::Result {
+pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> tide::Result {
+    // Get the introspection request, could we accept json or form? Prob needs content type here.
+    let intr_req: AccessTokenIntrospectRequest = 
+        req.body_form().await
+        .map_err(|e| {
+        request_error!("{:?}", e);
+        tide::Error::from_str(
+            tide::StatusCode::BadRequest,
+            "Invalid Oauth2 AccessTokenIntrospectRequest",
+        )
+    })
+    ?;
+
+    request_trace!("Introspect Request - {:?}", intr_req);
+
+    // Needs basic auth!!!
+
+    unimplemented!();
+
 }
-*/
+
