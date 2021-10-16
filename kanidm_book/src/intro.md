@@ -1,7 +1,7 @@
 # Introduction to Kanidm
 
-Kanidm is an identity management server, acting as an authority on accounts and authorisation
-within a technical environment.
+Kanidm is an identity management server, acting as an authority on account information, authentication
+and authorisation within a technical environment.
 
 The intent of the Kanidm project is to:
 
