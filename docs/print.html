@@ -1317,7 +1317,7 @@ auth        sufficient    pam_kanidm.so ignore_unknown_user
 auth        required      pam_deny.so
 
 # /etc/pam.d/common-password-pc
-password    requisite   pam_cracklib.so
+password    requisite   pam_pwquality.so
 password    [default=1 ignore=ignore success=ok] pam_localuser.so
 password    required    pam_unix.so use_authtok nullok shadow try_first_pass
 password    required    pam_kanidm.so
