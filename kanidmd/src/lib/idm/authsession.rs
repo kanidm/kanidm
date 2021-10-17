@@ -803,7 +803,7 @@ mod tests {
     fn create_webauthn() -> Webauthn<WebauthnDomainConfig> {
         Webauthn::new(WebauthnDomainConfig {
             rp_name: "example.com".to_string(),
-            origin: "https://idm.example.com".to_string(),
+            origin: url::Url::parse("https://idm.example.com").unwrap(),
             rp_id: "example.com".to_string(),
         })
     }

@@ -4013,8 +4013,7 @@ dependencies = [
 [[package]]
 name = "webauthn-authenticator-rs"
 version = "0.3.0-alpha.11"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4f063838be0c0c15eda578c788f31ff2c14831358931b37983df5c9feb5f50f2"
+source = "git+https://github.com/kanidm/webauthn-authenticator-rs.git?rev=c91205e57a783a7c3a6e09ade377c83a86fe0900#c91205e57a783a7c3a6e09ade377c83a86fe0900"
 dependencies = [
  "authenticator",
  "log",
@@ -4029,8 +4028,7 @@ dependencies = [
 [[package]]
 name = "webauthn-rs"
 version = "0.3.0-alpha.12"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2f0d5ca4abfa92dc6288971feafaa7e341b9ec10b76febaea03db0fc1b58a21d"
+source = "git+https://github.com/kanidm/webauthn-rs.git?rev=bef560b3619d42f12ae88f08435164a0a43605e5#bef560b3619d42f12ae88f08435164a0a43605e5"
 dependencies = [
  "base64 0.13.0",
  "js-sys",
@@ -4044,6 +4042,7 @@ dependencies = [
  "serde_derive",
  "serde_json",
  "thiserror",
+ "url",
  "wasm-bindgen",
  "web-sys",
 ]
