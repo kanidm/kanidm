@@ -13,6 +13,7 @@ pub enum EventTag {
     SecurityCritical,
     SecurityInfo,
     SecurityAccess,
+    SecurityError,
     FilterError,
     FilterWarn,
     FilterInfo,
@@ -33,6 +34,7 @@ impl EventTag {
             EventTag::SecurityCritical => "security.critical",
             EventTag::SecurityInfo => "security.info",
             EventTag::SecurityAccess => "security.access",
+            EventTag::SecurityError => "security.error",
             EventTag::FilterError => "filter.error",
             EventTag::FilterWarn => "filter.warn",
             EventTag::FilterInfo => "filter.info",
@@ -44,9 +46,9 @@ impl EventTag {
     pub fn emoji(self) -> &'static str {
         use EventTag::*;
         match self {
-            AdminError | RequestError | FilterError => "🚨",
-            AdminWarn | RequestWarn | FilterWarn => "🚧",
-            AdminInfo | RequestInfo | SecurityInfo | FilterInfo => "💬",
+            AdminError | FilterError | RequestError | SecurityError => "🚨",
+            AdminWarn | FilterWarn | RequestWarn => "🚧",
+            AdminInfo | FilterInfo | RequestInfo | SecurityInfo => "💬",
             RequestTrace | FilterTrace | PerfTrace => "📍",
             SecurityCritical => "🔐",
             SecurityAccess => "🔓",
