@@ -14,24 +14,39 @@ fn main() {
         Some(outdir) => outdir,
     };
 
+    let comp_dir = PathBuf::from(outdir)
+        .ancestors()
+        .skip(2)
+        .next()
+        .map(|p| p.join("completions"))
+        .expect("Unable to process completions path");
+
+    if !comp_dir.exists() {
+        std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
+    }
+
     SshAuthorizedOpt::clap().gen_completions(
         "kanidm_ssh_authorizedkeys_direct",
         Shell::Bash,
-        outdir.clone(),
+        comp_dir.clone(),
     );
     SshAuthorizedOpt::clap().gen_completions(
         "kanidm_ssh_authorizedkeys_direct",
         Shell::Zsh,
-        outdir.clone(),
+        comp_dir.clone(),
     );
 
     BadlistProcOpt::clap().gen_completions(
         "kanidm_badlist_preprocess",
         Shell::Bash,
-        outdir.clone(),
+        comp_dir.clone(),
     );
-    BadlistProcOpt::clap().gen_completions("kanidm_badlist_preprocess", Shell::Zsh, outdir.clone());
+    BadlistProcOpt::clap().gen_completions(
+        "kanidm_badlist_preprocess",
+        Shell::Zsh,
+        comp_dir.clone(),
+    );
 
-    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Bash, outdir.clone());
-    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Zsh, outdir);
+    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Bash, comp_dir.clone());
+    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Zsh, comp_dir);
 }

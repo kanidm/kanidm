@@ -14,7 +14,7 @@ pub struct AuthorisationRequest {
     // Must be "code". (or token, see 4.2.1)
     pub response_type: String,
     pub client_id: String,
-    pub state: Base64UrlSafeData,
+    pub state: String,
     // base64?
     pub code_challenge: Base64UrlSafeData,
     // Probably also should be an enum.

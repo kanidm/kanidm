@@ -22,7 +22,7 @@ wasm-bindgen-futures = { version = "0.4" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 anyhow = "1"
 
-webauthn-rs = { version = "0.3.0-alpha.9", default-features = false, features = ["wasm"] }
+webauthn-rs = { version = "0.3", default-features = false, features = ["wasm"] }
 
 # Waiting on 0.19 to be released for the router rewrite. :)
 # yewdux = "^0.6"

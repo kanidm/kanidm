@@ -23,33 +23,44 @@ fn main() {
         Some(outdir) => outdir,
     };
 
+    let comp_dir = PathBuf::from(outdir)
+        .ancestors()
+        .skip(2)
+        .next()
+        .map(|p| p.join("completions"))
+        .expect("Unable to process completions path");
+
+    if !comp_dir.exists() {
+        std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
+    }
+
     SshAuthorizedOpt::clap().gen_completions(
         "kanidm_ssh_authorizedkeys",
         Shell::Bash,
-        outdir.clone(),
+        comp_dir.clone(),
     );
     SshAuthorizedOpt::clap().gen_completions(
         "kanidm_ssh_authorizedkeys",
         Shell::Zsh,
-        outdir.clone(),
+        comp_dir.clone(),
     );
 
     CacheInvalidateOpt::clap().gen_completions(
         "kanidm_cache_invalidate",
         Shell::Bash,
-        outdir.clone(),
+        comp_dir.clone(),
     );
     CacheInvalidateOpt::clap().gen_completions(
         "kanidm_cache_invalidate",
         Shell::Zsh,
-        outdir.clone(),
+        comp_dir.clone(),
     );
 
-    CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Bash, outdir.clone());
-    CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Zsh, outdir.clone());
+    CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Bash, comp_dir.clone());
+    CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Zsh, comp_dir.clone());
 
-    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Bash, outdir.clone());
-    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Zsh, outdir);
+    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Bash, comp_dir.clone());
+    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Zsh, comp_dir);
 
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
     let profile = env::var("KANIDM_BUILD_PROFILE").unwrap_or_else(|_| "developer".to_string());

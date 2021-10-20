@@ -66,6 +66,11 @@ macro_rules! security_critical {
 }
 
 #[macro_export]
+macro_rules! security_error {
+    ($($arg:tt)*) => { crate::tagged_event!(ERROR, crate::tracing_tree::EventTag::SecurityError, $($arg)*) }
+}
+
+#[macro_export]
 macro_rules! security_info {
     ($($arg:tt)*) => { crate::tagged_event!(INFO, crate::tracing_tree::EventTag::SecurityInfo, $($arg)*) }
 }

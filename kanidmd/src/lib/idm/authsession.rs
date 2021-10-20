@@ -176,7 +176,7 @@ impl CredHandler {
                 CredState::Success(AuthType::Anonymous)
             }
             _ => {
-                security_info!(
+                security_error!(
                     "Handler::Anonymous -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -198,7 +198,7 @@ impl CredHandler {
                 if pw.verify(cleartext.as_str()).unwrap_or(false) {
                     match pw_badlist_set {
                         Some(p) if p.contains(&cleartext.to_lowercase()) => {
-                            security_info!("Handler::Password -> Result::Denied - Password found in badlist during login");
+                            security_error!("Handler::Password -> Result::Denied - Password found in badlist during login");
                             CredState::Denied(PW_BADLIST_MSG)
                         }
                         _ => {
@@ -212,13 +212,13 @@ impl CredHandler {
                         }
                     }
                 } else {
-                    security_info!("Handler::Password -> Result::Denied - incorrect password");
+                    security_error!("Handler::Password -> Result::Denied - incorrect password");
                     CredState::Denied(BAD_PASSWORD_MSG)
                 }
             }
             // All other cases fail.
             _ => {
-                security_info!(
+                security_error!(
                     "Handler::Password -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -272,7 +272,7 @@ impl CredHandler {
                             Err(e) => {
                                 pw_mfa.mfa_state = CredVerifyState::Fail;
                                 // Denied.
-                                security_info!(
+                                security_error!(
                                     ?e,
                                     "Handler::Webauthn -> Result::Denied - webauthn error"
                                 );
@@ -289,7 +289,7 @@ impl CredHandler {
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
-                            security_info!(
+                            security_error!(
                                 "Handler::PasswordMfa -> Result::Denied - TOTP Fail, password -"
                             );
                             CredState::Denied(BAD_TOTP_MSG)
@@ -312,12 +312,12 @@ impl CredHandler {
                             CredState::Continue(vec![AuthAllowed::Password])
                         } else {
                             pw_mfa.mfa_state = CredVerifyState::Fail;
-                            security_info!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
+                            security_error!("Handler::PasswordMfa -> Result::Denied - BackupCode Fail, password -");
                             CredState::Denied(BAD_BACKUPCODE_MSG)
                         }
                     }
                     _ => {
-                        security_info!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
+                        security_error!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
                 }
@@ -330,7 +330,7 @@ impl CredHandler {
                             match pw_badlist_set {
                                 Some(p) if p.contains(&cleartext.to_lowercase()) => {
                                     pw_mfa.pw_state = CredVerifyState::Fail;
-                                    security_info!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
+                                    security_error!("Handler::PasswordMfa -> Result::Denied - Password found in badlist during login");
                                     CredState::Denied(PW_BADLIST_MSG)
                                 }
                                 _ => {
@@ -347,19 +347,19 @@ impl CredHandler {
                             }
                         } else {
                             pw_mfa.pw_state = CredVerifyState::Fail;
-                            security_info!("Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail");
+                            security_error!("Handler::PasswordMfa -> Result::Denied - TOTP/WebAuthn/BackupCode OK, password Fail");
                             CredState::Denied(BAD_PASSWORD_MSG)
                         }
                     }
                     _ => {
-                        security_info!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
+                        security_error!("Handler::PasswordMfa -> Result::Denied - invalid cred type for handler");
                         CredState::Denied(BAD_AUTH_TYPE_MSG)
                     }
                 }
             }
             _ => {
-                security_info!(
-                    "Handler::PasswordMfa -> Result::Denied - invalid credential mfa and pw state"
+                security_error!(
+                    "Handler::PasswordMfa -> Result::lenied - invalid credential mfa and pw state"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
             }
@@ -375,7 +375,7 @@ impl CredHandler {
         async_tx: &Sender<DelayedAction>,
     ) -> CredState {
         if wan_cred.state != CredVerifyState::Init {
-            security_info!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
+            security_error!("Handler::Webauthn -> Result::Denied - Internal State Already Fail");
             return CredState::Denied(BAD_WEBAUTHN_MSG);
         }
 
@@ -404,13 +404,13 @@ impl CredHandler {
                     Err(e) => {
                         wan_cred.state = CredVerifyState::Fail;
                         // Denied.
-                        security_info!(?e, "Handler::Webauthn -> Result::Denied - webauthn error");
+                        security_error!(?e, "Handler::Webauthn -> Result::Denied - webauthn error");
                         CredState::Denied(BAD_WEBAUTHN_MSG)
                     }
                 }
             }
             _ => {
-                security_info!(
+                security_error!(
                     "Handler::Webauthn -> Result::Denied - invalid cred type for handler"
                 );
                 CredState::Denied(BAD_AUTH_TYPE_MSG)
@@ -803,7 +803,7 @@ mod tests {
     fn create_webauthn() -> Webauthn<WebauthnDomainConfig> {
         Webauthn::new(WebauthnDomainConfig {
             rp_name: "example.com".to_string(),
-            origin: "https://idm.example.com".to_string(),
+            origin: url::Url::parse("https://idm.example.com").unwrap(),
             rp_id: "example.com".to_string(),
         })
     }

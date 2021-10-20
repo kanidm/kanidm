@@ -170,23 +170,22 @@ impl IdmServer {
         };
 
         // Check that it gels with our origin.
-        Url::parse(origin.as_str())
+        let origin_url = Url::parse(origin.as_str())
             .map_err(|_e| {
                 admin_error!("Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
                 OperationError::InvalidState
             })
             .and_then(|url| {
-                url.domain().map(|effective_domain| {
-                    if effective_domain.ends_with(&rp_id) {
-                        Some(())
-                    } else {
-                        None
-                    }
-                })
-                .ok_or_else(|| {
+                let valid = url.domain().map(|effective_domain| {
+                    effective_domain.ends_with(&rp_id)
+                }).unwrap_or(false);
+
+                if valid {
+                    Ok(url)
+                } else {
                     admin_error!("Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}", origin, rp_id);
-                    OperationError::InvalidState
-                })
+                    Err(OperationError::InvalidState)
+                }
             })?;
 
         // Now clone to rp_name.
@@ -194,7 +193,7 @@ impl IdmServer {
 
         let webauthn = Webauthn::new(WebauthnDomainConfig {
             rp_name,
-            origin,
+            origin: origin_url,
             rp_id,
         });
 
@@ -813,7 +812,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
             })?;
 
         // if anonymous
-        if lae.target == *UUID_ANONYMOUS {
+        if lae.target == UUID_ANONYMOUS {
             let account = Account::try_from_entry_ro(account_entry.as_ref(), &mut self.qs_read)?;
             // Check if the anon account has been locked.
             if !account.is_within_valid_time(ct) {
@@ -828,7 +827,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
             // Account must be anon, so we can gen the uat.
             Ok(Some(LdapBoundToken {
-                uuid: *UUID_ANONYMOUS,
+                uuid: UUID_ANONYMOUS,
                 effective_uat: account
                     .to_userauthtoken(tracing_id, ct, AuthType::Anonymous)
                     .ok_or(OperationError::InvalidState)

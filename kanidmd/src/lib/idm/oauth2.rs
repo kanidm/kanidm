@@ -73,7 +73,7 @@ struct ConsentToken {
     // So we can ensure that we really match the same uat to prevent confusions.
     pub ident_id: IdentityId,
     // CSRF
-    pub state: Base64UrlSafeData,
+    pub state: String,
     // The S256 code challenge.
     pub code_challenge: Base64UrlSafeData,
     // Where the RS wants us to go back to.
@@ -104,7 +104,7 @@ pub struct AuthorisePermitSuccess {
     // Where the RS wants us to go back to.
     pub redirect_uri: Url,
     // The CSRF as a string
-    pub state: Base64UrlSafeData,
+    pub state: String,
     // The exchange code as a String
     pub code: String,
 }
@@ -630,7 +630,7 @@ mod tests {
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
-                state: Base64UrlSafeData(vec![1, 2, 3]),
+                state: "123".to_string(),
                 code_challenge: Base64UrlSafeData($code_challenge),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -667,7 +667,7 @@ mod tests {
             // System admins
             (
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(*UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
+                Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
@@ -741,7 +741,7 @@ mod tests {
                 .expect("Failed to perform oauth2 permit");
 
             // Check we are reflecting the CSRF properly.
-            assert!(permit_success.state.0 == vec![1, 2, 3]);
+            assert!(permit_success.state == "123");
 
             // == Submit the token exchange code.
 
@@ -785,7 +785,7 @@ mod tests {
             let auth_req = AuthorisationRequest {
                 response_type: "NOTCODE".to_string(),
                 client_id: "test_resource_server".to_string(),
-                state: Base64UrlSafeData(vec![1, 2, 3]),
+                state: "123".to_string(),
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -803,7 +803,7 @@ mod tests {
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "NOT A REAL RESOURCE SERVER".to_string(),
-                state: Base64UrlSafeData(vec![1, 2, 3]),
+                state: "123".to_string(),
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -821,7 +821,7 @@ mod tests {
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
-                state: Base64UrlSafeData(vec![1, 2, 3]),
+                state: "123".to_string(),
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
@@ -839,7 +839,7 @@ mod tests {
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
-                state: Base64UrlSafeData(vec![1, 2, 3]),
+                state: "123".to_string(),
                 code_challenge: Base64UrlSafeData(code_challenge.clone()),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
@@ -858,7 +858,7 @@ mod tests {
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
-                state: Base64UrlSafeData(vec![1, 2, 3]),
+                state: "123".to_string(),
                 code_challenge: Base64UrlSafeData(code_challenge),
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
