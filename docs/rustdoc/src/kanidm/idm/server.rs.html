@@ -3850,7 +3850,6 @@
 <span id="3850">3850</span>
 <span id="3851">3851</span>
 <span id="3852">3852</span>
-<span id="3853">3853</span>
 </pre><pre class="rust">
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="kw">crate</span><span class="ident">::credential::softlock::CredSoftLock</span>;
@@ -4024,23 +4023,22 @@
         };
 
         <span class="comment">// Check that it gels with our origin.</span>
-        <span class="ident">Url::parse</span>(<span class="ident">origin</span>.<span class="ident">as_str</span>())
+        <span class="kw">let</span> <span class="ident">origin_url</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="ident">origin</span>.<span class="ident">as_str</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">_e</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}&quot;</span>, <span class="ident">origin</span>);
                 <span class="ident">OperationError::InvalidState</span>
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">url</span><span class="op">|</span> {
-                <span class="ident">url</span>.<span class="ident">domain</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">effective_domain</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="ident">rp_id</span>) {
-                        <span class="prelude-val">Some</span>(())
-                    } <span class="kw">else</span> {
-                        <span class="prelude-val">None</span>
-                    }
-                })
-                .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                <span class="kw">let</span> <span class="ident">valid</span> <span class="op">=</span> <span class="ident">url</span>.<span class="ident">domain</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">effective_domain</span><span class="op">|</span> {
+                    <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="ident">rp_id</span>)
+                }).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
+
+                <span class="kw">if</span> <span class="ident">valid</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">url</span>)
+                } <span class="kw">else</span> {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}&quot;</span>, <span class="ident">origin</span>, <span class="ident">rp_id</span>);
-                    <span class="ident">OperationError::InvalidState</span>
-                })
+                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
+                }
             })<span class="question-mark">?</span>;
 
         <span class="comment">// Now clone to rp_name.</span>
@@ -4048,7 +4046,7 @@
 
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="ident">Webauthn::new</span>(<span class="ident">WebauthnDomainConfig</span> {
             <span class="ident">rp_name</span>,
-            <span class="ident">origin</span>,
+            <span class="ident">origin</span>: <span class="ident">origin_url</span>,
             <span class="ident">rp_id</span>,
         });
 

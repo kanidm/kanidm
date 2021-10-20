@@ -2827,7 +2827,7 @@
     <span class="kw">fn</span> <span class="ident">create_webauthn</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span> {
         <span class="ident">Webauthn::new</span>(<span class="ident">WebauthnDomainConfig</span> {
             <span class="ident">rp_name</span>: <span class="string">&quot;example.com&quot;</span>.<span class="ident">to_string</span>(),
-            <span class="ident">origin</span>: <span class="string">&quot;https://idm.example.com&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">origin</span>: <span class="ident">url::Url::parse</span>(<span class="string">&quot;https://idm.example.com&quot;</span>).<span class="ident">unwrap</span>(),
             <span class="ident">rp_id</span>: <span class="string">&quot;example.com&quot;</span>.<span class="ident">to_string</span>(),
         })
     }
