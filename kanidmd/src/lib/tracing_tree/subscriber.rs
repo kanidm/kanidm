@@ -1,4 +1,5 @@
 use std::any::TypeId;
+use std::cmp;
 use std::convert::TryFrom;
 use std::fmt;
 use std::fs::OpenOptions;
@@ -52,6 +53,7 @@ struct TreeSpan {
     pub buf: Vec<Tree>,
     pub uuid: Option<String>,
     pub out: TreeIo,
+    level: Level,
 }
 
 #[derive(Debug)]
@@ -205,6 +207,13 @@ impl<P: Processor> Subscriber for TreeSubscriber<P> {
 }
 
 impl<P: Processor> TreeLayer<P> {
+    fn new_preprocessed(&self, logs: Tree) -> TreePreProcessed {
+        TreePreProcessed {
+            fmt: self.fmt,
+            logs,
+        }
+    }
+
     fn log_to_parent(&self, logs: Tree, parent: Option<SpanRef<Registry>>) {
         match parent {
             // The parent exists- write to them
@@ -215,10 +224,7 @@ impl<P: Processor> TreeLayer<P> {
                 .expect("Log buffer not found, this is a bug")
                 .log(logs),
             // The parent doesn't exist- send to formatter
-            None => self.processor.process(TreePreProcessed {
-                fmt: self.fmt,
-                logs,
-            }),
+            None => self.processor.process(self.new_preprocessed(logs)),
         }
     }
 }
@@ -248,6 +254,14 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
             },
         );
 
+        // The level is the more restrictive of the specified level and the
+        // parents level, if there is one.
+        let span_level = *attrs.metadata().level();
+        let level = span
+            .parent()
+            .map(|parent| cmp::min(span_level, *parent.metadata().level()))
+            .unwrap_or(span_level);
+
         // Take provided ID, or make a fresh one if there's no parent span.
         let uuid = uuid.or_else(|| {
             ctx.lookup_current()
@@ -257,11 +271,16 @@ impl<P: Processor> Layer<Registry> for TreeLayer<P> {
 
         let mut extensions = span.extensions_mut();
 
-        extensions.insert(TreeSpan::new(name, uuid, out));
+        extensions.insert(TreeSpan::new(level, name, uuid, out));
         extensions.insert(Timer::new());
     }
 
     fn on_event(&self, event: &Event, ctx: Context<Registry>) {
+        match ctx.event_span(event) {
+            Some(span) if event.metadata().level() > span.metadata().level() => return,
+            _ => {}
+        }
+
         let (tree_event, immediate) = TreeEvent::parse(event);
 
         if immediate {
@@ -416,13 +435,14 @@ impl TreeEvent {
 }
 
 impl TreeSpan {
-    fn new(name: &'static str, uuid: Option<String>, out: TreeIo) -> Self {
+    fn new(level: Level, name: &'static str, uuid: Option<String>, out: TreeIo) -> Self {
         TreeSpan {
             timestamp: Utc::now(),
             name,
             buf: vec![],
             uuid,
             out,
+            level,
         }
     }
 
