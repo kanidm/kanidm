@@ -47,8 +47,7 @@ zxcvbn = "2.0"
 
 dialoguer =  "0.8"
 
-webauthn-authenticator-rs = "^0.3.0-alpha.9"
-# webauthn-authenticator-rs = { path = "../../webauthn-authenticator-rs/" }
+webauthn-authenticator-rs = "^0.3.0-alpha.12"
 
 [build-dependencies]
 structopt = { version = "0.3", default-features = false }

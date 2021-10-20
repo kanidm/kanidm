@@ -15,7 +15,7 @@ serde_derive = "1.0"
 uuid = { version = "0.8", features = ["serde", "wasm-bindgen"] }
 # zxcvbn = { version = "2.0", features = ["ser"] }
 base32 = "0.4"
-webauthn-rs = { version = "0.3.0-alpha.9", default-features = false, features = ["wasm"] }
+webauthn-rs = { version = "0.3", default-features = false, features = ["wasm"] }
 time = { version = "0.2", features = ["serde", "std"] }
 url = { version = "2", features = ["serde"] }
 
