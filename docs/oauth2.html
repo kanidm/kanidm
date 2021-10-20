@@ -172,11 +172,11 @@ or something else. This is the system that &quot;needs protecting&quot; and want
 decisions to Kanidm.</p>
 <p>It's important for you to know <em>how</em> your resource server supports oauth2. For example, does it
 support rfc7662 token introspection or does it rely on openid connect for identity information?
-Does the resource server support PKCE or not?</p>
+Does the resource server support PKCE S256 or not?</p>
 <p>In general Kanidm requires that your resource server supports:</p>
 <ul>
 <li>HTTP basic authentication to the authorisation server</li>
-<li>PKCE code verification to prevent certain token attack classes</li>
+<li>PKCE S256 code verification to prevent certain token attack classes</li>
 </ul>
 <p>Kanidm will expose it's oauth2 apis at the urls:</p>
 <ul>
@@ -229,7 +229,8 @@ oauth2_rs_token_key: hidden
 </code></pre>
 <h3 id="configure-the-resource-server"><a class="header" href="#configure-the-resource-server">Configure the Resource Server</a></h3>
 <p>On your resource server, you should configure the client id as the &quot;oauth2_rs_name&quot; from
-kanidm, and the password to be the value shown in &quot;oauth2_rs_basic_secret&quot;</p>
+kanidm, and the password to be the value shown in &quot;oauth2_rs_basic_secret&quot;. Ensure that
+the code challenge/verification method is set to S256.</p>
 <p>You should now be able to test authorisation.</p>
 <h2 id="resetting-resource-server-security-material"><a class="header" href="#resetting-resource-server-security-material">Resetting Resource Server Security Material</a></h2>
 <p>In the case of disclosure of the basic secret, or some other security event where you may wish

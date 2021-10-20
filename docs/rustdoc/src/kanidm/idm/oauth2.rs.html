@@ -1179,7 +1179,7 @@
     <span class="comment">// So we can ensure that we really match the same uat to prevent confusions.</span>
     <span class="kw">pub</span> <span class="ident">ident_id</span>: <span class="ident">IdentityId</span>,
     <span class="comment">// CSRF</span>
-    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>,
+    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">String</span>,
     <span class="comment">// The S256 code challenge.</span>
     <span class="kw">pub</span> <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>,
     <span class="comment">// Where the RS wants us to go back to.</span>
@@ -1210,7 +1210,7 @@
     <span class="comment">// Where the RS wants us to go back to.</span>
     <span class="kw">pub</span> <span class="ident">redirect_uri</span>: <span class="ident">Url</span>,
     <span class="comment">// The CSRF as a string</span>
-    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>,
+    <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">String</span>,
     <span class="comment">// The exchange code as a String</span>
     <span class="kw">pub</span> <span class="ident">code</span>: <span class="ident">String</span>,
 }
@@ -1736,7 +1736,7 @@
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+                <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">code_challenge</span>),
                 <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
@@ -1847,7 +1847,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 permit&quot;</span>);
 
             <span class="comment">// Check we are reflecting the CSRF properly.</span>
-            <span class="macro">assert!</span>(<span class="ident">permit_success</span>.<span class="ident">state</span>.<span class="number">0</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]);
+            <span class="macro">assert!</span>(<span class="ident">permit_success</span>.<span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;123&quot;</span>);
 
             <span class="comment">// == Submit the token exchange code.</span>
 
@@ -1891,7 +1891,7 @@
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;NOTCODE&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+                <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="ident">code_challenge</span>.<span class="ident">clone</span>()),
                 <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
@@ -1909,7 +1909,7 @@
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;NOT A REAL RESOURCE SERVER&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+                <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="ident">code_challenge</span>.<span class="ident">clone</span>()),
                 <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
@@ -1927,7 +1927,7 @@
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+                <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="ident">code_challenge</span>.<span class="ident">clone</span>()),
                 <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://totes.not.sus.org/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
@@ -1945,7 +1945,7 @@
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+                <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="ident">code_challenge</span>.<span class="ident">clone</span>()),
                 <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
@@ -1964,7 +1964,7 @@
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
-                <span class="ident">state</span>: <span class="ident">Base64UrlSafeData</span>(<span class="macro">vec!</span>[<span class="number">1</span>, <span class="number">2</span>, <span class="number">3</span>]),
+                <span class="ident">state</span>: <span class="string">&quot;123&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>(<span class="ident">code_challenge</span>),
                 <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod::S256</span>,
                 <span class="ident">redirect_uri</span>: <span class="ident">Url::parse</span>(<span class="string">&quot;https://demo.example.com/oauth2/result&quot;</span>).<span class="ident">unwrap</span>(),
