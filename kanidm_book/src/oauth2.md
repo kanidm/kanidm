@@ -47,12 +47,12 @@ decisions to Kanidm.
 
 It's important for you to know *how* your resource server supports oauth2. For example, does it
 support rfc7662 token introspection or does it rely on openid connect for identity information?
-Does the resource server support PKCE or not?
+Does the resource server support PKCE S256 or not?
 
 In general Kanidm requires that your resource server supports:
 
 * HTTP basic authentication to the authorisation server
-* PKCE code verification to prevent certain token attack classes
+* PKCE S256 code verification to prevent certain token attack classes
 
 Kanidm will expose it's oauth2 apis at the urls:
 
@@ -119,7 +119,8 @@ Once created you can view the details of the resource server.
 ### Configure the Resource Server
 
 On your resource server, you should configure the client id as the "oauth2\_rs\_name" from
-kanidm, and the password to be the value shown in "oauth2\_rs\_basic\_secret"
+kanidm, and the password to be the value shown in "oauth2\_rs\_basic\_secret". Ensure that
+the code challenge/verification method is set to S256.
 
 You should now be able to test authorisation.
 
