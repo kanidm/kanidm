@@ -49,6 +49,8 @@ It's important for you to know *how* your resource server supports oauth2. For e
 support rfc7662 token introspection or does it rely on openid connect for identity information?
 Does the resource server support PKCE S256 or not?
 
+> Note: OpenID Connect (OIDC) is not currently supported at this time - if you're interested in finding out when it's ready, please follow [Issue #278](https://github.com/kanidm/kanidm/issues/278)
+
 In general Kanidm requires that your resource server supports:
 
 * HTTP basic authentication to the authorisation server
