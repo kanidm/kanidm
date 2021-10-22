@@ -18,8 +18,8 @@ use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess,
-    ConsentRequest, Oauth2Error,
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
 };
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
@@ -1049,6 +1049,27 @@ impl QueryServerReadV1 {
         let res = spanned!("actors::v1_read::handle<Oauth2TokenExchange>", {
             // Now we can send to the idm server for authorisation checking.
             idms_prox_read.check_oauth2_token_exchange(&client_authz, &token_req, ct)
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "oauth2_token_introspect",
+        skip(self, client_authz, intr_req, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_token_introspect(
+        &self,
+        client_authz: String,
+        intr_req: AccessTokenIntrospectRequest,
+        eventid: Uuid,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = spanned!("actors::v1_read::handle<Oauth2TokenIntrospect>", {
+            // Now we can send to the idm server for introspection checking.
+            idms_prox_read.check_oauth2_token_introspect(&client_authz, &intr_req, ct)
         });
         res
     }

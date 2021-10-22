@@ -2,7 +2,10 @@ mod common;
 use crate::common::{run_test, ADMIN_TEST_PASSWORD};
 use kanidm_client::KanidmClient;
 
-use kanidm_proto::oauth2::{AccessTokenRequest, AccessTokenResponse, ConsentRequest, AccessTokenIntrospectRequest, AccessTokenIntrospectResponse};
+use kanidm_proto::oauth2::{
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+    AccessTokenResponse, ConsentRequest,
+};
 use oauth2_ext::PkceCodeChallenge;
 use std::collections::HashMap;
 use url::Url;
@@ -207,7 +210,18 @@ fn test_oauth2_basic_flow() {
                 .await
                 .expect("Unable to decode AccessTokenIntrospectResponse");
 
-            eprintln!("{:?}", tir);
+            assert!(tir.active);
+            assert!(tir.scope.is_some());
+            assert!(tir.client_id.as_deref() == Some("test_integration"));
+            assert!(tir.username.as_deref() == Some("admin@example.com"));
+            assert!(tir.token_type.as_deref() == Some("access_token"));
+            assert!(tir.exp.is_some());
+            assert!(tir.iat.is_some());
+            assert!(tir.nbf.is_some());
+            assert!(tir.sub.is_some());
+            assert!(tir.aud.is_none());
+            assert!(tir.iss.is_none());
+            assert!(tir.jti.is_none());
         })
     })
 }

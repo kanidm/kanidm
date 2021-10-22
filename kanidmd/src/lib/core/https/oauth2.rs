@@ -1,8 +1,8 @@
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_tide_response, AppState, RequestExtensions};
 use crate::idm::oauth2::{
-    AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess, ErrorResponse, Oauth2Error,
-    AccessTokenIntrospectRequest
+    AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
+    ErrorResponse, Oauth2Error,
 };
 use crate::prelude::*;
 use kanidm_proto::v1::Entry as ProtoEntry;
@@ -403,23 +403,69 @@ pub async fn get_openid_configuration(_req: tide::Request<AppState>) -> tide::Re
 }
 
 pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> tide::Result {
+    // This is called directly by the resource server, where we then issue
+    // information about this token to the caller.
+    let (eventid, hvalue) = req.new_eventid();
+
+    let client_authz = req
+        .header("authorization")
+        .and_then(|hv| hv.get(0))
+        .and_then(|h| h.as_str().strip_prefix("Basic "))
+        .map(str::to_string)
+        .ok_or_else(|| {
+            error!("Basic Authentication Not Provided");
+            tide::Error::from_str(
+                tide::StatusCode::Unauthorized,
+                "Invalid Basic Authorisation",
+            )
+        })?;
+
     // Get the introspection request, could we accept json or form? Prob needs content type here.
-    let intr_req: AccessTokenIntrospectRequest = 
-        req.body_form().await
-        .map_err(|e| {
+    let intr_req: AccessTokenIntrospectRequest = req.body_form().await.map_err(|e| {
         request_error!("{:?}", e);
         tide::Error::from_str(
             tide::StatusCode::BadRequest,
             "Invalid Oauth2 AccessTokenIntrospectRequest",
         )
-    })
-    ?;
+    })?;
 
     request_trace!("Introspect Request - {:?}", intr_req);
 
-    // Needs basic auth!!!
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_oauth2_token_introspect(client_authz, intr_req, eventid)
+        .await;
 
-    unimplemented!();
+    match res {
+        Ok(atr) => {
+            let mut res = tide::Response::new(200);
+            tide::Body::from_json(&atr).map(|b| {
+                res.set_body(b);
+                res
+            })
+        }
+        Err(Oauth2Error::AuthenticationRequired) => {
+            // This will trigger our ui to auth and retry.
+            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+        }
+        Err(e) => {
+            // https://datatracker.ietf.org/doc/html/rfc6749#section-5.2
+            let err = ErrorResponse {
+                error: e.to_string(),
+                error_description: None,
+                error_uri: None,
+            };
 
+            let mut res = tide::Response::new(400);
+            tide::Body::from_json(&err).map(|b| {
+                res.set_body(b);
+                res
+            })
+        }
+    }
+    .map(|mut res| {
+        res.insert_header("X-KANIDM-OPID", hvalue);
+        res
+    })
 }
-

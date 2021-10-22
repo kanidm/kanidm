@@ -98,11 +98,11 @@ pub struct AccessTokenIntrospectResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_type: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub exp: Option<String>,
+    pub exp: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub iat: Option<String>,
+    pub iat: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub nbf: Option<String>,
+    pub nbf: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub sub: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -111,6 +111,25 @@ pub struct AccessTokenIntrospectResponse {
     pub iss: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub jti: Option<String>,
+}
+
+impl AccessTokenIntrospectResponse {
+    pub fn inactive() -> Self {
+        AccessTokenIntrospectResponse {
+            active: false,
+            scope: None,
+            client_id: None,
+            username: None,
+            token_type: None,
+            exp: None,
+            iat: None,
+            nbf: None,
+            sub: None,
+            aud: None,
+            iss: None,
+            jti: None,
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]

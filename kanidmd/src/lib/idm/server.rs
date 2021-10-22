@@ -15,8 +15,9 @@ use crate::idm::event::{
 };
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess,
-    ConsentRequest, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
+    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction,
 };
 use crate::idm::radius::RadiusAccount;
@@ -346,7 +347,6 @@ pub trait IdmServerTransaction<'a> {
 
     fn get_uat_bundy_txn(&self) -> &HS512;
 
-    // ! TRACING INTEGRATED
     fn validate_and_parse_uat(
         &self,
         token: Option<&str>,
@@ -373,7 +373,22 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    // ! TRACING INTEGRATED
+    fn check_uat_valid(&self, uat: &UserAuthToken, ct: Duration) -> Result<bool, OperationError> {
+        let entry = self
+            .get_qs_txn()
+            .internal_search_uuid(&uat.uuid)
+            .map_err(|e| {
+                admin_error!(?e, "from_ro_uat failed");
+                e
+            })?;
+
+        Ok(Account::check_within_valid_time(
+            ct,
+            entry.get_ava_single_datetime("account_valid_from").as_ref(),
+            entry.get_ava_single_datetime("account_expire").as_ref(),
+        ))
+    }
+
     fn process_uat_to_identity(
         &self,
         uat: &UserAuthToken,
@@ -1075,6 +1090,16 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         self.oauth2rs
             .check_oauth2_token_exchange(client_authz, token_req, ct)
+    }
+
+    pub fn check_oauth2_token_introspect(
+        &self,
+        client_authz: &str,
+        intr_req: &AccessTokenIntrospectRequest,
+        ct: Duration,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        self.oauth2rs
+            .check_oauth2_token_introspect(self, client_authz, intr_req, ct)
     }
 }
 
