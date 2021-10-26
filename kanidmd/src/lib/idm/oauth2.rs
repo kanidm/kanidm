@@ -6,6 +6,7 @@
 //!
 
 use crate::identity::IdentityId;
+use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use concread::cowcell::*;
 use fernet::Fernet;
@@ -13,6 +14,7 @@ use hashbrown::HashMap;
 use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
 use std::collections::{BTreeMap, BTreeSet};
+use std::fmt;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -20,8 +22,8 @@ use url::{Origin, Url};
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
 pub use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod,
-    ConsentRequest, ErrorResponse,
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+    AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ConsentRequest, ErrorResponse,
 };
 
 use std::convert::TryFrom;
@@ -82,8 +84,6 @@ struct ConsentToken {
     pub scopes: Vec<String>,
 }
 
-// consent token?
-
 #[derive(Serialize, Deserialize, Debug)]
 struct TokenExchangeCode {
     // We don't need the client_id here, because it's signed with an RS specific
@@ -95,6 +95,32 @@ struct TokenExchangeCode {
     pub redirect_uri: Url,
     // The scopes being granted
     pub scopes: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+enum Oauth2TokenType {
+    Access,
+    Refresh,
+}
+
+impl fmt::Display for Oauth2TokenType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Oauth2TokenType::Access => write!(f, "access_token"),
+            Oauth2TokenType::Refresh => write!(f, "refresh_token"),
+        }
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+struct Oauth2UserToken {
+    pub toktype: Oauth2TokenType,
+    pub uat: UserAuthToken,
+    pub scopes: Vec<String>,
+    // Oauth2 exp is seperate to uat expiry
+    pub exp: i64,
+    pub iat: i64,
+    pub nbf: i64,
 }
 
 // consentPermitResponse
@@ -476,34 +502,10 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // Check the client_authz
-        let authz = base64::decode(&client_authz)
-            .map_err(|_| {
-                admin_error!("Basic authz invalid base64");
-                Oauth2Error::AuthenticationRequired
-            })
-            .and_then(|data| {
-                String::from_utf8(data).map_err(|_| {
-                    admin_error!("Basic authz invalid utf8");
-                    Oauth2Error::AuthenticationRequired
-                })
-            })?;
-
-        // Get the first :, it should be our delim.
-        //
-        let mut split_iter = authz.split(':');
-
-        let client_id = split_iter.next().ok_or_else(|| {
-            admin_error!("Basic authz invalid format (corrupt input?)");
-            Oauth2Error::AuthenticationRequired
-        })?;
-        let secret = split_iter.next().ok_or_else(|| {
-            admin_error!("Basic authz invalid format (missing ':' seperator?)");
-            Oauth2Error::AuthenticationRequired
-        })?;
+        let (client_id, secret) = parse_basic_authz(client_authz)?;
 
         // Get the o2rs for the handle.
-        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+        let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
             admin_warn!("Invalid oauth2 client_id");
             Oauth2Error::AuthenticationRequired
         })?;
@@ -568,8 +570,20 @@ impl Oauth2ResourceServersReadTransaction {
             Some(code_xchg.scopes.join(" "))
         };
 
+        let iat = ct.as_secs() as i64;
+
+        let o2uat = Oauth2UserToken {
+            toktype: Oauth2TokenType::Access,
+            uat: code_xchg.uat,
+            scopes: code_xchg.scopes,
+            iat,
+            nbf: iat,
+            // TODO: Make configurable!
+            exp: iat + 480,
+        };
+
         // If we are type == Uat, then we re-use the same encryption material here.
-        let access_token_data = serde_json::to_vec(&code_xchg.uat).map_err(|e| {
+        let access_token_data = serde_json::to_vec(&o2uat).map_err(|e| {
             admin_error!(err = ?e, "Unable to encode uat data");
             Oauth2Error::ServerError(OperationError::SerdeJsonError)
         })?;
@@ -588,6 +602,110 @@ impl Oauth2ResourceServersReadTransaction {
             scope,
         })
     }
+
+    pub fn check_oauth2_token_introspect(
+        &self,
+        idms: &IdmServerProxyReadTransaction<'_>,
+        client_authz: &str,
+        intr_req: &AccessTokenIntrospectRequest,
+        ct: Duration,
+    ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
+        let (client_id, secret) = parse_basic_authz(client_authz)?;
+
+        // Get the o2rs for the handle.
+        let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
+            admin_warn!("Invalid oauth2 client_id");
+            Oauth2Error::AuthenticationRequired
+        })?;
+
+        // check the secret.
+        if o2rs.authz_secret != secret {
+            security_info!("Invalid oauth2 client_id secret");
+            return Err(Oauth2Error::AuthenticationRequired);
+        }
+        // We are authenticated! Yay! Now we can actually check things ...
+
+        // In these cases instead of error, we need to return Active:false
+        // Check the Token is correctly signed.
+        let access_token: Result<Oauth2UserToken, _> = o2rs
+            .token_fernet
+            .decrypt_at_time(&intr_req.token, None, ct.as_secs())
+            .map_err(|_| {
+                admin_error!("Failed to decrypt access token introspect request");
+                Oauth2Error::InvalidRequest
+            })
+            .and_then(|data| {
+                serde_json::from_slice(&data).map_err(|e| {
+                    admin_error!("Failed to deserialise access token - {:?}", e);
+                    Oauth2Error::InvalidRequest
+                })
+            });
+
+        let access_token = match access_token {
+            Ok(a) => a,
+            Err(_) => return Ok(AccessTokenIntrospectResponse::inactive()),
+        };
+
+        let valid = idms
+            .check_uat_valid(&access_token.uat, ct)
+            .map_err(|_| admin_error!("Account is not valid"));
+
+        match valid {
+            Ok(true) => {}
+            _ => return Ok(AccessTokenIntrospectResponse::inactive()),
+        };
+
+        let scope = if access_token.scopes.is_empty() {
+            None
+        } else {
+            Some(access_token.scopes.join(" "))
+        };
+
+        Ok(AccessTokenIntrospectResponse {
+            active: true,
+            scope,
+            client_id: Some(client_id),
+            username: Some(access_token.uat.spn.clone()),
+            token_type: Some(access_token.toktype.to_string()),
+            exp: Some(access_token.exp),
+            iat: Some(access_token.iat),
+            nbf: Some(access_token.nbf),
+            sub: Some(access_token.uat.uuid.to_string()),
+            aud: None,
+            iss: None,
+            jti: None,
+        })
+    }
+}
+
+fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error> {
+    // Check the client_authz
+    let authz = base64::decode(&client_authz)
+        .map_err(|_| {
+            admin_error!("Basic authz invalid base64");
+            Oauth2Error::AuthenticationRequired
+        })
+        .and_then(|data| {
+            String::from_utf8(data).map_err(|_| {
+                admin_error!("Basic authz invalid utf8");
+                Oauth2Error::AuthenticationRequired
+            })
+        })?;
+
+    // Get the first :, it should be our delim.
+    //
+    let mut split_iter = authz.split(':');
+
+    let client_id = split_iter.next().ok_or_else(|| {
+        admin_error!("Basic authz invalid format (corrupt input?)");
+        Oauth2Error::AuthenticationRequired
+    })?;
+    let secret = split_iter.next().ok_or_else(|| {
+        admin_error!("Basic authz invalid format (missing ':' seperator?)");
+        Oauth2Error::AuthenticationRequired
+    })?;
+
+    Ok((client_id.to_string(), secret.to_string()))
 }
 
 #[cfg(test)]
@@ -596,6 +714,9 @@ mod tests {
     use crate::idm::oauth2::Oauth2Error;
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
+
+    use crate::event::ModifyEvent;
+    use crate::modify::{Modify, ModifyList};
 
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::{AuthType, UserAuthToken};
@@ -1100,6 +1221,85 @@ mod tests {
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
+        })
+    }
+
+    #[test]
+    fn test_idm_oauth2_token_introspect() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
+
+            let idms_prox_read = idms.proxy_read();
+
+            // == Setup the authorisation request
+            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+            // == Manually submit the consent token to the permit for the permit_success
+            let permit_success = idms_prox_read
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
+                .expect("Failed to perform oauth2 permit");
+
+            let token_req = AccessTokenRequest {
+                grant_type: "authorization_code".to_string(),
+                code: permit_success.code.clone(),
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                client_id: None,
+                code_verifier,
+            };
+            let oauth2_token = idms_prox_read
+                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                .expect("Unable to exchange for oauth2 token");
+
+            // Okay, now we have the token, we can check it works with introspect.
+            let intr_request = AccessTokenIntrospectRequest {
+                token: oauth2_token.access_token.clone(),
+                token_type_hint: None,
+            };
+            let intr_response = idms_prox_read
+                .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+                .expect("Failed to inspect token");
+
+            assert!(intr_response.active);
+            assert!(intr_response.scope.as_deref() == Some("test"));
+            assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
+            assert!(intr_response.username.as_deref() == Some("admin@example.com"));
+            assert!(intr_response.token_type.as_deref() == Some("access_token"));
+            assert!(intr_response.iat == Some(ct.as_secs() as i64));
+            assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+
+            drop(idms_prox_read);
+            // start a write,
+
+            let idms_prox_write = idms.proxy_write(ct);
+            // Expire the account, should cause introspect to return inactive.
+            let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
+            let me_inv_m = unsafe {
+                ModifyEvent::new_internal_invalid(
+                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                    ModifyList::new_list(vec![Modify::Present(
+                        AttrString::from("account_expire"),
+                        v_expire,
+                    )]),
+                )
+            };
+            // go!
+            assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+            assert!(idms_prox_write.commit().is_ok());
+
+            // start a new read
+            // check again.
+            let idms_prox_read = idms.proxy_read();
+            let intr_response = idms_prox_read
+                .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+                .expect("Failed to inspect token");
+
+            assert!(!intr_response.active);
         })
     }
 }

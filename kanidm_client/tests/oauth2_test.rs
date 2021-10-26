@@ -2,7 +2,10 @@ mod common;
 use crate::common::{run_test, ADMIN_TEST_PASSWORD};
 use kanidm_client::KanidmClient;
 
-use kanidm_proto::oauth2::{AccessTokenRequest, AccessTokenResponse, ConsentRequest};
+use kanidm_proto::oauth2::{
+    AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
+    AccessTokenResponse, ConsentRequest,
+};
 use oauth2_ext::PkceCodeChallenge;
 use std::collections::HashMap;
 use url::Url;
@@ -169,7 +172,7 @@ fn test_oauth2_basic_flow() {
 
             let response = client
                 .post(format!("{}/oauth2/token", url))
-                .basic_auth("test_integration", Some(client_secret))
+                .basic_auth("test_integration", Some(client_secret.clone()))
                 .form(&form_req)
                 .send()
                 .await
@@ -180,12 +183,45 @@ fn test_oauth2_basic_flow() {
 
             // The body is a json AccessTokenResponse
 
-            let _atr = response
+            let atr = response
                 .json::<AccessTokenResponse>()
                 .await
                 .expect("Unable to decode AccessTokenResponse");
 
             // Step 4 - inspect the granted token.
+            let intr_request = AccessTokenIntrospectRequest {
+                token: atr.access_token.clone(),
+                token_type_hint: None,
+            };
+
+            let response = client
+                .post(format!("{}/oauth2/token/introspect", url))
+                .basic_auth("test_integration", Some(client_secret))
+                .form(&intr_request)
+                .send()
+                .await
+                .expect("Failed to send token introspect request.");
+
+            assert!(response.status() == reqwest::StatusCode::OK);
+            assert_no_cache!(response);
+
+            let tir = response
+                .json::<AccessTokenIntrospectResponse>()
+                .await
+                .expect("Unable to decode AccessTokenIntrospectResponse");
+
+            assert!(tir.active);
+            assert!(tir.scope.is_some());
+            assert!(tir.client_id.as_deref() == Some("test_integration"));
+            assert!(tir.username.as_deref() == Some("admin@example.com"));
+            assert!(tir.token_type.as_deref() == Some("access_token"));
+            assert!(tir.exp.is_some());
+            assert!(tir.iat.is_some());
+            assert!(tir.nbf.is_some());
+            assert!(tir.sub.is_some());
+            assert!(tir.aud.is_none());
+            assert!(tir.iss.is_none());
+            assert!(tir.jti.is_none());
         })
     })
 }
