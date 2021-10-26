@@ -405,10 +405,75 @@
 <span id="405">405</span>
 <span id="406">406</span>
 <span id="407">407</span>
+<span id="408">408</span>
+<span id="409">409</span>
+<span id="410">410</span>
+<span id="411">411</span>
+<span id="412">412</span>
+<span id="413">413</span>
+<span id="414">414</span>
+<span id="415">415</span>
+<span id="416">416</span>
+<span id="417">417</span>
+<span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
+<span id="447">447</span>
+<span id="448">448</span>
+<span id="449">449</span>
+<span id="450">450</span>
+<span id="451">451</span>
+<span id="452">452</span>
+<span id="453">453</span>
+<span id="454">454</span>
+<span id="455">455</span>
+<span id="456">456</span>
+<span id="457">457</span>
+<span id="458">458</span>
+<span id="459">459</span>
+<span id="460">460</span>
+<span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::v1</span>::{<span class="ident">json_rest_event_get</span>, <span class="ident">json_rest_event_post</span>};
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::oauth2</span>::{
-    <span class="ident">AccessTokenRequest</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>, <span class="ident">ErrorResponse</span>, <span class="ident">Oauth2Error</span>,
+    <span class="ident">AccessTokenIntrospectRequest</span>, <span class="ident">AccessTokenRequest</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>,
+    <span class="ident">ErrorResponse</span>, <span class="ident">Oauth2Error</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>;
@@ -808,10 +873,73 @@
     <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
 }
 
-<span class="comment">/*
-pub async fn oauth2_token_introspect_get(req: tide::Request&lt;AppState&gt;) -&gt; tide::Result {
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_token_introspect_post</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="comment">// This is called directly by the resource server, where we then issue</span>
+    <span class="comment">// information about this token to the caller.</span>
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+
+    <span class="kw">let</span> <span class="ident">client_authz</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">header</span>(<span class="string">&quot;authorization&quot;</span>)
+        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>))
+        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">as_str</span>().<span class="ident">strip_prefix</span>(<span class="string">&quot;Basic &quot;</span>))
+        .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
+        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="macro">error!</span>(<span class="string">&quot;Basic Authentication Not Provided&quot;</span>);
+            <span class="ident">tide::Error::from_str</span>(
+                <span class="ident">tide::StatusCode::Unauthorized</span>,
+                <span class="string">&quot;Invalid Basic Authorisation&quot;</span>,
+            )
+        })<span class="question-mark">?</span>;
+
+    <span class="comment">// Get the introspection request, could we accept json or form? Prob needs content type here.</span>
+    <span class="kw">let</span> <span class="ident">intr_req</span>: <span class="ident">AccessTokenIntrospectRequest</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_form</span>().<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="macro">request_error!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="ident">tide::Error::from_str</span>(
+            <span class="ident">tide::StatusCode::BadRequest</span>,
+            <span class="string">&quot;Invalid Oauth2 AccessTokenIntrospectRequest&quot;</span>,
+        )
+    })<span class="question-mark">?</span>;
+
+    <span class="macro">request_trace!</span>(<span class="string">&quot;Introspect Request - {:?}&quot;</span>, <span class="ident">intr_req</span>);
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_r_ref</span>
+        .<span class="ident">handle_oauth2_token_introspect</span>(<span class="ident">client_authz</span>, <span class="ident">intr_req</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+
+    <span class="kw">match</span> <span class="ident">res</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">atr</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">atr</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
+                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
+                <span class="ident">res</span>
+            })
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::AuthenticationRequired</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="comment">// This will trigger our ui to auth and retry.</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::Unauthorized</span>))
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="comment">// https://datatracker.ietf.org/doc/html/rfc6749#section-5.2</span>
+            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ErrorResponse</span> {
+                <span class="ident">error</span>: <span class="ident">e</span>.<span class="ident">to_string</span>(),
+                <span class="ident">error_description</span>: <span class="prelude-val">None</span>,
+                <span class="ident">error_uri</span>: <span class="prelude-val">None</span>,
+            };
+
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">400</span>);
+            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">err</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
+                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
+                <span class="ident">res</span>
+            })
+        }
+    }
+    .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
+        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
+        <span class="ident">res</span>
+    })
 }
-*/</span>
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kanidm" data-search-index-js="../../../../search-index.js" data-search-js="../../../../search.js"></div>
     <script src="../../../../main.js"></script><script src="../../../../source-script.js"></script><script src="../../../../source-files.js"></script>
