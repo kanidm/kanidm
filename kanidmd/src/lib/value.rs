@@ -273,6 +273,7 @@ pub enum DataValue {
     SshKey(String),
     SecretValue(String),
     OauthScopeMap(BTreeSet<String>),
+    Es256PrivateDer(Vec<u8>),
 }
 
 impl std::fmt::Debug for DataValue {
@@ -282,6 +283,7 @@ impl std::fmt::Debug for DataValue {
             DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
             DataValue::SecretValue(_) => write!(f, "DataValue::SecretValue(_)"),
             DataValue::OauthScopeMap(_) => write!(f, "DataValue::OauthScopeMap(_)"),
+            DataValue::Es256PrivateDer(_) => write!(f, "DataValue::Es256PrivateDer(_)"),
         }
     }
 }
@@ -318,6 +320,7 @@ pub enum PartialValue {
     Url(Url),
     OauthScope(String),
     OauthScopeMap(Uuid),
+    Es256PrivateDer,
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -685,7 +688,7 @@ impl PartialValue {
             }
             PartialValue::Cred(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
-            PartialValue::SecretValue => "_".to_string(),
+            PartialValue::SecretValue | PartialValue::Es256PrivateDer => "_".to_string(),
             PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
             PartialValue::Uint32(u) => u.to_string(),
@@ -1259,6 +1262,26 @@ impl Value {
         self.pv.is_oauthscopemap()
     }
 
+    pub fn new_es256privateder(der: &Vec<u8>) -> Self {
+        Value {
+            pv: PartialValue::Es256PrivateDer,
+            data: Some(Box::new(DataValue::Es256PrivateDer(der.clone()))),
+        }
+    }
+
+    pub fn to_es256privateder(&self) -> Option<&Vec<u8>> {
+        match &self.pv {
+            PartialValue::Es256PrivateDer => match &self.data {
+                Some(dv) => match dv.as_ref() {
+                    DataValue::Es256PrivateDer(c) => Some(&c),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn lessthan(&self, s: &PartialValue) -> bool {
         self.pv.lessthan(s)
     }
@@ -1372,6 +1395,10 @@ impl Value {
                     osm.data.into_iter().collect(),
                 ))),
             }),
+            DbValueV1::Es256PrivateDer(d) => Ok(Value {
+                pv: PartialValue::Es256PrivateDer,
+                data: Some(Box::new(DataValue::Es256PrivateDer(d))),
+            }),
         }
     }
 
@@ -1457,6 +1484,16 @@ impl Value {
                     None => unreachable!(),
                 };
                 DbValueV1::OauthScopeMap(DbValueOauthScopeMapV1 { refer: *u, data })
+            }
+            PartialValue::Es256PrivateDer => {
+                let ru = match &self.data {
+                    Some(v) => match v.as_ref() {
+                        DataValue::Es256PrivateDer(rc) => rc.clone(),
+                        _ => unreachable!(),
+                    },
+                    None => unreachable!(),
+                };
+                DbValueV1::Es256PrivateDer(ru)
             }
         }
     }
@@ -1694,6 +1731,7 @@ impl Value {
                 },
                 None => format!("{}: corrupted value", u),
             },
+            PartialValue::Es256PrivateDer => "secret".to_string(),
         }
     }
 
@@ -1764,7 +1802,7 @@ impl Value {
                 // Should this also extract the key data?
                 vec![tag.to_string()]
             }
-            PartialValue::SecretValue => vec![],
+            PartialValue::SecretValue | PartialValue::Es256PrivateDer => vec![],
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
             PartialValue::Uint32(u) => vec![u.to_string()],
             PartialValue::Cid(_) => vec![],

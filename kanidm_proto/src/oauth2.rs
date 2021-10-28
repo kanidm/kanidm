@@ -21,8 +21,33 @@ pub struct AuthorisationRequest {
     pub code_challenge_method: CodeChallengeMethod,
     // Uri?
     pub redirect_uri: Url,
-    // appears to be + seperated?
     pub scope: String,
+    // OIDC adds a nonce parameter that is optional.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub nonce: Option<String>,
+    // OIDC also allows other optional params
+    #[serde(flatten)]
+    pub oidc_ext: AuthorisationRequestOidc,
+}
+
+#[derive(Serialize, Deserialize, Debug, Default)]
+pub struct AuthorisationRequestOidc {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub display: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age: Option<i64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub ui_locales: Option<()>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub claims_locales: Option<()>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id_token_hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub login_hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub acr: Option<String>,
 }
 
 /// We ask our user to consent to this Authorisation Request with the

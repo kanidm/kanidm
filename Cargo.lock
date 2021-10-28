@@ -646,6 +646,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "compact_jwt"
+version = "0.1.2"
+dependencies = [
+ "base64 0.13.0",
+ "openssl",
+ "serde",
+ "serde_json",
+ "url",
+ "uuid",
+]
+
+[[package]]
 name = "compiled-uuid"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1825,6 +1837,7 @@ dependencies = [
  "base64 0.13.0",
  "bundy",
  "chrono",
+ "compact_jwt",
  "compiled-uuid",
  "concread",
  "criterion",

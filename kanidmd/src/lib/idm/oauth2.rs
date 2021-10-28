@@ -8,6 +8,7 @@
 use crate::identity::IdentityId;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
+use compact_jwt::{JwsSigner, JwsValidator, OidcClaims, OidcSubject, OidcToken, OidcUnverified};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
@@ -15,6 +16,7 @@ use kanidm_proto::v1::UserAuthToken;
 use openssl::sha;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
+use std::str::FromStr;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -82,6 +84,8 @@ struct ConsentToken {
     pub redirect_uri: Url,
     // The scopes being granted
     pub scopes: Vec<String>,
+    // We stash some details here for oidc.
+    pub nonce: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -95,6 +99,8 @@ struct TokenExchangeCode {
     pub redirect_uri: Url,
     // The scopes being granted
     pub scopes: Vec<String>,
+    // We stash some details here for oidc.
+    pub nonce: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -135,27 +141,24 @@ pub struct AuthorisePermitSuccess {
     pub code: String,
 }
 
-#[derive(Debug, Clone)]
-pub enum Oauth2RSTokenFormat {
-    Uat,
-}
-
 #[derive(Clone)]
 pub struct Oauth2RS {
     name: String,
     displayname: String,
     uuid: Uuid,
     origin: Origin,
+    // Do we need optional maps?
     scope_maps: BTreeMap<Uuid, BTreeSet<String>>,
     implicit_scopes: Vec<String>,
-    // scope group map (hard)
-    // scope group map (soft)
     // Client Auth Type (basic is all we support for now.
     authz_secret: String,
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
-    // What format we issue tokens as. By default prefer ANYTHING except jwt.
-    token_format: Oauth2RSTokenFormat,
+    jws_signer: JwsSigner,
+    jws_validator: JwsValidator,
+    // For oidc we also need our issuer url.
+    iss: Url,
+    //
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -167,13 +170,13 @@ impl std::fmt::Debug for Oauth2RS {
             .field("origin", &self.origin)
             .field("scope_maps", &self.scope_maps)
             .field("implicit_scopes", &self.implicit_scopes)
-            .field("token_format", &self.token_format)
             .finish()
     }
 }
 
 #[derive(Clone)]
 struct Oauth2RSInner {
+    origin: Url,
     fernet: Fernet,
     rs_set: HashMap<String, Oauth2RS>,
 }
@@ -190,14 +193,16 @@ pub struct Oauth2ResourceServersWriteTransaction<'a> {
     inner: CowCellWriteTxn<'a, Oauth2RSInner>,
 }
 
-impl TryFrom<Vec<Arc<EntrySealedCommitted>>> for Oauth2ResourceServers {
+impl TryFrom<(Vec<Arc<EntrySealedCommitted>>, Url)> for Oauth2ResourceServers {
     type Error = OperationError;
 
-    fn try_from(value: Vec<Arc<EntrySealedCommitted>>) -> Result<Self, Self::Error> {
+    fn try_from(value: (Vec<Arc<EntrySealedCommitted>>, Url)) -> Result<Self, Self::Error> {
+        let (value, origin) = value;
         let fernet =
             Fernet::new(&Fernet::generate_key()).ok_or(OperationError::CryptographyError)?;
         let oauth2rs = Oauth2ResourceServers {
             inner: CowCell::new(Oauth2RSInner {
+                origin,
                 fernet,
                 rs_set: HashMap::new(),
             }),
@@ -279,6 +284,22 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .map(|iter| iter.map(str::to_string).collect())
                         .unwrap_or_else(|| Vec::new());
 
+                    trace!("es256_private_key_der");
+                    let jws_signer = ent
+                        .get_ava_single_es256_private_key_der("es256_private_key_der")
+                        .ok_or(OperationError::InvalidValueState)
+                        .and_then(|key_der| {
+                            JwsSigner::from_es256_der(key_der).map_err(|e| {
+                                admin_error!(err = ?e, "Unable to load JwsSigner from DER");
+                                OperationError::CryptographyError
+                            })
+                        })?;
+
+                    let jws_validator = jws_signer.get_validator().map_err(|e| {
+                        admin_error!(err = ?e, "Unable to load JwsValidator from JwsSigner");
+                        OperationError::CryptographyError
+                    })?;
+
                     let client_id = name.clone();
                     let rscfg = Oauth2RS {
                         name,
@@ -289,7 +310,9 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         implicit_scopes,
                         authz_secret,
                         token_fernet,
-                        token_format: Oauth2RSTokenFormat::Uat,
+                        jws_signer,
+                        jws_validator,
+                        iss: self.inner.origin.clone(),
                     };
 
                     Ok((client_id, rscfg))
@@ -403,6 +426,7 @@ impl Oauth2ResourceServersReadTransaction {
             code_challenge: auth_req.code_challenge.clone(),
             redirect_uri: auth_req.redirect_uri.clone(),
             scopes: avail_scopes.clone(),
+            nonce: auth_req.nonce.clone(),
         };
 
         let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
@@ -474,6 +498,7 @@ impl Oauth2ResourceServersReadTransaction {
             code_challenge: consent_req.code_challenge,
             redirect_uri: consent_req.redirect_uri.clone(),
             scopes: consent_req.scopes,
+            nonce: consent_req.nonce,
         };
 
         // Encrypt the exchange token with the fernet key of the client resource server
@@ -564,35 +589,49 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         };
 
+        let iat = ct.as_secs() as i64;
+
+        // let amr = ();
+
         let scope = if code_xchg.scopes.is_empty() {
             None
         } else {
             Some(code_xchg.scopes.join(" "))
         };
 
-        let iat = ct.as_secs() as i64;
-
-        let o2uat = Oauth2UserToken {
-            toktype: Oauth2TokenType::Access,
-            uat: code_xchg.uat,
-            scopes: code_xchg.scopes,
+        let oidc = OidcToken {
+            iss: self.inner.origin.clone(),
+            sub: OidcSubject::U(code_xchg.uat.uuid),
+            aud: client_id.clone(),
             iat,
-            nbf: iat,
+            nbf: Some(iat),
             // TODO: Make configurable!
             exp: iat + 480,
+            auth_time: None,
+            nonce: code_xchg.nonce.clone(),
+            acr: None,
+            // In the future we could export the uat's auth type here.
+            amr: None,
+            azp: None,
+            jti: None,
+            s_claims: OidcClaims {
+                // Map from displayname
+                // name,
+                // Map from spn
+                // preferred_username,
+                scopes: code_xchg.scopes,
+                ..Default::default()
+            },
+            claims: Default::default(),
         };
 
-        // If we are type == Uat, then we re-use the same encryption material here.
-        let access_token_data = serde_json::to_vec(&o2uat).map_err(|e| {
-            admin_error!(err = ?e, "Unable to encode uat data");
-            Oauth2Error::ServerError(OperationError::SerdeJsonError)
-        })?;
-
-        let access_token = match o2rs.token_format {
-            Oauth2RSTokenFormat::Uat => o2rs
-                .token_fernet
-                .encrypt_at_time(&access_token_data, ct.as_secs()),
-        };
+        let access_token = oidc
+            .sign(&o2rs.jws_signer)
+            .map(|jwt_signed| jwt_signed.to_string())
+            .map_err(|e| {
+                admin_error!(err = ?e, "Unable to encode uat data");
+                Oauth2Error::ServerError(OperationError::InvalidState)
+            })?;
 
         Ok(AccessTokenResponse {
             access_token,
@@ -627,51 +666,55 @@ impl Oauth2ResourceServersReadTransaction {
 
         // In these cases instead of error, we need to return Active:false
         // Check the Token is correctly signed.
-        let access_token: Result<Oauth2UserToken, _> = o2rs
-            .token_fernet
-            .decrypt_at_time(&intr_req.token, None, ct.as_secs())
-            .map_err(|_| {
-                admin_error!("Failed to decrypt access token introspect request");
-                Oauth2Error::InvalidRequest
-            })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!("Failed to deserialise access token - {:?}", e);
-                    Oauth2Error::InvalidRequest
-                })
-            });
 
+        let oidc = OidcUnverified::from_str(&intr_req.token)
+            .and_then(|oidc_unverified| oidc_unverified.validate(&o2rs.jws_validator))
+            .map_err(|e| {
+                admin_error!(err = ?e, "Failed to decrypt access token introspect request");
+                Oauth2Error::InvalidRequest
+            })?;
+
+        // Check that oidc.aud matches client_id.
+        let token_type = Some("access_token".to_string());
+
+        /*
         let access_token = match access_token {
             Ok(a) => a,
             Err(_) => return Ok(AccessTokenIntrospectResponse::inactive()),
         };
+        */
 
-        let valid = idms
-            .check_uat_valid(&access_token.uat, ct)
-            .map_err(|_| admin_error!("Account is not valid"));
+        // We only have the uuid though?
+
+        let valid = match oidc.sub {
+            OidcSubject::U(uuid) => idms
+                .check_account_uuid_valid(&uuid, ct)
+                .map_err(|_| admin_error!("Account is not valid")),
+            _ => Ok(false),
+        };
 
         match valid {
             Ok(true) => {}
             _ => return Ok(AccessTokenIntrospectResponse::inactive()),
         };
 
-        let scope = if access_token.scopes.is_empty() {
+        let scope = if oidc.s_claims.scopes.is_empty() {
             None
         } else {
-            Some(access_token.scopes.join(" "))
+            Some(oidc.s_claims.scopes.join(" "))
         };
 
         Ok(AccessTokenIntrospectResponse {
             active: true,
             scope,
             client_id: Some(client_id),
-            username: Some(access_token.uat.spn.clone()),
-            token_type: Some(access_token.toktype.to_string()),
-            exp: Some(access_token.exp),
-            iat: Some(access_token.iat),
-            nbf: Some(access_token.nbf),
-            sub: Some(access_token.uat.uuid.to_string()),
-            aud: None,
+            username: oidc.s_claims.preferred_username,
+            token_type,
+            exp: Some(oidc.exp),
+            iat: Some(oidc.iat),
+            nbf: oidc.nbf,
+            sub: Some(oidc.sub.to_string()),
+            aud: Some(oidc.aud),
             iss: None,
             jti: None,
         })
@@ -756,6 +799,8 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
             };
 
             $idms_prox_read
@@ -911,6 +956,8 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
             };
 
             assert!(
@@ -929,6 +976,8 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
             };
 
             assert!(
@@ -947,6 +996,8 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
                 scope: "test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
             };
 
             assert!(
@@ -965,6 +1016,8 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "invalid_scope read".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
             };
 
             assert!(
@@ -984,6 +1037,8 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "read test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
             };
 
             assert!(

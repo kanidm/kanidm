@@ -1719,6 +1719,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.to_json_filter_single())
     }
 
+    pub fn get_ava_single_es256_private_key_der(&self, attr: &str) -> Option<&[u8]> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_es256_private_key_der_single())
+    }
+
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {

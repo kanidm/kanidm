@@ -194,7 +194,7 @@ impl IdmServer {
 
         let webauthn = Webauthn::new(WebauthnDomainConfig {
             rp_name,
-            origin: origin_url,
+            origin: origin_url.clone(),
             rp_id,
         });
 
@@ -205,10 +205,11 @@ impl IdmServer {
         })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
-        let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set).map_err(|e| {
-            admin_error!("Failed to load oauth2 resource servers - {:?}", e);
-            e
-        })?;
+        let oauth2rs =
+            Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
+                admin_error!("Failed to load oauth2 resource servers - {:?}", e);
+                e
+            })?;
 
         Ok((
             IdmServer {
@@ -373,14 +374,11 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn check_uat_valid(&self, uat: &UserAuthToken, ct: Duration) -> Result<bool, OperationError> {
-        let entry = self
-            .get_qs_txn()
-            .internal_search_uuid(&uat.uuid)
-            .map_err(|e| {
-                admin_error!(?e, "from_ro_uat failed");
-                e
-            })?;
+    fn check_account_uuid_valid(&self, uuid: &Uuid, ct: Duration) -> Result<bool, OperationError> {
+        let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
+            admin_error!(?e, "check_account_uuid_valid failed");
+            e
+        })?;
 
         Ok(Account::check_within_valid_time(
             ct,
