@@ -60,12 +60,9 @@ macro_rules! try_from_entry {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let spn = $value
-            .get_ava_single("spn")
-            .map(|v| v.to_proto_string_clone())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = *$value.get_uuid();
 
@@ -127,7 +124,6 @@ impl UnixUserAccount {
         try_from_entry!(value, groups)
     }
 
-    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
@@ -206,7 +202,6 @@ impl UnixUserAccount {
         vmin && vmax
     }
 
-    // ! TRACING INTEGRATED
     pub(crate) fn verify_unix_credential(
         &self,
         cleartext: &str,
@@ -298,12 +293,9 @@ macro_rules! try_from_group_e {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let spn = $value
-            .get_ava_single("spn")
-            .map(|v| v.to_proto_string_clone())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = *$value.get_uuid();
 
@@ -344,12 +336,9 @@ macro_rules! try_from_account_group_e {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let spn = $value
-            .get_ava_single("spn")
-            .map(|v| v.to_proto_string_clone())
-            .ok_or_else(|| {
-                OperationError::InvalidAccountState("Missing attribute: spn".to_string())
-            })?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or_else(|| {
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string())
+        })?;
 
         let uuid = *$value.get_uuid();
 
@@ -398,7 +387,6 @@ impl UnixGroup {
         try_from_account_group_e!(value, qs)
     }
 
-    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,

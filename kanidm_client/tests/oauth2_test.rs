@@ -219,7 +219,7 @@ fn test_oauth2_basic_flow() {
             assert!(tir.iat.is_some());
             assert!(tir.nbf.is_some());
             assert!(tir.sub.is_some());
-            assert!(tir.aud.is_none());
+            assert!(tir.aud.as_deref() == Some("test_integration"));
             assert!(tir.iss.is_none());
             assert!(tir.jti.is_none());
         })

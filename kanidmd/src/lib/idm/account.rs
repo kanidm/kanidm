@@ -52,15 +52,9 @@ macro_rules! try_from_entry {
             .get_ava_single_credential("primary_credential")
             .map(|v| v.clone());
 
-        let spn = $value
-            .get_ava_single("spn")
-            .map(|s| {
-                debug_assert!(s.is_spn());
-                s.to_proto_string_clone()
-            })
-            .ok_or(OperationError::InvalidAccountState(
-                "Missing attribute: spn".to_string(),
-            ))?;
+        let spn = $value.get_ava_single_proto_string("spn").ok_or(
+            OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
+        )?;
 
         let valid_from = $value.get_ava_single_datetime("account_valid_from");
 
@@ -115,7 +109,6 @@ pub(crate) struct Account {
 }
 
 impl Account {
-    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
@@ -126,7 +119,6 @@ impl Account {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,
@@ -137,7 +129,6 @@ impl Account {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub(crate) fn try_from_entry_reduced(
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
@@ -178,12 +169,10 @@ impl Account {
             expiry,
             // name: self.name.clone(),
             spn: self.spn.clone(),
-            // displayname: self.displayname.clone(),
+            displayname: self.displayname.clone(),
             uuid: self.uuid,
             // application: None,
             // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
-            // claims: claims.iter().map(|c| c.to_proto()).collect(),
-            // claims: Vec::new(),
             auth_type,
             // What's the best way to get access to these limits with regard to claims/other?
             lim_uidx: false,

@@ -145,6 +145,8 @@ pub const UUID_SCHEMA_ATTR_CN: Uuid = uuid!("00000000-0000-0000-0000-ffff0000008
 pub const UUID_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: Uuid = uuid!("00000000-0000-0000-0000-ffff00000088");
 pub const _UUID_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000089");
+pub const _UUID_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000090");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

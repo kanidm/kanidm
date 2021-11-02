@@ -123,7 +123,6 @@ impl QueryServerReadV1 {
         res
     }
 
-    // ! TRACING INTEGRATED
     #[instrument(
         level = "trace",
         name = "auth",

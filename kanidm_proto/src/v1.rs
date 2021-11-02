@@ -187,9 +187,9 @@ pub struct UserAuthToken {
     pub expiry: time::OffsetDateTime,
     pub uuid: Uuid,
     // pub name: String,
+    pub displayname: String,
     pub spn: String,
     // pub groups: Vec<Group>,
-    // pub claims: Vec<Claim>,
     // Should we just retrieve these inside the server instead of in the uat?
     // or do we want per-session limit capabilities?
     pub lim_uidx: bool,

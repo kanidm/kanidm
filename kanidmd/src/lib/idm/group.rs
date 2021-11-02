@@ -17,7 +17,6 @@ pub struct Group {
     // We'll probably add policy and claims later to this
 }
 
-// ! TRACING INTEGRATED
 macro_rules! try_from_account_e {
     ($value:expr, $qs:expr) => {{
         let name = $value
@@ -65,7 +64,6 @@ macro_rules! try_from_account_e {
 }
 
 impl Group {
-    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_red_ro(
         value: &Entry<EntryReduced, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
@@ -73,7 +71,6 @@ impl Group {
         try_from_account_e!(value, qs)
     }
 
-    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_ro(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerReadTransaction,
@@ -81,7 +78,6 @@ impl Group {
         try_from_account_e!(value, qs)
     }
 
-    // ! TRACING INTEGRATED
     pub fn try_from_account_entry_rw(
         value: &Entry<EntrySealed, EntryCommitted>,
         qs: &mut QueryServerWriteTransaction,

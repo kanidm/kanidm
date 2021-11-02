@@ -123,7 +123,6 @@ pub struct BackendWriteTransaction<'a> {
 }
 
 impl IdRawEntry {
-    // ! TRACING INTEGRATED
     fn into_dbentry(self) -> Result<(u64, DbEntry), OperationError> {
         serde_cbor::from_slice(self.data.as_slice())
             .map_err(|e| {
@@ -133,7 +132,6 @@ impl IdRawEntry {
             .map(|dbe| (self.id, dbe))
     }
 
-    // ! TRACING INTEGRATED
     fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
         let db_e = serde_cbor::from_slice(self.data.as_slice()).map_err(|e| {
             admin_error!(?e, "Serde CBOR Error");
@@ -152,7 +150,6 @@ pub trait BackendTransaction {
 
     fn get_idxmeta_ref(&self) -> &IdxMeta;
 
-    // ! TRACING INTEGRATED
     /// Recursively apply a filter, transforming into IdList's on the way. This builds a query
     /// execution log, so that it can be examined how an operation proceeded.
     #[allow(clippy::cognitive_complexity)]
@@ -519,7 +516,6 @@ pub trait BackendTransaction {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn search(
         &self,
         erl: &Limits,
@@ -621,7 +617,6 @@ pub trait BackendTransaction {
         })
     }
 
-    // ! TRACING INTEGRATED
     /// Given a filter, assert some condition exists.
     /// Basically, this is a specialised case of search, where we don't need to
     /// load any candidates if they match. This is heavily used in uuid
@@ -691,12 +686,10 @@ pub trait BackendTransaction {
         }) // end spanned
     }
 
-    // ! TRACING INTEGRATED
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         self.get_idlayer().verify()
     }
 
-    // ! TRACING INTEGRATED
     fn verify_entry_index(
         &self,
         e: &Entry<EntrySealed, EntryCommitted>,
@@ -819,17 +812,14 @@ pub trait BackendTransaction {
             })
     }
 
-    // ! TRACING INTEGRATED
     fn name2uuid(&self, name: &str) -> Result<Option<Uuid>, OperationError> {
         self.get_idlayer().name2uuid(name)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid2spn(&self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
         self.get_idlayer().uuid2spn(uuid)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid2rdn(&self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
         self.get_idlayer().uuid2rdn(uuid)
     }
@@ -860,17 +850,14 @@ impl<'a> BackendTransaction for BackendReadTransaction<'a> {
 }
 
 impl<'a> BackendReadTransaction<'a> {
-    // ! TRACING INTEGRATED
     pub fn list_indexes(&self) -> Result<Vec<String>, OperationError> {
         self.get_idlayer().list_idxs()
     }
 
-    // ! TRACING INTEGRATED
     pub fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         self.get_idlayer().list_id2entry()
     }
 
-    // ! TRACING INTEGRATED
     pub fn list_index_content(
         &self,
         index_name: &str,
@@ -878,7 +865,6 @@ impl<'a> BackendReadTransaction<'a> {
         self.get_idlayer().list_index_content(index_name)
     }
 
-    // ! TRACING INTEGRATED
     pub fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError> {
         self.get_idlayer().get_id2entry(id)
     }
@@ -1032,7 +1018,6 @@ impl<'a> BackendWriteTransaction<'a> {
         Ok(())
     }
 
-    // TODO: tracing
     // Should take a mut index set, and then we write the whole thing back
     // in a single stripe.
     //

@@ -76,7 +76,6 @@ pub struct IdlArcSqliteWriteTransaction<'a> {
     maxid: CowCellWriteTxn<'a, u64>,
 }
 
-// ! TRACING INTEGRATED
 macro_rules! get_identry {
     (
         $self:expr,
@@ -138,7 +137,6 @@ macro_rules! get_identry {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! get_identry_raw {
     (
         $self:expr,
@@ -149,7 +147,6 @@ macro_rules! get_identry_raw {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! exists_idx {
     (
         $self:expr,
@@ -161,7 +158,6 @@ macro_rules! exists_idx {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! get_idl {
     (
         $self:expr,
@@ -214,7 +210,6 @@ macro_rules! get_idl {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! name2uuid {
     (
         $self:expr,
@@ -239,7 +234,6 @@ macro_rules! name2uuid {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! uuid2spn {
     (
         $self:expr,
@@ -264,7 +258,6 @@ macro_rules! uuid2spn {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! uuid2rdn {
     (
         $self:expr,
@@ -289,7 +282,6 @@ macro_rules! uuid2rdn {
     }};
 }
 
-// ! TRACING INTEGRATED
 macro_rules! verify {
     (
         $self:expr
@@ -321,19 +313,15 @@ macro_rules! verify {
 }
 
 pub trait IdlArcSqliteTransaction {
-    // ! TRACING INTEGRATED
     fn get_identry(
         &mut self,
         idl: &IdList,
     ) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn exists_idx(&mut self, attr: &str, itype: &IndexType) -> Result<bool, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn get_idl(
         &mut self,
         attr: &str,
@@ -345,38 +333,29 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
 
     fn is_dirty(&self) -> bool;
 
-    // ! TRACING INTEGRATED
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn list_idxs(&self) -> Result<Vec<String>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn list_index_content(
         &self,
         index_name: &str,
     ) -> Result<Vec<(String, IDLBitRange)>, OperationError>;
 
-    // ! TRACING INTEGRATED
     fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError>;
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
-    // ! TRACING INTEGRATED
     fn get_identry(
         &mut self,
         idl: &IdList,
@@ -384,17 +363,14 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         get_identry!(self, idl, true)
     }
 
-    // ! TRACING INTEGRATED
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError> {
         get_identry_raw!(self, idl)
     }
 
-    // ! TRACING INTEGRATED
     fn exists_idx(&mut self, attr: &str, itype: &IndexType) -> Result<bool, OperationError> {
         exists_idx!(self, attr, itype)
     }
 
-    // ! TRACING INTEGRATED
     fn get_idl(
         &mut self,
         attr: &str,
@@ -404,17 +380,14 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         get_idl!(self, attr, itype, idx_key)
     }
 
-    // ! TRACING INTEGRATED
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         self.db.get_db_s_uuid()
     }
 
-    // ! TRACING INTEGRATED
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         self.db.get_db_d_uuid()
     }
 
-    // ! TRACING INTEGRATED
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         verify!(self)
     }
@@ -423,34 +396,28 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         false
     }
 
-    // ! TRACING INTEGRATED
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         name2uuid!(self, name)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
         uuid2spn!(self, uuid)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, uuid)
     }
 
-    // ! TRACING INTEGRATED
     fn list_idxs(&self) -> Result<Vec<String>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.list_idxs()
     }
 
-    // ! TRACING INTEGRATED
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.list_id2entry()
     }
 
-    // ! TRACING INTEGRATED
     fn list_index_content(
         &self,
         index_name: &str,
@@ -459,7 +426,6 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         self.db.list_index_content(index_name)
     }
 
-    // ! TRACING INTEGRATED
     fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.get_id2entry(id)
@@ -467,7 +433,6 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
 }
 
 impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
-    // ! TRACING INTEGRATED
     fn get_identry(
         &mut self,
         idl: &IdList,
@@ -475,17 +440,14 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         get_identry!(self, idl, false)
     }
 
-    // ! TRACING INTEGRATED
     fn get_identry_raw(&self, idl: &IdList) -> Result<Vec<IdRawEntry>, OperationError> {
         get_identry_raw!(self, idl)
     }
 
-    // ! TRACING INTEGRATED
     fn exists_idx(&mut self, attr: &str, itype: &IndexType) -> Result<bool, OperationError> {
         exists_idx!(self, attr, itype)
     }
 
-    // ! TRACING INTEGRATED
     fn get_idl(
         &mut self,
         attr: &str,
@@ -495,17 +457,14 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         get_idl!(self, attr, itype, idx_key)
     }
 
-    // ! TRACING INTEGRATED
     fn get_db_s_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         self.db.get_db_s_uuid()
     }
 
-    // ! TRACING INTEGRATED
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError> {
         self.db.get_db_d_uuid()
     }
 
-    // ! TRACING INTEGRATED
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         verify!(self)
     }
@@ -514,34 +473,28 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         self.entry_cache.is_dirty()
     }
 
-    // ! TRACING INTEGRATED
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError> {
         name2uuid!(self, name)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
         uuid2spn!(self, uuid)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, uuid)
     }
 
-    // ! TRACING INTEGRATED
     fn list_idxs(&self) -> Result<Vec<String>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.list_idxs()
     }
 
-    // ! TRACING INTEGRATED
     fn list_id2entry(&self) -> Result<Vec<(u64, String)>, OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.list_id2entry()
     }
 
-    // ! TRACING INTEGRATED
     fn list_index_content(
         &self,
         index_name: &str,
@@ -550,7 +503,6 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         self.db.list_index_content(index_name)
     }
 
-    // ! TRACING INTEGRATED
     fn get_id2entry(&self, id: u64) -> Result<(u64, String), OperationError> {
         // This is only used in tests or debug tools, so bypass the cache.
         self.db.get_id2entry(id)
@@ -558,7 +510,6 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl<'a> IdlArcSqliteWriteTransaction<'a> {
-    // ! TRACING INTEGRATED
     pub fn commit(self) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::commit", {
             let IdlArcSqliteWriteTransaction {
@@ -653,7 +604,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         *self.maxid = mid;
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_identries<'b, I>(&'b mut self, mut entries: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = &'b Entry<EntrySealed, EntryCommitted>>,
@@ -673,7 +623,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_identries_raw<I>(&mut self, entries: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = IdRawEntry>,
@@ -690,7 +639,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
             })
     }
 
-    // ! TRACING INTEGRATED
     pub fn delete_identry<I>(&mut self, mut idl: I) -> Result<(), OperationError>
     where
         I: Iterator<Item = u64>,
@@ -709,7 +657,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_idl(
         &mut self,
         attr: &str,
@@ -738,7 +685,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn optimise_dirty_idls(&mut self) {
         self.idl_cache.iter_mut_dirty().for_each(|(k, maybe_idl)| {
             if let Some(idl) = maybe_idl {
@@ -749,12 +695,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn is_idx_slopeyness_generated(&self) -> Result<bool, OperationError> {
         self.db.is_idx_slopeyness_generated()
     }
 
-    // ! TRACING INTEGRATED
     pub fn get_idx_slope(&self, ikey: &IdxKey) -> Result<Option<IdxSlope>, OperationError> {
         self.db.get_idx_slope(ikey)
     }
@@ -766,7 +710,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
     /// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always
     /// be better than class=*, but comparing name=foo to spn=foo is "much over muchness" since
     /// both are really fast.
-    // ! TRACING INTEGRATED
     pub fn analyse_idx_slopes(&mut self) -> Result<(), OperationError> {
         /*
          * Inside of this analysis there are two major factors we need to understand
@@ -1001,12 +944,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         }
     }
 
-    // ! TRACING INTEGRATED
     pub fn create_name2uuid(&self) -> Result<(), OperationError> {
         self.db.create_name2uuid()
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_name2uuid_add(
         &mut self,
         uuid: &Uuid,
@@ -1022,7 +963,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_name2uuid_rem(&mut self, rem: BTreeSet<String>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_name2uuid_rem", {
             // self.db.write_name2uuid_rem(audit, &rem).and_then(|_| {
@@ -1036,12 +976,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn create_uuid2spn(&self) -> Result<(), OperationError> {
         self.db.create_uuid2spn()
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_uuid2spn(&mut self, uuid: &Uuid, k: Option<Value>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_uuid2spn", {
             let cache_key = NameCacheKey::Uuid2Spn(*uuid);
@@ -1055,12 +993,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn create_uuid2rdn(&self) -> Result<(), OperationError> {
         self.db.create_uuid2rdn()
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_uuid2rdn(&mut self, uuid: &Uuid, k: Option<String>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_uuid2rdn", {
             let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
@@ -1074,20 +1010,17 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn create_idx(&self, attr: &str, itype: &IndexType) -> Result<(), OperationError> {
         // We don't need to affect this, so pass it down.
         self.db.create_idx(attr, itype)
     }
 
-    // ! TRACING INTEGRATED
     pub unsafe fn purge_idxs(&mut self) -> Result<(), OperationError> {
         self.db.purge_idxs().map(|()| {
             self.idl_cache.clear();
         })
     }
 
-    // ! TRACING INTEGRATED
     pub unsafe fn purge_id2entry(&mut self) -> Result<(), OperationError> {
         self.db.purge_id2entry().map(|()| {
             let mut ids = IDLBitRange::new();
@@ -1097,12 +1030,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_db_s_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
         self.db.write_db_s_uuid(nsid)
     }
 
-    // ! TRACING INTEGRATED
     pub fn write_db_d_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
         self.db.write_db_d_uuid(nsid)
     }
@@ -1112,7 +1043,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.set_db_ts_max(ts)
     }
 
-    // ! TRACING INTEGRATED
     pub fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
         match *self.op_ts_max {
             Some(ts) => Ok(Some(ts)),
@@ -1124,12 +1054,10 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.get_db_index_version()
     }
 
-    // ! TRACING INTEGRATED
     pub(crate) fn set_db_index_version(&self, v: i64) -> Result<(), OperationError> {
         self.db.set_db_index_version(v)
     }
 
-    // ! TRACING INTEGRATED
     pub fn setup(&mut self) -> Result<(), OperationError> {
         self.db
             .setup()
@@ -1145,7 +1073,6 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 }
 
 impl IdlArcSqlite {
-    // ! TRACING INTEGRATED
     pub fn new(cfg: &BackendConfig, vacuum: bool) -> Result<Self, OperationError> {
         let db = IdlSqlite::new(cfg, vacuum)?;
 

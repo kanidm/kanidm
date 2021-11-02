@@ -616,9 +616,9 @@ impl Oauth2ResourceServersReadTransaction {
             jti: None,
             s_claims: OidcClaims {
                 // Map from displayname
-                // name,
+                name: Some(code_xchg.uat.displayname.clone()),
                 // Map from spn
-                // preferred_username,
+                preferred_username: Some(code_xchg.uat.spn.clone()),
                 scopes: code_xchg.scopes,
                 ..Default::default()
             },
@@ -675,14 +675,12 @@ impl Oauth2ResourceServersReadTransaction {
             })?;
 
         // Check that oidc.aud matches client_id.
-        let token_type = Some("access_token".to_string());
+        if oidc.aud != client_id {
+            admin_error!(token_aud = ?oidc.aud, ?client_id, "Token audience does not match client_id");
+            return Err(Oauth2Error::InvalidRequest);
+        }
 
-        /*
-        let access_token = match access_token {
-            Ok(a) => a,
-            Err(_) => return Ok(AccessTokenIntrospectResponse::inactive()),
-        };
-        */
+        let token_type = Some("access_token".to_string());
 
         // We only have the uuid though?
 
@@ -1320,6 +1318,7 @@ mod tests {
                 .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
                 .expect("Failed to inspect token");
 
+            eprintln!("👉  {:?}", intr_response);
             assert!(intr_response.active);
             assert!(intr_response.scope.as_deref() == Some("test"));
             assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));

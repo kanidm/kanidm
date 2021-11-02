@@ -690,6 +690,35 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "An es256 private key"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "es256_private_key_der"
+      ],
+      "syntax": [
+        "ES256_PRIVATE_DER"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000090"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -917,7 +946,8 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
         "oauth2_rs_name",
         "displayname",
         "oauth2_rs_origin",
-        "oauth2_rs_token_key"
+        "oauth2_rs_token_key",
+        "es256_private_key_der"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000085"
