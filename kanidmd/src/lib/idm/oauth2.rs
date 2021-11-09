@@ -458,7 +458,7 @@ impl Oauth2ResourceServersReadTransaction {
             admin_error!(
                 "Invalid oauth2 request - refusing to allow user that authenticated with anonymous"
             );
-            return Err(Oauth2Error::InvalidRequest);
+            return Err(Oauth2Error::AccessDenied);
         }
 
         // scopes - you need to have every requested scope or this req is denied.
@@ -1167,14 +1167,18 @@ mod tests {
         (secret, uat, ident)
     }
 
-    fn setup_anon(idms: &IdmServer, ct: Duration) -> (UserAuthToken, Identity) {
+    fn setup_idm_admin(
+        idms: &IdmServer,
+        ct: Duration,
+        authtype: AuthType,
+    ) -> (UserAuthToken, Identity) {
         let mut idms_prox_write = idms.proxy_write(ct);
         let account = idms_prox_write
             .target_to_account(&UUID_IDM_ADMIN)
             .expect("account must exist");
         let session_id = uuid::Uuid::new_v4();
         let uat = account
-            .to_userauthtoken(session_id, ct, AuthType::Anonymous)
+            .to_userauthtoken(session_id, ct, authtype)
             .expect("Unable to create uat");
         let ident = idms_prox_write
             .process_uat_to_identity(&uat, ct)
@@ -1241,7 +1245,8 @@ mod tests {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
             let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
 
-            let (anon_uat, anon_ident) = setup_anon(idms, ct);
+            let (anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous);
+            let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
 
             // Need a uat from a user not in the group. Probs anonymous.
 
@@ -1286,7 +1291,7 @@ mod tests {
                 idms_prox_read
                     .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
-                    == Oauth2Error::InvalidRequest
+                    == Oauth2Error::InvalidClientId
             );
 
             //  * mis match origin in the redirect.
@@ -1306,7 +1311,7 @@ mod tests {
                 idms_prox_read
                     .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                     .unwrap_err()
-                    == Oauth2Error::InvalidRequest
+                    == Oauth2Error::InvalidOrigin
             );
 
             // Requested scope is not available
@@ -1330,7 +1335,26 @@ mod tests {
             );
 
             // Not a member of the group.
+            let auth_req = AuthorisationRequest {
+                response_type: "code".to_string(),
+                client_id: "test_resource_server".to_string(),
+                state: "123".to_string(),
+                code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                code_challenge_method: CodeChallengeMethod::S256,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                scope: "read test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
+            };
 
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorisation(&idm_admin_ident, &idm_admin_uat, &auth_req, ct)
+                    .unwrap_err()
+                    == Oauth2Error::AccessDenied
+            );
+
+            // Deny Anonymous auth methods
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
