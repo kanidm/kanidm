@@ -47,20 +47,25 @@ decisions to Kanidm.
 
 It's important for you to know *how* your resource server supports oauth2. For example, does it
 support rfc7662 token introspection or does it rely on openid connect for identity information?
-Does the resource server support PKCE S256 or not?
-
-> Note: OpenID Connect (OIDC) is not currently supported at this time - if you're interested in finding out when it's ready, please follow [Issue #278](https://github.com/kanidm/kanidm/issues/278)
+Does the resource server support PKCE S256?
 
 In general Kanidm requires that your resource server supports:
 
 * HTTP basic authentication to the authorisation server
 * PKCE S256 code verification to prevent certain token attack classes
+* OIDC only - JWT ES256 for token signatures
 
-Kanidm will expose it's oauth2 apis at the urls:
+Kanidm will expose it's oauth2/oidc apis at the following urls:
 
-* auth url: https://idm.example.com/ui/oauth2
+* user auth url: https://idm.example.com/ui/oauth2
+* api auth url: https://idm.example.com/oauth2/authorise
 * token url: https://idm.example.com/oauth2/token
 * token inspect url: https://idm.example.com/oauth2/inspect
+
+* openid connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id/
+* openid connect discovery:  https://idm.example.com/oauth2/openid/:client\_id/.well-known/openid-configuration
+* openid connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id/userinfo
+* token signing public key:  https://idm.example.com/oauth2/openid/:client\_id/public\_key.jwk
 
 ### Scope Relationships
 
@@ -81,6 +86,10 @@ server, and the groups/roles in Kanidm which can be specific to that resource se
 For an authorisation to proceed, all scopes requested must be available in the final scope set
 that is granted to the account. This final scope set can be built from implicit and mapped
 scopes.
+
+This use of scopes is the primary means to control who can access what resources. For example, if
+you have a resource server that will always request a scope of "read", then you can limit the
+"read" scope to a single group of users by a scope map so that only they may access that resource.
 
 ## Configuration
 
@@ -104,6 +113,18 @@ You can create a scope map with:
 
     kanidm system oauth2 create_scope_map <name> <kanidm_group_name> [scopes]...
     kanidm system oauth2 create_scope_map nextcloud nextcloud_admins admin
+
+> **NOTE**
+> If you are creating an openid connect (OIDC) resource server you *MUST* provide a
+> scope map OR implicit scope that contains 'openid'.
+
+> **HINT**
+> openid connect provides a number of scopes that affect the content of the resulting
+> authorisation token. Supported scopes and their associated claims are:
+> * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
+> * email - (email, email\_verified)
+> * address - (address)
+> * phone - (phone\_number, phone\_number\_verified)
 
 Once created you can view the details of the resource server.
 

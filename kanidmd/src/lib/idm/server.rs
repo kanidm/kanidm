@@ -18,7 +18,7 @@ use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
     Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
-    Oauth2ResourceServersWriteTransaction,
+    Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
@@ -44,6 +44,7 @@ use kanidm_proto::v1::{
 use std::str::FromStr;
 
 use bundy::hs512::HS512;
+use compact_jwt::Jwk;
 
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
@@ -1072,6 +1073,17 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .check_oauth2_authorise_permit(ident, uat, consent_req, ct)
     }
 
+    pub fn check_oauth2_authorise_reject(
+        &self,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        consent_req: &str,
+        ct: Duration,
+    ) -> Result<Url, OperationError> {
+        self.oauth2rs
+            .check_oauth2_authorise_reject(ident, uat, consent_req, ct)
+    }
+
     pub fn check_oauth2_token_exchange(
         &self,
         client_authz: &str,
@@ -1090,6 +1102,27 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
         self.oauth2rs
             .check_oauth2_token_introspect(self, client_authz, intr_req, ct)
+    }
+
+    pub fn oauth2_openid_userinfo(
+        &self,
+        client_id: &str,
+        client_authz: &str,
+        ct: Duration,
+    ) -> Result<OidcToken, Oauth2Error> {
+        self.oauth2rs
+            .oauth2_openid_userinfo(self, client_id, client_authz, ct)
+    }
+
+    pub fn oauth2_openid_discovery(
+        &self,
+        client_id: &str,
+    ) -> Result<OidcDiscoveryResponse, OperationError> {
+        self.oauth2rs.oauth2_openid_discovery(client_id)
+    }
+
+    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<Jwk, OperationError> {
+        self.oauth2rs.oauth2_openid_publickey(client_id)
     }
 }
 

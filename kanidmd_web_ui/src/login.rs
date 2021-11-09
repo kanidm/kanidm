@@ -343,6 +343,8 @@ impl Component for LoginApp {
 
         // Assume we are here for a good reason.
         models::clear_bearer_token();
+        // Do we have a login hint?
+        let inputvalue = models::pop_login_hint().unwrap_or_else(|| "".to_string());
         // Clean any cookies.
         let document = yew::utils::document();
         let html_document = document
@@ -351,31 +353,15 @@ impl Component for LoginApp {
         let cookie = html_document
             .cookie()
             .expect("failed to access page cookies");
-
         ConsoleService::log("cookies");
         ConsoleService::log(cookie.as_str());
 
         let state = LoginState::Init(true);
-
-        /*
-        // Get any previous sessions?
-        let state = if let Some(prev_session) = models::get_bearer_token() {
-            // Are they still valid?
-
-            // If so set loginState to LoginState::Authenticated, and pop
-            // our return location (if possible).
-            LoginState::Authenticated
-        } else {
-            // Init a new login session.
-            LoginState::Init(true)
-        };
-        */
-
         // startConfetti();
 
         LoginApp {
             link,
-            inputvalue: "".to_string(),
+            inputvalue,
             ft: None,
             session_id: "".to_string(),
             state,

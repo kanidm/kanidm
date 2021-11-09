@@ -377,31 +377,58 @@ pub fn create_https_server(
         .get(account_get_id_unix_token);
 
     // ==== These routes can not be cached
-
     let mut appserver = tserver.at("");
     appserver.with(NoCacheMiddleware::default());
 
-    let mut well_known = appserver.at("/.well-known");
-    well_known
-        .at("/openid-configuration")
-        .get(get_openid_configuration);
+    // let mut well_known = appserver.at("/.well-known");
 
     appserver.at("/status").get(self::status);
     // == oauth endpoints.
 
     let mut oauth2_process = appserver.at("/oauth2");
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/authorise")
         .post(oauth2_authorise_post)
         .get(oauth2_authorise_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/authorise/permit")
         .post(oauth2_authorise_permit_post)
         .get(oauth2_authorise_permit_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    oauth2_process
+        .at("/authorise/reject")
+        .post(oauth2_authorise_reject_post)
+        .get(oauth2_authorise_reject_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process.at("/token").post(oauth2_token_post);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
     oauth2_process
         .at("/token/introspect")
         .post(oauth2_token_introspect_post);
+
+    let mut openid_process = appserver.at("/oauth2/openid");
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    openid_process
+        .at("/:client_id/.well-known/openid-configuration")
+        .get(oauth2_openid_discovery_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    openid_process
+        .at("/:client_id/userinfo")
+        .get(oauth2_openid_userinfo_get);
+    // ⚠️  ⚠️   WARNING  ⚠️  ⚠️
+    // IF YOU CHANGE THESE VALUES YOU MUST UPDATE OIDC DISCOVERY URLS
+    openid_process
+        .at("/:client_id/public_key.jwk")
+        .get(oauth2_openid_publickey_get);
 
     let mut raw_route = appserver.at("/v1/raw");
     raw_route.at("/create").post(create);

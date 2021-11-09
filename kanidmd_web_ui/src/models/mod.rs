@@ -87,3 +87,18 @@ pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
 
     l.into_inner().ok()
 }
+
+pub fn push_login_hint(r: String) {
+    let mut tstorage = get_temporary_storage();
+    tstorage.store("login_hint", Ok(r));
+}
+
+pub fn pop_login_hint() -> Option<String> {
+    let mut tstorage = get_temporary_storage();
+
+    let l: Result<String, _> = tstorage.restore("login_hint");
+    ConsoleService::log(format!("login_hint -> {:?}", l).as_str());
+    tstorage.remove("login_hint");
+
+    l.ok()
+}

@@ -8,11 +8,15 @@
 use crate::identity::IdentityId;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
-use compact_jwt::{JwsSigner, JwsValidator, OidcClaims, OidcSubject, OidcToken, OidcUnverified};
+use crate::value::OAUTHSCOPE_RE;
+pub use compact_jwt::OidcToken;
+use compact_jwt::{
+    Jwk, JwsSigner, JwsValidator, JwtError, OidcClaims, OidcSubject, OidcUnverified,
+};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
-use kanidm_proto::v1::UserAuthToken;
+use kanidm_proto::v1::{AuthType, UserAuthToken};
 use openssl::sha;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
@@ -26,6 +30,11 @@ use webauthn_rs::base64_data::Base64UrlSafeData;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ConsentRequest, ErrorResponse,
+    OidcDiscoveryResponse,
+};
+use kanidm_proto::oauth2::{
+    ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
+    TokenEndpointAuthMethod,
 };
 
 use std::convert::TryFrom;
@@ -35,13 +44,18 @@ lazy_static! {
     static ref CLASS_OAUTH2: PartialValue = PartialValue::new_class("oauth2_resource_server");
     static ref CLASS_OAUTH2_BASIC: PartialValue =
         PartialValue::new_class("oauth2_resource_server_basic");
+    static ref URL_SERVICE_DOCUMENTATION: Url =
+        Url::parse("https://kanidm.github.io/kanidm/oauth2.html")
+            .expect("Failed to parse oauth2 service documentation url");
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
-#[serde(rename_all = "lowercase")]
+#[serde(rename_all = "snake_case")]
 pub enum Oauth2Error {
-    // Non-standard
+    // Non-standard - these are used to guide some control flow.
     AuthenticationRequired,
+    InvalidClientId,
+    InvalidOrigin,
     // Standard
     InvalidRequest,
     UnauthorizedClient,
@@ -50,12 +64,17 @@ pub enum Oauth2Error {
     InvalidScope,
     ServerError(OperationError),
     TemporarilyUnavailable,
+    // from https://datatracker.ietf.org/doc/html/rfc6750
+    InvalidToken,
+    InsufficientScope,
 }
 
 impl std::fmt::Display for Oauth2Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_str(match self {
             Oauth2Error::AuthenticationRequired => "authentication_required",
+            Oauth2Error::InvalidClientId => "invalid_client_id",
+            Oauth2Error::InvalidOrigin => "invalid_origin",
             Oauth2Error::InvalidRequest => "invalid_request",
             Oauth2Error::UnauthorizedClient => "unauthorized_client",
             Oauth2Error::AccessDenied => "access_denied",
@@ -63,6 +82,8 @@ impl std::fmt::Display for Oauth2Error {
             Oauth2Error::InvalidScope => "invalid_scope",
             Oauth2Error::ServerError(_) => "server_error",
             Oauth2Error::TemporarilyUnavailable => "temporarily_unavailable",
+            Oauth2Error::InvalidToken => "invalid_token",
+            Oauth2Error::InsufficientScope => "insufficient_scope",
         })
     }
 }
@@ -158,7 +179,12 @@ pub struct Oauth2RS {
     jws_validator: JwsValidator,
     // For oidc we also need our issuer url.
     iss: Url,
-    //
+    // For discovery we need to build and keep a number of values.
+    authorization_endpoint: Url,
+    token_endpoint: Url,
+    userinfo_endpoint: Url,
+    jwks_uri: Url,
+    scopes_supported: Vec<String>,
 }
 
 impl std::fmt::Debug for Oauth2RS {
@@ -300,6 +326,22 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         OperationError::CryptographyError
                     })?;
 
+                    let mut authorization_endpoint = self.inner.origin.clone();
+                    authorization_endpoint.set_path("/ui/oauth2");
+                    let mut token_endpoint = self.inner.origin.clone();
+                    token_endpoint.set_path("/oauth2/token");
+                    let mut userinfo_endpoint = self.inner.origin.clone();
+                    userinfo_endpoint.set_path(&format!("/oauth2/openid/{}/userinfo", name));
+                    let mut jwks_uri = self.inner.origin.clone();
+                    jwks_uri.set_path(&format!("/oauth2/openid/{}/public_key.jwk", name));
+
+                    let scopes_supported: BTreeSet<String> = implicit_scopes
+                        .iter()
+                        .cloned()
+                        .chain(scope_maps.values().map(|bts| bts.iter()).flatten().cloned())
+                        .collect();
+                    let scopes_supported: Vec<_> = scopes_supported.into_iter().collect();
+
                     let client_id = name.clone();
                     let rscfg = Oauth2RS {
                         name,
@@ -313,6 +355,11 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         jws_signer,
                         jws_validator,
                         iss: self.inner.origin.clone(),
+                        authorization_endpoint,
+                        token_endpoint,
+                        userinfo_endpoint,
+                        jwks_uri,
+                        scopes_supported,
                     };
 
                     Ok((client_id, rscfg))
@@ -358,11 +405,22 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
+        /*
+         * 4.1.2.1.  Error Response
+         *
+         * If the request fails due to a missing, invalid, or mismatching
+         * redirection URI, or if the client identifier is missing or invalid,
+         * the authorization server SHOULD inform the resource owner of the
+         * error and MUST NOT automatically redirect the user-agent to the
+         * invalid redirection URI.
+         */
+
+        //
         let o2rs = self.inner.rs_set.get(&auth_req.client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
             );
-            Oauth2Error::InvalidRequest
+            Oauth2Error::InvalidClientId
         })?;
 
         // redirect_uri must be part of the client_id origin.
@@ -370,6 +428,35 @@ impl Oauth2ResourceServersReadTransaction {
             admin_warn!(
                 origin = ?o2rs.origin,
                 "Invalid oauth2 redirect_uri (must be related to origin of)"
+            );
+            return Err(Oauth2Error::InvalidOrigin);
+        }
+
+        // TODO: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
+        // Are we going to provide the functions for these? Most of these can be "later".
+        // IF CHANGED: Update OidcDiscoveryResponse!!!
+
+        // TODO: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
+        // prompt - if set to login, we need to force a re-auth. But we don't want to
+        // if the user "only just" logged in, that's annoying. So we need a time window for
+        // this, to detect when we should force it to the consent req.
+
+        // TODO: display = popup vs touch vs wap etc.
+
+        // TODO: max_age, pass through with consent req. If 0, force login.
+        // Otherwise force a login re the uat timeout.
+
+        // TODO: ui_locales / claims_locales for the ui. Only if we don't have a Uat that
+        // would provide this.
+
+        // TODO: id_token_hint - a past token which can be used as a hint.
+
+        // NOTE: login_hint is handled in the UI code, not here.
+
+        // Deny any uat with an auth method of anonymous
+        if uat.auth_type == AuthType::Anonymous {
+            admin_error!(
+                "Invalid oauth2 request - refusing to allow user that authenticated with anonymous"
             );
             return Err(Oauth2Error::InvalidRequest);
         }
@@ -380,6 +467,16 @@ impl Oauth2ResourceServersReadTransaction {
             admin_error!("Invalid oauth2 request - must contain at least one requested scope");
             return Err(Oauth2Error::InvalidRequest);
         }
+
+        // TODO: Check the scopes by our scope RE rules.
+        // Oauth2Error::InvalidScope
+        if !req_scopes.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
+            admin_error!(
+                "Invalid oauth2 request - requested scopes failed to pass validation rules"
+            );
+            return Err(Oauth2Error::InvalidScope);
+        }
+
         let uat_scopes: BTreeSet<_> = o2rs
             .implicit_scopes
             .iter()
@@ -516,6 +613,55 @@ impl Oauth2ResourceServersReadTransaction {
         })
     }
 
+    pub fn check_oauth2_authorise_reject(
+        &self,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        consent_token: &str,
+        ct: Duration,
+    ) -> Result<Url, OperationError> {
+        // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
+        let consent_req: ConsentToken = self
+            .inner
+            .fernet
+            .decrypt_at_time(consent_token, Some(300), ct.as_secs())
+            .map_err(|_| {
+                admin_error!("Failed to decrypt consent request");
+                OperationError::CryptographyError
+            })
+            .and_then(|data| {
+                serde_json::from_slice(&data).map_err(|e| {
+                    admin_error!(err = ?e, "Failed to deserialise consent request");
+                    OperationError::SerdeJsonError
+                })
+            })?;
+
+        // Validate that the ident_id matches our current ident.
+        if consent_req.ident_id != ident.get_event_origin_id() {
+            security_info!("consent request ident id does not match the identity of our UAT.");
+            return Err(OperationError::InvalidSessionState);
+        }
+
+        // Validate that the session id matches our uat.
+        if consent_req.session_id != uat.session_id {
+            security_info!("consent request sessien id does not match the session id of our UAT.");
+            return Err(OperationError::InvalidSessionState);
+        }
+
+        // Get the resource server config based on this client_id.
+        let _o2rs = self
+            .inner
+            .rs_set
+            .get(&consent_req.client_id)
+            .ok_or_else(|| {
+                admin_error!("Invalid consent request oauth2 client_id");
+                OperationError::InvalidRequestState
+            })?;
+
+        // All good, now confirm the rejection to the client application.
+        Ok(consent_req.redirect_uri)
+    }
+
     pub fn check_oauth2_token_exchange(
         &self,
         client_authz: &str,
@@ -591,13 +737,33 @@ impl Oauth2ResourceServersReadTransaction {
 
         let iat = ct.as_secs() as i64;
 
-        // let amr = ();
-
         let scope = if code_xchg.scopes.is_empty() {
             None
         } else {
             Some(code_xchg.scopes.join(" "))
         };
+
+        // TODO: Scopes map to claims:
+        //
+        // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
+        // * email - (email, email\_verified)
+        // * address - (address)
+        // * phone - (phone\_number, phone\_number\_verified)
+        //
+        // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
+
+        // TODO: Can the user consent to which claims are released? Today as we don't support most
+        // of them anyway, no, but in the future, we can stash these to the consent req.
+
+        // TODO: If max_age was requested in the request, we MUST provide auth_time.
+
+        // amr == auth method
+        let amr = serde_json::to_string(&code_xchg.uat.auth_type)
+            .map(|s| Some(vec![s]))
+            .map_err(|e| {
+                admin_error!(err = ?e, "Unable to encode uat authtype data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
 
         let oidc = OidcToken {
             iss: self.inner.origin.clone(),
@@ -609,10 +775,10 @@ impl Oauth2ResourceServersReadTransaction {
             exp: iat + 480,
             auth_time: None,
             nonce: code_xchg.nonce.clone(),
+            at_hash: None,
             acr: None,
-            // In the future we could export the uat's auth type here.
-            amr: None,
-            azp: None,
+            amr,
+            azp: Some(client_id.clone()),
             jti: None,
             s_claims: OidcClaims {
                 // Map from displayname
@@ -626,7 +792,7 @@ impl Oauth2ResourceServersReadTransaction {
         };
 
         let access_token = oidc
-            .sign(&o2rs.jws_signer)
+            .sign_with_kid(&o2rs.jws_signer, &client_id)
             .map(|jwt_signed| jwt_signed.to_string())
             .map_err(|e| {
                 admin_error!(err = ?e, "Unable to encode uat data");
@@ -666,23 +832,27 @@ impl Oauth2ResourceServersReadTransaction {
 
         // In these cases instead of error, we need to return Active:false
         // Check the Token is correctly signed.
-
         let oidc = OidcUnverified::from_str(&intr_req.token)
-            .and_then(|oidc_unverified| oidc_unverified.validate(&o2rs.jws_validator))
+            .and_then(|oidc_unverified| {
+                if Some(client_id.as_str()) == oidc_unverified.get_jwk_kid() {
+                    oidc_unverified.validate(&o2rs.jws_validator, ct.as_secs() as i64)
+                } else {
+                    Err(JwtError::InvalidJwtKid)
+                }
+            })
             .map_err(|e| {
                 admin_error!(err = ?e, "Failed to decrypt access token introspect request");
-                Oauth2Error::InvalidRequest
+                Oauth2Error::InvalidToken
             })?;
 
         // Check that oidc.aud matches client_id.
+        // THIS ALSO CHECKS that the KID == aud by transitiviy.
         if oidc.aud != client_id {
             admin_error!(token_aud = ?oidc.aud, ?client_id, "Token audience does not match client_id");
             return Err(Oauth2Error::InvalidRequest);
         }
 
         let token_type = Some("access_token".to_string());
-
-        // We only have the uuid though?
 
         let valid = match oidc.sub {
             OidcSubject::U(uuid) => idms
@@ -715,6 +885,140 @@ impl Oauth2ResourceServersReadTransaction {
             aud: Some(oidc.aud),
             iss: None,
             jti: None,
+        })
+    }
+
+    pub fn oauth2_openid_userinfo(
+        &self,
+        idms: &IdmServerProxyReadTransaction<'_>,
+        client_id: &str,
+        client_authz: &str,
+        ct: Duration,
+    ) -> Result<OidcToken, Oauth2Error> {
+        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+            );
+            Oauth2Error::InvalidClientId
+        })?;
+
+        let oidc = OidcUnverified::from_str(&client_authz)
+            .and_then(|oidc_unverified| {
+                if Some(client_id) == oidc_unverified.get_jwk_kid() {
+                    oidc_unverified.validate(&o2rs.jws_validator, ct.as_secs() as i64)
+                } else {
+                    Err(JwtError::InvalidJwtKid)
+                }
+            })
+            .map_err(|e| {
+                admin_error!(err = ?e, "Failed to decrypt access token introspect request");
+                Oauth2Error::InvalidToken
+            })?;
+
+        if oidc.aud != client_id {
+            admin_error!(token_aud = ?oidc.aud, ?client_id, "Token audience does not match client_id");
+            return Err(Oauth2Error::InvalidToken);
+        }
+
+        let valid = match oidc.sub {
+            OidcSubject::U(uuid) => idms
+                .check_account_uuid_valid(&uuid, ct)
+                .map_err(|_| admin_error!("Account is not valid")),
+            _ => Ok(false),
+        };
+
+        // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
+        match valid {
+            Ok(true) => {}
+            _ => return Err(Oauth2Error::InvalidToken),
+        };
+
+        Ok(oidc)
+    }
+
+    pub fn oauth2_openid_discovery(
+        &self,
+        client_id: &str,
+    ) -> Result<OidcDiscoveryResponse, OperationError> {
+        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        let issuer = o2rs.iss.clone();
+
+        let authorization_endpoint = o2rs.authorization_endpoint.clone();
+        let token_endpoint = o2rs.token_endpoint.clone();
+        let userinfo_endpoint = Some(o2rs.userinfo_endpoint.clone());
+        let jwks_uri = o2rs.jwks_uri.clone();
+        let scopes_supported = Some(o2rs.scopes_supported.clone());
+        let response_types_supported = vec![ResponseType::Code];
+        let response_modes_supported = vec![ResponseMode::Query];
+        let grant_types_supported = vec![GrantType::AuthorisationCode];
+        let subject_types_supported = vec![SubjectType::Public];
+        let id_token_signing_alg_values_supported = vec![IdTokenSignAlg::ES256];
+        let userinfo_signing_alg_values_supported = None;
+        let token_endpoint_auth_methods_supported =
+            vec![TokenEndpointAuthMethod::ClientSecretBasic];
+        let display_values_supported = Some(vec![DisplayValue::Page]);
+        let claim_types_supported = vec![ClaimType::Normal];
+        // What claims can we offer?
+        let claims_supported = None;
+        let service_documentation = Some(URL_SERVICE_DOCUMENTATION.clone());
+
+        Ok(OidcDiscoveryResponse {
+            issuer,
+            authorization_endpoint,
+            token_endpoint,
+            userinfo_endpoint,
+            jwks_uri,
+            registration_endpoint: None,
+            scopes_supported,
+            response_types_supported,
+            response_modes_supported,
+            grant_types_supported,
+            acr_values_supported: None,
+            subject_types_supported,
+            id_token_signing_alg_values_supported,
+            id_token_encryption_alg_values_supported: None,
+            id_token_encryption_enc_values_supported: None,
+            userinfo_signing_alg_values_supported,
+            userinfo_encryption_alg_values_supported: None,
+            userinfo_encryption_enc_values_supported: None,
+            request_object_signing_alg_values_supported: None,
+            request_object_encryption_alg_values_supported: None,
+            request_object_encryption_enc_values_supported: None,
+            token_endpoint_auth_methods_supported,
+            token_endpoint_auth_signing_alg_values_supported: None,
+            display_values_supported,
+            claim_types_supported,
+            claims_supported,
+            service_documentation,
+            claims_locales_supported: None,
+            ui_locales_supported: None,
+            claims_parameter_supported: false,
+            // I think?
+            request_parameter_supported: true,
+            request_uri_parameter_supported: false,
+            require_request_uri_registration: false,
+            op_policy_uri: None,
+            op_tos_uri: None,
+        })
+    }
+
+    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<Jwk, OperationError> {
+        let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
+            admin_warn!(
+                "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
+            );
+            OperationError::NoMatchingEntries
+        })?;
+
+        o2rs.jws_signer.public_key_as_jwk().map_err(|e| {
+            admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
+            OperationError::InvalidState
         })
     }
 }

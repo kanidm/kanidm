@@ -42,7 +42,7 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
     };
-    static ref OAUTHSCOPE_RE: Regex = {
+    pub static ref OAUTHSCOPE_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
         // Must not contain whitespace.
