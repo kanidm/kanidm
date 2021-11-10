@@ -391,7 +391,7 @@ impl Oauth2ResourceServersReadTransaction {
         // due to identity processing we already know that:
         // * the session must be authenticated, and valid
         // * is within it's valid time window.
-        admin_warn!(?auth_req, "🔥 🔥 🔥 ");
+        trace!(?auth_req);
 
         if auth_req.response_type != "code" {
             admin_warn!("Invalid oauth2 response_type (should be 'code')");
@@ -790,7 +790,7 @@ impl Oauth2ResourceServersReadTransaction {
             claims: Default::default(),
         };
 
-        admin_warn!(?oidc);
+        trace!(?oidc);
 
         let access_token = oidc
             .sign_with_kid(&o2rs.jws_signer, &client_id)
