@@ -158,3 +158,27 @@ the server with:
 Each resource server has unique signing keys and access secrets, so this is limited to each
 resource server.
 
+## Example Integrations
+
+### Apache mod\_auth\_openidc
+
+Add the following to a mod\_auth\_openidc.conf. It should be included in a mods\_enabled folder
+or with an appropriate include.
+
+    OIDCRedirectURI http://resource.example.com/protected/redirect_uri
+    OIDCCryptoPassphrase <random password here>
+    OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<resource server name>/.well-known/openid-configuration
+    OIDCScope "openid other_scopes"
+    OIDCUserInfoTokenMethod authz_header
+    OIDCClientID <resource server name>
+    OIDCClientSecret <resource server password>
+    OIDCPKCEMethod S256
+    OIDCCookieSameSite On
+
+In the virtual host, to protect a location:
+
+    <Location />
+        AuthType openid-connect
+        Require valid-user
+    </Location>
+
