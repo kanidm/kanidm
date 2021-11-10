@@ -16,8 +16,8 @@ use crate::idm::event::{
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
-    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, JwkKeySet,
+    Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::radius::RadiusAccount;
@@ -44,7 +44,6 @@ use kanidm_proto::v1::{
 use std::str::FromStr;
 
 use bundy::hs512::HS512;
-use compact_jwt::Jwk;
 
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
@@ -1121,7 +1120,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         self.oauth2rs.oauth2_openid_discovery(client_id)
     }
 
-    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<Jwk, OperationError> {
+    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         self.oauth2rs.oauth2_openid_publickey(client_id)
     }
 }

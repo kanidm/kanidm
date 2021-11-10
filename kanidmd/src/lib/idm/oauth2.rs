@@ -9,10 +9,8 @@ use crate::identity::IdentityId;
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
-pub use compact_jwt::OidcToken;
-use compact_jwt::{
-    Jwk, JwsSigner, JwsValidator, JwtError, OidcClaims, OidcSubject, OidcUnverified,
-};
+pub use compact_jwt::{JwkKeySet, OidcToken};
+use compact_jwt::{JwsSigner, JwsValidator, JwtError, OidcClaims, OidcSubject, OidcUnverified};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
@@ -393,6 +391,7 @@ impl Oauth2ResourceServersReadTransaction {
         // due to identity processing we already know that:
         // * the session must be authenticated, and valid
         // * is within it's valid time window.
+        admin_warn!(?auth_req, "🔥 🔥 🔥 ");
 
         if auth_req.response_type != "code" {
             admin_warn!("Invalid oauth2 response_type (should be 'code')");
@@ -791,6 +790,8 @@ impl Oauth2ResourceServersReadTransaction {
             claims: Default::default(),
         };
 
+        admin_warn!(?oidc);
+
         let access_token = oidc
             .sign_with_kid(&o2rs.jws_signer, &client_id)
             .map(|jwt_signed| jwt_signed.to_string())
@@ -799,12 +800,21 @@ impl Oauth2ResourceServersReadTransaction {
                 Oauth2Error::ServerError(OperationError::InvalidState)
             })?;
 
+        let id_token = Some(access_token.clone());
+
+        // TODO: For openid access_token and id_token can be different!
+        // We could consider if we want the access token to be different
+        // as a result, either fernet or similar.
+        //
+        // TODO: Refresh tokens!
+
         Ok(AccessTokenResponse {
             access_token,
             token_type: "bearer".to_string(),
             expires_in,
             refresh_token: None,
             scope,
+            id_token,
         })
     }
 
@@ -1008,7 +1018,7 @@ impl Oauth2ResourceServersReadTransaction {
         })
     }
 
-    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<Jwk, OperationError> {
+    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
         let o2rs = self.inner.rs_set.get(client_id).ok_or_else(|| {
             admin_warn!(
                 "Invalid oauth2 client_id (have you configured the oauth2 resource server?)"
@@ -1016,10 +1026,13 @@ impl Oauth2ResourceServersReadTransaction {
             OperationError::NoMatchingEntries
         })?;
 
-        o2rs.jws_signer.public_key_as_jwk().map_err(|e| {
-            admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
-            OperationError::InvalidState
-        })
+        o2rs.jws_signer
+            .public_key_as_jwk(Some(&o2rs.name))
+            .map_err(|e| {
+                admin_error!("Unable to retrieve public key for {} - {:?}", o2rs.name, e);
+                OperationError::InvalidState
+            })
+            .map(|jwk| JwkKeySet { keys: vec![jwk] })
     }
 }
 

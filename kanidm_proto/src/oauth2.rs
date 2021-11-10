@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use url::Url;
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
@@ -28,6 +29,8 @@ pub struct AuthorisationRequest {
     // OIDC also allows other optional params
     #[serde(flatten)]
     pub oidc_ext: AuthorisationRequestOidc,
+    #[serde(flatten)]
+    pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Default)]
@@ -101,6 +104,9 @@ pub struct AccessTokenResponse {
     /// Space seperated list of scopes that were approved, if this differs from the
     /// original request.
     pub scope: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    /// Oidc puts the token here.
+    pub id_token: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

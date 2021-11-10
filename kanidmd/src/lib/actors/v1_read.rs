@@ -19,8 +19,8 @@ use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
-    OidcDiscoveryResponse, OidcToken,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, JwkKeySet,
+    Oauth2Error, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
@@ -31,7 +31,6 @@ use kanidm_proto::v1::{
     WhoamiResponse,
 };
 
-use compact_jwt::Jwk;
 use regex::Regex;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -1155,7 +1154,7 @@ impl QueryServerReadV1 {
         &self,
         client_id: String,
         eventid: Uuid,
-    ) -> Result<Jwk, OperationError> {
+    ) -> Result<JwkKeySet, OperationError> {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<OidcPublickey>", {
             idms_prox_read.oauth2_openid_publickey(&client_id)
