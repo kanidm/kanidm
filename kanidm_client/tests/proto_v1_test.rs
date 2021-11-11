@@ -1113,6 +1113,7 @@ fn test_server_rest_oauth2_basic_lifecycle() {
                 Some(vec!["read", "email"]),
                 true,
                 true,
+                true,
             )
             .expect("Failed to update config");
 

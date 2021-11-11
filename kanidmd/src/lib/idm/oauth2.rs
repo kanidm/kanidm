@@ -1080,6 +1080,8 @@ mod tests {
     use kanidm_proto::v1::{AuthType, UserAuthToken};
     use webauthn_rs::base64_data::Base64UrlSafeData;
 
+    use compact_jwt::{JwaAlg, Jwk, JwkUse};
+
     use openssl::sha;
 
     use std::time::Duration;
@@ -1116,6 +1118,7 @@ mod tests {
                 scope: "test".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             $idms_prox_read
@@ -1278,6 +1281,7 @@ mod tests {
                 scope: "test".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             assert!(
@@ -1298,6 +1302,7 @@ mod tests {
                 scope: "test".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             assert!(
@@ -1318,6 +1323,7 @@ mod tests {
                 scope: "test".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             assert!(
@@ -1338,6 +1344,7 @@ mod tests {
                 scope: "invalid_scope read".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             assert!(
@@ -1358,6 +1365,7 @@ mod tests {
                 scope: "read test".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             assert!(
@@ -1378,6 +1386,7 @@ mod tests {
                 scope: "read test".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
             };
 
             assert!(
@@ -1697,4 +1706,245 @@ mod tests {
             assert!(!intr_response.active);
         })
     }
+
+    #[test]
+    fn test_idm_oauth2_authorisation_reject() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+
+            let (uat2, ident2) = {
+                let mut idms_prox_write = idms.proxy_write(ct);
+                let account = idms_prox_write
+                    .target_to_account(&UUID_IDM_ADMIN)
+                    .expect("account must exist");
+                let session_id = uuid::Uuid::new_v4();
+                let uat2 = account
+                    .to_userauthtoken(session_id, ct, AuthType::PasswordMfa)
+                    .expect("Unable to create uat");
+                let ident2 = idms_prox_write
+                    .process_uat_to_identity(&uat2, ct)
+                    .expect("Unable to process uat");
+                (uat2, ident2)
+            };
+
+            let idms_prox_read = idms.proxy_read();
+            let redirect_uri = Url::parse("https://demo.example.com/oauth2/result").unwrap();
+            let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+            // Check reject behaviour
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+            let reject_success = idms_prox_read
+                .check_oauth2_authorise_reject(&ident, &uat, &consent_request.consent_token, ct)
+                .expect("Failed to perform oauth2 reject");
+
+            assert!(reject_success == redirect_uri);
+
+            // Too much time past to reject
+            let past_ct = Duration::from_secs(TEST_CURRENT_TIME + 301);
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorise_reject(
+                        &ident,
+                        &uat,
+                        &consent_request.consent_token,
+                        past_ct
+                    )
+                    .unwrap_err()
+                    == OperationError::CryptographyError
+            );
+
+            // Invalid consent token
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorise_reject(&ident, &uat, "not a token", ct)
+                    .unwrap_err()
+                    == OperationError::CryptographyError
+            );
+
+            // Wrong UAT
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorise_reject(
+                        &ident,
+                        &uat2,
+                        &consent_request.consent_token,
+                        ct
+                    )
+                    .unwrap_err()
+                    == OperationError::InvalidSessionState
+            );
+            // Wrong ident
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorise_reject(
+                        &ident2,
+                        &uat,
+                        &consent_request.consent_token,
+                        ct
+                    )
+                    .unwrap_err()
+                    == OperationError::InvalidSessionState
+            );
+        })
+    }
+
+    #[test]
+    fn test_idm_oauth2_openid_discovery() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (_secret, _uat, _ident) = setup_oauth2_resource_server(idms, ct);
+
+            let idms_prox_read = idms.proxy_read();
+
+            // check the discovery end point works as we expect
+            assert!(
+                idms_prox_read
+                    .oauth2_openid_discovery("nosuchclient")
+                    .unwrap_err()
+                    == OperationError::NoMatchingEntries
+            );
+
+            assert!(
+                idms_prox_read
+                    .oauth2_openid_publickey("nosuchclient")
+                    .unwrap_err()
+                    == OperationError::NoMatchingEntries
+            );
+
+            let discovery = idms_prox_read
+                .oauth2_openid_discovery("test_resource_server")
+                .expect("Failed to get discovery");
+
+            let mut jwkset = idms_prox_read
+                .oauth2_openid_publickey("test_resource_server")
+                .expect("Failed to get public key");
+
+            let jwk = jwkset.keys.pop().expect("no such jwk");
+
+            match jwk {
+                Jwk::EC { alg, use_, kid, .. } => {
+                    match (
+                        alg.unwrap(),
+                        &discovery.id_token_signing_alg_values_supported[0],
+                    ) {
+                        (JwaAlg::ES256, IdTokenSignAlg::ES256) => {}
+                        _ => panic!(),
+                    };
+                    assert!(use_.unwrap() == JwkUse::Sig);
+                    assert!(kid.unwrap() == "test_resource_server")
+                } // _ => panic!(),
+            };
+
+            assert!(discovery.issuer == Url::parse("https://idm.example.com/").unwrap());
+
+            assert!(
+                discovery.authorization_endpoint
+                    == Url::parse("https://idm.example.com/ui/oauth2").unwrap()
+            );
+
+            assert!(
+                discovery.token_endpoint
+                    == Url::parse("https://idm.example.com/oauth2/token").unwrap()
+            );
+
+            assert!(
+                discovery.userinfo_endpoint
+                    == Some(
+                        Url::parse(
+                            "https://idm.example.com/oauth2/openid/test_resource_server/userinfo"
+                        )
+                        .unwrap()
+                    )
+            );
+
+            assert!(
+                discovery.jwks_uri
+                    == Url::parse(
+                        "https://idm.example.com/oauth2/openid/test_resource_server/public_key.jwk"
+                    )
+                    .unwrap()
+            );
+
+            assert!(
+                discovery.scopes_supported == Some(vec!["read".to_string(), "test".to_string()])
+            );
+
+            assert!(discovery.response_types_supported == vec![ResponseType::Code]);
+            assert!(discovery.response_modes_supported == vec![ResponseMode::Query]);
+            assert!(discovery.grant_types_supported == vec![GrantType::AuthorisationCode]);
+            assert!(discovery.subject_types_supported == vec![SubjectType::Public]);
+            assert!(discovery.id_token_signing_alg_values_supported == vec![IdTokenSignAlg::ES256]);
+            assert!(discovery.userinfo_signing_alg_values_supported.is_none());
+            assert!(
+                discovery.token_endpoint_auth_methods_supported
+                    == vec![TokenEndpointAuthMethod::ClientSecretBasic]
+            );
+            assert!(discovery.display_values_supported == Some(vec![DisplayValue::Page]));
+            assert!(discovery.claim_types_supported == vec![ClaimType::Normal]);
+            assert!(discovery.claims_supported.is_none());
+            assert!(discovery.service_documentation.is_some());
+
+            assert!(discovery.registration_endpoint.is_none());
+            assert!(discovery.acr_values_supported.is_none());
+            assert!(discovery.id_token_encryption_alg_values_supported.is_none());
+            assert!(discovery.id_token_encryption_enc_values_supported.is_none());
+            assert!(discovery.userinfo_encryption_alg_values_supported.is_none());
+            assert!(discovery.userinfo_encryption_enc_values_supported.is_none());
+            assert!(discovery
+                .request_object_signing_alg_values_supported
+                .is_none());
+            assert!(discovery
+                .request_object_encryption_alg_values_supported
+                .is_none());
+            assert!(discovery
+                .request_object_encryption_enc_values_supported
+                .is_none());
+            assert!(discovery
+                .token_endpoint_auth_signing_alg_values_supported
+                .is_none());
+            assert!(discovery.claims_locales_supported.is_none());
+            assert!(discovery.ui_locales_supported.is_none());
+            assert!(discovery.op_policy_uri.is_none());
+            assert!(discovery.op_tos_uri.is_none());
+            assert!(!discovery.claims_parameter_supported);
+            assert!(!discovery.request_uri_parameter_supported);
+            assert!(!discovery.require_request_uri_registration);
+            assert!(discovery.request_parameter_supported);
+        })
+    }
+
+    /*
+    #[test]
+    fn test_idm_oauth2_openid_extensions() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
+
+            let idms_prox_read = idms.proxy_read();
+
+            // Is nonce correctly passed through?
+
+            // Do we have id_token?
+            // Get the pubkey set, use it to validate.
+
+            // Future - can we get the extra details from id_token?
+
+            // Does our access token work with the userinfo endpoint?
+
+            // Does the id_token details line up to the userinfo?
+        })
+    }
+    */
+
+    //  Check insecure pkce behaviour.
 }

@@ -52,6 +52,7 @@ impl Oauth2Opt {
                     Some(cbopt.scopes.iter().map(|s| s.as_str()).collect()),
                     false,
                     false,
+                    false,
                 ) {
                     Ok(_) => println!("Success"),
                     Err(e) => eprintln!("Error -> {:?}", e),
@@ -85,6 +86,7 @@ impl Oauth2Opt {
                     None,
                     None,
                     None,
+                    true,
                     true,
                     true,
                 ) {

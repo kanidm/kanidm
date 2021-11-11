@@ -916,6 +916,7 @@ impl KanidmClient {
         scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
+        reset_es256_key: bool,
     ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_oauth2_rs_update(
             id,
@@ -925,6 +926,7 @@ impl KanidmClient {
             scopes,
             reset_secret,
             reset_token_key,
+            reset_es256_key,
         ))
     }
 

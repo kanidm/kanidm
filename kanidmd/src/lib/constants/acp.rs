@@ -1020,7 +1020,8 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "oauth2_rs_scope_map",
             "oauth2_rs_implicit_scopes",
             "oauth2_rs_basic_secret",
-            "oauth2_rs_token_key"
+            "oauth2_rs_token_key",
+            "es256_private_key_der"
         ],
         "acp_modify_removedattr": [
             "description",
@@ -1030,7 +1031,8 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "oauth2_rs_scope_map",
             "oauth2_rs_implicit_scopes",
             "oauth2_rs_basic_secret",
-            "oauth2_rs_token_key"
+            "oauth2_rs_token_key",
+            "es256_private_key_der"
         ],
         "acp_modify_presentattr": [
             "description",

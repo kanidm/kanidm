@@ -1409,6 +1409,7 @@ impl KanidmAsyncClient {
         scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
+        reset_es256_key: bool,
     ) -> Result<(), ClientError> {
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
@@ -1445,7 +1446,11 @@ impl KanidmAsyncClient {
                 .attrs
                 .insert("oauth2_rs_token_key".to_string(), Vec::new());
         }
-
+        if reset_es256_key {
+            update_oauth2_rs
+                .attrs
+                .insert("es256_private_key_der".to_string(), Vec::new());
+        }
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
     }

@@ -182,3 +182,9 @@ In the virtual host, to protect a location:
         Require valid-user
     </Location>
 
+### Nextcloud
+
+    Host 172.24.11.129 was not connected to because it violates local access rules
+
+    config.php
+    'allow_local_remote_servers' => true,

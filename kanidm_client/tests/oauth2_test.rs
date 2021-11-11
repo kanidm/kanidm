@@ -58,6 +58,7 @@ fn test_oauth2_basic_flow() {
                 Some(vec!["read", "email"]),
                 false,
                 false,
+                false,
             )
             .expect("Failed to update oauth2 config");
 

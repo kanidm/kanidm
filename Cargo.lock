@@ -648,8 +648,6 @@ dependencies = [
 [[package]]
 name = "compact_jwt"
 version = "0.1.5"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8f8d043e31bce3f706d783cc6dc01a9bef7521815005e42a1bd55866e38859aa"
 dependencies = [
  "base64 0.13.0",
  "openssl",
