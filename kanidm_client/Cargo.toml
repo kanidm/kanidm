@@ -32,3 +32,4 @@ async-std = { version = "1.6", features = ["tokio1"] }
 webauthn-authenticator-rs = "0.3.0-alpha.12"
 oauth2_ext = { package = "oauth2", version = "4.0", default-features = false }
 base64 = "0.13"
+compact_jwt = "^0.1.5"

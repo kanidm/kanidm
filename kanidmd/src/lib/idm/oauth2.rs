@@ -1080,10 +1080,12 @@ mod tests {
     use kanidm_proto::v1::{AuthType, UserAuthToken};
     use webauthn_rs::base64_data::Base64UrlSafeData;
 
-    use compact_jwt::{JwaAlg, Jwk, JwkUse};
+    use compact_jwt::{JwaAlg, Jwk, JwkUse, JwsValidator, OidcSubject, OidcUnverified};
 
     use openssl::sha;
 
+    use std::convert::TryFrom;
+    use std::str::FromStr;
     use std::time::Duration;
 
     const TEST_CURRENT_TIME: u64 = 6000;
@@ -1116,7 +1118,7 @@ mod tests {
                 code_challenge_method: CodeChallengeMethod::S256,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
-                nonce: None,
+                nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
             };
@@ -1920,7 +1922,6 @@ mod tests {
         })
     }
 
-    /*
     #[test]
     fn test_idm_oauth2_openid_extensions() {
         run_idm_test!(|_qs: &QueryServer,
@@ -1932,19 +1933,81 @@ mod tests {
 
             let idms_prox_read = idms.proxy_read();
 
+            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+            // == Manually submit the consent token to the permit for the permit_success
+            let permit_success = idms_prox_read
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
+                .expect("Failed to perform oauth2 permit");
+
+            // == Submit the token exchange code.
+            let token_req = AccessTokenRequest {
+                grant_type: "authorization_code".to_string(),
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                client_id: None,
+                // From the first step.
+                code_verifier,
+            };
+
+            let token_response = idms_prox_read
+                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                .expect("Failed to perform oauth2 token exchange");
+
+            // 🎉 We got a token!
+            assert!(token_response.token_type == "bearer");
+
+            let id_token = token_response.id_token.expect("No id_token in response!");
+            let access_token = token_response.access_token;
+
+            let mut jwkset = idms_prox_read
+                .oauth2_openid_publickey("test_resource_server")
+                .expect("Failed to get public key");
+            let public_jwk = jwkset.keys.pop().expect("no such jwk");
+
+            let jws_validator =
+                JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+
+            let oidc_unverified =
+                OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+            let iat = ct.as_secs() as i64;
+
+            let oidc = oidc_unverified
+                .validate(&jws_validator, iat)
+                .expect("Failed to verify oidc");
+
+            // Are the id_token values what we expect?
+            assert!(oidc.iss == Url::parse("https://idm.example.com/").unwrap());
+            assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
+            assert!(oidc.aud == "test_resource_server");
+            assert!(oidc.iat == iat);
+            assert!(oidc.nbf == Some(iat));
+            assert!(oidc.exp == iat + 480);
+            assert!(oidc.auth_time.is_none());
             // Is nonce correctly passed through?
-
-            // Do we have id_token?
-            // Get the pubkey set, use it to validate.
-
-            // Future - can we get the extra details from id_token?
-
+            assert!(oidc.nonce == Some("abcdef".to_string()));
+            assert!(oidc.at_hash.is_none());
+            assert!(oidc.acr.is_none());
+            assert!(oidc.amr == Some(vec!["\"passwordmfa\"".to_string()]));
+            assert!(oidc.azp == Some("test_resource_server".to_string()));
+            assert!(oidc.jti.is_none());
+            assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
+            assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
+            assert!(oidc.s_claims.scopes == vec!["test".to_string()]);
+            assert!(oidc.claims.is_empty());
             // Does our access token work with the userinfo endpoint?
+            // Do the id_token details line up to the userinfo?
+            let userinfo = idms_prox_read
+                .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+                .expect("failed to get userinfo");
 
-            // Does the id_token details line up to the userinfo?
+            assert!(oidc == userinfo);
         })
     }
-    */
 
     //  Check insecure pkce behaviour.
 }

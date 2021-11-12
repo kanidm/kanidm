@@ -185,7 +185,7 @@ fn response_modes_supported_default() -> Vec<ResponseMode> {
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {
-    #[serde(rename(serialize = "authorization_code"))]
+    #[serde(rename = "authorization_code")]
     AuthorisationCode,
     Implicit,
 }

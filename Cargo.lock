@@ -1900,6 +1900,7 @@ version = "1.1.0-alpha.6"
 dependencies = [
  "async-std",
  "base64 0.13.0",
+ "compact_jwt",
  "env_logger",
  "futures",
  "kanidm",
