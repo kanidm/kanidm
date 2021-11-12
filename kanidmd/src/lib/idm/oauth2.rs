@@ -98,7 +98,7 @@ struct ConsentToken {
     // CSRF
     pub state: String,
     // The S256 code challenge.
-    pub code_challenge: Base64UrlSafeData,
+    pub code_challenge: Option<Base64UrlSafeData>,
     // Where the RS wants us to go back to.
     pub redirect_uri: Url,
     // The scopes being granted
@@ -113,7 +113,7 @@ struct TokenExchangeCode {
     // key which gives us the assurance that it's the correct combination.
     pub uat: UserAuthToken,
     // The S256 code challenge.
-    pub code_challenge: Base64UrlSafeData,
+    pub code_challenge: Option<Base64UrlSafeData>,
     // The original redirect uri
     pub redirect_uri: Url,
     // The scopes being granted
@@ -175,6 +175,9 @@ pub struct Oauth2RS {
     token_fernet: Fernet,
     jws_signer: JwsSigner,
     jws_validator: JwsValidator,
+    // Some clients, especially openid ones don't do pkce. SIGH.
+    // Can we enforce nonce in this case?
+    enable_pkce: bool,
     // For oidc we also need our issuer url.
     iss: Url,
     // For discovery we need to build and keep a number of values.
@@ -324,6 +327,11 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         OperationError::CryptographyError
                     })?;
 
+                    let enable_pkce = ent
+                        .get_ava_single_bool("oauth2_allow_insecure_client_disable_pkce")
+                        .map(|e| !e)
+                        .unwrap_or(true);
+
                     let mut authorization_endpoint = self.inner.origin.clone();
                     authorization_endpoint.set_path("/ui/oauth2");
                     let mut token_endpoint = self.inner.origin.clone();
@@ -352,6 +360,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         token_fernet,
                         jws_signer,
                         jws_validator,
+                        enable_pkce,
                         iss: self.inner.origin.clone(),
                         authorization_endpoint,
                         token_endpoint,
@@ -398,12 +407,6 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::UnsupportedResponseType);
         }
 
-        // CodeChallengeMethod must be S256
-        if auth_req.code_challenge_method != CodeChallengeMethod::S256 {
-            admin_warn!("Invalid oauth2 code_challenge_method (must be 'S256')");
-            return Err(Oauth2Error::InvalidRequest);
-        }
-
         /*
          * 4.1.2.1.  Error Response
          *
@@ -430,6 +433,23 @@ impl Oauth2ResourceServersReadTransaction {
             );
             return Err(Oauth2Error::InvalidOrigin);
         }
+
+        let code_challenge = if let Some(pkce_request) = &auth_req.pkce_request {
+            // CodeChallengeMethod must be S256
+            if pkce_request.code_challenge_method != CodeChallengeMethod::S256 {
+                admin_warn!("Invalid oauth2 code_challenge_method (must be 'S256')");
+                return Err(Oauth2Error::InvalidRequest);
+            }
+            Some(pkce_request.code_challenge.clone())
+        } else {
+            if o2rs.enable_pkce {
+                security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
+                return Err(Oauth2Error::InvalidRequest);
+            } else {
+                security_info!(?o2rs.name, "Insecure client configuration - pkce is not enforced.");
+                None
+            }
+        };
 
         // TODO: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
         // Are we going to provide the functions for these? Most of these can be "later".
@@ -519,7 +539,7 @@ impl Oauth2ResourceServersReadTransaction {
             ident_id: ident.get_event_origin_id(),
             session_id: uat.session_id,
             state: auth_req.state.clone(),
-            code_challenge: auth_req.code_challenge.clone(),
+            code_challenge,
             redirect_uri: auth_req.redirect_uri.clone(),
             scopes: avail_scopes.clone(),
             nonce: auth_req.nonce.clone(),
@@ -663,7 +683,7 @@ impl Oauth2ResourceServersReadTransaction {
 
     pub fn check_oauth2_token_exchange(
         &self,
-        client_authz: &str,
+        client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
@@ -672,7 +692,19 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        let (client_id, secret) = parse_basic_authz(client_authz)?;
+        let (client_id, secret) = if let Some(client_authz) = client_authz {
+            parse_basic_authz(client_authz)?
+        } else {
+            match (&token_req.client_id, &token_req.client_secret) {
+                (Some(a), Some(b)) => (a.clone(), b.clone()),
+                _ => {
+                    security_info!(
+                        "Invalid oauth2 authentication - no basic auth or missing auth post data"
+                    );
+                    return Err(Oauth2Error::AuthenticationRequired);
+                }
+            }
+        };
 
         // Get the o2rs for the handle.
         let o2rs = self.inner.rs_set.get(&client_id).ok_or_else(|| {
@@ -704,14 +736,29 @@ impl Oauth2ResourceServersReadTransaction {
                 })
             })?;
 
-        // Validate the code_verifier
-        let mut hasher = sha::Sha256::new();
-        hasher.update(token_req.code_verifier.as_bytes());
-        let code_verifier_hash: Vec<u8> = hasher.finish().iter().copied().collect();
+        if let Some(code_challenge) = code_xchg.code_challenge {
+            // Validate the code_verifier
+            let code_verifier = token_req.code_verifier
+                    .as_deref()
+                    .ok_or_else(|| {
+                        security_info!("PKCE code verification failed - code challenge is present, but not verifier was provided");
+                        Oauth2Error::InvalidRequest
+                    })?;
+            let mut hasher = sha::Sha256::new();
+            hasher.update(code_verifier.as_bytes());
+            let code_verifier_hash: Vec<u8> = hasher.finish().iter().copied().collect();
 
-        if code_xchg.code_challenge.0 != code_verifier_hash {
-            security_info!("PKCE code verification failed - this may indicate malicious activity");
-            return Err(Oauth2Error::InvalidRequest);
+            if code_challenge.0 != code_verifier_hash {
+                security_info!(
+                    "PKCE code verification failed - this may indicate malicious activity"
+                );
+                return Err(Oauth2Error::InvalidRequest);
+            }
+        } else {
+            if o2rs.enable_pkce {
+                security_info!("PKCE code verification failed - no code challenge present in PKCE enforced mode");
+                return Err(Oauth2Error::InvalidRequest);
+            }
         }
 
         // Validate the redirect_uri is the same as the original.
@@ -970,8 +1017,10 @@ impl Oauth2ResourceServersReadTransaction {
         let subject_types_supported = vec![SubjectType::Public];
         let id_token_signing_alg_values_supported = vec![IdTokenSignAlg::ES256];
         let userinfo_signing_alg_values_supported = None;
-        let token_endpoint_auth_methods_supported =
-            vec![TokenEndpointAuthMethod::ClientSecretBasic];
+        let token_endpoint_auth_methods_supported = vec![
+            TokenEndpointAuthMethod::ClientSecretBasic,
+            TokenEndpointAuthMethod::ClientSecretPost,
+        ];
         let display_values_supported = Some(vec![DisplayValue::Page]);
         let claim_types_supported = vec![ClaimType::Normal];
         // What claims can we offer?
@@ -1098,7 +1147,7 @@ mod tests {
             let mut hasher = sha::Sha256::new();
             hasher.update(code_verifier.as_bytes());
             let code_challenge: Vec<u8> = hasher.finish().iter().copied().collect();
-            (code_verifier, code_challenge)
+            (Some(code_verifier), code_challenge)
         }};
     }
 
@@ -1114,8 +1163,10 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData($code_challenge),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: Some(PkceRequest {
+                    code_challenge: Base64UrlSafeData($code_challenge),
+                    code_challenge_method: CodeChallengeMethod::S256,
+                }),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
                 nonce: Some("abcdef".to_string()),
@@ -1133,6 +1184,7 @@ mod tests {
     fn setup_oauth2_resource_server(
         idms: &IdmServer,
         ct: Duration,
+        enable_pkce: bool,
     ) -> (String, UserAuthToken, Identity) {
         let mut idms_prox_write = idms.proxy_write(ct);
 
@@ -1154,6 +1206,10 @@ mod tests {
             (
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
+            ),
+            (
+                "oauth2_allow_insecure_client_disable_pkce",
+                Value::new_bool(!enable_pkce)
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
@@ -1213,7 +1269,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -1235,18 +1291,18 @@ mod tests {
 
             // == Submit the token exchange code.
 
-            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
             let token_req = AccessTokenRequest {
                 grant_type: "authorization_code".to_string(),
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: None,
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
                 // From the first step.
                 code_verifier,
             };
 
             let token_response = idms_prox_read
-                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                .check_oauth2_token_exchange(None, &token_req, ct)
                 .expect("Failed to perform oauth2 token exchange");
 
             // 🎉 We got a token! In the future we can then check introspection from this point.
@@ -1261,24 +1317,27 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
 
             let (anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous);
             let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
 
             // Need a uat from a user not in the group. Probs anonymous.
-
             let idms_prox_read = idms.proxy_read();
 
             let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+            let pkce_request = Some(PkceRequest {
+                code_challenge: Base64UrlSafeData(code_challenge.clone()),
+                code_challenge_method: CodeChallengeMethod::S256,
+            });
 
             //  * response type != code.
             let auth_req = AuthorisationRequest {
                 response_type: "NOTCODE".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
                 nonce: None,
@@ -1293,13 +1352,32 @@ mod tests {
                     == Oauth2Error::UnsupportedResponseType
             );
 
+            // * No pkce in pkce enforced mode.
+            let auth_req = AuthorisationRequest {
+                response_type: "code".to_string(),
+                client_id: "test_resource_server".to_string(),
+                state: "123".to_string(),
+                pkce_request: None,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                scope: "test".to_string(),
+                nonce: None,
+                oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
+            };
+
+            assert!(
+                idms_prox_read
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                    .unwrap_err()
+                    == Oauth2Error::InvalidRequest
+            );
+
             //  * invalid rs name
             let auth_req = AuthorisationRequest {
                 response_type: "code".to_string(),
                 client_id: "NOT A REAL RESOURCE SERVER".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "test".to_string(),
                 nonce: None,
@@ -1319,8 +1397,7 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
                 scope: "test".to_string(),
                 nonce: None,
@@ -1340,8 +1417,7 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "invalid_scope read".to_string(),
                 nonce: None,
@@ -1361,8 +1437,7 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData(code_challenge.clone()),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "read test".to_string(),
                 nonce: None,
@@ -1382,8 +1457,7 @@ mod tests {
                 response_type: "code".to_string(),
                 client_id: "test_resource_server".to_string(),
                 state: "123".to_string(),
-                code_challenge: Base64UrlSafeData(code_challenge),
-                code_challenge_method: CodeChallengeMethod::S256,
+                pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 scope: "read test".to_string(),
                 nonce: None,
@@ -1407,7 +1481,7 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
@@ -1482,7 +1556,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct, true);
 
             // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
             // allows all our other tests to pass, but it means when we specifically put the
@@ -1517,51 +1591,52 @@ mod tests {
                 code: permit_success.code.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 client_id: None,
+                client_secret: None,
                 // From the first step.
                 code_verifier: code_verifier.clone(),
             };
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange("not base64", &token_req, ct)
+                    .check_oauth2_token_exchange(Some("not base64"), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
 
             //  * doesn't have :
-            let client_authz = base64::encode(format!("test_resource_server {}", secret));
+            let client_authz = Some(base64::encode(format!("test_resource_server {}", secret)));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
 
             //  * invalid client_id
-            let client_authz = base64::encode(format!("NOT A REAL SERVER:{}", secret));
+            let client_authz = Some(base64::encode(format!("NOT A REAL SERVER:{}", secret)));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
 
             //  * valid client_id, but invalid secret
-            let client_authz = base64::encode("test_resource_server:12345");
+            let client_authz = Some(base64::encode("test_resource_server:12345"));
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::AuthenticationRequired
             );
 
             // ✅ Now the valid client_authz is in place.
-            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
+            let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
             //  * expired exchange code (took too long)
             assert!(
                 idms_prox_read
                     .check_oauth2_token_exchange(
-                        &client_authz,
+                        client_authz.as_deref(),
                         &token_req,
                         ct + Duration::from_secs(TOKEN_EXPIRE)
                     )
@@ -1574,7 +1649,7 @@ mod tests {
             assert!(
                 idms_prox_read
                     .check_oauth2_token_exchange(
-                        &client_authz,
+                        client_authz.as_deref(),
                         &token_req,
                         ct + Duration::from_secs(UAT_EXPIRE)
                     )
@@ -1588,11 +1663,12 @@ mod tests {
                 code: permit_success.code.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 client_id: None,
+                client_secret: None,
                 code_verifier: code_verifier.clone(),
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -1603,11 +1679,12 @@ mod tests {
                 code: permit_success.code.clone(),
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
                 client_id: None,
+                client_secret: None,
                 code_verifier,
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -1618,11 +1695,12 @@ mod tests {
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 client_id: None,
-                code_verifier: "12345".to_string(),
+                client_secret: None,
+                code_verifier: Some("12345".to_string()),
             };
             assert!(
                 idms_prox_read
-                    .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                     .unwrap_err()
                     == Oauth2Error::InvalidRequest
             );
@@ -1635,8 +1713,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
-            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
             let idms_prox_read = idms.proxy_read();
 
@@ -1655,10 +1733,11 @@ mod tests {
                 code: permit_success.code.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 client_id: None,
+                client_secret: None,
                 code_verifier,
             };
             let oauth2_token = idms_prox_read
-                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                 .expect("Unable to exchange for oauth2 token");
 
             // Okay, now we have the token, we can check it works with introspect.
@@ -1667,7 +1746,7 @@ mod tests {
                 token_type_hint: None,
             };
             let intr_response = idms_prox_read
-                .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+                .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
                 .expect("Failed to inspect token");
 
             eprintln!("👉  {:?}", intr_response);
@@ -1702,7 +1781,7 @@ mod tests {
             // check again.
             let idms_prox_read = idms.proxy_read();
             let intr_response = idms_prox_read
-                .check_oauth2_token_introspect(&client_authz, &intr_request, ct)
+                .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
                 .expect("Failed to inspect token");
 
             assert!(!intr_response.active);
@@ -1715,7 +1794,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
@@ -1801,7 +1880,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, _uat, _ident) = setup_oauth2_resource_server(idms, ct);
+            let (_secret, _uat, _ident) = setup_oauth2_resource_server(idms, ct, true);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -1886,7 +1965,10 @@ mod tests {
             assert!(discovery.userinfo_signing_alg_values_supported.is_none());
             assert!(
                 discovery.token_endpoint_auth_methods_supported
-                    == vec![TokenEndpointAuthMethod::ClientSecretBasic]
+                    == vec![
+                        TokenEndpointAuthMethod::ClientSecretBasic,
+                        TokenEndpointAuthMethod::ClientSecretPost
+                    ]
             );
             assert!(discovery.display_values_supported == Some(vec![DisplayValue::Page]));
             assert!(discovery.claim_types_supported == vec![ClaimType::Normal]);
@@ -1928,8 +2010,8 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct);
-            let client_authz = base64::encode(format!("test_resource_server:{}", secret));
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
             let idms_prox_read = idms.proxy_read();
 
@@ -1949,12 +2031,13 @@ mod tests {
                 code: permit_success.code,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
                 client_id: None,
+                client_secret: None,
                 // From the first step.
                 code_verifier,
             };
 
             let token_response = idms_prox_read
-                .check_oauth2_token_exchange(&client_authz, &token_req, ct)
+                .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
                 .expect("Failed to perform oauth2 token exchange");
 
             // 🎉 We got a token!
@@ -2010,4 +2093,39 @@ mod tests {
     }
 
     //  Check insecure pkce behaviour.
+    #[test]
+    fn test_idm_oauth2_insecure_pkce() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, false);
+
+            let idms_prox_read = idms.proxy_read();
+
+            // == Setup the authorisation request
+            let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+            // Even in disable pkce mode, we will allow pkce
+            let _consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+            // Check we allow none.
+            let auth_req = AuthorisationRequest {
+                response_type: "code".to_string(),
+                client_id: "test_resource_server".to_string(),
+                state: "123".to_string(),
+                pkce_request: None,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                scope: "test".to_string(),
+                nonce: Some("abcdef".to_string()),
+                oidc_ext: Default::default(),
+                unknown_keys: Default::default(),
+            };
+
+            idms_prox_read
+                .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                .expect("Oauth2 authorisation failed");
+        })
+    }
 }

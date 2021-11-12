@@ -2,12 +2,18 @@ use std::collections::BTreeMap;
 use url::Url;
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
-#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 pub enum CodeChallengeMethod {
     // default to plain if not requested as S256. Reject the auth?
     // plain
     // BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))
     S256,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct PkceRequest {
+    pub code_challenge: Base64UrlSafeData,
+    pub code_challenge_method: CodeChallengeMethod,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -16,11 +22,8 @@ pub struct AuthorisationRequest {
     pub response_type: String,
     pub client_id: String,
     pub state: String,
-    // base64?
-    pub code_challenge: Base64UrlSafeData,
-    // Probably also should be an enum.
-    pub code_challenge_method: CodeChallengeMethod,
-    // Uri?
+    #[serde(flatten, skip_serializing_if = "Option::is_none")]
+    pub pkce_request: Option<PkceRequest>,
     pub redirect_uri: Url,
     pub scope: String,
     // OIDC adds a nonce parameter that is optional.
@@ -80,8 +83,8 @@ pub struct AccessTokenRequest {
     // REQUIRED, if the client is not authenticating with the
     //  authorization server as described in Section 3.2.1.
     pub client_id: Option<String>,
-    //
-    pub code_verifier: String,
+    pub client_secret: Option<String>,
+    pub code_verifier: Option<String>,
 }
 
 // We now check code_verifier is the same via the formula.

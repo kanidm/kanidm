@@ -950,6 +950,14 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_oauth2_rs_delete(id))
     }
 
+    pub fn idm_oauth2_rs_enable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_enable_pkce(id))
+    }
+
+    pub fn idm_oauth2_rs_disable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_disable_pkce(id))
+    }
+
     // ==== recycle bin
     pub fn recycle_bin_list(&self) -> Result<Vec<Entry>, ClientError> {
         tokio_block_on(self.asclient.recycle_bin_list())

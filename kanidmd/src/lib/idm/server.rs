@@ -1085,7 +1085,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
 
     pub fn check_oauth2_token_exchange(
         &self,
-        client_authz: &str,
+        client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {

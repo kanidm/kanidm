@@ -1072,7 +1072,7 @@ impl QueryServerReadV1 {
     )]
     pub async fn handle_oauth2_token_exchange(
         &self,
-        client_authz: String,
+        client_authz: Option<String>,
         token_req: AccessTokenRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
@@ -1080,7 +1080,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<Oauth2TokenExchange>", {
             // Now we can send to the idm server for authorisation checking.
-            idms_prox_read.check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            idms_prox_read.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
         });
         res
     }

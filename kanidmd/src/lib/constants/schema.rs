@@ -719,6 +719,35 @@ pub const JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "Allows disabling of pkce for insecure oauth2 clients"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_allow_insecure_client_disable_pkce"
+      ],
+      "syntax": [
+        "BOOLEAN"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000091"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -940,7 +969,8 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
       "systemmay": [
         "description",
         "oauth2_rs_scope_map",
-        "oauth2_rs_implicit_scopes"
+        "oauth2_rs_implicit_scopes",
+        "oauth2_allow_insecure_client_disable_pkce"
       ],
       "systemmust": [
         "oauth2_rs_name",

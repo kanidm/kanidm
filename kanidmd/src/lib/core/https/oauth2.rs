@@ -409,14 +409,16 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         .header("authorization")
         .and_then(|hv| hv.get(0))
         .and_then(|h| h.as_str().strip_prefix("Basic "))
-        .map(str::to_string)
-        .ok_or_else(|| {
-            error!("Basic Authentication Not Provided");
-            tide::Error::from_str(
-                tide::StatusCode::Unauthorized,
-                "Invalid Basic Authorisation",
-            )
-        })?;
+        .map(str::to_string);
+    /*
+    .ok_or_else(|| {
+        error!("Basic Authentication Not Provided");
+        tide::Error::from_str(
+            tide::StatusCode::Unauthorized,
+            "Invalid Basic Authorisation",
+        )
+    })?;
+    */
 
     // Get the accessToken Request
     let tok_req: AccessTokenRequest = req.body_form().await.map_err(|e| {

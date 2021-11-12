@@ -417,6 +417,13 @@ pub enum Oauth2Opt {
     #[structopt(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),
+    #[structopt(name = "enable_pkce")]
+    /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
+    EnablePkce(Named),
+    /// Disable PKCE on this oauth2 resource server to work around insecure clients that
+    /// may not support it. You should request the client to enable PKCE!
+    #[structopt(name = "insecure_client_disable_pkce")]
+    DisablePkce(Named),
 }
 
 #[derive(Debug, StructOpt)]

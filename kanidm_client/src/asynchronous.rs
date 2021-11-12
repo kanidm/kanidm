@@ -1483,6 +1483,30 @@ impl KanidmAsyncClient {
             .await
     }
 
+    pub async fn idm_oauth2_rs_enable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            "oauth2_allow_insecure_client_disable_pkce".to_string(),
+            Vec::new(),
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_disable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            "oauth2_allow_insecure_client_disable_pkce".to_string(),
+            vec!["true".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
     // ==== recycle bin
     pub async fn recycle_bin_list(&self) -> Result<Vec<Entry>, ClientError> {
         self.perform_get_request("/v1/recycle_bin").await

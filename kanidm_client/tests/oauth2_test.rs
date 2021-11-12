@@ -245,7 +245,8 @@ fn test_oauth2_openid_basic_flow() {
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/flow")
                     .expect("Invalid URL"),
                 client_id: None,
-                code_verifier: pkce_code_verifier.secret().clone(),
+                client_secret: None,
+                code_verifier: Some(pkce_code_verifier.secret().clone()),
             };
 
             let response = client
