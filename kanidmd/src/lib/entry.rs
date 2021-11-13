@@ -1723,10 +1723,10 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             .and_then(|vs| vs.to_json_filter_single())
     }
 
-    pub fn get_ava_single_es256_private_key_der(&self, attr: &str) -> Option<&[u8]> {
+    pub fn get_ava_single_private_binary(&self, attr: &str) -> Option<&[u8]> {
         self.attrs
             .get(attr)
-            .and_then(|vs| vs.to_es256_private_key_der_single())
+            .and_then(|vs| vs.to_private_binary_single())
     }
 
     #[inline(always)]

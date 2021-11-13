@@ -711,7 +711,7 @@ pub const JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: &str = r#"{
         "es256_private_key_der"
       ],
       "syntax": [
-        "ES256_PRIVATE_DER"
+        "PRIVATE_BINARY"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000090"

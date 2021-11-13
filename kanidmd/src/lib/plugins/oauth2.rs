@@ -35,7 +35,7 @@ macro_rules! oauth2_transform {
                         admin_error!(err = ?e, "Unable to generate JwsSigner private key");
                         OperationError::CryptographyError
                     })?;
-                let v = Value::new_es256privateder(&der);
+                let v = Value::new_privatebinary(&der);
                 $e.add_ava("es256_private_key_der", v);
             }
             // Generate the thing.

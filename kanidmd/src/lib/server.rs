@@ -498,7 +498,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::OauthScope => Ok(Value::new_oauthscope(value)),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
-                    SyntaxType::Es256PrivateDer => Err(OperationError::InvalidAttribute("Es256 Private Der Keys can not be supplied through modification".to_string())),
+                    SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -624,7 +624,7 @@ pub trait QueryServerTransaction<'a> {
                         )
                     }),
                     SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
-                    SyntaxType::Es256PrivateDer => Ok(PartialValue::Es256PrivateDer),
+                    SyntaxType::PrivateBinary => Ok(PartialValue::PrivateBinary),
                 }
             }
             None => {

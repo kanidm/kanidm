@@ -142,7 +142,7 @@ pub enum SyntaxType {
     Url,
     OauthScope,
     OauthScopeMap,
-    Es256PrivateDer,
+    PrivateBinary,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -173,7 +173,7 @@ impl TryFrom<&str> for SyntaxType {
             "URL" => Ok(SyntaxType::Url),
             "OAUTH_SCOPE" => Ok(SyntaxType::OauthScope),
             "OAUTH_SCOPE_MAP" => Ok(SyntaxType::OauthScopeMap),
-            "ES256_PRIVATE_DER" => Ok(SyntaxType::Es256PrivateDer),
+            "PRIVATE_BINARY" => Ok(SyntaxType::PrivateBinary),
             _ => Err(()),
         }
     }
@@ -205,7 +205,7 @@ impl TryFrom<usize> for SyntaxType {
             18 => Ok(SyntaxType::Url),
             19 => Ok(SyntaxType::OauthScope),
             20 => Ok(SyntaxType::OauthScopeMap),
-            21 => Ok(SyntaxType::Es256PrivateDer),
+            21 => Ok(SyntaxType::PrivateBinary),
             _ => Err(()),
         }
     }
@@ -235,7 +235,7 @@ impl SyntaxType {
             SyntaxType::Url => 18,
             SyntaxType::OauthScope => 19,
             SyntaxType::OauthScopeMap => 20,
-            SyntaxType::Es256PrivateDer => 21,
+            SyntaxType::PrivateBinary => 21,
         }
     }
 }
@@ -264,7 +264,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Url => "URL",
             SyntaxType::OauthScope => "OAUTH_SCOPE",
             SyntaxType::OauthScopeMap => "OAUTH_SCOPE_MAP",
-            SyntaxType::Es256PrivateDer => "ES256_PRIVATE_DER",
+            SyntaxType::PrivateBinary => "PRIVATE_BINARY",
         })
     }
 }
@@ -275,7 +275,7 @@ pub enum DataValue {
     SshKey(String),
     SecretValue(String),
     OauthScopeMap(BTreeSet<String>),
-    Es256PrivateDer(Vec<u8>),
+    PrivateBinary(Vec<u8>),
 }
 
 impl std::fmt::Debug for DataValue {
@@ -285,7 +285,7 @@ impl std::fmt::Debug for DataValue {
             DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
             DataValue::SecretValue(_) => write!(f, "DataValue::SecretValue(_)"),
             DataValue::OauthScopeMap(_) => write!(f, "DataValue::OauthScopeMap(_)"),
-            DataValue::Es256PrivateDer(_) => write!(f, "DataValue::Es256PrivateDer(_)"),
+            DataValue::PrivateBinary(_) => write!(f, "DataValue::PrivateBinary(_)"),
         }
     }
 }
@@ -322,7 +322,7 @@ pub enum PartialValue {
     Url(Url),
     OauthScope(String),
     OauthScopeMap(Uuid),
-    Es256PrivateDer,
+    PrivateBinary,
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -632,8 +632,8 @@ impl PartialValue {
         matches!(self, PartialValue::OauthScopeMap(_))
     }
 
-    pub fn is_es256privateder(&self) -> bool {
-        matches!(self, PartialValue::Es256PrivateDer)
+    pub fn is_privatebinary(&self) -> bool {
+        matches!(self, PartialValue::PrivateBinary)
     }
 
     pub fn to_str(&self) -> Option<&str> {
@@ -687,7 +687,7 @@ impl PartialValue {
             }
             PartialValue::Cred(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
-            PartialValue::SecretValue | PartialValue::Es256PrivateDer => "_".to_string(),
+            PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
             PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
             PartialValue::Uint32(u) => u.to_string(),
@@ -1261,18 +1261,18 @@ impl Value {
         self.pv.is_oauthscopemap()
     }
 
-    pub fn new_es256privateder(der: &Vec<u8>) -> Self {
+    pub fn new_privatebinary(der: &Vec<u8>) -> Self {
         Value {
-            pv: PartialValue::Es256PrivateDer,
-            data: Some(Box::new(DataValue::Es256PrivateDer(der.clone()))),
+            pv: PartialValue::PrivateBinary,
+            data: Some(Box::new(DataValue::PrivateBinary(der.clone()))),
         }
     }
 
-    pub fn to_es256privateder(&self) -> Option<&Vec<u8>> {
+    pub fn to_privatebinary(&self) -> Option<&Vec<u8>> {
         match &self.pv {
-            PartialValue::Es256PrivateDer => match &self.data {
+            PartialValue::PrivateBinary => match &self.data {
                 Some(dv) => match dv.as_ref() {
-                    DataValue::Es256PrivateDer(c) => Some(&c),
+                    DataValue::PrivateBinary(c) => Some(&c),
                     _ => None,
                 },
                 _ => None,
@@ -1391,9 +1391,9 @@ impl Value {
                     osm.data.into_iter().collect(),
                 ))),
             }),
-            DbValueV1::Es256PrivateDer(d) => Ok(Value {
-                pv: PartialValue::Es256PrivateDer,
-                data: Some(Box::new(DataValue::Es256PrivateDer(d))),
+            DbValueV1::PrivateBinary(d) => Ok(Value {
+                pv: PartialValue::PrivateBinary,
+                data: Some(Box::new(DataValue::PrivateBinary(d))),
             }),
         }
     }
@@ -1681,7 +1681,7 @@ impl Value {
                 // Should this also extract the key data?
                 vec![tag.to_string()]
             }
-            PartialValue::SecretValue | PartialValue::Es256PrivateDer => vec![],
+            PartialValue::SecretValue | PartialValue::PrivateBinary => vec![],
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
             PartialValue::Uint32(u) => vec![u.to_string()],
             PartialValue::Cid(_) => vec![],

@@ -313,7 +313,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 
                     trace!("es256_private_key_der");
                     let jws_signer = ent
-                        .get_ava_single_es256_private_key_der("es256_private_key_der")
+                        .get_ava_single_private_binary("es256_private_key_der")
                         .ok_or(OperationError::InvalidValueState)
                         .and_then(|key_der| {
                             JwsSigner::from_es256_der(key_der).map_err(|e| {
@@ -1920,7 +1920,8 @@ mod tests {
                     };
                     assert!(use_.unwrap() == JwkUse::Sig);
                     assert!(kid.unwrap() == "test_resource_server")
-                } // _ => panic!(),
+                }
+                _ => panic!(),
             };
 
             assert!(discovery.issuer == Url::parse("https://idm.example.com/").unwrap());

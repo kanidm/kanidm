@@ -198,7 +198,7 @@ impl SchemaAttribute {
             SyntaxType::Url => v.is_url(),
             SyntaxType::OauthScope => v.is_oauthscope(),
             SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
-            SyntaxType::Es256PrivateDer => v.is_es256privateder(),
+            SyntaxType::PrivateBinary => v.is_privatebinary(),
         };
         if r {
             Ok(())
@@ -258,7 +258,7 @@ impl SchemaAttribute {
             SyntaxType::Url => ava.is_url(),
             SyntaxType::OauthScope => ava.is_oauthscope(),
             SyntaxType::OauthScopeMap => ava.is_oauthscopemap(),
-            SyntaxType::Es256PrivateDer => ava.is_es256privateder(),
+            SyntaxType::PrivateBinary => ava.is_privatebinary(),
         };
         if valid {
             Ok(())

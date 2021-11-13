@@ -42,7 +42,7 @@ enum I {
     Url(SmolSet<[Url; 1]>),
     OauthScope(BTreeSet<String>),
     OauthScopeMap(BTreeMap<Uuid, BTreeSet<String>>),
-    Es256PrivateDer(SmolSet<[Vec<u8>; 1]>),
+    PrivateBinary(SmolSet<[Vec<u8>; 1]>),
 }
 
 pub struct ValueSet {
@@ -118,8 +118,8 @@ impl ValueSet {
                     Some(DataValue::OauthScopeMap(c)) => I::OauthScopeMap(btreemap![(u, c)]),
                     _ => unreachable!(),
                 },
-                PartialValue::Es256PrivateDer => match data.map(|b| (*b).clone()) {
-                    Some(DataValue::Es256PrivateDer(c)) => I::Es256PrivateDer(smolset![c]),
+                PartialValue::PrivateBinary => match data.map(|b| (*b).clone()) {
+                    Some(DataValue::PrivateBinary(c)) => I::PrivateBinary(smolset![c]),
                     _ => unreachable!(),
                 },
             },
@@ -193,9 +193,9 @@ impl ValueSet {
                     Ok(false)
                 }
             }
-            (I::Es256PrivateDer(set), PartialValue::Es256PrivateDer) => {
+            (I::PrivateBinary(set), PartialValue::PrivateBinary) => {
                 match data.map(|b| (*b).clone()) {
-                    Some(DataValue::Es256PrivateDer(c)) => Ok(set.insert(c)),
+                    Some(DataValue::PrivateBinary(c)) => Ok(set.insert(c)),
                     _ => Err(OperationError::InvalidValueState),
                 }
             }
@@ -280,7 +280,7 @@ impl ValueSet {
             (I::OauthScopeMap(a), I::OauthScopeMap(b)) => {
                 mergemaps!(a, b)
             }
-            (I::Es256PrivateDer(a), I::Es256PrivateDer(b)) => {
+            (I::PrivateBinary(a), I::PrivateBinary(b)) => {
                 mergesets!(a, b)
             }
             // I think that in this case, we need to specify self / everything as we are changing
@@ -375,8 +375,8 @@ impl ValueSet {
             I::OauthScopeMap(map) => {
                 map.extend(iter.filter_map(|v| v.to_oauthscopemap()));
             }
-            I::Es256PrivateDer(set) => {
-                iter.filter_map(|v| v.to_es256privateder().cloned())
+            I::PrivateBinary(set) => {
+                iter.filter_map(|v| v.to_privatebinary().cloned())
                     .for_each(|i| {
                         set.insert(i);
                     });
@@ -449,7 +449,7 @@ impl ValueSet {
             I::OauthScopeMap(map) => {
                 map.clear();
             }
-            I::Es256PrivateDer(set) => {
+            I::PrivateBinary(set) => {
                 set.clear();
             }
         };
@@ -523,7 +523,7 @@ impl ValueSet {
             | (I::OauthScopeMap(set), PartialValue::Refer(u)) => {
                 set.remove(u);
             }
-            (I::Es256PrivateDer(_set), PartialValue::Es256PrivateDer) => {
+            (I::PrivateBinary(_set), PartialValue::PrivateBinary) => {
                 debug_assert!(false)
             }
             (_, _) => {
@@ -559,7 +559,7 @@ impl ValueSet {
             (I::OauthScope(set), PartialValue::OauthScope(u)) => set.contains(u),
             (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u))
             | (I::OauthScopeMap(map), PartialValue::Refer(u)) => map.contains_key(u),
-            (I::Es256PrivateDer(_set), PartialValue::Es256PrivateDer) => false,
+            (I::PrivateBinary(_set), PartialValue::PrivateBinary) => false,
             _ => false,
         }
     }
@@ -604,7 +604,7 @@ impl ValueSet {
             I::Url(set) => set.len(),
             I::OauthScope(set) => set.len(),
             I::OauthScopeMap(set) => set.len(),
-            I::Es256PrivateDer(set) => set.len(),
+            I::PrivateBinary(set) => set.len(),
         }
     }
 
@@ -660,7 +660,7 @@ impl ValueSet {
                 .keys()
                 .map(|u| u.to_hyphenated_ref().to_string())
                 .collect(),
-            I::Es256PrivateDer(_set) => vec![],
+            I::PrivateBinary(_set) => vec![],
         }
     }
 
@@ -867,13 +867,13 @@ impl ValueSet {
                     })
                 }
             }
-            (I::Es256PrivateDer(a), I::Es256PrivateDer(b)) => {
+            (I::PrivateBinary(a), I::PrivateBinary(b)) => {
                 let x: SmolSet<_> = a.difference(b).cloned().collect();
                 if x.is_empty() {
                     None
                 } else {
                     Some(ValueSet {
-                        inner: I::Es256PrivateDer(x),
+                        inner: I::PrivateBinary(x),
                     })
                 }
             }
@@ -990,7 +990,7 @@ impl ValueSet {
                 .take(1)
                 .next()
                 .map(|(u, s)| Value::new_oauthscopemap(*u, s.clone())),
-            I::Es256PrivateDer(set) => set.iter().take(1).next().map(Value::new_es256privateder),
+            I::PrivateBinary(set) => set.iter().take(1).next().map(Value::new_privatebinary),
         }
     }
 
@@ -1145,9 +1145,9 @@ impl ValueSet {
         }
     }
 
-    pub fn to_es256_private_key_der_single(&self) -> Option<&[u8]> {
+    pub fn to_private_binary_single(&self) -> Option<&[u8]> {
         match &self.inner {
-            I::Es256PrivateDer(set) => {
+            I::PrivateBinary(set) => {
                 if set.len() == 1 {
                     set.iter().take(1).next().map(|v| v.as_slice())
                 } else {
@@ -1234,7 +1234,7 @@ impl ValueSet {
             I::Url(set) => ProtoIter::Url(set.iter()),
             I::OauthScope(set) => ProtoIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => ProtoIter::OauthScopeMap(set.iter()),
-            I::Es256PrivateDer(set) => ProtoIter::Es256PrivateDer(set.iter()),
+            I::PrivateBinary(set) => ProtoIter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1261,7 +1261,7 @@ impl ValueSet {
             I::Url(set) => DbValueV1Iter::Url(set.iter()),
             I::OauthScope(set) => DbValueV1Iter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => DbValueV1Iter::OauthScopeMap(set.iter()),
-            I::Es256PrivateDer(set) => DbValueV1Iter::Es256PrivateDer(set.iter()),
+            I::PrivateBinary(set) => DbValueV1Iter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1288,7 +1288,7 @@ impl ValueSet {
             I::Url(set) => PartialValueIter::Url(set.iter()),
             I::OauthScope(set) => PartialValueIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => PartialValueIter::OauthScopeMap(set.iter()),
-            I::Es256PrivateDer(set) => PartialValueIter::Es256PrivateDer(set.iter()),
+            I::PrivateBinary(set) => PartialValueIter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1315,7 +1315,7 @@ impl ValueSet {
             I::Url(set) => ValueIter::Url(set.iter()),
             I::OauthScope(set) => ValueIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => ValueIter::OauthScopeMap(set.iter()),
-            I::Es256PrivateDer(set) => ValueIter::Es256PrivateDer(set.iter()),
+            I::PrivateBinary(set) => ValueIter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1424,8 +1424,8 @@ impl ValueSet {
         matches!(self.inner, I::OauthScopeMap(_))
     }
 
-    pub fn is_es256privateder(&self) -> bool {
-        matches!(self.inner, I::Es256PrivateDer(_))
+    pub fn is_privatebinary(&self) -> bool {
+        matches!(self.inner, I::PrivateBinary(_))
     }
 
     pub fn migrate_iutf8_iname(&mut self) -> Result<(), OperationError> {
@@ -1469,7 +1469,7 @@ impl PartialEq for ValueSet {
             (I::Url(a), I::Url(b)) => a.eq(b),
             (I::OauthScope(a), I::OauthScope(b)) => a.eq(b),
             (I::OauthScopeMap(a), I::OauthScopeMap(b)) => a.eq(b),
-            (I::Es256PrivateDer(a), I::Es256PrivateDer(b)) => a.eq(b),
+            (I::PrivateBinary(a), I::PrivateBinary(b)) => a.eq(b),
             _ => false,
         }
     }
@@ -1532,7 +1532,7 @@ pub enum ValueIter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
-    Es256PrivateDer(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for ValueIter<'a> {
@@ -1580,7 +1580,7 @@ impl<'a> Iterator for ValueIter<'a> {
             ValueIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(group, scopes)| Value::new_oauthscopemap(*group, scopes.clone())),
-            ValueIter::Es256PrivateDer(iter) => iter.next().map(|i| Value::new_es256privateder(i)),
+            ValueIter::PrivateBinary(iter) => iter.next().map(|i| Value::new_privatebinary(i)),
         }
     }
 }
@@ -1607,7 +1607,7 @@ pub enum PartialValueIter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
-    Es256PrivateDer(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for PartialValueIter<'a> {
@@ -1665,8 +1665,8 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(group, _scopes)| PartialValue::new_oauthscopemap(*group)),
-            PartialValueIter::Es256PrivateDer(iter) => {
-                iter.next().map(|_| PartialValue::Es256PrivateDer)
+            PartialValueIter::PrivateBinary(iter) => {
+                iter.next().map(|_| PartialValue::PrivateBinary)
             }
         }
     }
@@ -1694,7 +1694,7 @@ pub enum DbValueV1Iter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
-    Es256PrivateDer(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for DbValueV1Iter<'a> {
@@ -1762,8 +1762,8 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
                     data: m.iter().cloned().collect(),
                 })
             }),
-            DbValueV1Iter::Es256PrivateDer(iter) => {
-                iter.next().map(|i| DbValueV1::Es256PrivateDer(i.clone()))
+            DbValueV1Iter::PrivateBinary(iter) => {
+                iter.next().map(|i| DbValueV1::PrivateBinary(i.clone()))
             }
         }
     }
@@ -1791,7 +1791,7 @@ pub enum ProtoIter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
-    Es256PrivateDer(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for ProtoIter<'a> {
@@ -1843,9 +1843,7 @@ impl<'a> Iterator for ProtoIter<'a> {
             ProtoIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(u, m)| format!("{}: {:?}", ValueSet::uuid_to_proto_string(u), m)),
-            ProtoIter::Es256PrivateDer(iter) => {
-                iter.next().map(|_| "es256_der_private_key".to_string())
-            }
+            ProtoIter::PrivateBinary(iter) => iter.next().map(|_| "private_binary".to_string()),
         }
     }
 }
