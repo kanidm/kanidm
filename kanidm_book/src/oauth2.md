@@ -55,15 +55,20 @@ In general Kanidm requires that your resource server supports:
 * PKCE S256 code verification to prevent certain token attack classes
 * OIDC only - JWT ES256 for token signatures
 
-Kanidm will expose it's oauth2/oidc apis at the following urls:
+Kanidm will expose it's oauth2 apis at the following urls:
 
 * user auth url: https://idm.example.com/ui/oauth2
 * api auth url: https://idm.example.com/oauth2/authorise
 * token url: https://idm.example.com/oauth2/token
 * token inspect url: https://idm.example.com/oauth2/inspect
 
+OpenID Connect discovery:
+
 * openid connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id/
 * openid connect discovery:  https://idm.example.com/oauth2/openid/:client\_id/.well-known/openid-configuration
+
+For manual OpenID configuration:
+
 * openid connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id/userinfo
 * token signing public key:  https://idm.example.com/oauth2/openid/:client\_id/public\_key.jwk
 
@@ -158,6 +163,20 @@ the server with:
 Each resource server has unique signing keys and access secrets, so this is limited to each
 resource server.
 
+## Extended Options for Legacy Clients
+
+Not all resource servers support modern standards like PKCE or ECDSA. In these situations
+it may be necessary to disable these on a per-resource server basis. Disabling these on
+one resource server will not affect others.
+
+To disable PKCE for a resource server:
+
+    kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
+
+To enable legacy cryptograhy (RSA PKCS1-5 SHA256):
+
+    kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
+
 ## Example Integrations
 
 ### Apache mod\_auth\_openidc
@@ -184,7 +203,22 @@ In the virtual host, to protect a location:
 
 ### Nextcloud
 
+Install the module https://apps.nextcloud.com/apps/user\_oidc - it can be found in the Apps section
+as "OpenID Connect user backend".
+
+In nextcloud's config.php you need to allow connection to remote servers:
+
+    'allow_local_remote_servers' => true,
+
+If you forget this, you may see the following error in logs:
+
     Host 172.24.11.129 was not connected to because it violates local access rules
 
-    config.php
-    'allow_local_remote_servers' => true,
+This module does not support PKCE or ES256. You will need to run:
+
+    kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
+    kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
+
+In the settings menu, configure the discovery url and client id and secret.
+
+
