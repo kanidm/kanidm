@@ -36,5 +36,5 @@ exclude = [
 # webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "bef560b3619d42f12ae88f08435164a0a43605e5" }
 # webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-authenticator-rs.git", rev = "c91205e57a783a7c3a6e09ade377c83a86fe0900" }
 
-compact_jwt = { path = "../compact_jwt" }
+# compact_jwt = { path = "../compact_jwt" }
 
