@@ -203,8 +203,8 @@ In the virtual host, to protect a location:
 
 ### Nextcloud
 
-Install the module https://apps.nextcloud.com/apps/user\_oidc - it can be found in the Apps section
-as "OpenID Connect user backend".
+Install the module [from the nextcloud market place](https://apps.nextcloud.com/apps/user_oidc) -
+it can also be found in the Apps section of your deployment as "OpenID Connect user backend".
 
 In nextcloud's config.php you need to allow connection to remote servers:
 
