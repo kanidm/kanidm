@@ -210,6 +210,11 @@ In nextcloud's config.php you need to allow connection to remote servers:
 
     'allow_local_remote_servers' => true,
 
+You may optionally choose to add:
+
+    'allow_user_to_change_display_name' => false,
+    'lost_password_link' => 'disabled',
+
 If you forget this, you may see the following error in logs:
 
     Host 172.24.11.129 was not connected to because it violates local access rules
@@ -220,5 +225,13 @@ This module does not support PKCE or ES256. You will need to run:
     kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
 
 In the settings menu, configure the discovery url and client id and secret.
+
+You can choose to disable other login methods with:
+
+    php occ config:app:set --value=0 user_oidc allow_multiple_user_backends
+
+You can login directly by appending `?direct=1` to your login page still. You can re-enable
+other backends by setting the value to `1`
+
 
 
