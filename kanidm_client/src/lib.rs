@@ -959,11 +959,11 @@ impl KanidmClient {
     }
 
     pub fn idm_oauth2_rs_enable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
-        tokio_block_on(self.asclient.idm_oauth2_rs_enable_pkce(id))
+        tokio_block_on(self.asclient.idm_oauth2_rs_enable_legacy_crypto(id))
     }
 
     pub fn idm_oauth2_rs_disable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
-        tokio_block_on(self.asclient.idm_oauth2_rs_disable_pkce(id))
+        tokio_block_on(self.asclient.idm_oauth2_rs_disable_legacy_crypto(id))
     }
 
     // ==== recycle bin

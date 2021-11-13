@@ -424,7 +424,7 @@ pub enum Oauth2Opt {
     /// may not support it. You should request the client to enable PKCE!
     #[structopt(name = "warning_insecure_client_disable_pkce")]
     DisablePkce(Named),
-    #[structopt(name = "warning_enable_legacy_crytpo")]
+    #[structopt(name = "warning_enable_legacy_crypto")]
     /// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
     /// You only need to enable this for openid clients that do not support modern crytopgraphic
     /// operations.
