@@ -719,6 +719,35 @@ pub const JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "An rs256 private key"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "rs256_private_key_der"
+      ],
+      "syntax": [
+        "PRIVATE_BINARY"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000093"
+      ]
+    }
+}"#;
+
 pub const JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str = r#"{
     "attrs": {
       "class": [
@@ -744,6 +773,35 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE: &str = r#"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000091"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "Allows enabling legacy jwt cryptograhpy for clients"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "oauth2_jwt_legacy_crypto_enable"
+      ],
+      "syntax": [
+        "BOOLEAN"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000092"
       ]
     }
 }"#;
@@ -970,7 +1028,9 @@ pub const JSON_SCHEMA_CLASS_OAUTH2_RS: &str = r#"
         "description",
         "oauth2_rs_scope_map",
         "oauth2_rs_implicit_scopes",
-        "oauth2_allow_insecure_client_disable_pkce"
+        "oauth2_allow_insecure_client_disable_pkce",
+        "rs256_private_key_der",
+        "oauth2_jwt_legacy_crypto_enable"
       ],
       "systemmust": [
         "oauth2_rs_name",

@@ -916,7 +916,7 @@ impl KanidmClient {
         scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
-        reset_es256_key: bool,
+        reset_sign_key: bool,
     ) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_oauth2_rs_update(
             id,
@@ -926,7 +926,7 @@ impl KanidmClient {
             scopes,
             reset_secret,
             reset_token_key,
-            reset_es256_key,
+            reset_sign_key,
         ))
     }
 
@@ -955,6 +955,14 @@ impl KanidmClient {
     }
 
     pub fn idm_oauth2_rs_disable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_disable_pkce(id))
+    }
+
+    pub fn idm_oauth2_rs_enable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_oauth2_rs_enable_pkce(id))
+    }
+
+    pub fn idm_oauth2_rs_disable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
         tokio_block_on(self.asclient.idm_oauth2_rs_disable_pkce(id))
     }
 

@@ -1022,7 +1022,9 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "oauth2_rs_basic_secret",
             "oauth2_rs_token_key",
             "es256_private_key_der",
-            "oauth2_allow_insecure_client_disable_pkce"
+            "oauth2_allow_insecure_client_disable_pkce",
+            "rs256_private_key_der",
+            "oauth2_jwt_legacy_crypto_enable"
         ],
         "acp_modify_removedattr": [
             "description",
@@ -1034,7 +1036,9 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "oauth2_rs_basic_secret",
             "oauth2_rs_token_key",
             "es256_private_key_der",
-            "oauth2_allow_insecure_client_disable_pkce"
+            "oauth2_allow_insecure_client_disable_pkce",
+            "rs256_private_key_der",
+            "oauth2_jwt_legacy_crypto_enable"
         ],
         "acp_modify_presentattr": [
             "description",
@@ -1043,7 +1047,8 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "oauth2_rs_origin",
             "oauth2_rs_scope_map",
             "oauth2_rs_implicit_scopes",
-            "oauth2_allow_insecure_client_disable_pkce"
+            "oauth2_allow_insecure_client_disable_pkce",
+            "oauth2_jwt_legacy_crypto_enable"
         ],
         "acp_modify_class": [],
         "acp_create_attr": [
@@ -1054,7 +1059,8 @@ pub const JSON_IDM_HP_ACP_OAUTH2_MANAGE_PRIV_V1: &str = r#"{
             "oauth2_rs_origin",
             "oauth2_rs_scope_map",
             "oauth2_rs_implicit_scopes",
-            "oauth2_allow_insecure_client_disable_pkce"
+            "oauth2_allow_insecure_client_disable_pkce",
+            "oauth2_jwt_legacy_crypto_enable"
         ],
         "acp_create_class": ["oauth2_resource_server", "oauth2_resource_server_basic", "object"]
     }

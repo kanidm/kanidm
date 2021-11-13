@@ -311,16 +311,30 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .map(|iter| iter.map(str::to_string).collect())
                         .unwrap_or_else(|| Vec::new());
 
-                    trace!("es256_private_key_der");
-                    let jws_signer = ent
-                        .get_ava_single_private_binary("es256_private_key_der")
-                        .ok_or(OperationError::InvalidValueState)
-                        .and_then(|key_der| {
-                            JwsSigner::from_es256_der(key_der).map_err(|e| {
-                                admin_error!(err = ?e, "Unable to load JwsSigner from DER");
-                                OperationError::CryptographyError
-                            })
-                        })?;
+                    trace!("oauth2_jwt_legacy_crypto_enable");
+                    let jws_signer = if ent.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
+                        trace!("rs256_private_key_der");
+                        ent
+                            .get_ava_single_private_binary("rs256_private_key_der")
+                            .ok_or(OperationError::InvalidValueState)
+                            .and_then(|key_der| {
+                                JwsSigner::from_rs256_der(key_der).map_err(|e| {
+                                    admin_error!(err = ?e, "Unable to load Legacy RS256 JwsSigner from DER");
+                                    OperationError::CryptographyError
+                                })
+                            })?
+                    } else {
+                        trace!("es256_private_key_der");
+                        ent
+                            .get_ava_single_private_binary("es256_private_key_der")
+                            .ok_or(OperationError::InvalidValueState)
+                            .and_then(|key_der| {
+                                JwsSigner::from_es256_der(key_der).map_err(|e| {
+                                    admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
+                                    OperationError::CryptographyError
+                                })
+                            })?
+                    };
 
                     let jws_validator = jws_signer.get_validator().map_err(|e| {
                         admin_error!(err = ?e, "Unable to load JwsValidator from JwsSigner");
@@ -1015,7 +1029,12 @@ impl Oauth2ResourceServersReadTransaction {
         let response_modes_supported = vec![ResponseMode::Query];
         let grant_types_supported = vec![GrantType::AuthorisationCode];
         let subject_types_supported = vec![SubjectType::Public];
-        let id_token_signing_alg_values_supported = vec![IdTokenSignAlg::ES256];
+
+        let id_token_signing_alg_values_supported = match &o2rs.jws_signer {
+            JwsSigner::ES256 { .. } => vec![IdTokenSignAlg::ES256],
+            JwsSigner::RS256 { .. } => vec![IdTokenSignAlg::RS256],
+        };
+
         let userinfo_signing_alg_values_supported = None;
         let token_endpoint_auth_methods_supported = vec![
             TokenEndpointAuthMethod::ClientSecretBasic,
@@ -1185,6 +1204,7 @@ mod tests {
         idms: &IdmServer,
         ct: Duration,
         enable_pkce: bool,
+        enable_legacy_crypto: bool,
     ) -> (String, UserAuthToken, Identity) {
         let mut idms_prox_write = idms.proxy_write(ct);
 
@@ -1210,6 +1230,10 @@ mod tests {
             (
                 "oauth2_allow_insecure_client_disable_pkce",
                 Value::new_bool(!enable_pkce)
+            ),
+            (
+                "oauth2_jwt_legacy_crypto_enable",
+                Value::new_bool(enable_legacy_crypto)
             )
         );
         let ce = CreateEvent::new_internal(vec![e]);
@@ -1269,7 +1293,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -1317,7 +1341,7 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous);
             let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
@@ -1481,7 +1505,7 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
@@ -1556,7 +1580,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
 
             // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
             // allows all our other tests to pass, but it means when we specifically put the
@@ -1713,7 +1737,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
             let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
             let idms_prox_read = idms.proxy_read();
@@ -1794,7 +1818,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
@@ -1880,7 +1904,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, _uat, _ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (_secret, _uat, _ident) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -2011,7 +2035,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
             let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
             let idms_prox_read = idms.proxy_read();
@@ -2100,7 +2124,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, false);
+            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, false, false);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -2127,6 +2151,88 @@ mod tests {
             idms_prox_read
                 .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
                 .expect("Oauth2 authorisation failed");
+        })
+    }
+
+    #[test]
+    fn test_idm_oauth2_openid_legacy_crypto() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, false, true);
+            let idms_prox_read = idms.proxy_read();
+            // The public key url should offer an rs key
+            // discovery should offer RS256
+            let discovery = idms_prox_read
+                .oauth2_openid_discovery("test_resource_server")
+                .expect("Failed to get discovery");
+
+            let mut jwkset = idms_prox_read
+                .oauth2_openid_publickey("test_resource_server")
+                .expect("Failed to get public key");
+
+            let jwk = jwkset.keys.pop().expect("no such jwk");
+            let public_jwk = jwk.clone();
+
+            match jwk {
+                Jwk::RSA { alg, use_, kid, .. } => {
+                    match (
+                        alg.unwrap(),
+                        &discovery.id_token_signing_alg_values_supported[0],
+                    ) {
+                        (JwaAlg::RS256, IdTokenSignAlg::RS256) => {}
+                        _ => panic!(),
+                    };
+                    assert!(use_.unwrap() == JwkUse::Sig);
+                    assert!(kid.unwrap() == "test_resource_server")
+                }
+                _ => panic!(),
+            };
+
+            // Check that the id_token is signed with the correct key.
+            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+            let consent_request =
+                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+            // == Manually submit the consent token to the permit for the permit_success
+            let permit_success = idms_prox_read
+                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
+                .expect("Failed to perform oauth2 permit");
+
+            // == Submit the token exchange code.
+            let token_req = AccessTokenRequest {
+                grant_type: "authorization_code".to_string(),
+                code: permit_success.code,
+                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                client_id: Some("test_resource_server".to_string()),
+                client_secret: Some(secret),
+                // From the first step.
+                code_verifier,
+            };
+
+            let token_response = idms_prox_read
+                .check_oauth2_token_exchange(None, &token_req, ct)
+                .expect("Failed to perform oauth2 token exchange");
+
+            // 🎉 We got a token!
+            assert!(token_response.token_type == "bearer");
+            let id_token = token_response.id_token.expect("No id_token in response!");
+
+            let jws_validator =
+                JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+
+            let oidc_unverified =
+                OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+
+            let iat = ct.as_secs() as i64;
+
+            let oidc = oidc_unverified
+                .validate(&jws_validator, iat)
+                .expect("Failed to verify oidc");
+
+            assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
         })
     }
 }
