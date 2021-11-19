@@ -120,9 +120,9 @@ You can create a scope map with:
     kanidm system oauth2 create_scope_map <name> <kanidm_group_name> [scopes]...
     kanidm system oauth2 create_scope_map nextcloud nextcloud_admins admin
 
-> **NOTE**
+> **WARNING**
 > If you are creating an openid connect (OIDC) resource server you *MUST* provide a
-> scope map OR implicit scope that contains 'openid'.
+> scope map OR implicit scope named 'openid'. Without this, openid clients *WILL NOT WORK*
 
 > **HINT**
 > openid connect provides a number of scopes that affect the content of the resulting
