@@ -62,15 +62,16 @@ Kanidm will expose it's oauth2 apis at the following urls:
 * token url: https://idm.example.com/oauth2/token
 * token inspect url: https://idm.example.com/oauth2/inspect
 
-OpenID Connect discovery:
+OpenID Connect discovery - you need to substitute your oauth2 client id in the following
+urls:
 
-* openid connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id/
-* openid connect discovery:  https://idm.example.com/oauth2/openid/:client\_id/.well-known/openid-configuration
+* openid connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id:/
+* openid connect discovery:  https://idm.example.com/oauth2/openid/:client\_id:/.well-known/openid-configuration
 
 For manual OpenID configuration:
 
-* openid connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id/userinfo
-* token signing public key:  https://idm.example.com/oauth2/openid/:client\_id/public\_key.jwk
+* openid connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id:/userinfo
+* token signing public key:  https://idm.example.com/oauth2/openid/:client\_id:/public\_key.jwk
 
 ### Scope Relationships
 

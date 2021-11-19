@@ -166,6 +166,19 @@ pub enum AuthType {
     // PasswordWebauthnVerified,
 }
 
+impl fmt::Display for AuthType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AuthType::Anonymous => write!(f, "anonymous"),
+            AuthType::UnixPassword => write!(f, "unixpassword"),
+            AuthType::Password => write!(f, "password"),
+            AuthType::GeneratedPassword => write!(f, "generatedpassword"),
+            AuthType::Webauthn => write!(f, "webauthn"),
+            AuthType::PasswordMfa => write!(f, "passwordmfa"),
+        }
+    }
+}
+
 /// The currently authenticated user, and any required metadata for them
 /// to properly authorise them. This is similar in nature to oauth and the krb
 /// PAC/PAD structures. Currently we only use this internally, but we should

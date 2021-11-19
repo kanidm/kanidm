@@ -341,7 +341,7 @@ impl IdmServerDelayed {
     }
 }
 
-pub trait IdmServerTransaction<'a> {
+pub(crate) trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
     fn get_qs_txn(&self) -> &Self::QsTransactionType;
@@ -374,17 +374,25 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn check_account_uuid_valid(&self, uuid: &Uuid, ct: Duration) -> Result<bool, OperationError> {
+    fn check_account_uuid_valid(
+        &self,
+        uuid: &Uuid,
+        ct: Duration,
+    ) -> Result<Option<Account>, OperationError> {
         let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
             admin_error!(?e, "check_account_uuid_valid failed");
             e
         })?;
 
-        Ok(Account::check_within_valid_time(
+        if Account::check_within_valid_time(
             ct,
             entry.get_ava_single_datetime("account_valid_from").as_ref(),
             entry.get_ava_single_datetime("account_expire").as_ref(),
-        ))
+        ) {
+            Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
+        } else {
+            Ok(None)
+        }
     }
 
     fn process_uat_to_identity(

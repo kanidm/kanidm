@@ -139,7 +139,6 @@ impl Account {
         })
     }
 
-    #[cfg(test)]
     pub(crate) fn try_from_entry_no_groups(
         value: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<Self, OperationError> {

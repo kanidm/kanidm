@@ -10,7 +10,7 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
 pub use compact_jwt::{JwkKeySet, OidcToken};
-use compact_jwt::{JwsSigner, JwsValidator, JwtError, OidcClaims, OidcSubject, OidcUnverified};
+use compact_jwt::{JwsSigner, JwsValidator, OidcClaims, OidcSubject};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
@@ -18,7 +18,6 @@ use kanidm_proto::v1::{AuthType, UserAuthToken};
 use openssl::sha;
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
-use std::str::FromStr;
 use std::sync::Arc;
 use time::OffsetDateTime;
 use tracing::trace;
@@ -124,31 +123,30 @@ struct TokenExchangeCode {
 
 #[derive(Serialize, Deserialize, Debug)]
 enum Oauth2TokenType {
-    Access,
+    Access(Oauth2AccessToken),
     Refresh,
 }
 
 impl fmt::Display for Oauth2TokenType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Oauth2TokenType::Access => write!(f, "access_token"),
+            Oauth2TokenType::Access(_) => write!(f, "access_token"),
             Oauth2TokenType::Refresh => write!(f, "refresh_token"),
         }
     }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct Oauth2UserToken {
-    pub toktype: Oauth2TokenType,
-    pub uat: UserAuthToken,
+struct Oauth2AccessToken {
     pub scopes: Vec<String>,
-    // Oauth2 exp is seperate to uat expiry
-    pub exp: i64,
+    pub session_id: Uuid,
+    pub auth_type: AuthType,
+    pub expiry: time::OffsetDateTime,
+    pub uuid: Uuid,
     pub iat: i64,
     pub nbf: i64,
+    pub auth_time: Option<i64>,
 }
-
-// consentPermitResponse
 
 #[derive(Debug)]
 pub struct AuthorisePermitSuccess {
@@ -781,10 +779,14 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // We are now GOOD TO GO!
+        // ==== We are now GOOD TO GO! ====
+
         // Use this to grant the access token response.
         let odt_ct = OffsetDateTime::unix_epoch() + ct;
 
+        let iat = ct.as_secs() as i64;
+
+        // TODO: Make configurable from auth policy!
         let expires_in = if code_xchg.uat.expiry > odt_ct {
             // Becomes a duration.
             (code_xchg.uat.expiry - odt_ct).whole_seconds() as u32
@@ -795,79 +797,94 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         };
 
-        let iat = ct.as_secs() as i64;
-
         let scope = if code_xchg.scopes.is_empty() {
             None
         } else {
             Some(code_xchg.scopes.join(" "))
         };
 
-        // TODO: Scopes map to claims:
-        //
-        // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
-        // * email - (email, email\_verified)
-        // * address - (address)
-        // * phone - (phone\_number, phone\_number\_verified)
-        //
-        // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
+        let scope_set: BTreeSet<String> = code_xchg.scopes.iter().cloned().collect();
 
-        // TODO: Can the user consent to which claims are released? Today as we don't support most
-        // of them anyway, no, but in the future, we can stash these to the consent req.
+        let id_token = if scope_set.contains("openid") {
+            // TODO: Scopes map to claims:
+            //
+            // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
+            // * email - (email, email\_verified)
+            // * address - (address)
+            // * phone - (phone\_number, phone\_number\_verified)
+            //
+            // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
 
-        // TODO: If max_age was requested in the request, we MUST provide auth_time.
+            // TODO: Can the user consent to which claims are released? Today as we don't support most
+            // of them anyway, no, but in the future, we can stash these to the consent req.
 
-        // amr == auth method
-        let amr = serde_json::to_string(&code_xchg.uat.auth_type)
-            .map(|s| Some(vec![s]))
-            .map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode uat authtype data");
-                Oauth2Error::ServerError(OperationError::SerdeJsonError)
-            })?;
+            // TODO: If max_age was requested in the request, we MUST provide auth_time.
 
-        let oidc = OidcToken {
-            iss: self.inner.origin.clone(),
-            sub: OidcSubject::U(code_xchg.uat.uuid),
-            aud: client_id.clone(),
-            iat,
-            nbf: Some(iat),
-            // TODO: Make configurable!
-            exp: iat + 480,
-            auth_time: None,
-            nonce: code_xchg.nonce.clone(),
-            at_hash: None,
-            acr: None,
-            amr,
-            azp: Some(client_id.clone()),
-            jti: None,
-            s_claims: OidcClaims {
-                // Map from displayname
-                name: Some(code_xchg.uat.displayname.clone()),
-                // Map from spn
-                preferred_username: Some(code_xchg.uat.spn.clone()),
-                scopes: code_xchg.scopes,
-                ..Default::default()
-            },
-            claims: Default::default(),
+            // amr == auth method
+            let amr = Some(vec![code_xchg.uat.auth_type.to_string()]);
+
+            // TODO: Make configurable from auth policy!
+            let exp = iat + (expires_in as i64);
+
+            let oidc = OidcToken {
+                iss: self.inner.origin.clone(),
+                sub: OidcSubject::U(code_xchg.uat.uuid),
+                aud: client_id.clone(),
+                iat,
+                nbf: Some(iat),
+                exp,
+                auth_time: None,
+                nonce: code_xchg.nonce.clone(),
+                at_hash: None,
+                acr: None,
+                amr,
+                azp: Some(client_id.clone()),
+                jti: None,
+                s_claims: OidcClaims {
+                    // Map from displayname
+                    name: Some(code_xchg.uat.displayname.clone()),
+                    // Map from spn
+                    preferred_username: Some(code_xchg.uat.spn.clone()),
+                    scopes: code_xchg.scopes.clone(),
+                    ..Default::default()
+                },
+                claims: Default::default(),
+            };
+
+            trace!(?oidc);
+
+            Some(
+                oidc.sign_with_kid(&o2rs.jws_signer, &client_id)
+                    .map(|jwt_signed| jwt_signed.to_string())
+                    .map_err(|e| {
+                        admin_error!(err = ?e, "Unable to encode uat data");
+                        Oauth2Error::ServerError(OperationError::InvalidState)
+                    })?,
+            )
+        } else {
+            None
         };
 
-        trace!(?oidc);
-
-        let access_token = oidc
-            .sign_with_kid(&o2rs.jws_signer, &client_id)
-            .map(|jwt_signed| jwt_signed.to_string())
-            .map_err(|e| {
-                admin_error!(err = ?e, "Unable to encode uat data");
-                Oauth2Error::ServerError(OperationError::InvalidState)
-            })?;
-
-        let id_token = Some(access_token.clone());
-
-        // TODO: For openid access_token and id_token can be different!
-        // We could consider if we want the access token to be different
-        // as a result, either fernet or similar.
-        //
         // TODO: Refresh tokens!
+        let access_token_raw = Oauth2TokenType::Access(Oauth2AccessToken {
+            scopes: code_xchg.scopes,
+            session_id: code_xchg.uat.session_id,
+            auth_type: code_xchg.uat.auth_type,
+            expiry: code_xchg.uat.expiry,
+            uuid: code_xchg.uat.uuid,
+            iat,
+            nbf: iat,
+            auth_time: None,
+        });
+
+        let access_token_data = serde_json::to_vec(&access_token_raw).map_err(|e| {
+            admin_error!(err = ?e, "Unable to encode consent data");
+            Oauth2Error::ServerError(OperationError::SerdeJsonError)
+        })?;
+
+        let access_token = o2rs
+            .token_fernet
+            .encrypt_at_time(&access_token_data, ct.as_secs());
 
         Ok(AccessTokenResponse {
             access_token,
@@ -901,62 +918,69 @@ impl Oauth2ResourceServersReadTransaction {
         }
         // We are authenticated! Yay! Now we can actually check things ...
 
-        // In these cases instead of error, we need to return Active:false
-        // Check the Token is correctly signed.
-        let oidc = OidcUnverified::from_str(&intr_req.token)
-            .and_then(|oidc_unverified| {
-                if Some(client_id.as_str()) == oidc_unverified.get_jwk_kid() {
-                    oidc_unverified.validate(&o2rs.jws_validator, ct.as_secs() as i64)
-                } else {
-                    Err(JwtError::InvalidJwtKid)
-                }
+        let token: Oauth2TokenType = o2rs
+            .token_fernet
+            .decrypt(&intr_req.token)
+            .map_err(|_| {
+                admin_error!("Failed to decrypt token introspection request");
+                Oauth2Error::InvalidRequest
             })
-            .map_err(|e| {
-                admin_error!(err = ?e, "Failed to decrypt access token introspect request");
-                Oauth2Error::InvalidToken
+            .and_then(|data| {
+                serde_json::from_slice(&data).map_err(|e| {
+                    admin_error!("Failed to deserialise token exchange code - {:?}", e);
+                    Oauth2Error::InvalidRequest
+                })
             })?;
 
-        // Check that oidc.aud matches client_id.
-        // THIS ALSO CHECKS that the KID == aud by transitiviy.
-        if oidc.aud != client_id {
-            admin_error!(token_aud = ?oidc.aud, ?client_id, "Token audience does not match client_id");
-            return Err(Oauth2Error::InvalidRequest);
+        match token {
+            Oauth2TokenType::Access(at) => {
+                // Has this token expired?
+                let odt_ct = OffsetDateTime::unix_epoch() + ct;
+                if at.expiry <= odt_ct {
+                    security_info!(?at.uuid, "access token has expired, returning inactive");
+                    return Ok(AccessTokenIntrospectResponse::inactive());
+                }
+                let exp = at.iat + ((at.expiry - odt_ct).whole_seconds() as i64);
+
+                // Is the user expired?
+                let valid = idms
+                    .check_account_uuid_valid(&at.uuid, ct)
+                    .map_err(|_| admin_error!("Account is not valid"));
+
+                let account = match valid {
+                    Ok(Some(account)) => account,
+                    _ => {
+                        security_info!(?at.uuid, "access token has account not valid, returning inactive");
+                        return Ok(AccessTokenIntrospectResponse::inactive());
+                    }
+                };
+
+                // ==== good to generate response ====
+
+                let scope = if at.scopes.is_empty() {
+                    None
+                } else {
+                    Some(at.scopes.join(" "))
+                };
+
+                let token_type = Some("access_token".to_string());
+                Ok(AccessTokenIntrospectResponse {
+                    active: true,
+                    scope,
+                    client_id: Some(client_id.clone()),
+                    username: Some(account.spn),
+                    token_type,
+                    exp: Some(exp),
+                    iat: Some(at.iat),
+                    nbf: Some(at.nbf),
+                    sub: Some(at.uuid.to_string()),
+                    aud: Some(client_id),
+                    iss: None,
+                    jti: None,
+                })
+            }
+            Oauth2TokenType::Refresh => Ok(AccessTokenIntrospectResponse::inactive()),
         }
-
-        let token_type = Some("access_token".to_string());
-
-        let valid = match oidc.sub {
-            OidcSubject::U(uuid) => idms
-                .check_account_uuid_valid(&uuid, ct)
-                .map_err(|_| admin_error!("Account is not valid")),
-            _ => Ok(false),
-        };
-
-        match valid {
-            Ok(true) => {}
-            _ => return Ok(AccessTokenIntrospectResponse::inactive()),
-        };
-
-        let scope = if oidc.s_claims.scopes.is_empty() {
-            None
-        } else {
-            Some(oidc.s_claims.scopes.join(" "))
-        };
-
-        Ok(AccessTokenIntrospectResponse {
-            active: true,
-            scope,
-            client_id: Some(client_id),
-            username: oidc.s_claims.preferred_username,
-            token_type,
-            exp: Some(oidc.exp),
-            iat: Some(oidc.iat),
-            nbf: oidc.nbf,
-            sub: Some(oidc.sub.to_string()),
-            aud: Some(oidc.aud),
-            iss: None,
-            jti: None,
-        })
     }
 
     pub fn oauth2_openid_userinfo(
@@ -973,38 +997,75 @@ impl Oauth2ResourceServersReadTransaction {
             Oauth2Error::InvalidClientId
         })?;
 
-        let oidc = OidcUnverified::from_str(&client_authz)
-            .and_then(|oidc_unverified| {
-                if Some(client_id) == oidc_unverified.get_jwk_kid() {
-                    oidc_unverified.validate(&o2rs.jws_validator, ct.as_secs() as i64)
-                } else {
-                    Err(JwtError::InvalidJwtKid)
-                }
+        let token: Oauth2TokenType = o2rs
+            .token_fernet
+            .decrypt(&client_authz)
+            .map_err(|_| {
+                admin_error!("Failed to decrypt token introspection request");
+                Oauth2Error::InvalidRequest
             })
-            .map_err(|e| {
-                admin_error!(err = ?e, "Failed to decrypt access token introspect request");
-                Oauth2Error::InvalidToken
+            .and_then(|data| {
+                serde_json::from_slice(&data).map_err(|e| {
+                    admin_error!("Failed to deserialise token exchange code - {:?}", e);
+                    Oauth2Error::InvalidRequest
+                })
             })?;
 
-        if oidc.aud != client_id {
-            admin_error!(token_aud = ?oidc.aud, ?client_id, "Token audience does not match client_id");
-            return Err(Oauth2Error::InvalidToken);
+        match token {
+            Oauth2TokenType::Access(at) => {
+                // Has this token expired?
+                let odt_ct = OffsetDateTime::unix_epoch() + ct;
+                if at.expiry <= odt_ct {
+                    security_info!(?at.uuid, "access token has expired, returning inactive");
+                    return Err(Oauth2Error::InvalidToken);
+                }
+                let exp = at.iat + ((at.expiry - odt_ct).whole_seconds() as i64);
+
+                // Is the user expired?
+                let valid = idms
+                    .check_account_uuid_valid(&at.uuid, ct)
+                    .map_err(|_| admin_error!("Account is not valid"));
+
+                let account = match valid {
+                    Ok(Some(account)) => account,
+                    _ => {
+                        security_info!(?at.uuid, "access token has account not valid, returning inactive");
+                        return Err(Oauth2Error::InvalidToken);
+                    }
+                };
+
+                let amr = Some(vec![at.auth_type.to_string()]);
+
+                // ==== good to generate response ====
+
+                Ok(OidcToken {
+                    iss: self.inner.origin.clone(),
+                    sub: OidcSubject::U(at.uuid),
+                    aud: client_id.to_string(),
+                    iat: at.iat,
+                    nbf: Some(at.nbf),
+                    exp,
+                    auth_time: None,
+                    nonce: None,
+                    at_hash: None,
+                    acr: None,
+                    amr,
+                    azp: Some(client_id.to_string()),
+                    jti: None,
+                    s_claims: OidcClaims {
+                        // Map from displayname
+                        name: Some(account.displayname.clone()),
+                        // Map from spn
+                        preferred_username: Some(account.spn.clone()),
+                        scopes: at.scopes.clone(),
+                        ..Default::default()
+                    },
+                    claims: Default::default(),
+                })
+            }
+            // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
+            Oauth2TokenType::Refresh => Err(Oauth2Error::InvalidToken),
         }
-
-        let valid = match oidc.sub {
-            OidcSubject::U(uuid) => idms
-                .check_account_uuid_valid(&uuid, ct)
-                .map_err(|_| admin_error!("Account is not valid")),
-            _ => Ok(false),
-        };
-
-        // https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse
-        match valid {
-            Ok(true) => {}
-            _ => return Err(Oauth2Error::InvalidToken),
-        };
-
-        Ok(oidc)
     }
 
     pub fn oauth2_openid_discovery(
@@ -1187,7 +1248,7 @@ mod tests {
                     code_challenge_method: CodeChallengeMethod::S256,
                 }),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "test".to_string(),
+                scope: "openid".to_string(),
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1221,7 +1282,7 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("test")),
+            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("openid")),
             // System admins
             (
                 "oauth2_rs_scope_map",
@@ -1363,7 +1424,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "test".to_string(),
+                scope: "openid".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1383,7 +1444,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: None,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "test".to_string(),
+                scope: "openid".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1403,7 +1464,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "test".to_string(),
+                scope: "openid".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1423,7 +1484,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-                scope: "test".to_string(),
+                scope: "openid".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1463,7 +1524,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "read test".to_string(),
+                scope: "read openid".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1483,7 +1544,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: pkce_request.clone(),
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "read test".to_string(),
+                scope: "read openid".to_string(),
                 nonce: None,
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
@@ -1775,7 +1836,7 @@ mod tests {
 
             eprintln!("👉  {:?}", intr_response);
             assert!(intr_response.active);
-            assert!(intr_response.scope.as_deref() == Some("test"));
+            assert!(intr_response.scope.as_deref() == Some("openid"));
             assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
             assert!(intr_response.username.as_deref() == Some("admin@example.com"));
             assert!(intr_response.token_type.as_deref() == Some("access_token"));
@@ -1978,8 +2039,9 @@ mod tests {
                     .unwrap()
             );
 
+            eprintln!("{:?}", discovery.scopes_supported);
             assert!(
-                discovery.scopes_supported == Some(vec!["read".to_string(), "test".to_string()])
+                discovery.scopes_supported == Some(vec!["openid".to_string(), "read".to_string()])
             );
 
             assert!(discovery.response_types_supported == vec![ResponseType::Code]);
@@ -2094,18 +2156,18 @@ mod tests {
             assert!(oidc.aud == "test_resource_server");
             assert!(oidc.iat == iat);
             assert!(oidc.nbf == Some(iat));
-            assert!(oidc.exp == iat + 480);
+            assert!(oidc.exp == iat + (AUTH_SESSION_EXPIRY as i64));
             assert!(oidc.auth_time.is_none());
             // Is nonce correctly passed through?
             assert!(oidc.nonce == Some("abcdef".to_string()));
             assert!(oidc.at_hash.is_none());
             assert!(oidc.acr.is_none());
-            assert!(oidc.amr == Some(vec!["\"passwordmfa\"".to_string()]));
+            assert!(oidc.amr == Some(vec!["passwordmfa".to_string()]));
             assert!(oidc.azp == Some("test_resource_server".to_string()));
             assert!(oidc.jti.is_none());
             assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
             assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
-            assert!(oidc.s_claims.scopes == vec!["test".to_string()]);
+            assert!(oidc.s_claims.scopes == vec!["openid".to_string()]);
             assert!(oidc.claims.is_empty());
             // Does our access token work with the userinfo endpoint?
             // Do the id_token details line up to the userinfo?
@@ -2113,7 +2175,21 @@ mod tests {
                 .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
                 .expect("failed to get userinfo");
 
-            assert!(oidc == userinfo);
+            assert!(oidc.iss == userinfo.iss);
+            assert!(oidc.sub == userinfo.sub);
+            assert!(oidc.aud == userinfo.aud);
+            assert!(oidc.iat == userinfo.iat);
+            assert!(oidc.nbf == userinfo.nbf);
+            assert!(oidc.exp == userinfo.exp);
+            assert!(userinfo.auth_time.is_none());
+            assert!(userinfo.nonce.is_none());
+            assert!(userinfo.at_hash.is_none());
+            assert!(userinfo.acr.is_none());
+            assert!(oidc.amr == userinfo.amr);
+            assert!(oidc.azp == userinfo.azp);
+            assert!(userinfo.jti.is_none());
+            assert!(oidc.s_claims == userinfo.s_claims);
+            assert!(userinfo.claims.is_empty());
         })
     }
 
@@ -2142,7 +2218,7 @@ mod tests {
                 state: "123".to_string(),
                 pkce_request: None,
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                scope: "test".to_string(),
+                scope: "openid".to_string(),
                 nonce: Some("abcdef".to_string()),
                 oidc_ext: Default::default(),
                 unknown_keys: Default::default(),
