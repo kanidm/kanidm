@@ -1134,6 +1134,94 @@
 <span id="1134">1134</span>
 <span id="1135">1135</span>
 <span id="1136">1136</span>
+<span id="1137">1137</span>
+<span id="1138">1138</span>
+<span id="1139">1139</span>
+<span id="1140">1140</span>
+<span id="1141">1141</span>
+<span id="1142">1142</span>
+<span id="1143">1143</span>
+<span id="1144">1144</span>
+<span id="1145">1145</span>
+<span id="1146">1146</span>
+<span id="1147">1147</span>
+<span id="1148">1148</span>
+<span id="1149">1149</span>
+<span id="1150">1150</span>
+<span id="1151">1151</span>
+<span id="1152">1152</span>
+<span id="1153">1153</span>
+<span id="1154">1154</span>
+<span id="1155">1155</span>
+<span id="1156">1156</span>
+<span id="1157">1157</span>
+<span id="1158">1158</span>
+<span id="1159">1159</span>
+<span id="1160">1160</span>
+<span id="1161">1161</span>
+<span id="1162">1162</span>
+<span id="1163">1163</span>
+<span id="1164">1164</span>
+<span id="1165">1165</span>
+<span id="1166">1166</span>
+<span id="1167">1167</span>
+<span id="1168">1168</span>
+<span id="1169">1169</span>
+<span id="1170">1170</span>
+<span id="1171">1171</span>
+<span id="1172">1172</span>
+<span id="1173">1173</span>
+<span id="1174">1174</span>
+<span id="1175">1175</span>
+<span id="1176">1176</span>
+<span id="1177">1177</span>
+<span id="1178">1178</span>
+<span id="1179">1179</span>
+<span id="1180">1180</span>
+<span id="1181">1181</span>
+<span id="1182">1182</span>
+<span id="1183">1183</span>
+<span id="1184">1184</span>
+<span id="1185">1185</span>
+<span id="1186">1186</span>
+<span id="1187">1187</span>
+<span id="1188">1188</span>
+<span id="1189">1189</span>
+<span id="1190">1190</span>
+<span id="1191">1191</span>
+<span id="1192">1192</span>
+<span id="1193">1193</span>
+<span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
+<span id="1197">1197</span>
+<span id="1198">1198</span>
+<span id="1199">1199</span>
+<span id="1200">1200</span>
+<span id="1201">1201</span>
+<span id="1202">1202</span>
+<span id="1203">1203</span>
+<span id="1204">1204</span>
+<span id="1205">1205</span>
+<span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
+<span id="1219">1219</span>
+<span id="1220">1220</span>
+<span id="1221">1221</span>
+<span id="1222">1222</span>
+<span id="1223">1223</span>
+<span id="1224">1224</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">error</span>, <span class="ident">info</span>, <span class="ident">instrument</span>, <span class="ident">trace</span>};
 
 <span class="kw">use</span> <span class="ident">chrono</span>::{<span class="ident">DateTime</span>, <span class="ident">SecondsFormat</span>, <span class="ident">Utc</span>};
@@ -1155,7 +1243,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::oauth2</span>::{
     <span class="ident">AccessTokenIntrospectRequest</span>, <span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">AccessTokenRequest</span>,
-    <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>, <span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span>,
+    <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">AuthorisePermitSuccess</span>, <span class="ident">ConsentRequest</span>, <span class="ident">JwkKeySet</span>,
+    <span class="ident">Oauth2Error</span>, <span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OidcToken</span>,
 };
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::server</span>::{<span class="ident">IdmServer</span>, <span class="ident">IdmServerTransaction</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap</span>::{<span class="ident">LdapBoundToken</span>, <span class="ident">LdapResponseState</span>, <span class="ident">LdapServer</span>};
@@ -1259,7 +1348,6 @@
         <span class="ident">res</span>
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="attribute">#[<span class="ident">instrument</span>(
         <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
         <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;auth&quot;</span>,
@@ -2170,13 +2258,45 @@
 
     <span class="attribute">#[<span class="ident">instrument</span>(
         <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
-        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_authorise_permit&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_authorise_reject&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_authorise_reject</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+        <span class="ident">consent_req</span>: <span class="ident">String</span>,
+        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2AuthoriseReject&gt;&quot;</span>, {
+            <span class="kw">let</span> (<span class="ident">ident</span>, <span class="ident">uat</span>) <span class="op">=</span> <span class="ident">idms_prox_read</span>
+                .<span class="ident">validate_and_parse_uat</span>(<span class="ident">uat</span>.<span class="ident">as_deref</span>(), <span class="ident">ct</span>)
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">uat</span><span class="op">|</span> {
+                    <span class="ident">idms_prox_read</span>
+                        .<span class="ident">process_uat_to_identity</span>(<span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="ident">ct</span>)
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ident</span><span class="op">|</span> (<span class="ident">ident</span>, <span class="ident">uat</span>))
+                })
+                .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid identity: {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="ident">e</span>
+                })<span class="question-mark">?</span>;
+
+            <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_authorise_reject</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">consent_req</span>, <span class="ident">ct</span>)
+        });
+        <span class="ident">res</span>
+    }
+
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_token_exchange&quot;</span>,
         <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_authz</span>, <span class="ident">token_req</span>, <span class="ident">eventid</span>)
         <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
     )]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_token_exchange</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client_authz</span>: <span class="ident">String</span>,
+        <span class="ident">client_authz</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">token_req</span>: <span class="ident">AccessTokenRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
@@ -2184,7 +2304,7 @@
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2TokenExchange&gt;&quot;</span>, {
             <span class="comment">// Now we can send to the idm server for authorisation checking.</span>
-            <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_exchange</span>(<span class="kw-2">&amp;</span><span class="ident">client_authz</span>, <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
+            <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
         });
         <span class="ident">res</span>
     }
@@ -2206,6 +2326,62 @@
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2TokenIntrospect&gt;&quot;</span>, {
             <span class="comment">// Now we can send to the idm server for introspection checking.</span>
             <span class="ident">idms_prox_read</span>.<span class="ident">check_oauth2_token_introspect</span>(<span class="kw-2">&amp;</span><span class="ident">client_authz</span>, <span class="kw-2">&amp;</span><span class="ident">intr_req</span>, <span class="ident">ct</span>)
+        });
+        <span class="ident">res</span>
+    }
+
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_openid_userinfo&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">client_authz</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_openid_userinfo</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">client_id</span>: <span class="ident">String</span>,
+        <span class="ident">client_authz</span>: <span class="ident">String</span>,
+        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OidcUserinfo&gt;&quot;</span>, {
+            <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_userinfo</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>, <span class="kw-2">&amp;</span><span class="ident">client_authz</span>, <span class="ident">ct</span>)
+        });
+        <span class="ident">res</span>
+    }
+
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_openid_discovery&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_openid_discovery</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">client_id</span>: <span class="ident">String</span>,
+        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OidcDiscovery&gt;&quot;</span>, {
+            <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_discovery</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>)
+        });
+        <span class="ident">res</span>
+    }
+
+    <span class="attribute">#[<span class="ident">instrument</span>(
+        <span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>,
+        <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2_openid_publickey&quot;</span>,
+        <span class="ident">skip</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">eventid</span>)
+        <span class="ident">fields</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">eventid</span>)
+    )]</span>
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_oauth2_openid_publickey</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">client_id</span>: <span class="ident">String</span>,
+        <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
+    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OidcPublickey&gt;&quot;</span>, {
+            <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>)
         });
         <span class="ident">res</span>
     }

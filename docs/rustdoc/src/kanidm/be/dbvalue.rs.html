@@ -212,6 +212,8 @@
 <span id="212">212</span>
 <span id="213">213</span>
 <span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">collections::HashSet</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">url::Url</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
@@ -402,6 +404,8 @@
     <span class="ident">OauthScope</span>(<span class="ident">String</span>),
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;OM&quot;</span>)]</span>
     <span class="ident">OauthScopeMap</span>(<span class="ident">DbValueOauthScopeMapV1</span>),
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;E2&quot;</span>)]</span>
+    <span class="ident">PrivateBinary</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
 }
 
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>

@@ -469,6 +469,150 @@
 <span id="469">469</span>
 <span id="470">470</span>
 <span id="471">471</span>
+<span id="472">472</span>
+<span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
+<span id="489">489</span>
+<span id="490">490</span>
+<span id="491">491</span>
+<span id="492">492</span>
+<span id="493">493</span>
+<span id="494">494</span>
+<span id="495">495</span>
+<span id="496">496</span>
+<span id="497">497</span>
+<span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+<span id="548">548</span>
+<span id="549">549</span>
+<span id="550">550</span>
+<span id="551">551</span>
+<span id="552">552</span>
+<span id="553">553</span>
+<span id="554">554</span>
+<span id="555">555</span>
+<span id="556">556</span>
+<span id="557">557</span>
+<span id="558">558</span>
+<span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
+<span id="566">566</span>
+<span id="567">567</span>
+<span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
+<span id="585">585</span>
+<span id="586">586</span>
+<span id="587">587</span>
+<span id="588">588</span>
+<span id="589">589</span>
+<span id="590">590</span>
+<span id="591">591</span>
+<span id="592">592</span>
+<span id="593">593</span>
+<span id="594">594</span>
+<span id="595">595</span>
+<span id="596">596</span>
+<span id="597">597</span>
+<span id="598">598</span>
+<span id="599">599</span>
+<span id="600">600</span>
+<span id="601">601</span>
+<span id="602">602</span>
+<span id="603">603</span>
+<span id="604">604</span>
+<span id="605">605</span>
+<span id="606">606</span>
+<span id="607">607</span>
+<span id="608">608</span>
+<span id="609">609</span>
+<span id="610">610</span>
+<span id="611">611</span>
+<span id="612">612</span>
+<span id="613">613</span>
+<span id="614">614</span>
+<span id="615">615</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">super</span>::v1</span>::{<span class="ident">json_rest_event_get</span>, <span class="ident">json_rest_event_post</span>};
 <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">to_tide_response</span>, <span class="ident">AppState</span>, <span class="ident">RequestExtensions</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::oauth2</span>::{
@@ -698,6 +842,15 @@
                 <span class="ident">res</span>
             })
         }
+        <span class="comment">/*
+        If the request fails due to a missing, invalid, or mismatching
+        redirection URI, or if the client identifier is missing or invalid,
+        the authorization server SHOULD inform the resource owner of the
+        error and MUST NOT automatically redirect the user-agent to the
+        invalid redirection URI.
+        */</span>
+        <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidClientId</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::BadRequest</span>)),
+        <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidOrigin</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::BadRequest</span>)),
         <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::AuthenticationRequired</span>) <span class="op">=</span><span class="op">&gt;</span> {
             <span class="comment">// This will trigger our ui to auth and retry.</span>
             <span class="prelude-val">Ok</span>(<span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::Unauthorized</span>))
@@ -797,6 +950,69 @@
     <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
 }
 
+<span class="comment">// When this is called, this indicates the user has REJECTED the intent to proceed.</span>
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_authorise_reject_post</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">consent_req</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="ident">oauth2_authorise_reject</span>(<span class="ident">req</span>, <span class="ident">consent_req</span>).<span class="kw">await</span>
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_authorise_reject_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="macro">debug!</span>(<span class="string">&quot;Request Query - {:?}&quot;</span>, <span class="ident">req</span>.<span class="ident">url</span>().<span class="ident">query</span>());
+
+    <span class="kw">let</span> <span class="ident">consent_req</span>: <span class="ident">ConsentRequestData</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">query</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="macro">error!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>);
+        <span class="ident">tide::Error::from_str</span>(
+            <span class="ident">tide::StatusCode::BadRequest</span>,
+            <span class="string">&quot;Invalid Oauth2 Consent Reject&quot;</span>,
+        )
+    })<span class="question-mark">?</span>;
+
+    <span class="ident">oauth2_authorise_reject</span>(<span class="ident">req</span>, <span class="ident">consent_req</span>.<span class="ident">token</span>).<span class="kw">await</span>
+}
+
+<span class="comment">// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1</span>
+<span class="comment">// If the user willingly rejects the authorisation, we must redirect</span>
+<span class="comment">// with an error.</span>
+<span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_authorise_reject</span>(
+    <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>,
+    <span class="ident">consent_req</span>: <span class="ident">String</span>,
+) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="comment">// Need to go back to the redir_uri</span>
+    <span class="comment">// For this, we&#39;ll need to lookup where to go.</span>
+    <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_r_ref</span>
+        .<span class="ident">handle_oauth2_authorise_reject</span>(<span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
+        <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">redirect_uri</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">302</span>);
+            <span class="ident">redirect_uri</span>
+                .<span class="ident">query_pairs_mut</span>()
+                .<span class="ident">clear</span>()
+                .<span class="ident">append_pair</span>(<span class="string">&quot;error&quot;</span>, <span class="string">&quot;access_denied&quot;</span>)
+                .<span class="ident">append_pair</span>(<span class="string">&quot;error_description&quot;</span>, <span class="string">&quot;authorisation rejected&quot;</span>);
+            <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;Location&quot;</span>, <span class="ident">redirect_uri</span>.<span class="ident">as_str</span>());
+            <span class="comment">// I think the client server needs this</span>
+            <span class="comment">// res.insert_header(&quot;Access-Control-Allow-Origin&quot;, redirect_uri.origin().ascii_serialization());</span>
+            <span class="ident">res</span>
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">_e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="comment">// If an error happens in our reject flow, I think</span>
+            <span class="comment">// that we should NOT redirect to the calling application</span>
+            <span class="comment">// and we need to handle that locally somehow.</span>
+            <span class="comment">// This needs to be better!</span>
+            <span class="ident">tide::Response::new</span>(<span class="number">500</span>)
+        }
+    };
+    <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
+    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+}
+
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_token_post</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
     <span class="comment">// This is called directly by the resource server, where we then issue</span>
     <span class="comment">// the token to the caller.</span>
@@ -808,14 +1024,16 @@
         .<span class="ident">header</span>(<span class="string">&quot;authorization&quot;</span>)
         .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>))
         .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">as_str</span>().<span class="ident">strip_prefix</span>(<span class="string">&quot;Basic &quot;</span>))
-        .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
-        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Basic Authentication Not Provided&quot;</span>);
-            <span class="ident">tide::Error::from_str</span>(
-                <span class="ident">tide::StatusCode::Unauthorized</span>,
-                <span class="string">&quot;Invalid Basic Authorisation&quot;</span>,
-            )
-        })<span class="question-mark">?</span>;
+        .<span class="ident">map</span>(<span class="ident">str::to_string</span>);
+    <span class="comment">/*
+    .ok_or_else(|| {
+        error!(&quot;Basic Authentication Not Provided&quot;);
+        tide::Error::from_str(
+            tide::StatusCode::Unauthorized,
+            &quot;Invalid Basic Authorisation&quot;,
+        )
+    })?;
+    */</span>
 
     <span class="comment">// Get the accessToken Request</span>
     <span class="kw">let</span> <span class="ident">tok_req</span>: <span class="ident">AccessTokenRequest</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_form</span>().<span class="kw">await</span>.<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -866,11 +1084,81 @@
 }
 
 <span class="comment">// For future openid integration</span>
-<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_openid_configuration</span>(<span class="ident">_req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
-    <span class="ident">res</span>.<span class="ident">set_content_type</span>(<span class="string">&quot;text/html;charset=utf-8&quot;</span>);
-    <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="string">&quot;&quot;</span>);
-    <span class="prelude-val">Ok</span>(<span class="ident">res</span>)
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_discovery_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">client_id</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;client_id&quot;</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_r_ref</span>
+        .<span class="ident">handle_oauth2_openid_discovery</span>(<span class="ident">client_id</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_userinfo_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">client_id</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;client_id&quot;</span>)<span class="question-mark">?</span>;
+
+    <span class="comment">// The token we want to inspect is in the authorisatioz header.</span>
+    <span class="kw">let</span> <span class="ident">client_authz</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">header</span>(<span class="string">&quot;authorization&quot;</span>)
+        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> <span class="ident">hv</span>.<span class="ident">get</span>(<span class="number">0</span>))
+        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">as_str</span>().<span class="ident">strip_prefix</span>(<span class="string">&quot;Bearer &quot;</span>))
+        .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
+        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="macro">error!</span>(<span class="string">&quot;Bearer Authentication Not Provided&quot;</span>);
+            <span class="ident">tide::Error::from_str</span>(
+                <span class="ident">tide::StatusCode::Unauthorized</span>,
+                <span class="string">&quot;Invalid Bearer Authorisation&quot;</span>,
+            )
+        })<span class="question-mark">?</span>;
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_r_ref</span>
+        .<span class="ident">handle_oauth2_openid_userinfo</span>(<span class="ident">client_id</span>, <span class="ident">client_authz</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+
+    <span class="kw">match</span> <span class="ident">res</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">uir</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">200</span>);
+            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">uir</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
+                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
+                <span class="ident">res</span>
+            })
+        }
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="comment">// https://datatracker.ietf.org/doc/html/rfc6750#section-6.2</span>
+            <span class="kw">let</span> <span class="ident">err</span> <span class="op">=</span> <span class="ident">ErrorResponse</span> {
+                <span class="ident">error</span>: <span class="ident">e</span>.<span class="ident">to_string</span>(),
+                <span class="ident">error_description</span>: <span class="prelude-val">None</span>,
+                <span class="ident">error_uri</span>: <span class="prelude-val">None</span>,
+            };
+
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">tide::Response::new</span>(<span class="number">400</span>);
+            <span class="ident">tide::Body::from_json</span>(<span class="kw-2">&amp;</span><span class="ident">err</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> {
+                <span class="ident">res</span>.<span class="ident">set_body</span>(<span class="ident">b</span>);
+                <span class="ident">res</span>
+            })
+        }
+    }
+    .<span class="ident">map</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">res</span><span class="op">|</span> {
+        <span class="ident">res</span>.<span class="ident">insert_header</span>(<span class="string">&quot;X-KANIDM-OPID&quot;</span>, <span class="ident">hvalue</span>);
+        <span class="ident">res</span>
+    })
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_publickey_get</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">client_id</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;client_id&quot;</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_r_ref</span>
+        .<span class="ident">handle_oauth2_openid_publickey</span>(<span class="ident">client_id</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">oauth2_token_introspect_post</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {

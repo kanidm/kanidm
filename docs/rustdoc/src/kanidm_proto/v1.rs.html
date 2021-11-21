@@ -861,6 +861,19 @@
 <span id="861">861</span>
 <span id="862">862</span>
 <span id="863">863</span>
+<span id="864">864</span>
+<span id="865">865</span>
+<span id="866">866</span>
+<span id="867">867</span>
+<span id="868">868</span>
+<span id="869">869</span>
+<span id="870">870</span>
+<span id="871">871</span>
+<span id="872">872</span>
+<span id="873">873</span>
+<span id="874">874</span>
+<span id="875">875</span>
+<span id="876">876</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
@@ -1029,6 +1042,19 @@ pub struct Application {
     <span class="comment">// PasswordWebauthnVerified,</span>
 }
 
+<span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">AuthType</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+        <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">AuthType::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;anonymous&quot;</span>),
+            <span class="ident">AuthType::UnixPassword</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;unixpassword&quot;</span>),
+            <span class="ident">AuthType::Password</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;password&quot;</span>),
+            <span class="ident">AuthType::GeneratedPassword</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;generatedpassword&quot;</span>),
+            <span class="ident">AuthType::Webauthn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;webauthn&quot;</span>),
+            <span class="ident">AuthType::PasswordMfa</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;passwordmfa&quot;</span>),
+        }
+    }
+}
+
 <span class="doccomment">/// The currently authenticated user, and any required metadata for them</span>
 <span class="doccomment">/// to properly authorise them. This is similar in nature to oauth and the krb</span>
 <span class="doccomment">/// PAC/PAD structures. Currently we only use this internally, but we should</span>
@@ -1050,9 +1076,9 @@ pub struct Application {
     <span class="kw">pub</span> <span class="ident">expiry</span>: <span class="ident">time::OffsetDateTime</span>,
     <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
     <span class="comment">// pub name: String,</span>
+    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
     <span class="comment">// pub groups: Vec&lt;Group&gt;,</span>
-    <span class="comment">// pub claims: Vec&lt;Claim&gt;,</span>
     <span class="comment">// Should we just retrieve these inside the server instead of in the uat?</span>
     <span class="comment">// or do we want per-session limit capabilities?</span>
     <span class="kw">pub</span> <span class="ident">lim_uidx</span>: <span class="ident">bool</span>,

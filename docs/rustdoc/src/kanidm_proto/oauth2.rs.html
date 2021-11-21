@@ -141,15 +141,229 @@
 <span id="141">141</span>
 <span id="142">142</span>
 <span id="143">143</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">url::Url</span>;
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
+<span id="156">156</span>
+<span id="157">157</span>
+<span id="158">158</span>
+<span id="159">159</span>
+<span id="160">160</span>
+<span id="161">161</span>
+<span id="162">162</span>
+<span id="163">163</span>
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+<span id="279">279</span>
+<span id="280">280</span>
+<span id="281">281</span>
+<span id="282">282</span>
+<span id="283">283</span>
+<span id="284">284</span>
+<span id="285">285</span>
+<span id="286">286</span>
+<span id="287">287</span>
+<span id="288">288</span>
+<span id="289">289</span>
+<span id="290">290</span>
+<span id="291">291</span>
+<span id="292">292</span>
+<span id="293">293</span>
+<span id="294">294</span>
+<span id="295">295</span>
+<span id="296">296</span>
+<span id="297">297</span>
+<span id="298">298</span>
+<span id="299">299</span>
+<span id="300">300</span>
+<span id="301">301</span>
+<span id="302">302</span>
+<span id="303">303</span>
+<span id="304">304</span>
+<span id="305">305</span>
+<span id="306">306</span>
+<span id="307">307</span>
+<span id="308">308</span>
+<span id="309">309</span>
+<span id="310">310</span>
+<span id="311">311</span>
+<span id="312">312</span>
+<span id="313">313</span>
+<span id="314">314</span>
+<span id="315">315</span>
+<span id="316">316</span>
+<span id="317">317</span>
+<span id="318">318</span>
+<span id="319">319</span>
+<span id="320">320</span>
+<span id="321">321</span>
+<span id="322">322</span>
+<span id="323">323</span>
+<span id="324">324</span>
+<span id="325">325</span>
+<span id="326">326</span>
+<span id="327">327</span>
+<span id="328">328</span>
+<span id="329">329</span>
+<span id="330">330</span>
+<span id="331">331</span>
+<span id="332">332</span>
+<span id="333">333</span>
+<span id="334">334</span>
+<span id="335">335</span>
+<span id="336">336</span>
+<span id="337">337</span>
+<span id="338">338</span>
+<span id="339">339</span>
+<span id="340">340</span>
+<span id="341">341</span>
+<span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
+<span id="345">345</span>
+<span id="346">346</span>
+<span id="347">347</span>
+<span id="348">348</span>
+<span id="349">349</span>
+<span id="350">350</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
+<span class="kw">use</span> <span class="ident">url::Url</span>;
 <span class="kw">use</span> <span class="ident">webauthn_rs::base64_data::Base64UrlSafeData</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>, <span class="ident">Clone</span>, <span class="ident">Copy</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CodeChallengeMethod</span> {
     <span class="comment">// default to plain if not requested as S256. Reject the auth?</span>
     <span class="comment">// plain</span>
     <span class="comment">// BASE64URL-ENCODE(SHA256(ASCII(code_verifier)))</span>
     <span class="ident">S256</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PkceRequest</span> {
+    <span class="kw">pub</span> <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>,
+    <span class="kw">pub</span> <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -158,14 +372,38 @@
     <span class="kw">pub</span> <span class="ident">response_type</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">client_id</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">state</span>: <span class="ident">String</span>,
-    <span class="comment">// base64?</span>
-    <span class="kw">pub</span> <span class="ident">code_challenge</span>: <span class="ident">Base64UrlSafeData</span>,
-    <span class="comment">// Probably also should be an enum.</span>
-    <span class="kw">pub</span> <span class="ident">code_challenge_method</span>: <span class="ident">CodeChallengeMethod</span>,
-    <span class="comment">// Uri?</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">flatten</span>, <span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">pkce_request</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PkceRequest</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">redirect_uri</span>: <span class="ident">Url</span>,
-    <span class="comment">// appears to be + seperated?</span>
     <span class="kw">pub</span> <span class="ident">scope</span>: <span class="ident">String</span>,
+    <span class="comment">// OIDC adds a nonce parameter that is optional.</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">nonce</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="comment">// OIDC also allows other optional params</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">flatten</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">oidc_ext</span>: <span class="ident">AuthorisationRequestOidc</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">flatten</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">unknown_keys</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">serde_json::value::Value</span><span class="op">&gt;</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">Default</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AuthorisationRequestOidc</span> {
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">display</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">prompt</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">max_age</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">i64</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">ui_locales</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">claims_locales</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span>()<span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">id_token_hint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">login_hint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">acr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// We ask our user to consent to this Authorisation Request with the</span>
@@ -195,8 +433,8 @@
     <span class="comment">// REQUIRED, if the client is not authenticating with the</span>
     <span class="comment">//  authorization server as described in Section 3.2.1.</span>
     <span class="kw">pub</span> <span class="ident">client_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="comment">//</span>
-    <span class="kw">pub</span> <span class="ident">code_verifier</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">client_secret</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">code_verifier</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
 <span class="comment">// We now check code_verifier is the same via the formula.</span>
@@ -219,6 +457,9 @@
     <span class="doccomment">/// Space seperated list of scopes that were approved, if this differs from the</span>
     <span class="doccomment">/// original request.</span>
     <span class="kw">pub</span> <span class="ident">scope</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="doccomment">/// Oidc puts the token here.</span>
+    <span class="kw">pub</span> <span class="ident">id_token</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -274,6 +515,179 @@
             <span class="ident">jti</span>: <span class="prelude-val">None</span>,
         }
     }
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ResponseType</span> {
+    <span class="ident">Code</span>,
+    <span class="ident">Token</span>,
+    <span class="ident">IdToken</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ResponseMode</span> {
+    <span class="ident">Query</span>,
+    <span class="ident">Fragment</span>,
+}
+
+<span class="kw">fn</span> <span class="ident">response_modes_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseMode</span><span class="op">&gt;</span> {
+    <span class="macro">vec!</span>[<span class="ident">ResponseMode::Query</span>, <span class="ident">ResponseMode::Fragment</span>]
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GrantType</span> {
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;authorization_code&quot;</span>)]</span>
+    <span class="ident">AuthorisationCode</span>,
+    <span class="ident">Implicit</span>,
+}
+
+<span class="kw">fn</span> <span class="ident">grant_types_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GrantType</span><span class="op">&gt;</span> {
+    <span class="macro">vec!</span>[<span class="ident">GrantType::AuthorisationCode</span>, <span class="ident">GrantType::Implicit</span>]
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SubjectType</span> {
+    <span class="ident">Pairwise</span>,
+    <span class="ident">Public</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;UPPERCASE&quot;</span>)]</span>
+<span class="comment">// WE REFUSE TO SUPPORT NONE. DONT EVEN ASK. IT WONT HAPPEN.</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">IdTokenSignAlg</span> {
+    <span class="ident">ES256</span>,
+    <span class="ident">RS256</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">TokenEndpointAuthMethod</span> {
+    <span class="ident">ClientSecretPost</span>,
+    <span class="ident">ClientSecretBasic</span>,
+    <span class="ident">ClientSecretJwt</span>,
+    <span class="ident">PrivateKeyJwt</span>,
+}
+
+<span class="kw">fn</span> <span class="ident">token_endpoint_auth_methods_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TokenEndpointAuthMethod</span><span class="op">&gt;</span> {
+    <span class="macro">vec!</span>[<span class="ident">TokenEndpointAuthMethod::ClientSecretBasic</span>]
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DisplayValue</span> {
+    <span class="ident">Page</span>,
+    <span class="ident">Popup</span>,
+    <span class="ident">Touch</span>,
+    <span class="ident">Wap</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>, <span class="ident">PartialEq</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;snake_case&quot;</span>)]</span>
+<span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#ClaimTypes</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ClaimType</span> {
+    <span class="ident">Normal</span>,
+    <span class="ident">Aggregated</span>,
+    <span class="ident">Distributed</span>,
+}
+
+<span class="kw">fn</span> <span class="ident">claim_types_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ClaimType</span><span class="op">&gt;</span> {
+    <span class="macro">vec!</span>[<span class="ident">ClaimType::Normal</span>]
+}
+
+<span class="kw">fn</span> <span class="ident">claims_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="bool-val">false</span>
+}
+
+<span class="kw">fn</span> <span class="ident">request_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="bool-val">false</span>
+}
+
+<span class="kw">fn</span> <span class="ident">request_uri_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="bool-val">true</span>
+}
+
+<span class="kw">fn</span> <span class="ident">require_request_uri_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="bool-val">false</span>
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="comment">// https://openid.net/specs/openid-connect-discovery-1_0.html#ProviderMetadata</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">OidcDiscoveryResponse</span> {
+    <span class="kw">pub</span> <span class="ident">issuer</span>: <span class="ident">Url</span>,
+    <span class="kw">pub</span> <span class="ident">authorization_endpoint</span>: <span class="ident">Url</span>,
+    <span class="kw">pub</span> <span class="ident">token_endpoint</span>: <span class="ident">Url</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">userinfo_endpoint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">jwks_uri</span>: <span class="ident">Url</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">registration_endpoint</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">scopes_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// https://datatracker.ietf.org/doc/html/rfc6749#section-3.1.1</span>
+    <span class="kw">pub</span> <span class="ident">response_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseType</span><span class="op">&gt;</span>,
+    <span class="comment">// https://openid.net/specs/oauth-v2-multiple-response-types-1_0.html#ResponseModes</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;response_modes_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">response_modes_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseMode</span><span class="op">&gt;</span>,
+    <span class="comment">// Need to fill in as authorization_code only else a default is assumed.</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;grant_types_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">grant_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GrantType</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">acr_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#PairwiseAlg</span>
+    <span class="kw">pub</span> <span class="ident">subject_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">SubjectType</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">id_token_signing_alg_values_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdTokenSignAlg</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">id_token_encryption_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">id_token_encryption_enc_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">userinfo_signing_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">userinfo_encryption_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">userinfo_encryption_enc_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">request_object_signing_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">request_object_encryption_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">request_object_encryption_enc_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// Defaults to client_secret_basic</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;token_endpoint_auth_methods_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">token_endpoint_auth_methods_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TokenEndpointAuthMethod</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">token_endpoint_auth_signing_alg_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// https://openid.net/specs/openid-connect-core-1_0.html#AuthRequest</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">display_values_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">DisplayValue</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// Default to normal.</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;claim_types_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">claim_types_supported</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ClaimType</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">claims_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">service_documentation</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">claims_locales_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">ui_locales_supported</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="comment">// Default false.</span>
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;claims_parameter_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">claims_parameter_supported</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;request_parameter_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">request_parameter_supported</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;request_uri_parameter_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">request_uri_parameter_supported</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">default</span> <span class="op">=</span> <span class="string">&quot;require_request_uri_parameter_supported_default&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">require_request_uri_registration</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">op_policy_uri</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">skip_serializing_if</span> <span class="op">=</span> <span class="string">&quot;Option::is_none&quot;</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">op_tos_uri</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Url</span><span class="op">&gt;</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>

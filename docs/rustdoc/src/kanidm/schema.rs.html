@@ -2195,6 +2195,8 @@
 <span id="2195">2195</span>
 <span id="2196">2196</span>
 <span id="2197">2197</span>
+<span id="2198">2198</span>
+<span id="2199">2199</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Schema`] is one of the foundational concepts of the server. It provides a</span>
 <span class="doccomment">//! set of rules to enforce that [`Entries`] ava&#39;s must be compliant to, to be</span>
 <span class="doccomment">//! considered valid for commit to the database. This allows us to provide</span>
@@ -2395,6 +2397,7 @@
             <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">is_url</span>(),
             <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">is_oauthscope</span>(),
             <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">is_oauthscopemap</span>() <span class="op">|</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">is_refer</span>(),
+            <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">is_privatebinary</span>(),
         };
         <span class="kw">if</span> <span class="ident">r</span> {
             <span class="prelude-val">Ok</span>(())
@@ -2454,6 +2457,7 @@
             <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ava</span>.<span class="ident">is_url</span>(),
             <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ava</span>.<span class="ident">is_oauthscope</span>(),
             <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ava</span>.<span class="ident">is_oauthscopemap</span>(),
+            <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ava</span>.<span class="ident">is_privatebinary</span>(),
         };
         <span class="kw">if</span> <span class="ident">valid</span> {
             <span class="prelude-val">Ok</span>(())

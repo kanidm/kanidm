@@ -172,20 +172,30 @@ or something else. This is the system that &quot;needs protecting&quot; and want
 decisions to Kanidm.</p>
 <p>It's important for you to know <em>how</em> your resource server supports oauth2. For example, does it
 support rfc7662 token introspection or does it rely on openid connect for identity information?
-Does the resource server support PKCE S256 or not?</p>
-<blockquote>
-<p>Note: OpenID Connect (OIDC) is not currently supported at this time - if you're interested in finding out when it's ready, please follow <a href="https://github.com/kanidm/kanidm/issues/278">Issue #278</a></p>
-</blockquote>
+Does the resource server support PKCE S256?</p>
 <p>In general Kanidm requires that your resource server supports:</p>
 <ul>
 <li>HTTP basic authentication to the authorisation server</li>
 <li>PKCE S256 code verification to prevent certain token attack classes</li>
+<li>OIDC only - JWT ES256 for token signatures</li>
 </ul>
-<p>Kanidm will expose it's oauth2 apis at the urls:</p>
+<p>Kanidm will expose it's oauth2 apis at the following urls:</p>
 <ul>
-<li>auth url: https://idm.example.com/ui/oauth2</li>
+<li>user auth url: https://idm.example.com/ui/oauth2</li>
+<li>api auth url: https://idm.example.com/oauth2/authorise</li>
 <li>token url: https://idm.example.com/oauth2/token</li>
 <li>token inspect url: https://idm.example.com/oauth2/inspect</li>
+</ul>
+<p>OpenID Connect discovery - you need to substitute your oauth2 client id in the following
+urls:</p>
+<ul>
+<li>openid connect issuer uri: https://idm.example.com/oauth2/openid/:client_id:/</li>
+<li>openid connect discovery:  https://idm.example.com/oauth2/openid/:client_id:/.well-known/openid-configuration</li>
+</ul>
+<p>For manual OpenID configuration:</p>
+<ul>
+<li>openid connect userinfo:   https://idm.example.com/oauth2/openid/:client_id:/userinfo</li>
+<li>token signing public key:  https://idm.example.com/oauth2/openid/:client_id:/public_key.jwk</li>
 </ul>
 <h3 id="scope-relationships"><a class="header" href="#scope-relationships">Scope Relationships</a></h3>
 <p>For an authorisation to proceed, the resource server will request a list of scopes, which are
@@ -201,6 +211,9 @@ server, and the groups/roles in Kanidm which can be specific to that resource se
 <p>For an authorisation to proceed, all scopes requested must be available in the final scope set
 that is granted to the account. This final scope set can be built from implicit and mapped
 scopes.</p>
+<p>This use of scopes is the primary means to control who can access what resources. For example, if
+you have a resource server that will always request a scope of &quot;read&quot;, then you can limit the
+&quot;read&quot; scope to a single group of users by a scope map so that only they may access that resource.</p>
 <h2 id="configuration"><a class="header" href="#configuration">Configuration</a></h2>
 <h3 id="create-the-kanidm-configuration"><a class="header" href="#create-the-kanidm-configuration">Create the Kanidm Configuration</a></h3>
 <p>After you have understood your resource server requirements you first need to configure Kanidm.
@@ -218,6 +231,22 @@ kanidm system oauth2 set_implicit_scopes nextcloud login read_user
 <pre><code>kanidm system oauth2 create_scope_map &lt;name&gt; &lt;kanidm_group_name&gt; [scopes]...
 kanidm system oauth2 create_scope_map nextcloud nextcloud_admins admin
 </code></pre>
+<blockquote>
+<p><strong>WARNING</strong>
+If you are creating an openid connect (OIDC) resource server you <em>MUST</em> provide a
+scope map OR implicit scope named 'openid'. Without this, openid clients <em>WILL NOT WORK</em></p>
+</blockquote>
+<blockquote>
+<p><strong>HINT</strong>
+openid connect provides a number of scopes that affect the content of the resulting
+authorisation token. Supported scopes and their associated claims are:</p>
+<ul>
+<li>profile - (name, family_name, given_name, middle_name, nickname, preferred_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated_at)</li>
+<li>email - (email, email_verified)</li>
+<li>address - (address)</li>
+<li>phone - (phone_number, phone_number_verified)</li>
+</ul>
+</blockquote>
 <p>Once created you can view the details of the resource server.</p>
 <pre><code>kanidm system oauth2 get nextcloud
 ---
@@ -243,6 +272,59 @@ the server with:</p>
 </code></pre>
 <p>Each resource server has unique signing keys and access secrets, so this is limited to each
 resource server.</p>
+<h2 id="extended-options-for-legacy-clients"><a class="header" href="#extended-options-for-legacy-clients">Extended Options for Legacy Clients</a></h2>
+<p>Not all resource servers support modern standards like PKCE or ECDSA. In these situations
+it may be necessary to disable these on a per-resource server basis. Disabling these on
+one resource server will not affect others.</p>
+<p>To disable PKCE for a resource server:</p>
+<pre><code>kanidm system oauth2 warning_insecure_client_disable_pkce &lt;resource server name&gt;
+</code></pre>
+<p>To enable legacy cryptograhy (RSA PKCS1-5 SHA256):</p>
+<pre><code>kanidm system oauth2 warning_enable_legacy_crypto &lt;resource server name&gt;
+</code></pre>
+<h2 id="example-integrations"><a class="header" href="#example-integrations">Example Integrations</a></h2>
+<h3 id="apache-mod_auth_openidc"><a class="header" href="#apache-mod_auth_openidc">Apache mod_auth_openidc</a></h3>
+<p>Add the following to a mod_auth_openidc.conf. It should be included in a mods_enabled folder
+or with an appropriate include.</p>
+<pre><code>OIDCRedirectURI http://resource.example.com/protected/redirect_uri
+OIDCCryptoPassphrase &lt;random password here&gt;
+OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/&lt;resource server name&gt;/.well-known/openid-configuration
+OIDCScope &quot;openid other_scopes&quot;
+OIDCUserInfoTokenMethod authz_header
+OIDCClientID &lt;resource server name&gt;
+OIDCClientSecret &lt;resource server password&gt;
+OIDCPKCEMethod S256
+OIDCCookieSameSite On
+</code></pre>
+<p>In the virtual host, to protect a location:</p>
+<pre><code>&lt;Location /&gt;
+    AuthType openid-connect
+    Require valid-user
+&lt;/Location&gt;
+</code></pre>
+<h3 id="nextcloud"><a class="header" href="#nextcloud">Nextcloud</a></h3>
+<p>Install the module <a href="https://apps.nextcloud.com/apps/user_oidc">from the nextcloud market place</a> -
+it can also be found in the Apps section of your deployment as &quot;OpenID Connect user backend&quot;.</p>
+<p>In nextcloud's config.php you need to allow connection to remote servers:</p>
+<pre><code>'allow_local_remote_servers' =&gt; true,
+</code></pre>
+<p>You may optionally choose to add:</p>
+<pre><code>'allow_user_to_change_display_name' =&gt; false,
+'lost_password_link' =&gt; 'disabled',
+</code></pre>
+<p>If you forget this, you may see the following error in logs:</p>
+<pre><code>Host 172.24.11.129 was not connected to because it violates local access rules
+</code></pre>
+<p>This module does not support PKCE or ES256. You will need to run:</p>
+<pre><code>kanidm system oauth2 warning_insecure_client_disable_pkce &lt;resource server name&gt;
+kanidm system oauth2 warning_enable_legacy_crypto &lt;resource server name&gt;
+</code></pre>
+<p>In the settings menu, configure the discovery url and client id and secret.</p>
+<p>You can choose to disable other login methods with:</p>
+<pre><code>php occ config:app:set --value=0 user_oidc allow_multiple_user_backends
+</code></pre>
+<p>You can login directly by appending <code>?direct=1</code> to your login page still. You can re-enable
+other backends by setting the value to <code>1</code></p>
 
                     </main>
 

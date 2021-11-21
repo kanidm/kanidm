@@ -1996,98 +1996,12 @@
 <span id="1996">1996</span>
 <span id="1997">1997</span>
 <span id="1998">1998</span>
-<span id="1999">1999</span>
-<span id="2000">2000</span>
-<span id="2001">2001</span>
-<span id="2002">2002</span>
-<span id="2003">2003</span>
-<span id="2004">2004</span>
-<span id="2005">2005</span>
-<span id="2006">2006</span>
-<span id="2007">2007</span>
-<span id="2008">2008</span>
-<span id="2009">2009</span>
-<span id="2010">2010</span>
-<span id="2011">2011</span>
-<span id="2012">2012</span>
-<span id="2013">2013</span>
-<span id="2014">2014</span>
-<span id="2015">2015</span>
-<span id="2016">2016</span>
-<span id="2017">2017</span>
-<span id="2018">2018</span>
-<span id="2019">2019</span>
-<span id="2020">2020</span>
-<span id="2021">2021</span>
-<span id="2022">2022</span>
-<span id="2023">2023</span>
-<span id="2024">2024</span>
-<span id="2025">2025</span>
-<span id="2026">2026</span>
-<span id="2027">2027</span>
-<span id="2028">2028</span>
-<span id="2029">2029</span>
-<span id="2030">2030</span>
-<span id="2031">2031</span>
-<span id="2032">2032</span>
-<span id="2033">2033</span>
-<span id="2034">2034</span>
-<span id="2035">2035</span>
-<span id="2036">2036</span>
-<span id="2037">2037</span>
-<span id="2038">2038</span>
-<span id="2039">2039</span>
-<span id="2040">2040</span>
-<span id="2041">2041</span>
-<span id="2042">2042</span>
-<span id="2043">2043</span>
-<span id="2044">2044</span>
-<span id="2045">2045</span>
-<span id="2046">2046</span>
-<span id="2047">2047</span>
-<span id="2048">2048</span>
-<span id="2049">2049</span>
-<span id="2050">2050</span>
-<span id="2051">2051</span>
-<span id="2052">2052</span>
-<span id="2053">2053</span>
-<span id="2054">2054</span>
-<span id="2055">2055</span>
-<span id="2056">2056</span>
-<span id="2057">2057</span>
-<span id="2058">2058</span>
-<span id="2059">2059</span>
-<span id="2060">2060</span>
-<span id="2061">2061</span>
-<span id="2062">2062</span>
-<span id="2063">2063</span>
-<span id="2064">2064</span>
-<span id="2065">2065</span>
-<span id="2066">2066</span>
-<span id="2067">2067</span>
-<span id="2068">2068</span>
-<span id="2069">2069</span>
-<span id="2070">2070</span>
-<span id="2071">2071</span>
-<span id="2072">2072</span>
-<span id="2073">2073</span>
-<span id="2074">2074</span>
-<span id="2075">2075</span>
-<span id="2076">2076</span>
-<span id="2077">2077</span>
-<span id="2078">2078</span>
-<span id="2079">2079</span>
-<span id="2080">2080</span>
-<span id="2081">2081</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of</span>
 <span class="doccomment">//! the [`Value`] module allow storage and transformation of various types of input into strongly</span>
 <span class="doccomment">//! typed values, allows their comparison, filtering and more. It also has the code for serialising</span>
 <span class="doccomment">//! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).</span>
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{
-    <span class="ident">DbCidV1</span>, <span class="ident">DbValueCredV1</span>, <span class="ident">DbValueEmailAddressV1</span>, <span class="ident">DbValueOauthScopeMapV1</span>, <span class="ident">DbValueTaggedStringV1</span>,
-    <span class="ident">DbValueV1</span>,
-};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{<span class="ident">DbValueEmailAddressV1</span>, <span class="ident">DbValueV1</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::Credential</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::cid::Cid</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>;
@@ -2126,7 +2040,7 @@
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="ident">Regex::new</span>(<span class="string">&quot;^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid Nsunique regex found&quot;</span>)
     };
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">OAUTHSCOPE_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> {
+    <span class="kw">pub</span> <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">OAUTHSCOPE_RE</span>: <span class="ident">Regex</span> <span class="op">=</span> {
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="ident">Regex::new</span>(<span class="string">&quot;^[0-9a-zA-Z_]+$&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid oauthscope regex found&quot;</span>)
         <span class="comment">// Must not contain whitespace.</span>
@@ -2226,6 +2140,7 @@
     <span class="ident">Url</span>,
     <span class="ident">OauthScope</span>,
     <span class="ident">OauthScopeMap</span>,
+    <span class="ident">PrivateBinary</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">SyntaxType</span> {
@@ -2256,6 +2171,7 @@
             <span class="string">&quot;URL&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::Url</span>),
             <span class="string">&quot;OAUTH_SCOPE&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::OauthScope</span>),
             <span class="string">&quot;OAUTH_SCOPE_MAP&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::OauthScopeMap</span>),
+            <span class="string">&quot;PRIVATE_BINARY&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::PrivateBinary</span>),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2287,6 +2203,7 @@
             <span class="number">18</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::Url</span>),
             <span class="number">19</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::OauthScope</span>),
             <span class="number">20</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::OauthScopeMap</span>),
+            <span class="number">21</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">SyntaxType::PrivateBinary</span>),
             <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(()),
         }
     }
@@ -2316,6 +2233,7 @@
             <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">18</span>,
             <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">19</span>,
             <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">20</span>,
+            <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="number">21</span>,
         }
     }
 }
@@ -2344,6 +2262,7 @@
             <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;URL&quot;</span>,
             <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;OAUTH_SCOPE&quot;</span>,
             <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;OAUTH_SCOPE_MAP&quot;</span>,
+            <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;PRIVATE_BINARY&quot;</span>,
         })
     }
 }
@@ -2354,6 +2273,7 @@
     <span class="ident">SshKey</span>(<span class="ident">String</span>),
     <span class="ident">SecretValue</span>(<span class="ident">String</span>),
     <span class="ident">OauthScopeMap</span>(<span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
+    <span class="ident">PrivateBinary</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">DataValue</span> {
@@ -2363,6 +2283,7 @@
             <span class="ident">DataValue::SshKey</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;DataValue::SshKey(_)&quot;</span>),
             <span class="ident">DataValue::SecretValue</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;DataValue::SecretValue(_)&quot;</span>),
             <span class="ident">DataValue::OauthScopeMap</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;DataValue::OauthScopeMap(_)&quot;</span>),
+            <span class="ident">DataValue::PrivateBinary</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;DataValue::PrivateBinary(_)&quot;</span>),
         }
     }
 }
@@ -2399,6 +2320,7 @@
     <span class="ident">Url</span>(<span class="ident">Url</span>),
     <span class="ident">OauthScope</span>(<span class="ident">String</span>),
     <span class="ident">OauthScopeMap</span>(<span class="ident">Uuid</span>),
+    <span class="ident">PrivateBinary</span>,
 }
 
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">SyntaxType</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">PartialValue</span> {
@@ -2474,13 +2396,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_class</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
         <span class="ident">PartialValue::new_iutf8</span>(<span class="ident">s</span>)
     }
-
-    <span class="comment">/*
-    #[inline]
-    pub fn new_attr(s: &amp;str) -&gt; Self {
-        PartialValue::new_iutf8s(s)
-    }
-    */</span>
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_iutf8</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="macro">matches!</span>(<span class="self">self</span>, <span class="ident">PartialValue::Iutf8</span>(<span class="kw">_</span>))
@@ -2715,6 +2630,10 @@
         <span class="macro">matches!</span>(<span class="self">self</span>, <span class="ident">PartialValue::OauthScopeMap</span>(<span class="kw">_</span>))
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_privatebinary</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+        <span class="macro">matches!</span>(<span class="self">self</span>, <span class="ident">PartialValue::PrivateBinary</span>)
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">PartialValue::Utf8</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>.<span class="ident">as_str</span>()),
@@ -2766,7 +2685,7 @@
             }
             <span class="ident">PartialValue::Cred</span>(<span class="ident">tag</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">tag</span>.<span class="ident">to_string</span>(),
             <span class="comment">// This will never match as we never index radius creds! See generate_idx_eq_keys</span>
-            <span class="ident">PartialValue::SecretValue</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;_&quot;</span>.<span class="ident">to_string</span>(),
+            <span class="ident">PartialValue::SecretValue</span> <span class="op">|</span> <span class="ident">PartialValue::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;_&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::SshKey</span>(<span class="ident">tag</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">tag</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::Spn</span>(<span class="ident">name</span>, <span class="ident">realm</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}@{}&quot;</span>, <span class="ident">name</span>, <span class="ident">realm</span>),
             <span class="ident">PartialValue::Uint32</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">u</span>.<span class="ident">to_string</span>(),
@@ -3340,6 +3259,26 @@
         <span class="self">self</span>.<span class="ident">pv</span>.<span class="ident">is_oauthscopemap</span>()
     }
 
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_privatebinary</span>(<span class="ident">der</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+        <span class="ident">Value</span> {
+            <span class="ident">pv</span>: <span class="ident">PartialValue::PrivateBinary</span>,
+            <span class="ident">data</span>: <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">DataValue::PrivateBinary</span>(<span class="ident">der</span>.<span class="ident">clone</span>()))),
+        }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_privatebinary</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pv</span> {
+            <span class="ident">PartialValue::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">dv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">dv</span>.<span class="ident">as_ref</span>() {
+                    <span class="ident">DataValue::PrivateBinary</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">c</span>),
+                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                },
+                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            },
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+        }
+    }
+
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">lessthan</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">pv</span>.<span class="ident">lessthan</span>(<span class="ident">s</span>)
     }
@@ -3347,9 +3286,6 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">substring</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">pv</span>.<span class="ident">substring</span>(<span class="ident">s</span>)
     }
-
-    <span class="comment">// Converters between DBRepr -&gt; MemRepr. It&#39;s likely many of these</span>
-    <span class="comment">// will be just wrappers to our from str types.</span>
 
     <span class="comment">// Keep this updated with DbValueV1 in be::dbvalue.</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">from_db_valuev1</span>(<span class="ident">v</span>: <span class="ident">DbValueV1</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
@@ -3453,92 +3389,24 @@
                     <span class="ident">osm</span>.<span class="ident">data</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>(),
                 ))),
             }),
+            <span class="ident">DbValueV1::PrivateBinary</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value</span> {
+                <span class="ident">pv</span>: <span class="ident">PartialValue::PrivateBinary</span>,
+                <span class="ident">data</span>: <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">DataValue::PrivateBinary</span>(<span class="ident">d</span>))),
+            }),
         }
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unreachable</span>)]</span>
-    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_db_valuev1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">DbValueV1</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_supplementary_db_valuev1</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">DbValueV1</span> {
         <span class="comment">// This has to clone due to how the backend works.</span>
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pv</span> {
+            <span class="ident">PartialValue::Iname</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Iname</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
             <span class="ident">PartialValue::Utf8</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Utf8</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
             <span class="ident">PartialValue::Iutf8</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Iutf8</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
-            <span class="ident">PartialValue::Iname</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Iname</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
             <span class="ident">PartialValue::Uuid</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Uuid</span>(<span class="kw-2">*</span><span class="ident">u</span>),
-            <span class="ident">PartialValue::Bool</span>(<span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Bool</span>(<span class="kw-2">*</span><span class="ident">b</span>),
-            <span class="ident">PartialValue::Syntax</span>(<span class="ident">syn</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::SyntaxType</span>(<span class="ident">syn</span>.<span class="ident">to_usize</span>()),
-            <span class="ident">PartialValue::Index</span>(<span class="ident">it</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::IndexType</span>(<span class="ident">it</span>.<span class="ident">to_usize</span>()),
-            <span class="ident">PartialValue::Refer</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Reference</span>(<span class="kw-2">*</span><span class="ident">u</span>),
-            <span class="ident">PartialValue::JsonFilt</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::JsonFilter</span>(
-                <span class="ident">serde_json::to_string</span>(<span class="ident">s</span>)
-                    .<span class="ident">expect</span>(<span class="string">&quot;A json filter value was corrupted during run-time&quot;</span>),
-            ),
-            <span class="ident">PartialValue::Cred</span>(<span class="ident">tag</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="comment">// Get the credential out and make sure it matches the type we expect.</span>
-                <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_ref</span>() {
-                        <span class="ident">DataValue::Cred</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                    },
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                };
-
-                <span class="comment">// Save the tag AND the dataValue here!</span>
-                <span class="ident">DbValueV1::Credential</span>(<span class="ident">DbValueCredV1</span> {
-                    <span class="ident">tag</span>: <span class="ident">tag</span>.<span class="ident">clone</span>(),
-                    <span class="ident">data</span>: <span class="ident">c</span>.<span class="ident">to_db_valuev1</span>(),
-                })
-            }
-            <span class="ident">PartialValue::SecretValue</span> <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">ru</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_ref</span>() {
-                        <span class="ident">DataValue::SecretValue</span>(<span class="ident">rc</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">rc</span>.<span class="ident">clone</span>(),
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                    },
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                };
-                <span class="ident">DbValueV1::SecretValue</span>(<span class="ident">ru</span>)
-            }
-            <span class="ident">PartialValue::SshKey</span>(<span class="ident">t</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">sk</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_ref</span>() {
-                        <span class="ident">DataValue::SshKey</span>(<span class="ident">sc</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">sc</span>.<span class="ident">clone</span>(),
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                    },
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                };
-                <span class="ident">DbValueV1::SshKey</span>(<span class="ident">DbValueTaggedStringV1</span> {
-                    <span class="ident">tag</span>: <span class="ident">t</span>.<span class="ident">clone</span>(),
-                    <span class="ident">data</span>: <span class="ident">sk</span>,
-                })
-            }
             <span class="ident">PartialValue::Spn</span>(<span class="ident">n</span>, <span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Spn</span>(<span class="ident">n</span>.<span class="ident">clone</span>(), <span class="ident">r</span>.<span class="ident">clone</span>()),
-            <span class="ident">PartialValue::Uint32</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Uint32</span>(<span class="kw-2">*</span><span class="ident">u</span>),
-            <span class="ident">PartialValue::Cid</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Cid</span>(<span class="ident">DbCidV1</span> {
-                <span class="ident">domain_id</span>: <span class="ident">c</span>.<span class="ident">d_uuid</span>,
-                <span class="ident">server_id</span>: <span class="ident">c</span>.<span class="ident">s_uuid</span>,
-                <span class="ident">timestamp</span>: <span class="ident">c</span>.<span class="ident">ts</span>,
-            }),
             <span class="ident">PartialValue::Nsuniqueid</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::NsUniqueId</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
-            <span class="ident">PartialValue::DateTime</span>(<span class="ident">odt</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">debug_assert!</span>(<span class="ident">odt</span>.<span class="ident">offset</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">time::UtcOffset::UTC</span>);
-                <span class="ident">DbValueV1::DateTime</span>(<span class="ident">odt</span>.<span class="ident">format</span>(<span class="ident">time::Format::Rfc3339</span>))
-            }
-            <span class="ident">PartialValue::EmailAddress</span>(<span class="ident">mail</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="ident">DbValueV1::EmailAddress</span>(<span class="ident">DbValueEmailAddressV1</span> { <span class="ident">d</span>: <span class="ident">mail</span>.<span class="ident">clone</span>() })
-            }
-            <span class="ident">PartialValue::Url</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::Url</span>(<span class="ident">u</span>.<span class="ident">clone</span>()),
-            <span class="ident">PartialValue::OauthScope</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DbValueV1::OauthScope</span>(<span class="ident">s</span>.<span class="ident">clone</span>()),
-            <span class="ident">PartialValue::OauthScopeMap</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_ref</span>() {
-                        <span class="ident">DataValue::OauthScopeMap</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">m</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                    },
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
-                };
-                <span class="ident">DbValueV1::OauthScopeMap</span>(<span class="ident">DbValueOauthScopeMapV1</span> { <span class="ident">refer</span>: <span class="kw-2">*</span><span class="ident">u</span>, <span class="ident">data</span> })
-            }
+            <span class="ident">v</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(<span class="string">&quot;-&gt; {:?}&quot;</span>, <span class="ident">v</span>),
         }
     }
 
@@ -3712,30 +3580,12 @@
         }
     }
 
+    <span class="comment">// !!!! This function is beind phased out !!!</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unreachable</span>)]</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_proto_string_clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">pv</span> {
-            <span class="ident">PartialValue::Utf8</span>(<span class="ident">s</span>)
-            <span class="op">|</span> <span class="ident">PartialValue::Iutf8</span>(<span class="ident">s</span>)
-            <span class="op">|</span> <span class="ident">PartialValue::Iname</span>(<span class="ident">s</span>)
-            <span class="op">|</span> <span class="ident">PartialValue::Nsuniqueid</span>(<span class="ident">s</span>)
-            <span class="op">|</span> <span class="ident">PartialValue::EmailAddress</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>.<span class="ident">clone</span>(),
+            <span class="ident">PartialValue::Iname</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>.<span class="ident">clone</span>(),
             <span class="ident">PartialValue::Uuid</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::Bool</span>(<span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">b</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::Syntax</span>(<span class="ident">syn</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">syn</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::Index</span>(<span class="ident">it</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">it</span>.<span class="ident">to_string</span>(),
-            <span class="comment">// In resolve value, we bypass this, but we keep it here for complete</span>
-            <span class="comment">// impl sake.</span>
-            <span class="ident">PartialValue::Refer</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::JsonFilt</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span>
-            {
-                <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-                <span class="ident">serde_json::to_string</span>(<span class="ident">s</span>).<span class="ident">expect</span>(<span class="string">&quot;A json filter value was corrupted during run-time&quot;</span>)
-            }
-            <span class="ident">PartialValue::Cred</span>(<span class="ident">tag</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="comment">// You can&#39;t actually read the credential values because we only display the</span>
-                <span class="comment">// tag to the proto side. The credentials private data is stored seperately.</span>
-                <span class="ident">tag</span>.<span class="ident">to_string</span>()
-            }
             <span class="comment">// We display the tag and fingerprint.</span>
             <span class="ident">PartialValue::SshKey</span>(<span class="ident">tag</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
                 <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_ref</span>() {
@@ -3756,28 +3606,12 @@
             },
             <span class="comment">// We don&#39;t disclose the secret value unless by special</span>
             <span class="comment">// interfaces.</span>
-            <span class="ident">PartialValue::SecretValue</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;secret&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::Spn</span>(<span class="ident">n</span>, <span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}@{}&quot;</span>, <span class="ident">n</span>, <span class="ident">r</span>),
-            <span class="ident">PartialValue::Uint32</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">u</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::Cid</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}_{}_{}&quot;</span>, <span class="ident">c</span>.<span class="ident">ts</span>, <span class="ident">c</span>.<span class="ident">d_uuid</span>, <span class="ident">c</span>.<span class="ident">s_uuid</span>),
-            <span class="ident">PartialValue::DateTime</span>(<span class="ident">odt</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                <span class="macro">debug_assert!</span>(<span class="ident">odt</span>.<span class="ident">offset</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">time::UtcOffset::UTC</span>);
-                <span class="ident">odt</span>.<span class="ident">format</span>(<span class="ident">time::Format::Rfc3339</span>)
-            }
-            <span class="ident">PartialValue::Url</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">u</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::OauthScope</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::OauthScopeMap</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">data</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">v</span>.<span class="ident">as_ref</span>() {
-                    <span class="ident">DataValue::OauthScopeMap</span>(<span class="ident">m</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">format!</span>(<span class="string">&quot;{}: {:?}&quot;</span>, <span class="ident">u</span>, <span class="ident">m</span>)
-                    }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}: corrupted value tag&quot;</span>, <span class="ident">u</span>),
-                },
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">format!</span>(<span class="string">&quot;{}: corrupted value&quot;</span>, <span class="ident">u</span>),
-            },
+            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">unreachable!</span>(),
         }
     }
 
+    <span class="comment">// !!! relocate to value set !!!</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
         <span class="comment">// Validate that extra-data constraints on the type exist and are</span>
         <span class="comment">// valid. IE json filter is really a filter, or cred types have supplemental</span>
@@ -3845,7 +3679,7 @@
                 <span class="comment">// Should this also extract the key data?</span>
                 <span class="macro">vec!</span>[<span class="ident">tag</span>.<span class="ident">to_string</span>()]
             }
-            <span class="ident">PartialValue::SecretValue</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[],
+            <span class="ident">PartialValue::SecretValue</span> <span class="op">|</span> <span class="ident">PartialValue::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[],
             <span class="ident">PartialValue::Spn</span>(<span class="ident">n</span>, <span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="macro">format!</span>(<span class="string">&quot;{}@{}&quot;</span>, <span class="ident">n</span>, <span class="ident">r</span>)],
             <span class="ident">PartialValue::Uint32</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="ident">u</span>.<span class="ident">to_string</span>()],
             <span class="ident">PartialValue::Cid</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[],

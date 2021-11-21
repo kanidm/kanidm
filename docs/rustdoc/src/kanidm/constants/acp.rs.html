@@ -1053,6 +1053,18 @@
 <span id="1053">1053</span>
 <span id="1054">1054</span>
 <span id="1055">1055</span>
+<span id="1056">1056</span>
+<span id="1057">1057</span>
+<span id="1058">1058</span>
+<span id="1059">1059</span>
+<span id="1060">1060</span>
+<span id="1061">1061</span>
+<span id="1062">1062</span>
+<span id="1063">1063</span>
+<span id="1064">1064</span>
+<span id="1065">1065</span>
+<span id="1066">1066</span>
+<span id="1067">1067</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -2075,7 +2087,11 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;oauth2_rs_scope_map&quot;,
             &quot;oauth2_rs_implicit_scopes&quot;,
             &quot;oauth2_rs_basic_secret&quot;,
-            &quot;oauth2_rs_token_key&quot;
+            &quot;oauth2_rs_token_key&quot;,
+            &quot;es256_private_key_der&quot;,
+            &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
+            &quot;rs256_private_key_der&quot;,
+            &quot;oauth2_jwt_legacy_crypto_enable&quot;
         ],
         &quot;acp_modify_removedattr&quot;: [
             &quot;description&quot;,
@@ -2085,7 +2101,11 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;oauth2_rs_scope_map&quot;,
             &quot;oauth2_rs_implicit_scopes&quot;,
             &quot;oauth2_rs_basic_secret&quot;,
-            &quot;oauth2_rs_token_key&quot;
+            &quot;oauth2_rs_token_key&quot;,
+            &quot;es256_private_key_der&quot;,
+            &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
+            &quot;rs256_private_key_der&quot;,
+            &quot;oauth2_jwt_legacy_crypto_enable&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
             &quot;description&quot;,
@@ -2093,7 +2113,9 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;,
             &quot;oauth2_rs_scope_map&quot;,
-            &quot;oauth2_rs_implicit_scopes&quot;
+            &quot;oauth2_rs_implicit_scopes&quot;,
+            &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
+            &quot;oauth2_jwt_legacy_crypto_enable&quot;
         ],
         &quot;acp_modify_class&quot;: [],
         &quot;acp_create_attr&quot;: [
@@ -2103,7 +2125,9 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;oauth2_rs_name&quot;,
             &quot;oauth2_rs_origin&quot;,
             &quot;oauth2_rs_scope_map&quot;,
-            &quot;oauth2_rs_implicit_scopes&quot;
+            &quot;oauth2_rs_implicit_scopes&quot;,
+            &quot;oauth2_allow_insecure_client_disable_pkce&quot;,
+            &quot;oauth2_jwt_legacy_crypto_enable&quot;
         ],
         &quot;acp_create_class&quot;: [&quot;oauth2_resource_server&quot;, &quot;oauth2_resource_server_basic&quot;, &quot;object&quot;]
     }

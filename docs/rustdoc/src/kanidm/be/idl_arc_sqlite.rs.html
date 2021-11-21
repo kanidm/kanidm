@@ -1186,79 +1186,6 @@
 <span id="1186">1186</span>
 <span id="1187">1187</span>
 <span id="1188">1188</span>
-<span id="1189">1189</span>
-<span id="1190">1190</span>
-<span id="1191">1191</span>
-<span id="1192">1192</span>
-<span id="1193">1193</span>
-<span id="1194">1194</span>
-<span id="1195">1195</span>
-<span id="1196">1196</span>
-<span id="1197">1197</span>
-<span id="1198">1198</span>
-<span id="1199">1199</span>
-<span id="1200">1200</span>
-<span id="1201">1201</span>
-<span id="1202">1202</span>
-<span id="1203">1203</span>
-<span id="1204">1204</span>
-<span id="1205">1205</span>
-<span id="1206">1206</span>
-<span id="1207">1207</span>
-<span id="1208">1208</span>
-<span id="1209">1209</span>
-<span id="1210">1210</span>
-<span id="1211">1211</span>
-<span id="1212">1212</span>
-<span id="1213">1213</span>
-<span id="1214">1214</span>
-<span id="1215">1215</span>
-<span id="1216">1216</span>
-<span id="1217">1217</span>
-<span id="1218">1218</span>
-<span id="1219">1219</span>
-<span id="1220">1220</span>
-<span id="1221">1221</span>
-<span id="1222">1222</span>
-<span id="1223">1223</span>
-<span id="1224">1224</span>
-<span id="1225">1225</span>
-<span id="1226">1226</span>
-<span id="1227">1227</span>
-<span id="1228">1228</span>
-<span id="1229">1229</span>
-<span id="1230">1230</span>
-<span id="1231">1231</span>
-<span id="1232">1232</span>
-<span id="1233">1233</span>
-<span id="1234">1234</span>
-<span id="1235">1235</span>
-<span id="1236">1236</span>
-<span id="1237">1237</span>
-<span id="1238">1238</span>
-<span id="1239">1239</span>
-<span id="1240">1240</span>
-<span id="1241">1241</span>
-<span id="1242">1242</span>
-<span id="1243">1243</span>
-<span id="1244">1244</span>
-<span id="1245">1245</span>
-<span id="1246">1246</span>
-<span id="1247">1247</span>
-<span id="1248">1248</span>
-<span id="1249">1249</span>
-<span id="1250">1250</span>
-<span id="1251">1251</span>
-<span id="1252">1252</span>
-<span id="1253">1253</span>
-<span id="1254">1254</span>
-<span id="1255">1255</span>
-<span id="1256">1256</span>
-<span id="1257">1257</span>
-<span id="1258">1258</span>
-<span id="1259">1259</span>
-<span id="1260">1260</span>
-<span id="1261">1261</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::idl_sqlite</span>::{
     <span class="ident">IdlSqlite</span>, <span class="ident">IdlSqliteReadTransaction</span>, <span class="ident">IdlSqliteTransaction</span>, <span class="ident">IdlSqliteWriteTransaction</span>,
 };
@@ -1337,7 +1264,6 @@
     <span class="ident">maxid</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">u64</span><span class="op">&gt;</span>,
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">get_identry</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1399,7 +1325,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">get_identry_raw</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1410,7 +1335,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">exists_idx</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1422,7 +1346,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">get_idl</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1475,7 +1398,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">name2uuid</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1500,7 +1422,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">uuid2spn</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1525,7 +1446,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">uuid2rdn</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>,
@@ -1550,7 +1470,6 @@
     }};
 }
 
-<span class="comment">// ! TRACING INTEGRATED</span>
 <span class="macro">macro_rules!</span> <span class="ident">verify</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>:<span class="ident">expr</span>
@@ -1582,19 +1501,15 @@
 }
 
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">IdlArcSqliteTransaction</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="kw-2">&amp;</span><span class="ident">IndexType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1606,38 +1521,29 @@
 
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="kw">fn</span> <span class="ident">is_dirty</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">IDLBitRange</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span>;
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteTransaction</span> <span class="kw">for</span> <span class="ident">IdlArcSqliteReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
@@ -1645,17 +1551,14 @@
         <span class="macro">get_identry!</span>(<span class="self">self</span>, <span class="ident">idl</span>, <span class="bool-val">true</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, <span class="ident">idl</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="kw-2">&amp;</span><span class="ident">IndexType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">exists_idx!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1665,17 +1568,14 @@
         <span class="macro">get_idl!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>, <span class="ident">idx_key</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_s_uuid</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_d_uuid</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">verify!</span>(<span class="self">self</span>)
     }
@@ -1684,34 +1584,28 @@
         <span class="bool-val">false</span>
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">name2uuid!</span>(<span class="self">self</span>, <span class="ident">name</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">uuid2spn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_idxs</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_id2entry</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1720,7 +1614,6 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_index_content</span>(<span class="ident">index_name</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_id2entry</span>(<span class="ident">id</span>)
@@ -1728,7 +1621,6 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteTransaction</span> <span class="kw">for</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>,
@@ -1736,17 +1628,14 @@
         <span class="macro">get_identry!</span>(<span class="self">self</span>, <span class="ident">idl</span>, <span class="bool-val">false</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_identry_raw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">idl</span>: <span class="kw-2">&amp;</span><span class="ident">IdList</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">IdRawEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">get_identry_raw!</span>(<span class="self">self</span>, <span class="ident">idl</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists_idx</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="kw-2">&amp;</span><span class="ident">IndexType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">exists_idx!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1756,17 +1645,14 @@
         <span class="macro">get_idl!</span>(<span class="self">self</span>, <span class="ident">attr</span>, <span class="ident">itype</span>, <span class="ident">idx_key</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_s_uuid</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_d_uuid</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="macro">verify!</span>(<span class="self">self</span>)
     }
@@ -1775,34 +1661,28 @@
         <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">is_dirty</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">name2uuid!</span>(<span class="self">self</span>, <span class="ident">name</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">uuid2spn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">uuid2rdn!</span>(<span class="self">self</span>, <span class="ident">uuid</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_idxs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_idxs</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_id2entry</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1811,7 +1691,6 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">list_index_content</span>(<span class="ident">index_name</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is only used in tests or debug tools, so bypass the cache.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_id2entry</span>(<span class="ident">id</span>)
@@ -1819,7 +1698,6 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::commit&quot;</span>, {
             <span class="kw">let</span> <span class="ident">IdlArcSqliteWriteTransaction</span> {
@@ -1914,7 +1792,6 @@
         <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">maxid</span> <span class="op">=</span> <span class="ident">mid</span>;
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries</span><span class="op">&lt;</span><span class="lifetime">&#39;b</span>, <span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">entries</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;b</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
@@ -1934,7 +1811,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_identries_raw</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">entries</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">IdRawEntry</span><span class="op">&gt;</span>,
@@ -1951,7 +1827,6 @@
             })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete_identry</span><span class="op">&lt;</span><span class="ident">I</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw-2">mut</span> <span class="ident">idl</span>: <span class="ident">I</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span>
     <span class="kw">where</span>
         <span class="ident">I</span>: <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">u64</span><span class="op">&gt;</span>,
@@ -1970,7 +1845,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_idl</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1999,7 +1873,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">optimise_dirty_idls</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
         <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">iter_mut_dirty</span>().<span class="ident">for_each</span>(<span class="op">|</span>(<span class="ident">k</span>, <span class="ident">maybe_idl</span>)<span class="op">|</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">idl</span>) <span class="op">=</span> <span class="ident">maybe_idl</span> {
@@ -2010,12 +1883,10 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_idx_slopeyness_generated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">is_idx_slopeyness_generated</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_idx_slope</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ikey</span>: <span class="kw-2">&amp;</span><span class="ident">IdxKey</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">IdxSlope</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_idx_slope</span>(<span class="ident">ikey</span>)
     }
@@ -2027,7 +1898,6 @@
     <span class="doccomment">/// to min-max the fine tuning of these. Consider name=foo vs class=*. name=foo will always</span>
     <span class="doccomment">/// be better than class=*, but comparing name=foo to spn=foo is &quot;much over muchness&quot; since</span>
     <span class="doccomment">/// both are really fast.</span>
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">analyse_idx_slopes</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">/*
          * Inside of this analysis there are two major factors we need to understand
@@ -2262,12 +2132,10 @@
         }
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_name2uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_name2uuid</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_add</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
@@ -2283,7 +2151,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_rem</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">rem</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_name2uuid_rem&quot;</span>, {
             <span class="comment">// self.db.write_name2uuid_rem(audit, &amp;rem).and_then(|_| {</span>
@@ -2297,12 +2164,10 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_uuid2spn</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_uuid2spn&quot;</span>, {
             <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
@@ -2316,12 +2181,10 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_uuid2rdn</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_arc_sqlite::write_uuid2rdn&quot;</span>, {
             <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="kw-2">*</span><span class="ident">uuid</span>);
@@ -2335,20 +2198,17 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create_idx</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">itype</span>: <span class="kw-2">&amp;</span><span class="ident">IndexType</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// We don&#39;t need to affect this, so pass it down.</span>
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">create_idx</span>(<span class="ident">attr</span>, <span class="ident">itype</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_idxs</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">purge_idxs</span>().<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
             <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">clear</span>();
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">purge_id2entry</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">purge_id2entry</span>().<span class="ident">map</span>(<span class="op">|</span>()<span class="op">|</span> {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ids</span> <span class="op">=</span> <span class="ident">IDLBitRange::new</span>();
@@ -2358,12 +2218,10 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_s_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write_db_s_uuid</span>(<span class="ident">nsid</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_db_d_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">nsid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">write_db_d_uuid</span>(<span class="ident">nsid</span>)
     }
@@ -2373,7 +2231,6 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">set_db_ts_max</span>(<span class="ident">ts</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Duration</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">op_ts_max</span> {
             <span class="prelude-val">Some</span>(<span class="ident">ts</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ts</span>)),
@@ -2385,12 +2242,10 @@
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">get_db_index_version</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">set_db_index_version</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>.<span class="ident">set_db_index_version</span>(<span class="ident">v</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">setup</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">db</span>
             .<span class="ident">setup</span>()
@@ -2406,7 +2261,6 @@
 }
 
 <span class="kw">impl</span> <span class="ident">IdlArcSqlite</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">cfg</span>: <span class="kw-2">&amp;</span><span class="ident">BackendConfig</span>, <span class="ident">vacuum</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">IdlSqlite::new</span>(<span class="ident">cfg</span>, <span class="ident">vacuum</span>)<span class="question-mark">?</span>;
 

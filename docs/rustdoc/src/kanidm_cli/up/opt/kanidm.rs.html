@@ -471,6 +471,21 @@
 <span id="471">471</span>
 <span id="472">472</span>
 <span id="473">473</span>
+<span id="474">474</span>
+<span id="475">475</span>
+<span id="476">476</span>
+<span id="477">477</span>
+<span id="478">478</span>
+<span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
+<span id="482">482</span>
+<span id="483">483</span>
+<span id="484">484</span>
+<span id="485">485</span>
+<span id="486">486</span>
+<span id="487">487</span>
+<span id="488">488</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
     <span class="attribute">#[<span class="ident">structopt</span>()]</span>
@@ -890,6 +905,21 @@
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="doccomment">/// Delete a oauth2 resource server</span>
     <span class="ident">Delete</span>(<span class="ident">Named</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;enable_pkce&quot;</span>)]</span>
+    <span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.</span>
+    <span class="ident">EnablePkce</span>(<span class="ident">Named</span>),
+    <span class="doccomment">/// Disable PKCE on this oauth2 resource server to work around insecure clients that</span>
+    <span class="doccomment">/// may not support it. You should request the client to enable PKCE!</span>
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_insecure_client_disable_pkce&quot;</span>)]</span>
+    <span class="ident">DisablePkce</span>(<span class="ident">Named</span>),
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_enable_legacy_crypto&quot;</span>)]</span>
+    <span class="doccomment">/// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.</span>
+    <span class="doccomment">/// You only need to enable this for openid clients that do not support modern crytopgraphic</span>
+    <span class="doccomment">/// operations.</span>
+    <span class="ident">EnableLegacyCrypto</span>(<span class="ident">Named</span>),
+    <span class="doccomment">/// Disable legacy signing crypto on this oauth2 resource server. This is the default.</span>
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;disable_legacy_crypto&quot;</span>)]</span>
+    <span class="ident">DisableLegacyCrypto</span>(<span class="ident">Named</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>

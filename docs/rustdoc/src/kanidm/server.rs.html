@@ -4067,6 +4067,11 @@
 <span id="4067">4067</span>
 <span id="4068">4068</span>
 <span id="4069">4069</span>
+<span id="4070">4070</span>
+<span id="4071">4071</span>
+<span id="4072">4072</span>
+<span id="4073">4073</span>
+<span id="4074">4074</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4200,7 +4205,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
     ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Conduct a search and apply access controls to yield a set of entries that</span>
     <span class="doccomment">/// have been reduced to the set of user visible avas. Note that if you provide</span>
     <span class="doccomment">/// a `SearchEvent` for the internal user, this query will fail. It is invalid for</span>
@@ -4234,7 +4238,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">se</span>: <span class="kw-2">&amp;</span><span class="ident">SearchEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::search&quot;</span>, {
             <span class="kw">if</span> <span class="ident">se</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
@@ -4291,7 +4294,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ee</span>: <span class="kw-2">&amp;</span><span class="ident">ExistsEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::exists&quot;</span>, {
             <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>();
@@ -4316,7 +4318,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// Should this actually be names_to_uuids and we do batches?</span>
     <span class="comment">//  In the initial design &quot;no&quot;, we can always write a batched</span>
     <span class="comment">//  interface later.</span>
@@ -4333,7 +4334,6 @@
     <span class="comment">//</span>
     <span class="comment">// Remember, we don&#39;t care if the name is invalid, because search</span>
     <span class="comment">// will validate/normalise the filter we construct for us. COOL!</span>
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name_to_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Is it just a uuid?</span>
         <span class="ident">Uuid::parse_str</span>(<span class="ident">name</span>).<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -4344,7 +4344,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">uuid2spn</span>(<span class="ident">uuid</span>)<span class="question-mark">?</span>;
 
@@ -4357,7 +4356,6 @@
         <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// If we have a some, pass it on, else unwrap into a default.</span>
         <span class="self">self</span>.<span class="ident">get_be_txn</span>()
@@ -4365,7 +4363,6 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>())))
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// From internal, generate an exists event and dispatch</span>
     <span class="kw">fn</span> <span class="ident">internal_exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_exists&quot;</span>, {
@@ -4380,7 +4377,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">internal_search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
@@ -4394,7 +4390,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_valid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">f_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
@@ -4407,7 +4402,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// this applys ACP to filter result entries.</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext_valid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4419,7 +4413,6 @@
         <span class="self">self</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// Who they are will go here</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4436,7 +4429,6 @@
         <span class="self">self</span>.<span class="ident">impersonate_search_valid</span>(<span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>, <span class="ident">event</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
@@ -4454,7 +4446,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// Get a single entry by it&#39;s UUID. This is heavily relied on for internal</span>
     <span class="comment">// server operations, especially in login and acp checks for acp.</span>
     <span class="kw">fn</span> <span class="ident">internal_search_uuid</span>(
@@ -4478,7 +4469,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_ext_uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
@@ -4496,7 +4486,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">impersonate_search_uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
@@ -4514,7 +4503,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Do a schema aware conversion from a String:String to String:Value for modification</span>
     <span class="doccomment">/// present.</span>
     <span class="kw">fn</span> <span class="ident">clone_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Value</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -4584,6 +4572,7 @@
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Url (whatwg/url) syntax&quot;</span>.<span class="ident">to_string</span>())),
                     <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_oauthscope</span>(<span class="ident">value</span>)),
                     <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Oauth Scope Maps can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Private Binary Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
                 }
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -4594,7 +4583,6 @@
         }
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">clone_partialvalue</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_schema</span>();
 
@@ -4710,6 +4698,7 @@
                         )
                     }),
                     <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_oauthscope</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::PrivateBinary</span>),
                 }
             }
             <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
@@ -4804,7 +4793,6 @@
             })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="comment">// This is a helper to get password badlist.</span>
     <span class="kw">fn</span> <span class="ident">get_password_badlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_SYSTEM_CONFIG</span>)
@@ -4821,7 +4809,6 @@
             })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">get_oauth2rs_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(
             <span class="string">&quot;class&quot;</span>,
@@ -5128,6 +5115,10 @@
 
         <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">4</span> {
             <span class="ident">migrate_txn</span>.<span class="ident">migrate_3_to_4</span>()<span class="question-mark">?</span>;
+        }
+
+        <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">5</span> {
+            <span class="ident">migrate_txn</span>.<span class="ident">migrate_4_to_5</span>()<span class="question-mark">?</span>;
         }
 
         <span class="ident">migrate_txn</span>.<span class="ident">commit</span>()<span class="question-mark">?</span>;
@@ -6007,6 +5998,21 @@
         })
     }
 
+    <span class="doccomment">/// Migrate 4 to 5 - this triggers a regen of all oauth2 RS es256 der keys</span>
+    <span class="doccomment">/// as we previously did not generate them on entry creation.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_4_to_5</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_4_to_5&quot;</span>, {
+            <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 4 to 5 migration.&quot;</span>);
+            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
+                <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, (<span class="kw-2">*</span><span class="ident">PVCLASS_OAUTH2_RS</span>).<span class="ident">clone</span>()),
+                <span class="ident">f_andnot</span>(<span class="ident">f_pres</span>(<span class="string">&quot;es256_private_key_der&quot;</span>)),
+            ]));
+            <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge</span>(<span class="string">&quot;es256_private_key_der&quot;</span>);
+            <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">modlist</span>)
+            <span class="comment">// Complete</span>
+        })
+    }
+
     <span class="comment">// These are where searches and other actions are actually implemented. This</span>
     <span class="comment">// is the &quot;internal&quot; version, where we define the event as being internal</span>
     <span class="comment">// only, allowing certain plugin by passes etc.</span>
@@ -6296,6 +6302,10 @@
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET</span>,
             <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER</span>,
             <span class="ident">JSON_SCHEMA_CLASS_PERSON</span>,
             <span class="ident">JSON_SCHEMA_CLASS_GROUP</span>,
             <span class="ident">JSON_SCHEMA_CLASS_ACCOUNT</span>,

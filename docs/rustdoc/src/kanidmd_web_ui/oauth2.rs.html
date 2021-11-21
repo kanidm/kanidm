@@ -358,6 +358,13 @@
 <span id="358">358</span>
 <span id="359">359</span>
 <span id="360">360</span>
+<span id="361">361</span>
+<span id="362">362</span>
+<span id="363">363</span>
+<span id="364">364</span>
+<span id="365">365</span>
+<span id="366">366</span>
+<span id="367">367</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">anyhow::Error</span>;
 <span class="kw">use</span> <span class="ident">yew::format</span>::{<span class="ident">Json</span>, <span class="ident">Nothing</span>};
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
@@ -550,6 +557,13 @@
         <span class="kw">let</span> <span class="ident">e_msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">query</span>);
         <span class="ident">ConsoleService::log</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
 
+        <span class="comment">// In the query, if this is openid there MAY be a hint</span>
+        <span class="comment">// as to the users name.</span>
+        <span class="comment">// See: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters</span>
+        <span class="comment">// specifically, login_hint</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">login_hint</span>) <span class="op">=</span> <span class="ident">query</span>.<span class="ident">oidc_ext</span>.<span class="ident">login_hint</span>.<span class="ident">clone</span>() {
+            <span class="ident">models::push_login_hint</span>(<span class="ident">login_hint</span>)
+        }
         <span class="comment">// Push the request down. This covers if we move to LoginRequired.</span>
         <span class="ident">models::push_oauth2_authorisation_request</span>(<span class="ident">query</span>);
 

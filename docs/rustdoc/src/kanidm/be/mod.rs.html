@@ -2869,21 +2869,6 @@
 <span id="2869">2869</span>
 <span id="2870">2870</span>
 <span id="2871">2871</span>
-<span id="2872">2872</span>
-<span id="2873">2873</span>
-<span id="2874">2874</span>
-<span id="2875">2875</span>
-<span id="2876">2876</span>
-<span id="2877">2877</span>
-<span id="2878">2878</span>
-<span id="2879">2879</span>
-<span id="2880">2880</span>
-<span id="2881">2881</span>
-<span id="2882">2882</span>
-<span id="2883">2883</span>
-<span id="2884">2884</span>
-<span id="2885">2885</span>
-<span id="2886">2886</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
 <span class="doccomment">//! of the server, which are all enforced at higher levels. The role of the backend</span>
@@ -3009,7 +2994,6 @@
 }
 
 <span class="kw">impl</span> <span class="ident">IdRawEntry</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">into_dbentry</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">DbEntry</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="ident">serde_cbor::from_slice</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>())
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -3019,7 +3003,6 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbe</span><span class="op">|</span> (<span class="self">self</span>.<span class="ident">id</span>, <span class="ident">dbe</span>))
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">into_entry</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">db_e</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>(<span class="self">self</span>.<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Serde CBOR Error&quot;</span>);
@@ -3038,7 +3021,6 @@
 
     <span class="kw">fn</span> <span class="ident">get_idxmeta_ref</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">IdxMeta</span>;
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Recursively apply a filter, transforming into IdList&#39;s on the way. This builds a query</span>
     <span class="doccomment">/// execution log, so that it can be examined how an operation proceeded.</span>
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
@@ -3405,7 +3387,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">erl</span>: <span class="kw-2">&amp;</span><span class="ident">Limits</span>,
@@ -3507,7 +3488,6 @@
         })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="doccomment">/// Given a filter, assert some condition exists.</span>
     <span class="doccomment">/// Basically, this is a specialised case of search, where we don&#39;t need to</span>
     <span class="doccomment">/// load any candidates if they match. This is heavily used in uuid</span>
@@ -3577,12 +3557,10 @@
         }) <span class="comment">// end spanned</span>
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">verify</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">verify_entry_index</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">e</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
@@ -3705,17 +3683,14 @@
             })
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">name2uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">name2uuid</span>(<span class="ident">name</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2spn</span>(<span class="ident">uuid</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">uuid2rdn</span>(<span class="ident">uuid</span>)
     }
@@ -3746,17 +3721,14 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_indexes</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">list_idxs</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>)<span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">list_id2entry</span>()
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">list_index_content</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">index_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -3764,7 +3736,6 @@
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">list_index_content</span>(<span class="ident">index_name</span>)
     }
 
-    <span class="comment">// ! TRACING INTEGRATED</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_id2entry</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">u64</span>, <span class="ident">String</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">get_idlayer</span>().<span class="ident">get_id2entry</span>(<span class="ident">id</span>)
     }
@@ -3918,7 +3889,6 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="comment">// TODO: tracing</span>
     <span class="comment">// Should take a mut index set, and then we write the whole thing back</span>
     <span class="comment">// in a single stripe.</span>
     <span class="comment">//</span>
