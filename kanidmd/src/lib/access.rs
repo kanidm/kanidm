@@ -394,7 +394,6 @@ pub trait AccessControlsTransaction<'a> {
         &self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
-    // ! TRACING INTEGRATED
     fn search_related_acp<'b>(
         &'b self,
         rec_entry: &Entry<EntrySealed, EntryCommitted>,
@@ -581,7 +580,6 @@ pub trait AccessControlsTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn search_filter_entry_attributes(
         &self,
         se: &SearchEvent,

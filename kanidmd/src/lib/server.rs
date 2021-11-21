@@ -131,7 +131,6 @@ pub trait QueryServerTransaction<'a> {
         &self,
     ) -> &mut ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>;
 
-    // ! TRACING INTEGRATED
     /// Conduct a search and apply access controls to yield a set of entries that
     /// have been reduced to the set of user visible avas. Note that if you provide
     /// a `SearchEvent` for the internal user, this query will fail. It is invalid for
@@ -165,7 +164,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn search(&self, se: &SearchEvent) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         spanned!("server::search", {
             if se.ident.is_internal() {
@@ -222,7 +220,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn exists(&self, ee: &ExistsEvent) -> Result<bool, OperationError> {
         spanned!("server::exists", {
             let be_txn = self.get_be_txn();
@@ -247,7 +244,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     // Should this actually be names_to_uuids and we do batches?
     //  In the initial design "no", we can always write a batched
     //  interface later.
@@ -264,7 +260,6 @@ pub trait QueryServerTransaction<'a> {
     //
     // Remember, we don't care if the name is invalid, because search
     // will validate/normalise the filter we construct for us. COOL!
-    // ! TRACING INTEGRATED
     fn name_to_uuid(&self, name: &str) -> Result<Uuid, OperationError> {
         // Is it just a uuid?
         Uuid::parse_str(name).or_else(|_| {
@@ -275,7 +270,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn uuid_to_spn(&self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
         let r = self.get_be_txn().uuid2spn(uuid)?;
 
@@ -288,7 +282,6 @@ pub trait QueryServerTransaction<'a> {
         Ok(r)
     }
 
-    // ! TRACING INTEGRATED
     fn uuid_to_rdn(&self, uuid: &Uuid) -> Result<String, OperationError> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
@@ -296,7 +289,6 @@ pub trait QueryServerTransaction<'a> {
             .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.to_hyphenated_ref())))
     }
 
-    // ! TRACING INTEGRATED
     // From internal, generate an exists event and dispatch
     fn internal_exists(&self, filter: Filter<FilterInvalid>) -> Result<bool, OperationError> {
         spanned!("server::internal_exists", {
@@ -311,7 +303,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn internal_search(
         &self,
         filter: Filter<FilterInvalid>,
@@ -325,7 +316,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn impersonate_search_valid(
         &self,
         f_valid: Filter<FilterValid>,
@@ -338,7 +328,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     // this applys ACP to filter result entries.
     fn impersonate_search_ext_valid(
         &self,
@@ -350,7 +339,6 @@ pub trait QueryServerTransaction<'a> {
         self.search_ext(&se)
     }
 
-    // ! TRACING INTEGRATED
     // Who they are will go here
     fn impersonate_search(
         &self,
@@ -367,7 +355,6 @@ pub trait QueryServerTransaction<'a> {
         self.impersonate_search_valid(f_valid, f_intent_valid, event)
     }
 
-    // ! TRACING INTEGRATED
     fn impersonate_search_ext(
         &self,
         filter: Filter<FilterInvalid>,
@@ -385,7 +372,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     // Get a single entry by it's UUID. This is heavily relied on for internal
     // server operations, especially in login and acp checks for acp.
     fn internal_search_uuid(
@@ -409,7 +395,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn impersonate_search_ext_uuid(
         &self,
         uuid: &Uuid,
@@ -427,7 +412,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     fn impersonate_search_uuid(
         &self,
         uuid: &Uuid,
@@ -445,7 +429,6 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    // ! TRACING INTEGRATED
     /// Do a schema aware conversion from a String:String to String:Value for modification
     /// present.
     fn clone_value(&self, attr: &str, value: &str) -> Result<Value, OperationError> {
@@ -515,6 +498,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
                     SyntaxType::OauthScope => Ok(Value::new_oauthscope(value)),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
+                    SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -525,7 +509,6 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
-    // ! TRACING INTEGRATED
     fn clone_partialvalue(&self, attr: &str, value: &str) -> Result<PartialValue, OperationError> {
         let schema = self.get_schema();
 
@@ -641,6 +624,7 @@ pub trait QueryServerTransaction<'a> {
                         )
                     }),
                     SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
+                    SyntaxType::PrivateBinary => Ok(PartialValue::PrivateBinary),
                 }
             }
             None => {
@@ -735,7 +719,6 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    // ! TRACING INTEGRATED
     // This is a helper to get password badlist.
     fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(&UUID_SYSTEM_CONFIG)
@@ -752,7 +735,6 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    // ! TRACING INTEGRATED
     fn get_oauth2rs_set(&self) -> Result<Vec<Arc<EntrySealedCommitted>>, OperationError> {
         self.internal_search(filter!(f_eq(
             "class",
@@ -1059,6 +1041,10 @@ impl QueryServer {
 
         if system_info_version < 4 {
             migrate_txn.migrate_3_to_4()?;
+        }
+
+        if system_info_version < 5 {
+            migrate_txn.migrate_4_to_5()?;
         }
 
         migrate_txn.commit()?;
@@ -1938,6 +1924,21 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    /// Migrate 4 to 5 - this triggers a regen of all oauth2 RS es256 der keys
+    /// as we previously did not generate them on entry creation.
+    pub fn migrate_4_to_5(&self) -> Result<(), OperationError> {
+        spanned!("server::migrate_4_to_5", {
+            admin_warn!("starting 4 to 5 migration.");
+            let filter = filter!(f_and!([
+                f_eq("class", (*PVCLASS_OAUTH2_RS).clone()),
+                f_andnot(f_pres("es256_private_key_der")),
+            ]));
+            let modlist = ModifyList::new_purge("es256_private_key_der");
+            self.internal_modify(&filter, &modlist)
+            // Complete
+        })
+    }
+
     // These are where searches and other actions are actually implemented. This
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
@@ -2227,6 +2228,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_OAUTH2_RS_IMPLICIT_SCOPES,
             JSON_SCHEMA_ATTR_OAUTH2_RS_BASIC_SECRET,
             JSON_SCHEMA_ATTR_OAUTH2_RS_TOKEN_KEY,
+            JSON_SCHEMA_ATTR_ES256_PRIVATE_KEY_DER,
+            JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
+            JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
+            JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_GROUP,
             JSON_SCHEMA_CLASS_ACCOUNT,

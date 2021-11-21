@@ -1409,6 +1409,7 @@ impl KanidmAsyncClient {
         scopes: Option<Vec<&str>>,
         reset_secret: bool,
         reset_token_key: bool,
+        reset_sign_key: bool,
     ) -> Result<(), ClientError> {
         let mut update_oauth2_rs = Entry {
             attrs: BTreeMap::new(),
@@ -1445,7 +1446,14 @@ impl KanidmAsyncClient {
                 .attrs
                 .insert("oauth2_rs_token_key".to_string(), Vec::new());
         }
-
+        if reset_sign_key {
+            update_oauth2_rs
+                .attrs
+                .insert("es256_private_key_der".to_string(), Vec::new());
+            update_oauth2_rs
+                .attrs
+                .insert("rs256_private_key_der".to_string(), Vec::new());
+        }
         self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
     }
@@ -1475,6 +1483,54 @@ impl KanidmAsyncClient {
 
     pub async fn idm_oauth2_rs_delete(&self, id: &str) -> Result<(), ClientError> {
         self.perform_delete_request(["/v1/oauth2/", id].concat().as_str())
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_enable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            "oauth2_allow_insecure_client_disable_pkce".to_string(),
+            Vec::new(),
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_disable_pkce(&self, id: &str) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            "oauth2_allow_insecure_client_disable_pkce".to_string(),
+            vec!["true".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_enable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            "oauth2_jwt_legacy_crypto_enable".to_string(),
+            vec!["true".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
+            .await
+    }
+
+    pub async fn idm_oauth2_rs_disable_legacy_crypto(&self, id: &str) -> Result<(), ClientError> {
+        let mut update_oauth2_rs = Entry {
+            attrs: BTreeMap::new(),
+        };
+        update_oauth2_rs.attrs.insert(
+            "oauth2_jwt_legacy_crypto_enable".to_string(),
+            vec!["false".to_string()],
+        );
+        self.perform_patch_request(format!("/v1/oauth2/{}", id).as_str(), update_oauth2_rs)
             .await
     }
 

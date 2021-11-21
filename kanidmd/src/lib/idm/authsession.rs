@@ -89,7 +89,6 @@ enum CredHandler {
 }
 
 impl CredHandler {
-    // ! TRACING INTEGRATED
     /// Given a credential and some external configuration, Generate the credential handler
     /// that will be used for this session. This credential handler is a "self contained"
     /// unit that defines what is possible to use during this authentication session to prevent

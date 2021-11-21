@@ -190,6 +190,13 @@ impl Component for Oauth2App {
         let e_msg = format!("{:?}", query);
         ConsoleService::log(e_msg.as_str());
 
+        // In the query, if this is openid there MAY be a hint
+        // as to the users name.
+        // See: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
+        // specifically, login_hint
+        if let Some(login_hint) = query.oidc_ext.login_hint.clone() {
+            models::push_login_hint(login_hint)
+        }
         // Push the request down. This covers if we move to LoginRequired.
         models::push_oauth2_authorisation_request(query);
 

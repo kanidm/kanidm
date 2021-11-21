@@ -16,9 +16,9 @@ use crate::idm::event::{
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
-    Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
-    Oauth2ResourceServersWriteTransaction,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, JwkKeySet,
+    Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::radius::RadiusAccount;
 use crate::idm::unix::{UnixGroup, UnixUserAccount};
@@ -194,7 +194,7 @@ impl IdmServer {
 
         let webauthn = Webauthn::new(WebauthnDomainConfig {
             rp_name,
-            origin: origin_url,
+            origin: origin_url.clone(),
             rp_id,
         });
 
@@ -205,10 +205,11 @@ impl IdmServer {
         })?;
         let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
 
-        let oauth2rs = Oauth2ResourceServers::try_from(oauth2rs_set).map_err(|e| {
-            admin_error!("Failed to load oauth2 resource servers - {:?}", e);
-            e
-        })?;
+        let oauth2rs =
+            Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
+                admin_error!("Failed to load oauth2 resource servers - {:?}", e);
+                e
+            })?;
 
         Ok((
             IdmServer {
@@ -340,7 +341,7 @@ impl IdmServerDelayed {
     }
 }
 
-pub trait IdmServerTransaction<'a> {
+pub(crate) trait IdmServerTransaction<'a> {
     type QsTransactionType: QueryServerTransaction<'a>;
 
     fn get_qs_txn(&self) -> &Self::QsTransactionType;
@@ -373,20 +374,25 @@ pub trait IdmServerTransaction<'a> {
         }
     }
 
-    fn check_uat_valid(&self, uat: &UserAuthToken, ct: Duration) -> Result<bool, OperationError> {
-        let entry = self
-            .get_qs_txn()
-            .internal_search_uuid(&uat.uuid)
-            .map_err(|e| {
-                admin_error!(?e, "from_ro_uat failed");
-                e
-            })?;
+    fn check_account_uuid_valid(
+        &self,
+        uuid: &Uuid,
+        ct: Duration,
+    ) -> Result<Option<Account>, OperationError> {
+        let entry = self.get_qs_txn().internal_search_uuid(uuid).map_err(|e| {
+            admin_error!(?e, "check_account_uuid_valid failed");
+            e
+        })?;
 
-        Ok(Account::check_within_valid_time(
+        if Account::check_within_valid_time(
             ct,
             entry.get_ava_single_datetime("account_valid_from").as_ref(),
             entry.get_ava_single_datetime("account_expire").as_ref(),
-        ))
+        ) {
+            Account::try_from_entry_no_groups(entry.as_ref()).map(Some)
+        } else {
+            Ok(None)
+        }
     }
 
     fn process_uat_to_identity(
@@ -486,7 +492,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         session_write.commit();
     }
 
-    // ! TRACING INTEGRATED
     pub async fn auth(
         &mut self,
         ae: &AuthEvent,
@@ -737,7 +742,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         }
     }
 
-    // ! TRACING INTEGRATED
     pub async fn auth_unix(
         &mut self,
         uae: &UnixUserAuthEvent,
@@ -812,7 +816,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
         res
     }
 
-    // TODO: tracing
     pub async fn auth_ldap(
         &mut self,
         lae: &LdapAuthEvent,
@@ -966,7 +969,6 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
 }
 
 impl<'a> IdmServerProxyReadTransaction<'a> {
-    // TODO: tracing
     pub fn get_radiusauthtoken(
         &mut self,
         rate: &RadiusAuthTokenEvent,
@@ -986,7 +988,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_radiusauthtoken(ct)
     }
 
-    // TODO: tracing
     pub fn get_unixusertoken(
         &mut self,
         uute: &UnixUserTokenEvent,
@@ -1006,7 +1007,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_unixusertoken(ct)
     }
 
-    // TODO: tracing
     pub fn get_unixgrouptoken(
         &mut self,
         uute: &UnixGroupTokenEvent,
@@ -1022,7 +1022,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         group.to_unixgrouptoken()
     }
 
-    // TODO: tracing
     pub fn get_credentialstatus(
         &mut self,
         cse: &CredentialStatusEvent,
@@ -1041,7 +1040,6 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         account.to_credentialstatus()
     }
 
-    // TODO: tracing
     pub fn get_backup_codes(
         &mut self,
         rbce: &ReadBackupCodeEvent,
@@ -1082,9 +1080,20 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
             .check_oauth2_authorise_permit(ident, uat, consent_req, ct)
     }
 
+    pub fn check_oauth2_authorise_reject(
+        &self,
+        ident: &Identity,
+        uat: &UserAuthToken,
+        consent_req: &str,
+        ct: Duration,
+    ) -> Result<Url, OperationError> {
+        self.oauth2rs
+            .check_oauth2_authorise_reject(ident, uat, consent_req, ct)
+    }
+
     pub fn check_oauth2_token_exchange(
         &self,
-        client_authz: &str,
+        client_authz: Option<&str>,
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
@@ -1100,6 +1109,27 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
     ) -> Result<AccessTokenIntrospectResponse, Oauth2Error> {
         self.oauth2rs
             .check_oauth2_token_introspect(self, client_authz, intr_req, ct)
+    }
+
+    pub fn oauth2_openid_userinfo(
+        &self,
+        client_id: &str,
+        client_authz: &str,
+        ct: Duration,
+    ) -> Result<OidcToken, Oauth2Error> {
+        self.oauth2rs
+            .oauth2_openid_userinfo(self, client_id, client_authz, ct)
+    }
+
+    pub fn oauth2_openid_discovery(
+        &self,
+        client_id: &str,
+    ) -> Result<OidcDiscoveryResponse, OperationError> {
+        self.oauth2rs.oauth2_openid_discovery(client_id)
+    }
+
+    pub fn oauth2_openid_publickey(&self, client_id: &str) -> Result<JwkKeySet, OperationError> {
+        self.oauth2rs.oauth2_openid_publickey(client_id)
     }
 }
 
@@ -1125,7 +1155,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // expired will now be dropped, and can't be used by future sessions.
     }
 
-    // TODO: tracing
     fn check_password_quality(
         &mut self,
         cleartext: &str,
@@ -1362,7 +1391,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(())
     }
 
-    // TODO: tracing
     pub fn recover_account(
         &mut self,
         name: &str,
@@ -1402,7 +1430,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(cleartext)
     }
 
-    // TODO: tracing
     pub fn generate_account_password(
         &mut self,
         gpe: &GeneratePasswordEvent,
@@ -1445,7 +1472,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
     }
 
-    // TODO: tracing
     /// Generate a new set of backup code and remove the old ones.
     pub fn generate_backup_code(
         &mut self,
@@ -1484,7 +1510,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             })
     }
 
-    // TODO: tracing
     pub fn remove_backup_code(
         &mut self,
         rte: &RemoveBackupCodeEvent,
@@ -1513,7 +1538,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| SetCredentialResponse::Success)
     }
 
-    // TODO: tracing
     pub fn regenerate_radius_secret(
         &mut self,
         rrse: &RegenerateRadiusSecretEvent,
@@ -1551,7 +1575,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| cleartext)
     }
 
-    // TODO: tracing
     pub fn reg_account_webauthn_init(
         &mut self,
         wre: &WebauthnInitRegisterEvent,
@@ -1573,7 +1596,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
-    // TODO: tracing
     pub fn reg_account_webauthn_complete(
         &mut self,
         wre: &WebauthnDoRegisterEvent,
@@ -1626,7 +1648,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
-    // TODO: tracing
     pub fn remove_account_webauthn(
         &mut self,
         rwe: &RemoveWebauthnEvent,
@@ -1661,7 +1682,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| SetCredentialResponse::Success)
     }
 
-    // TODO: tracing
     pub fn generate_account_totp(
         &mut self,
         gte: &GenerateTotpEvent,
@@ -1684,7 +1704,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
-    // TODO: tracing
     pub fn verify_account_totp(
         &mut self,
         vte: &VerifyTotpEvent,
@@ -1741,7 +1760,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
-    // TODO: tracing
     pub fn accept_account_sha1_totp(
         &mut self,
         aste: &AcceptSha1TotpEvent,
@@ -1796,7 +1814,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         Ok(next)
     }
 
-    // TODO: tracing
     pub fn remove_account_totp(
         &mut self,
         rte: &RemoveTotpEvent,
@@ -1825,7 +1842,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             .map(|_| SetCredentialResponse::Success)
     }
 
-    // TODO: tracing
     // -- delayed action processing --
     fn process_pwupgrade(&mut self, pwu: &PasswordUpgrade) -> Result<(), OperationError> {
         // get the account
@@ -1853,7 +1869,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    // TODO: tracing
     fn process_unixpwupgrade(&mut self, pwu: &UnixPasswordUpgrade) -> Result<(), OperationError> {
         let account = self
             .qs_write
@@ -1885,7 +1900,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    // TODO: tracing
     pub(crate) fn process_webauthncounterinc(
         &mut self,
         wci: &WebauthnCounterIncrement,
@@ -1912,7 +1926,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         }
     }
 
-    // TODO: tracing
     pub(crate) fn process_backupcoderemoval(
         &mut self,
         bcr: &BackupCodeRemoval,
@@ -1932,7 +1945,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
-    // TODO: tracing
     pub(crate) fn process_delayedaction(
         &mut self,
         da: DelayedAction,

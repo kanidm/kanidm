@@ -2,12 +2,15 @@ mod common;
 use crate::common::{run_test, ADMIN_TEST_PASSWORD};
 use kanidm_client::KanidmClient;
 
+use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, ConsentRequest,
+    AccessTokenResponse, ConsentRequest, OidcDiscoveryResponse,
 };
 use oauth2_ext::PkceCodeChallenge;
 use std::collections::HashMap;
+use std::convert::TryFrom;
+use std::str::FromStr;
 use url::Url;
 
 macro_rules! assert_no_cache {
@@ -35,7 +38,7 @@ macro_rules! assert_no_cache {
 }
 
 #[test]
-fn test_oauth2_basic_flow() {
+fn test_oauth2_openid_basic_flow() {
     run_test(|rsclient: KanidmClient| {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
@@ -55,7 +58,8 @@ fn test_oauth2_basic_flow() {
                 None,
                 None,
                 None,
-                Some(vec!["read", "email"]),
+                Some(vec!["read", "email", "openid"]),
+                false,
                 false,
                 false,
             )
@@ -91,6 +95,80 @@ fn test_oauth2_basic_flow() {
                 .no_proxy()
                 .build()
                 .expect("Failed to create client.");
+
+            // Step 0 - get the openid discovery details and the public key.
+            let response = client
+                .get(format!(
+                    "{}/oauth2/openid/test_integration/.well-known/openid-configuration",
+                    url
+                ))
+                .send()
+                .await
+                .expect("Failed to send request.");
+
+            assert!(response.status() == reqwest::StatusCode::OK);
+            assert_no_cache!(response);
+
+            let discovery: OidcDiscoveryResponse = response
+                .json()
+                .await
+                .expect("Failed to access response body");
+
+            // Most values are checked in idm/oauth2.rs, but we want to sanity check
+            // the urls here as an extended function smoke test.
+            assert!(discovery.issuer == Url::parse("https://idm.example.com/").unwrap());
+
+            assert!(
+                discovery.authorization_endpoint
+                    == Url::parse("https://idm.example.com/ui/oauth2").unwrap()
+            );
+
+            assert!(
+                discovery.token_endpoint
+                    == Url::parse("https://idm.example.com/oauth2/token").unwrap()
+            );
+
+            assert!(
+                discovery.userinfo_endpoint
+                    == Some(
+                        Url::parse(
+                            "https://idm.example.com/oauth2/openid/test_integration/userinfo"
+                        )
+                        .unwrap()
+                    )
+            );
+
+            assert!(
+                discovery.jwks_uri
+                    == Url::parse(
+                        "https://idm.example.com/oauth2/openid/test_integration/public_key.jwk"
+                    )
+                    .unwrap()
+            );
+
+            // Step 0 - get the jwks public key.
+            let response = client
+                .get(format!(
+                    "{}/oauth2/openid/test_integration/public_key.jwk",
+                    url
+                ))
+                .send()
+                .await
+                .expect("Failed to send request.");
+
+            assert!(response.status() == reqwest::StatusCode::OK);
+            assert_no_cache!(response);
+
+            let mut jwk_set: JwkKeySet = response
+                .json()
+                .await
+                .expect("Failed to access response body");
+
+            let public_jwk = jwk_set.keys.pop().expect("No public key in set!");
+
+            let jws_validator =
+                JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+
             // Step 1 - the Oauth2 Resource Server would send a redirect to the authorisation
             // server, where the url contains a series of authorisation request parameters.
             //
@@ -109,7 +187,7 @@ fn test_oauth2_basic_flow() {
                     ("code_challenge", pkce_code_challenge.as_str()),
                     ("code_challenge_method", "S256"),
                     ("redirect_uri", "https://demo.example.com/oauth2/flow"),
-                    ("scope", "email read"),
+                    ("scope", "email read openid"),
                 ])
                 .send()
                 .await
@@ -167,7 +245,8 @@ fn test_oauth2_basic_flow() {
                 redirect_uri: Url::parse("https://demo.example.com/oauth2/flow")
                     .expect("Invalid URL"),
                 client_id: None,
-                code_verifier: pkce_code_verifier.secret().clone(),
+                client_secret: None,
+                code_verifier: Some(pkce_code_verifier.secret().clone()),
             };
 
             let response = client
@@ -219,9 +298,35 @@ fn test_oauth2_basic_flow() {
             assert!(tir.iat.is_some());
             assert!(tir.nbf.is_some());
             assert!(tir.sub.is_some());
-            assert!(tir.aud.is_none());
+            assert!(tir.aud.as_deref() == Some("test_integration"));
             assert!(tir.iss.is_none());
             assert!(tir.jti.is_none());
+
+            // Step 5 - check that the id_token (openid) matches the userinfo endpoint.
+            let oidc_unverified = OidcUnverified::from_str(atr.id_token.as_ref().unwrap())
+                .expect("Failed to parse id_token");
+
+            let oidc = oidc_unverified
+                .validate(&jws_validator, 0)
+                .expect("Failed to verify oidc");
+
+            // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
+            // token and the userinfo endpoints.
+            assert!(oidc.iss == Url::parse("https://idm.example.com/").unwrap());
+
+            let response = client
+                .get(format!("{}/oauth2/openid/test_integration/userinfo", url))
+                .bearer_auth(atr.access_token.clone())
+                .send()
+                .await
+                .expect("Failed to send userinfo request.");
+
+            let userinfo = response
+                .json::<OidcToken>()
+                .await
+                .expect("Unable to decode OidcToken from userinfo");
+
+            assert!(userinfo == oidc);
         })
     })
 }

@@ -45,7 +45,6 @@ pub struct SearchResult {
 }
 
 impl SearchResult {
-    // ! TRACING INTEGRATED
     pub fn new(
         qs: &QueryServerReadTransaction,
         entries: &[Entry<EntryReduced, EntryCommitted>],
@@ -86,7 +85,6 @@ pub struct SearchEvent {
 }
 
 impl SearchEvent {
-    // ! TRACING INTEGRATED
     pub fn from_message(
         ident: Identity,
         req: &SearchRequest,

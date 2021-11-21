@@ -3,6 +3,7 @@ FROM ${BASE_IMAGE} AS builder
 LABEL mantainer william@blackhats.net.au
 
 RUN zypper ar obs://devel:languages:rust devel:languages:rust && \
+    sed -i -E 's/https?:\/\/download.opensuse.org/https:\/\/mirrorcache.firstyear.id.au/g' /etc/zypp/repos.d/*.repo && \
     zypper --gpg-auto-import-keys ref --force && \
     zypper dup -y && \
     zypper install -y \

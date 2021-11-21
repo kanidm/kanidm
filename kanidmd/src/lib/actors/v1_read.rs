@@ -19,7 +19,8 @@ use kanidm_proto::v1::{BackupCodesView, OperationError, RadiusAuthToken};
 use crate::filter::{Filter, FilterInvalid};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, Oauth2Error,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, JwkKeySet,
+    Oauth2Error, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
@@ -123,7 +124,6 @@ impl QueryServerReadV1 {
         res
     }
 
-    // ! TRACING INTEGRATED
     #[instrument(
         level = "trace",
         name = "auth",
@@ -1034,13 +1034,45 @@ impl QueryServerReadV1 {
 
     #[instrument(
         level = "trace",
-        name = "oauth2_authorise_permit",
+        name = "oauth2_authorise_reject",
+        skip(self, uat, consent_req, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_authorise_reject(
+        &self,
+        uat: Option<String>,
+        consent_req: String,
+        eventid: Uuid,
+    ) -> Result<Url, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = spanned!("actors::v1_read::handle<Oauth2AuthoriseReject>", {
+            let (ident, uat) = idms_prox_read
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| {
+                    idms_prox_read
+                        .process_uat_to_identity(&uat, ct)
+                        .map(|ident| (ident, uat))
+                })
+                .map_err(|e| {
+                    admin_error!("Invalid identity: {:?}", e);
+                    e
+                })?;
+
+            idms_prox_read.check_oauth2_authorise_reject(&ident, &uat, &consent_req, ct)
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "oauth2_token_exchange",
         skip(self, client_authz, token_req, eventid)
         fields(uuid = ?eventid)
     )]
     pub async fn handle_oauth2_token_exchange(
         &self,
-        client_authz: String,
+        client_authz: Option<String>,
         token_req: AccessTokenRequest,
         eventid: Uuid,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
@@ -1048,7 +1080,7 @@ impl QueryServerReadV1 {
         let idms_prox_read = self.idms.proxy_read_async().await;
         let res = spanned!("actors::v1_read::handle<Oauth2TokenExchange>", {
             // Now we can send to the idm server for authorisation checking.
-            idms_prox_read.check_oauth2_token_exchange(&client_authz, &token_req, ct)
+            idms_prox_read.check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
         });
         res
     }
@@ -1070,6 +1102,62 @@ impl QueryServerReadV1 {
         let res = spanned!("actors::v1_read::handle<Oauth2TokenIntrospect>", {
             // Now we can send to the idm server for introspection checking.
             idms_prox_read.check_oauth2_token_introspect(&client_authz, &intr_req, ct)
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "oauth2_openid_userinfo",
+        skip(self, client_id, client_authz, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_openid_userinfo(
+        &self,
+        client_id: String,
+        client_authz: String,
+        eventid: Uuid,
+    ) -> Result<OidcToken, Oauth2Error> {
+        let ct = duration_from_epoch_now();
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = spanned!("actors::v1_read::handle<OidcUserinfo>", {
+            idms_prox_read.oauth2_openid_userinfo(&client_id, &client_authz, ct)
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "oauth2_openid_discovery",
+        skip(self, client_id, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_openid_discovery(
+        &self,
+        client_id: String,
+        eventid: Uuid,
+    ) -> Result<OidcDiscoveryResponse, OperationError> {
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = spanned!("actors::v1_read::handle<OidcDiscovery>", {
+            idms_prox_read.oauth2_openid_discovery(&client_id)
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "oauth2_openid_publickey",
+        skip(self, client_id, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_oauth2_openid_publickey(
+        &self,
+        client_id: String,
+        eventid: Uuid,
+    ) -> Result<JwkKeySet, OperationError> {
+        let idms_prox_read = self.idms.proxy_read_async().await;
+        let res = spanned!("actors::v1_read::handle<OidcPublickey>", {
+            idms_prox_read.oauth2_openid_publickey(&client_id)
         });
         res
     }

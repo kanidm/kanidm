@@ -227,6 +227,15 @@ async fn oauth2_authorise(
                 res
             })
         }
+        /*
+        If the request fails due to a missing, invalid, or mismatching
+        redirection URI, or if the client identifier is missing or invalid,
+        the authorization server SHOULD inform the resource owner of the
+        error and MUST NOT automatically redirect the user-agent to the
+        invalid redirection URI.
+        */
+        Err(Oauth2Error::InvalidClientId) => Ok(tide::Response::new(tide::StatusCode::BadRequest)),
+        Err(Oauth2Error::InvalidOrigin) => Ok(tide::Response::new(tide::StatusCode::BadRequest)),
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
             Ok(tide::Response::new(tide::StatusCode::Unauthorized))
@@ -326,6 +335,69 @@ async fn oauth2_authorise_permit(
     Ok(res)
 }
 
+// When this is called, this indicates the user has REJECTED the intent to proceed.
+pub async fn oauth2_authorise_reject_post(mut req: tide::Request<AppState>) -> tide::Result {
+    let consent_req: String = req.body_json().await?;
+    oauth2_authorise_reject(req, consent_req).await
+}
+
+pub async fn oauth2_authorise_reject_get(req: tide::Request<AppState>) -> tide::Result {
+    debug!("Request Query - {:?}", req.url().query());
+
+    let consent_req: ConsentRequestData = req.query().map_err(|e| {
+        error!("{:?}", e);
+        tide::Error::from_str(
+            tide::StatusCode::BadRequest,
+            "Invalid Oauth2 Consent Reject",
+        )
+    })?;
+
+    oauth2_authorise_reject(req, consent_req.token).await
+}
+
+// https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
+// If the user willingly rejects the authorisation, we must redirect
+// with an error.
+async fn oauth2_authorise_reject(
+    req: tide::Request<AppState>,
+    consent_req: String,
+) -> tide::Result {
+    // Need to go back to the redir_uri
+    // For this, we'll need to lookup where to go.
+    let uat = req.get_current_uat();
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_oauth2_authorise_reject(uat, consent_req, eventid)
+        .await;
+
+    let mut res = match res {
+        Ok(mut redirect_uri) => {
+            let mut res = tide::Response::new(302);
+            redirect_uri
+                .query_pairs_mut()
+                .clear()
+                .append_pair("error", "access_denied")
+                .append_pair("error_description", "authorisation rejected");
+            res.insert_header("Location", redirect_uri.as_str());
+            // I think the client server needs this
+            // res.insert_header("Access-Control-Allow-Origin", redirect_uri.origin().ascii_serialization());
+            res
+        }
+        Err(_e) => {
+            // If an error happens in our reject flow, I think
+            // that we should NOT redirect to the calling application
+            // and we need to handle that locally somehow.
+            // This needs to be better!
+            tide::Response::new(500)
+        }
+    };
+    res.insert_header("X-KANIDM-OPID", hvalue);
+    Ok(res)
+}
+
 pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result {
     // This is called directly by the resource server, where we then issue
     // the token to the caller.
@@ -337,14 +409,16 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
         .header("authorization")
         .and_then(|hv| hv.get(0))
         .and_then(|h| h.as_str().strip_prefix("Basic "))
-        .map(str::to_string)
-        .ok_or_else(|| {
-            error!("Basic Authentication Not Provided");
-            tide::Error::from_str(
-                tide::StatusCode::Unauthorized,
-                "Invalid Basic Authorisation",
-            )
-        })?;
+        .map(str::to_string);
+    /*
+    .ok_or_else(|| {
+        error!("Basic Authentication Not Provided");
+        tide::Error::from_str(
+            tide::StatusCode::Unauthorized,
+            "Invalid Basic Authorisation",
+        )
+    })?;
+    */
 
     // Get the accessToken Request
     let tok_req: AccessTokenRequest = req.body_form().await.map_err(|e| {
@@ -395,11 +469,81 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
 }
 
 // For future openid integration
-pub async fn get_openid_configuration(_req: tide::Request<AppState>) -> tide::Result {
-    let mut res = tide::Response::new(200);
-    res.set_content_type("text/html;charset=utf-8");
-    res.set_body("");
-    Ok(res)
+pub async fn oauth2_openid_discovery_get(req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let client_id = req.get_url_param("client_id")?;
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_oauth2_openid_discovery(client_id, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn oauth2_openid_userinfo_get(req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let client_id = req.get_url_param("client_id")?;
+
+    // The token we want to inspect is in the authorisatioz header.
+    let client_authz = req
+        .header("authorization")
+        .and_then(|hv| hv.get(0))
+        .and_then(|h| h.as_str().strip_prefix("Bearer "))
+        .map(str::to_string)
+        .ok_or_else(|| {
+            error!("Bearer Authentication Not Provided");
+            tide::Error::from_str(
+                tide::StatusCode::Unauthorized,
+                "Invalid Bearer Authorisation",
+            )
+        })?;
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_oauth2_openid_userinfo(client_id, client_authz, eventid)
+        .await;
+
+    match res {
+        Ok(uir) => {
+            let mut res = tide::Response::new(200);
+            tide::Body::from_json(&uir).map(|b| {
+                res.set_body(b);
+                res
+            })
+        }
+        Err(e) => {
+            // https://datatracker.ietf.org/doc/html/rfc6750#section-6.2
+            let err = ErrorResponse {
+                error: e.to_string(),
+                error_description: None,
+                error_uri: None,
+            };
+
+            let mut res = tide::Response::new(400);
+            tide::Body::from_json(&err).map(|b| {
+                res.set_body(b);
+                res
+            })
+        }
+    }
+    .map(|mut res| {
+        res.insert_header("X-KANIDM-OPID", hvalue);
+        res
+    })
+}
+
+pub async fn oauth2_openid_publickey_get(req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let client_id = req.get_url_param("client_id")?;
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_oauth2_openid_publickey(client_id, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 pub async fn oauth2_token_introspect_post(mut req: tide::Request<AppState>) -> tide::Result {

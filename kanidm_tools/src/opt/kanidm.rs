@@ -417,6 +417,21 @@ pub enum Oauth2Opt {
     #[structopt(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),
+    #[structopt(name = "enable_pkce")]
+    /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
+    EnablePkce(Named),
+    /// Disable PKCE on this oauth2 resource server to work around insecure clients that
+    /// may not support it. You should request the client to enable PKCE!
+    #[structopt(name = "warning_insecure_client_disable_pkce")]
+    DisablePkce(Named),
+    #[structopt(name = "warning_enable_legacy_crypto")]
+    /// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.
+    /// You only need to enable this for openid clients that do not support modern crytopgraphic
+    /// operations.
+    EnableLegacyCrypto(Named),
+    /// Disable legacy signing crypto on this oauth2 resource server. This is the default.
+    #[structopt(name = "disable_legacy_crypto")]
+    DisableLegacyCrypto(Named),
 }
 
 #[derive(Debug, StructOpt)]

@@ -3,10 +3,7 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::be::dbvalue::{
-    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1, DbValueTaggedStringV1,
-    DbValueV1,
-};
+use crate::be::dbvalue::{DbValueEmailAddressV1, DbValueV1};
 use crate::credential::Credential;
 use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -45,7 +42,7 @@ lazy_static! {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
     };
-    static ref OAUTHSCOPE_RE: Regex = {
+    pub static ref OAUTHSCOPE_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
         // Must not contain whitespace.
@@ -145,6 +142,7 @@ pub enum SyntaxType {
     Url,
     OauthScope,
     OauthScopeMap,
+    PrivateBinary,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -175,6 +173,7 @@ impl TryFrom<&str> for SyntaxType {
             "URL" => Ok(SyntaxType::Url),
             "OAUTH_SCOPE" => Ok(SyntaxType::OauthScope),
             "OAUTH_SCOPE_MAP" => Ok(SyntaxType::OauthScopeMap),
+            "PRIVATE_BINARY" => Ok(SyntaxType::PrivateBinary),
             _ => Err(()),
         }
     }
@@ -206,6 +205,7 @@ impl TryFrom<usize> for SyntaxType {
             18 => Ok(SyntaxType::Url),
             19 => Ok(SyntaxType::OauthScope),
             20 => Ok(SyntaxType::OauthScopeMap),
+            21 => Ok(SyntaxType::PrivateBinary),
             _ => Err(()),
         }
     }
@@ -235,6 +235,7 @@ impl SyntaxType {
             SyntaxType::Url => 18,
             SyntaxType::OauthScope => 19,
             SyntaxType::OauthScopeMap => 20,
+            SyntaxType::PrivateBinary => 21,
         }
     }
 }
@@ -263,6 +264,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::Url => "URL",
             SyntaxType::OauthScope => "OAUTH_SCOPE",
             SyntaxType::OauthScopeMap => "OAUTH_SCOPE_MAP",
+            SyntaxType::PrivateBinary => "PRIVATE_BINARY",
         })
     }
 }
@@ -273,6 +275,7 @@ pub enum DataValue {
     SshKey(String),
     SecretValue(String),
     OauthScopeMap(BTreeSet<String>),
+    PrivateBinary(Vec<u8>),
 }
 
 impl std::fmt::Debug for DataValue {
@@ -282,6 +285,7 @@ impl std::fmt::Debug for DataValue {
             DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
             DataValue::SecretValue(_) => write!(f, "DataValue::SecretValue(_)"),
             DataValue::OauthScopeMap(_) => write!(f, "DataValue::OauthScopeMap(_)"),
+            DataValue::PrivateBinary(_) => write!(f, "DataValue::PrivateBinary(_)"),
         }
     }
 }
@@ -318,6 +322,7 @@ pub enum PartialValue {
     Url(Url),
     OauthScope(String),
     OauthScopeMap(Uuid),
+    PrivateBinary,
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -393,13 +398,6 @@ impl PartialValue {
     pub fn new_class(s: &str) -> Self {
         PartialValue::new_iutf8(s)
     }
-
-    /*
-    #[inline]
-    pub fn new_attr(s: &str) -> Self {
-        PartialValue::new_iutf8s(s)
-    }
-    */
 
     pub fn is_iutf8(&self) -> bool {
         matches!(self, PartialValue::Iutf8(_))
@@ -634,6 +632,10 @@ impl PartialValue {
         matches!(self, PartialValue::OauthScopeMap(_))
     }
 
+    pub fn is_privatebinary(&self) -> bool {
+        matches!(self, PartialValue::PrivateBinary)
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -685,7 +687,7 @@ impl PartialValue {
             }
             PartialValue::Cred(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
-            PartialValue::SecretValue => "_".to_string(),
+            PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
             PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
             PartialValue::Uint32(u) => u.to_string(),
@@ -1259,6 +1261,26 @@ impl Value {
         self.pv.is_oauthscopemap()
     }
 
+    pub fn new_privatebinary(der: &Vec<u8>) -> Self {
+        Value {
+            pv: PartialValue::PrivateBinary,
+            data: Some(Box::new(DataValue::PrivateBinary(der.clone()))),
+        }
+    }
+
+    pub fn to_privatebinary(&self) -> Option<&Vec<u8>> {
+        match &self.pv {
+            PartialValue::PrivateBinary => match &self.data {
+                Some(dv) => match dv.as_ref() {
+                    DataValue::PrivateBinary(c) => Some(&c),
+                    _ => None,
+                },
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn lessthan(&self, s: &PartialValue) -> bool {
         self.pv.lessthan(s)
     }
@@ -1266,9 +1288,6 @@ impl Value {
     pub fn substring(&self, s: &PartialValue) -> bool {
         self.pv.substring(s)
     }
-
-    // Converters between DBRepr -> MemRepr. It's likely many of these
-    // will be just wrappers to our from str types.
 
     // Keep this updated with DbValueV1 in be::dbvalue.
     pub(crate) fn from_db_valuev1(v: DbValueV1) -> Result<Self, ()> {
@@ -1372,92 +1391,24 @@ impl Value {
                     osm.data.into_iter().collect(),
                 ))),
             }),
+            DbValueV1::PrivateBinary(d) => Ok(Value {
+                pv: PartialValue::PrivateBinary,
+                data: Some(Box::new(DataValue::PrivateBinary(d))),
+            }),
         }
     }
 
     #[allow(clippy::unreachable)]
-    #[allow(clippy::expect_used)]
-    pub(crate) fn to_db_valuev1(&self) -> DbValueV1 {
+    pub(crate) fn to_supplementary_db_valuev1(&self) -> DbValueV1 {
         // This has to clone due to how the backend works.
         match &self.pv {
+            PartialValue::Iname(s) => DbValueV1::Iname(s.clone()),
             PartialValue::Utf8(s) => DbValueV1::Utf8(s.clone()),
             PartialValue::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
-            PartialValue::Iname(s) => DbValueV1::Iname(s.clone()),
             PartialValue::Uuid(u) => DbValueV1::Uuid(*u),
-            PartialValue::Bool(b) => DbValueV1::Bool(*b),
-            PartialValue::Syntax(syn) => DbValueV1::SyntaxType(syn.to_usize()),
-            PartialValue::Index(it) => DbValueV1::IndexType(it.to_usize()),
-            PartialValue::Refer(u) => DbValueV1::Reference(*u),
-            PartialValue::JsonFilt(s) => DbValueV1::JsonFilter(
-                serde_json::to_string(s)
-                    .expect("A json filter value was corrupted during run-time"),
-            ),
-            PartialValue::Cred(tag) => {
-                // Get the credential out and make sure it matches the type we expect.
-                let c = match &self.data {
-                    Some(v) => match v.as_ref() {
-                        DataValue::Cred(c) => c,
-                        _ => unreachable!(),
-                    },
-                    None => unreachable!(),
-                };
-
-                // Save the tag AND the dataValue here!
-                DbValueV1::Credential(DbValueCredV1 {
-                    tag: tag.clone(),
-                    data: c.to_db_valuev1(),
-                })
-            }
-            PartialValue::SecretValue => {
-                let ru = match &self.data {
-                    Some(v) => match v.as_ref() {
-                        DataValue::SecretValue(rc) => rc.clone(),
-                        _ => unreachable!(),
-                    },
-                    None => unreachable!(),
-                };
-                DbValueV1::SecretValue(ru)
-            }
-            PartialValue::SshKey(t) => {
-                let sk = match &self.data {
-                    Some(v) => match v.as_ref() {
-                        DataValue::SshKey(sc) => sc.clone(),
-                        _ => unreachable!(),
-                    },
-                    None => unreachable!(),
-                };
-                DbValueV1::SshKey(DbValueTaggedStringV1 {
-                    tag: t.clone(),
-                    data: sk,
-                })
-            }
             PartialValue::Spn(n, r) => DbValueV1::Spn(n.clone(), r.clone()),
-            PartialValue::Uint32(u) => DbValueV1::Uint32(*u),
-            PartialValue::Cid(c) => DbValueV1::Cid(DbCidV1 {
-                domain_id: c.d_uuid,
-                server_id: c.s_uuid,
-                timestamp: c.ts,
-            }),
             PartialValue::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
-            PartialValue::DateTime(odt) => {
-                debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                DbValueV1::DateTime(odt.format(time::Format::Rfc3339))
-            }
-            PartialValue::EmailAddress(mail) => {
-                DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: mail.clone() })
-            }
-            PartialValue::Url(u) => DbValueV1::Url(u.clone()),
-            PartialValue::OauthScope(s) => DbValueV1::OauthScope(s.clone()),
-            PartialValue::OauthScopeMap(u) => {
-                let data = match &self.data {
-                    Some(v) => match v.as_ref() {
-                        DataValue::OauthScopeMap(m) => m.iter().cloned().collect(),
-                        _ => unreachable!(),
-                    },
-                    None => unreachable!(),
-                };
-                DbValueV1::OauthScopeMap(DbValueOauthScopeMapV1 { refer: *u, data })
-            }
+            v => unreachable!("-> {:?}", v),
         }
     }
 
@@ -1631,30 +1582,12 @@ impl Value {
         }
     }
 
+    // !!!! This function is beind phased out !!!
+    #[allow(clippy::unreachable)]
     pub(crate) fn to_proto_string_clone(&self) -> String {
         match &self.pv {
-            PartialValue::Utf8(s)
-            | PartialValue::Iutf8(s)
-            | PartialValue::Iname(s)
-            | PartialValue::Nsuniqueid(s)
-            | PartialValue::EmailAddress(s) => s.clone(),
+            PartialValue::Iname(s) => s.clone(),
             PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::Bool(b) => b.to_string(),
-            PartialValue::Syntax(syn) => syn.to_string(),
-            PartialValue::Index(it) => it.to_string(),
-            // In resolve value, we bypass this, but we keep it here for complete
-            // impl sake.
-            PartialValue::Refer(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::JsonFilt(s) =>
-            {
-                #[allow(clippy::expect_used)]
-                serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
-            }
-            PartialValue::Cred(tag) => {
-                // You can't actually read the credential values because we only display the
-                // tag to the proto side. The credentials private data is stored seperately.
-                tag.to_string()
-            }
             // We display the tag and fingerprint.
             PartialValue::SshKey(tag) => match &self.data {
                 Some(v) => match v.as_ref() {
@@ -1675,28 +1608,12 @@ impl Value {
             },
             // We don't disclose the secret value unless by special
             // interfaces.
-            PartialValue::SecretValue => "secret".to_string(),
             PartialValue::Spn(n, r) => format!("{}@{}", n, r),
-            PartialValue::Uint32(u) => u.to_string(),
-            PartialValue::Cid(c) => format!("{:?}_{}_{}", c.ts, c.d_uuid, c.s_uuid),
-            PartialValue::DateTime(odt) => {
-                debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                odt.format(time::Format::Rfc3339)
-            }
-            PartialValue::Url(u) => u.to_string(),
-            PartialValue::OauthScope(s) => s.to_string(),
-            PartialValue::OauthScopeMap(u) => match &self.data {
-                Some(v) => match v.as_ref() {
-                    DataValue::OauthScopeMap(m) => {
-                        format!("{}: {:?}", u, m)
-                    }
-                    _ => format!("{}: corrupted value tag", u),
-                },
-                None => format!("{}: corrupted value", u),
-            },
+            _ => unreachable!(),
         }
     }
 
+    // !!! relocate to value set !!!
     pub fn validate(&self) -> bool {
         // Validate that extra-data constraints on the type exist and are
         // valid. IE json filter is really a filter, or cred types have supplemental
@@ -1764,7 +1681,7 @@ impl Value {
                 // Should this also extract the key data?
                 vec![tag.to_string()]
             }
-            PartialValue::SecretValue => vec![],
+            PartialValue::SecretValue | PartialValue::PrivateBinary => vec![],
             PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
             PartialValue::Uint32(u) => vec![u.to_string()],
             PartialValue::Cid(_) => vec![],

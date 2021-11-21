@@ -1,4 +1,5 @@
 #![recursion_limit = "256"]
+#![deny(warnings)]
 
 use wasm_bindgen::prelude::*;
 

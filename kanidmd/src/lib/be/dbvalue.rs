@@ -188,6 +188,8 @@ pub enum DbValueV1 {
     OauthScope(String),
     #[serde(rename = "OM")]
     OauthScopeMap(DbValueOauthScopeMapV1),
+    #[serde(rename = "E2")]
+    PrivateBinary(Vec<u8>),
 }
 
 #[cfg(test)]

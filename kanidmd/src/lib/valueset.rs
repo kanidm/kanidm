@@ -42,6 +42,7 @@ enum I {
     Url(SmolSet<[Url; 1]>),
     OauthScope(BTreeSet<String>),
     OauthScopeMap(BTreeMap<Uuid, BTreeSet<String>>),
+    PrivateBinary(SmolSet<[Vec<u8>; 1]>),
 }
 
 pub struct ValueSet {
@@ -117,6 +118,10 @@ impl ValueSet {
                     Some(DataValue::OauthScopeMap(c)) => I::OauthScopeMap(btreemap![(u, c)]),
                     _ => unreachable!(),
                 },
+                PartialValue::PrivateBinary => match data.map(|b| (*b).clone()) {
+                    Some(DataValue::PrivateBinary(c)) => I::PrivateBinary(smolset![c]),
+                    _ => unreachable!(),
+                },
             },
         }
     }
@@ -186,6 +191,12 @@ impl ValueSet {
                     }
                 } else {
                     Ok(false)
+                }
+            }
+            (I::PrivateBinary(set), PartialValue::PrivateBinary) => {
+                match data.map(|b| (*b).clone()) {
+                    Some(DataValue::PrivateBinary(c)) => Ok(set.insert(c)),
+                    _ => Err(OperationError::InvalidValueState),
                 }
             }
             (_, _) => Err(OperationError::InvalidValueState),
@@ -268,6 +279,9 @@ impl ValueSet {
             }
             (I::OauthScopeMap(a), I::OauthScopeMap(b)) => {
                 mergemaps!(a, b)
+            }
+            (I::PrivateBinary(a), I::PrivateBinary(b)) => {
+                mergesets!(a, b)
             }
             // I think that in this case, we need to specify self / everything as we are changing
             // type and we need to potentially purge everything, so we just return the left side.
@@ -361,6 +375,12 @@ impl ValueSet {
             I::OauthScopeMap(map) => {
                 map.extend(iter.filter_map(|v| v.to_oauthscopemap()));
             }
+            I::PrivateBinary(set) => {
+                iter.filter_map(|v| v.to_privatebinary().cloned())
+                    .for_each(|i| {
+                        set.insert(i);
+                    });
+            }
         }
     }
 
@@ -428,6 +448,9 @@ impl ValueSet {
             }
             I::OauthScopeMap(map) => {
                 map.clear();
+            }
+            I::PrivateBinary(set) => {
+                set.clear();
             }
         };
         debug_assert!(self.is_empty());
@@ -500,6 +523,9 @@ impl ValueSet {
             | (I::OauthScopeMap(set), PartialValue::Refer(u)) => {
                 set.remove(u);
             }
+            (I::PrivateBinary(_set), PartialValue::PrivateBinary) => {
+                debug_assert!(false)
+            }
             (_, _) => {
                 debug_assert!(false)
             }
@@ -533,6 +559,7 @@ impl ValueSet {
             (I::OauthScope(set), PartialValue::OauthScope(u)) => set.contains(u),
             (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u))
             | (I::OauthScopeMap(map), PartialValue::Refer(u)) => map.contains_key(u),
+            (I::PrivateBinary(_set), PartialValue::PrivateBinary) => false,
             _ => false,
         }
     }
@@ -577,6 +604,7 @@ impl ValueSet {
             I::Url(set) => set.len(),
             I::OauthScope(set) => set.len(),
             I::OauthScopeMap(set) => set.len(),
+            I::PrivateBinary(set) => set.len(),
         }
     }
 
@@ -632,6 +660,7 @@ impl ValueSet {
                 .keys()
                 .map(|u| u.to_hyphenated_ref().to_string())
                 .collect(),
+            I::PrivateBinary(_set) => vec![],
         }
     }
 
@@ -838,6 +867,16 @@ impl ValueSet {
                     })
                 }
             }
+            (I::PrivateBinary(a), I::PrivateBinary(b)) => {
+                let x: SmolSet<_> = a.difference(b).cloned().collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::PrivateBinary(x),
+                    })
+                }
+            }
             // I think that in this case, we need to specify self / everything as we are changing
             // type and we need to potentially purge everything, so we just return the left side.
             _ => Some(self.clone()),
@@ -951,6 +990,7 @@ impl ValueSet {
                 .take(1)
                 .next()
                 .map(|(u, s)| Value::new_oauthscopemap(*u, s.clone())),
+            I::PrivateBinary(set) => set.iter().take(1).next().map(Value::new_privatebinary),
         }
     }
 
@@ -1105,6 +1145,19 @@ impl ValueSet {
         }
     }
 
+    pub fn to_private_binary_single(&self) -> Option<&[u8]> {
+        match &self.inner {
+            I::PrivateBinary(set) => {
+                if set.len() == 1 {
+                    set.iter().take(1).next().map(|v| v.as_slice())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn as_classname_iter(&self) -> Option<impl Iterator<Item = &str>> {
         match &self.inner {
             I::Iutf8(set) => Some(set.iter().map(|s| s.as_str())),
@@ -1181,6 +1234,7 @@ impl ValueSet {
             I::Url(set) => ProtoIter::Url(set.iter()),
             I::OauthScope(set) => ProtoIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => ProtoIter::OauthScopeMap(set.iter()),
+            I::PrivateBinary(set) => ProtoIter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1207,6 +1261,7 @@ impl ValueSet {
             I::Url(set) => DbValueV1Iter::Url(set.iter()),
             I::OauthScope(set) => DbValueV1Iter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => DbValueV1Iter::OauthScopeMap(set.iter()),
+            I::PrivateBinary(set) => DbValueV1Iter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1233,6 +1288,7 @@ impl ValueSet {
             I::Url(set) => PartialValueIter::Url(set.iter()),
             I::OauthScope(set) => PartialValueIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => PartialValueIter::OauthScopeMap(set.iter()),
+            I::PrivateBinary(set) => PartialValueIter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1259,6 +1315,7 @@ impl ValueSet {
             I::Url(set) => ValueIter::Url(set.iter()),
             I::OauthScope(set) => ValueIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => ValueIter::OauthScopeMap(set.iter()),
+            I::PrivateBinary(set) => ValueIter::PrivateBinary(set.iter()),
         }
     }
 
@@ -1367,6 +1424,10 @@ impl ValueSet {
         matches!(self.inner, I::OauthScopeMap(_))
     }
 
+    pub fn is_privatebinary(&self) -> bool {
+        matches!(self.inner, I::PrivateBinary(_))
+    }
+
     pub fn migrate_iutf8_iname(&mut self) -> Result<(), OperationError> {
         // Swap iutf8 to Iname internally.
         let ninner = match &self.inner {
@@ -1408,6 +1469,7 @@ impl PartialEq for ValueSet {
             (I::Url(a), I::Url(b)) => a.eq(b),
             (I::OauthScope(a), I::OauthScope(b)) => a.eq(b),
             (I::OauthScopeMap(a), I::OauthScopeMap(b)) => a.eq(b),
+            (I::PrivateBinary(a), I::PrivateBinary(b)) => a.eq(b),
             _ => false,
         }
     }
@@ -1470,6 +1532,7 @@ pub enum ValueIter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for ValueIter<'a> {
@@ -1517,6 +1580,7 @@ impl<'a> Iterator for ValueIter<'a> {
             ValueIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(group, scopes)| Value::new_oauthscopemap(*group, scopes.clone())),
+            ValueIter::PrivateBinary(iter) => iter.next().map(|i| Value::new_privatebinary(i)),
         }
     }
 }
@@ -1543,6 +1607,7 @@ pub enum PartialValueIter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for PartialValueIter<'a> {
@@ -1600,6 +1665,9 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(group, _scopes)| PartialValue::new_oauthscopemap(*group)),
+            PartialValueIter::PrivateBinary(iter) => {
+                iter.next().map(|_| PartialValue::PrivateBinary)
+            }
         }
     }
 }
@@ -1626,6 +1694,7 @@ pub enum DbValueV1Iter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for DbValueV1Iter<'a> {
@@ -1693,6 +1762,9 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
                     data: m.iter().cloned().collect(),
                 })
             }),
+            DbValueV1Iter::PrivateBinary(iter) => {
+                iter.next().map(|i| DbValueV1::PrivateBinary(i.clone()))
+            }
         }
     }
 }
@@ -1719,6 +1791,7 @@ pub enum ProtoIter<'a> {
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
+    PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
 }
 
 impl<'a> Iterator for ProtoIter<'a> {
@@ -1770,6 +1843,7 @@ impl<'a> Iterator for ProtoIter<'a> {
             ProtoIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(u, m)| format!("{}: {:?}", ValueSet::uuid_to_proto_string(u), m)),
+            ProtoIter::PrivateBinary(iter) => iter.next().map(|_| "private_binary".to_string()),
         }
     }
 }

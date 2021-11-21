@@ -485,7 +485,6 @@ impl Filter<FilterInvalid> {
     // This has to have two versions to account for ro/rw traits, because RS can't
     // monomorphise on the trait to call clone_value. An option is to make a fn that
     // takes "clone_value(t, a, v) instead, but that may have a similar issue.
-    // ! TRACING INTEGRATED
     pub fn from_ro(
         ev: &Identity,
         f: &ProtoFilter,
@@ -721,7 +720,6 @@ impl FilterComp {
         }
     }
 
-    // ! TRACING INTEGRATED
     fn from_ro(
         f: &ProtoFilter,
         qs: &QueryServerReadTransaction,

@@ -2,6 +2,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::password_from_random;
+use compact_jwt::JwsSigner;
 
 lazy_static! {
     static ref CLASS_OAUTH2_BASIC: PartialValue =
@@ -25,6 +26,30 @@ macro_rules! oauth2_transform {
                 let k = fernet::Fernet::generate_key();
                 let v = Value::new_secret_str(&k);
                 $e.add_ava("oauth2_rs_token_key", v);
+            }
+            if !$e.attribute_pres("es256_private_key_der") {
+                security_info!("regenerating oauth2 es256 private key");
+                let der = JwsSigner::generate_es256()
+                    .and_then(|jws| jws.private_key_to_der())
+                    .map_err(|e| {
+                        admin_error!(err = ?e, "Unable to generate ES256 JwsSigner private key");
+                        OperationError::CryptographyError
+                    })?;
+                let v = Value::new_privatebinary(&der);
+                $e.add_ava("es256_private_key_der", v);
+            }
+            if $e.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
+                if !$e.attribute_pres("rs256_private_key_der") {
+                    security_info!("regenerating oauth2 legacy rs256 private key");
+                    let der = JwsSigner::generate_legacy_rs256()
+                        .and_then(|jws| jws.private_key_to_der())
+                        .map_err(|e| {
+                            admin_error!(err = ?e, "Unable to generate Legacy RS256 JwsSigner private key");
+                            OperationError::CryptographyError
+                        })?;
+                    let v = Value::new_privatebinary(&der);
+                    $e.add_ava("rs256_private_key_der", v);
+                }
             }
         }
         Ok(())

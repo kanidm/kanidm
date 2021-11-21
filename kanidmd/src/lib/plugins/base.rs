@@ -615,6 +615,40 @@ mod tests {
     }
 
     #[test]
+    fn test_protected_uuid_range_2() {
+        // Test an external create, it should fail.
+        // Testing internal create is not super needed, due to migrations at start
+        // up testing this every time we run :P
+        let acp: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_ADMIN_ALLOW_ALL);
+
+        let preload = vec![acp];
+
+        let e: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(
+            r#"{
+            "attrs": {
+                "class": ["person", "system"],
+                "name": ["testperson"],
+                "uuid": ["00000000-0000-0000-0000-ffff00000088"],
+                "description": ["testperson"],
+                "displayname": ["testperson"]
+            }
+        }"#,
+        );
+
+        let create = vec![e.clone()];
+
+        run_create_test!(
+            Err(OperationError::Plugin(PluginError::Base(
+                "Uuid must not be in protected range".to_string()
+            ))),
+            preload,
+            create,
+            Some(JSON_ADMIN_V1),
+            |_| {}
+        );
+    }
+
+    #[test]
     fn test_protected_uuid_does_not_exist() {
         // Test that internal create of "does not exist" will fail.
         let preload = Vec::new();

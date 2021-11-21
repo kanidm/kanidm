@@ -1269,7 +1269,6 @@ impl Entry<EntrySealed, EntryCommitted> {
         }
     }
 
-    // ! TRACING INTEGRATED
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
         let r_attrs: Result<Map<AttrString, ValueSet>, ()> = match db_e.ent {
@@ -1451,7 +1450,6 @@ impl Entry<EntryReduced, EntryCommitted> {
     }
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
-    // ! TRACING INTEGRATED
     pub fn to_pe(&self, qs: &QueryServerReadTransaction) -> Result<ProtoEntry, OperationError> {
         // Turn values -> Strings.
         let attrs: Result<_, _> = self
@@ -1651,6 +1649,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.get(attr).and_then(|vs| vs.to_value_single())
     }
 
+    pub fn get_ava_single_proto_string(&self, attr: &str) -> Option<String> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_proto_string_single())
+    }
+
     #[inline(always)]
     /// Return a single bool, if valid to transform this value into a boolean.
     pub fn get_ava_single_bool(&self, attr: &str) -> Option<bool> {
@@ -1717,6 +1721,12 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs
             .get(attr)
             .and_then(|vs| vs.to_json_filter_single())
+    }
+
+    pub fn get_ava_single_private_binary(&self, attr: &str) -> Option<&[u8]> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_private_binary_single())
     }
 
     #[inline(always)]
