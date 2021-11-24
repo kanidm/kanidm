@@ -54,7 +54,7 @@ struct Record {
     conn: i32,
     etime: Duration,
     ids: Vec<Uuid>,
-    nentries: u32,
+    _nentries: u32,
     rtime: Duration,
     op_type: RawOpType,
 }
@@ -176,7 +176,7 @@ impl TryFrom<RawRecord> for Record {
             conn,
             etime,
             ids,
-            nentries,
+            _nentries: nentries,
             rtime,
             op_type,
         })
@@ -244,7 +244,6 @@ pub fn doit(input: &Path, output: &Path) {
     // Before we can precreate, we need an idea to what each
     // item is. Lets get all ids and see which ones ever did a bind.
     // This means they are probably an account.
-
     let accounts: HashSet<Uuid> = other
         .iter()
         .filter(|rec| rec.op_type == RawOpType::Bind)
@@ -292,6 +291,7 @@ pub fn doit(input: &Path, output: &Path) {
 
     let mut exists = precreate.clone();
 
+    // Consume all the remaining records into connection structures.
     other.iter().for_each(|rec| {
         debug!("{:?}", rec);
         if let Some(c) = connections.get_mut(&rec.conn) {

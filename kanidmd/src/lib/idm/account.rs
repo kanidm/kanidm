@@ -94,6 +94,8 @@ pub(crate) struct Account {
     pub name: String,
     pub displayname: String,
     pub uuid: Uuid,
+    // We want to allow this so that in the future we can populate this into oauth2 tokens
+    #[allow(dead_code)]
     pub groups: Vec<Group>,
     pub primary: Option<Credential>,
     pub valid_from: Option<OffsetDateTime>,

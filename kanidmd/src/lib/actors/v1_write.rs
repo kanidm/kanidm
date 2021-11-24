@@ -1159,7 +1159,13 @@ impl QueryServerWriteV1 {
 
             let ml = ModifyList::new_append(
                 "oauth2_rs_scope_map",
-                Value::new_oauthscopemap(group_uuid, scopes.into_iter().collect()),
+                Value::new_oauthscopemap(group_uuid, scopes.into_iter().collect()).ok_or_else(
+                    || {
+                        OperationError::InvalidAttribute(
+                            "Invalid Oauth Scope Map syntax".to_string(),
+                        )
+                    },
+                )?,
             );
 
             let mdf = match ModifyEvent::from_internal_parts(

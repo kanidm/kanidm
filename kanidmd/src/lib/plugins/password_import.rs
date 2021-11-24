@@ -5,6 +5,7 @@ use crate::plugins::Plugin;
 use crate::prelude::*;
 use kanidm_proto::v1::PluginError;
 use std::convert::TryFrom;
+use std::iter::once;
 
 pub struct PasswordImport {}
 
@@ -49,7 +50,7 @@ impl Plugin for PasswordImport {
                         // just set it then!
                         let c = Credential::new_from_password(pw);
                         e.set_ava("primary_credential",
-                            btreeset![Value::new_credential("primary", c)]);
+                            once(Value::new_credential("primary", c)));
                         Ok(())
                     }
                 }
@@ -94,7 +95,7 @@ impl Plugin for PasswordImport {
                     let c = c.update_password(pw);
                     e.set_ava(
                         "primary_credential",
-                        btreeset![Value::new_credential("primary", c)],
+                        once(Value::new_credential("primary", c)),
                     );
                     Ok(())
                 }
@@ -103,7 +104,7 @@ impl Plugin for PasswordImport {
                     let c = Credential::new_from_password(pw);
                     e.set_ava(
                         "primary_credential",
-                        btreeset![Value::new_credential("primary", c)],
+                        once(Value::new_credential("primary", c)),
                     );
                     Ok(())
                 }

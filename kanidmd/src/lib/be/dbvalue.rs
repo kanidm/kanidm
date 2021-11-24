@@ -95,6 +95,12 @@ pub enum DbCredTypeV1 {
     // PwWnVer,
 }
 
+// We have to allow this as serde expects &T for the fn sig.
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn is_false(b: &bool) -> bool {
+    !b
+}
+
 fn dbcred_type_default_pw() -> DbCredTypeV1 {
     DbCredTypeV1::Pw
 }
@@ -134,6 +140,31 @@ pub struct DbValueTaggedStringV1 {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DbValueEmailAddressV1 {
     pub d: String,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub p: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbValuePhoneNumberV1 {
+    pub d: String,
+    #[serde(skip_serializing_if = "is_false", default)]
+    pub p: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DbValueAddressV1 {
+    #[serde(rename = "f")]
+    pub formatted: String,
+    #[serde(rename = "s")]
+    pub street_address: String,
+    #[serde(rename = "l")]
+    pub locality: String,
+    #[serde(rename = "r")]
+    pub region: String,
+    #[serde(rename = "p")]
+    pub postal_code: String,
+    #[serde(rename = "c")]
+    pub country: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -182,6 +213,10 @@ pub enum DbValueV1 {
     DateTime(String),
     #[serde(rename = "EM")]
     EmailAddress(DbValueEmailAddressV1),
+    #[serde(rename = "PN")]
+    PhoneNumber(DbValuePhoneNumberV1),
+    #[serde(rename = "AD")]
+    Address(DbValueAddressV1),
     #[serde(rename = "UR")]
     Url(Url),
     #[serde(rename = "OS")]
@@ -190,6 +225,10 @@ pub enum DbValueV1 {
     OauthScopeMap(DbValueOauthScopeMapV1),
     #[serde(rename = "E2")]
     PrivateBinary(Vec<u8>),
+    #[serde(rename = "PB")]
+    PublicBinary(String, Vec<u8>),
+    #[serde(rename = "RS")]
+    RestrictedString(String),
 }
 
 #[cfg(test)]

@@ -7,17 +7,16 @@ use smolset::{SmolSet, SmolSetIter};
 use sshkeys::PublicKey as SshPublicKey;
 use std::collections::btree_map::Entry as BTreeEntry;
 use std::collections::{BTreeMap, BTreeSet};
+use std::convert::TryFrom;
 use std::iter::FromIterator;
 use time::OffsetDateTime;
 use tracing::trace;
 
 use crate::be::dbvalue::{
-    DbCidV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1, DbValueTaggedStringV1,
-    DbValueV1,
+    DbCidV1, DbValueAddressV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1,
+    DbValuePhoneNumberV1, DbValueTaggedStringV1, DbValueV1,
 };
-use crate::value::DataValue;
-
-// SmolSet<[; 1]>
+use crate::value::{Address, INAME_RE, NSUNIQUEID_RE, OAUTHSCOPE_RE};
 
 #[derive(Debug, Clone)]
 enum I {
@@ -38,11 +37,25 @@ enum I {
     Cid(SmolSet<[Cid; 1]>),
     Nsuniqueid(BTreeSet<String>),
     DateTime(SmolSet<[OffsetDateTime; 1]>),
-    EmailAddress(BTreeSet<String>),
+    EmailAddress {
+        primary: Option<String>,
+        set: BTreeSet<String>,
+    },
+    PhoneNumber {
+        primary: Option<String>,
+        set: BTreeSet<String>,
+    },
+    Address {
+        set: BTreeSet<Address>,
+    },
     Url(SmolSet<[Url; 1]>),
     OauthScope(BTreeSet<String>),
     OauthScopeMap(BTreeMap<Uuid, BTreeSet<String>>),
     PrivateBinary(SmolSet<[Vec<u8>; 1]>),
+    PublicBinary(BTreeMap<String, Vec<u8>>),
+    // Enumeration(SmolSet<[String; 1]>),
+    // Float64(Vec<[f64; 1]>),
+    RestrictedString(BTreeSet<String>),
 }
 
 pub struct ValueSet {
@@ -75,132 +88,351 @@ macro_rules! mergemaps {
     }};
 }
 
+impl From<Value> for ValueSet {
+    fn from(value: Value) -> Self {
+        ValueSet {
+            inner: match value {
+                Value::Utf8(s) => I::Utf8(btreeset![s]),
+                Value::Iutf8(s) => I::Iutf8(btreeset![s]),
+                Value::Iname(s) => I::Iname(btreeset![s]),
+                Value::Uuid(u) => I::Uuid(btreeset![u]),
+                Value::Bool(b) => I::Bool(smolset![b]),
+                Value::Syntax(s) => I::Syntax(smolset![s]),
+                Value::Index(i) => I::Index(smolset![i]),
+                Value::Refer(u) => I::Refer(btreeset![u]),
+                Value::JsonFilt(f) => I::JsonFilt(smolset![f]),
+                Value::Cred(t, c) => I::Cred(btreemap![(t, c)]),
+                Value::SshKey(t, k) => I::SshKey(btreemap![(t, k)]),
+                Value::SecretValue(c) => I::SecretValue(smolset![c]),
+                Value::Spn(n, d) => I::Spn(btreeset![(n, d)]),
+                Value::Uint32(i) => I::Uint32(smolset![i]),
+                Value::Cid(c) => I::Cid(smolset![c]),
+                Value::Nsuniqueid(s) => I::Nsuniqueid(btreeset![s]),
+                Value::DateTime(dt) => I::DateTime(smolset![dt]),
+                Value::EmailAddress(e, _) => I::EmailAddress {
+                    primary: None,
+                    set: btreeset![e],
+                },
+                Value::Url(u) => I::Url(smolset![u]),
+                Value::OauthScope(x) => I::OauthScope(btreeset![x]),
+                Value::OauthScopeMap(u, m) => I::OauthScopeMap(btreemap![(u, m)]),
+                Value::PrivateBinary(c) => I::PrivateBinary(smolset![c]),
+                Value::PhoneNumber(p, _) => I::PhoneNumber {
+                    primary: None,
+                    set: btreeset![p],
+                },
+                Value::Address(a) => I::Address { set: btreeset![a] },
+                Value::PublicBinary(tag, bin) => I::PublicBinary(btreemap![(tag, bin)]),
+                Value::RestrictedString(s) => I::RestrictedString(btreeset![s]),
+            },
+        }
+    }
+}
+
+impl TryFrom<DbValueV1> for ValueSet {
+    type Error = ();
+
+    fn try_from(value: DbValueV1) -> Result<Self, Self::Error> {
+        Ok(ValueSet {
+            inner: match value {
+                DbValueV1::Utf8(s) => I::Utf8(btreeset![s]),
+                DbValueV1::Iutf8(s) => I::Iutf8(btreeset![s]),
+                DbValueV1::Iname(s) => I::Iname(btreeset![s]),
+                DbValueV1::Uuid(u) => I::Uuid(btreeset![u]),
+                DbValueV1::Bool(b) => I::Bool(smolset![b]),
+                DbValueV1::SyntaxType(us) => {
+                    let s = SyntaxType::try_from(us)?;
+                    I::Syntax(smolset![s])
+                }
+                DbValueV1::IndexType(ui) => {
+                    let i = IndexType::try_from(ui)?;
+                    I::Index(smolset![i])
+                }
+                DbValueV1::Reference(u) => I::Refer(btreeset![u]),
+                DbValueV1::JsonFilter(s) => {
+                    let f = serde_json::from_str(&s).map_err(|_| ())?;
+                    I::JsonFilt(smolset![f])
+                }
+                DbValueV1::Credential(dvc) => {
+                    let t = dvc.tag.to_lowercase();
+                    let c = Credential::try_from(dvc.data)?;
+                    I::Cred(btreemap![(t, c)])
+                }
+                DbValueV1::SshKey(ts) => I::SshKey(btreemap![(ts.tag, ts.data)]),
+                DbValueV1::SecretValue(c) => I::SecretValue(smolset![c]),
+                DbValueV1::Spn(n, d) => I::Spn(btreeset![(n, d)]),
+                DbValueV1::Uint32(i) => I::Uint32(smolset![i]),
+                DbValueV1::Cid(dc) => {
+                    let c = Cid {
+                        ts: dc.timestamp,
+                        d_uuid: dc.domain_id,
+                        s_uuid: dc.server_id,
+                    };
+                    I::Cid(smolset![c])
+                }
+                DbValueV1::NsUniqueId(s) => I::Nsuniqueid(btreeset![s]),
+                DbValueV1::DateTime(s) => {
+                    let dt = OffsetDateTime::parse(s, time::Format::Rfc3339)
+                        .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                        .map_err(|_| ())?;
+                    I::DateTime(smolset![dt])
+                }
+                DbValueV1::EmailAddress(DbValueEmailAddressV1 {
+                    d: email_addr,
+                    p: is_primary,
+                }) => {
+                    let primary = if is_primary {
+                        Some(email_addr.clone())
+                    } else {
+                        None
+                    };
+                    I::EmailAddress {
+                        primary,
+                        set: btreeset![email_addr],
+                    }
+                }
+                DbValueV1::Url(u) => I::Url(smolset![u]),
+                DbValueV1::OauthScope(x) => I::OauthScope(btreeset![x]),
+                DbValueV1::OauthScopeMap(osm) => {
+                    let u = osm.refer;
+                    let m = osm.data.into_iter().collect();
+                    I::OauthScopeMap(btreemap![(u, m)])
+                }
+                DbValueV1::PrivateBinary(c) => I::PrivateBinary(smolset![c]),
+                DbValueV1::PhoneNumber(DbValuePhoneNumberV1 {
+                    d: phone_number,
+                    p: is_primary,
+                }) => {
+                    let primary = if is_primary {
+                        Some(phone_number.clone())
+                    } else {
+                        None
+                    };
+                    I::PhoneNumber {
+                        primary,
+                        set: btreeset![phone_number],
+                    }
+                }
+                DbValueV1::Address(_a) => todo!(),
+                // I::Address { set: btreeset![a] },
+                DbValueV1::PublicBinary(tag, bin) => I::PublicBinary(btreemap![(tag, bin)]),
+                DbValueV1::RestrictedString(s) => I::RestrictedString(btreeset![s]),
+            },
+        })
+    }
+}
+
 impl ValueSet {
     pub fn uuid_to_proto_string(u: &Uuid) -> String {
         u.to_hyphenated_ref().to_string()
     }
 
     pub fn new(value: Value) -> Self {
-        let Value { pv, data } = value;
-
-        ValueSet {
-            inner: match pv {
-                PartialValue::Utf8(s) => I::Utf8(btreeset![s]),
-                PartialValue::Iutf8(s) => I::Iutf8(btreeset![s]),
-                PartialValue::Iname(s) => I::Iname(btreeset![s]),
-                PartialValue::Uuid(u) => I::Uuid(btreeset![u]),
-                PartialValue::Bool(b) => I::Bool(smolset![b]),
-                PartialValue::Syntax(s) => I::Syntax(smolset![s]),
-                PartialValue::Index(i) => I::Index(smolset![i]),
-                PartialValue::Refer(u) => I::Refer(btreeset![u]),
-                PartialValue::JsonFilt(f) => I::JsonFilt(smolset![f]),
-                PartialValue::Cred(t) => match data.map(|b| (*b).clone()) {
-                    Some(DataValue::Cred(c)) => I::Cred(btreemap![(t, c)]),
-                    _ => unreachable!(),
-                },
-                PartialValue::SshKey(t) => match data.map(|b| (*b).clone()) {
-                    Some(DataValue::SshKey(k)) => I::SshKey(btreemap![(t, k)]),
-                    _ => unreachable!(),
-                },
-                PartialValue::SecretValue => match data.map(|b| (*b).clone()) {
-                    Some(DataValue::SecretValue(c)) => I::SecretValue(smolset![c]),
-                    _ => unreachable!(),
-                },
-                PartialValue::Spn(n, d) => I::Spn(btreeset![(n, d)]),
-                PartialValue::Uint32(i) => I::Uint32(smolset![i]),
-                PartialValue::Cid(c) => I::Cid(smolset![c]),
-                PartialValue::Nsuniqueid(s) => I::Nsuniqueid(btreeset![s]),
-                PartialValue::DateTime(dt) => I::DateTime(smolset![dt]),
-                PartialValue::EmailAddress(e) => I::EmailAddress(btreeset![e]),
-                PartialValue::Url(u) => I::Url(smolset![u]),
-                PartialValue::OauthScope(x) => I::OauthScope(btreeset![x]),
-                PartialValue::OauthScopeMap(u) => match data.map(|b| (*b).clone()) {
-                    Some(DataValue::OauthScopeMap(c)) => I::OauthScopeMap(btreemap![(u, c)]),
-                    _ => unreachable!(),
-                },
-                PartialValue::PrivateBinary => match data.map(|b| (*b).clone()) {
-                    Some(DataValue::PrivateBinary(c)) => I::PrivateBinary(smolset![c]),
-                    _ => unreachable!(),
-                },
-            },
-        }
+        Self::from(value)
     }
 
+    // Returns Ok(true) if value was NOT present before.
     pub fn insert_checked(&mut self, value: Value) -> Result<bool, OperationError> {
-        let Value { pv, data } = value;
-
-        match (&mut self.inner, pv) {
-            (I::Utf8(set), PartialValue::Utf8(s)) => Ok(set.insert(s)),
-            (I::Iutf8(set), PartialValue::Iutf8(s)) => Ok(set.insert(s)),
-            (I::Iname(set), PartialValue::Iname(s)) => Ok(set.insert(s)),
-            (I::Uuid(set), PartialValue::Uuid(u)) => Ok(set.insert(u)),
-            (I::Bool(bs), PartialValue::Bool(b)) => {
+        match (&mut self.inner, value) {
+            (I::Utf8(set), Value::Utf8(s)) => Ok(set.insert(s)),
+            (I::Iutf8(set), Value::Iutf8(s)) => Ok(set.insert(s)),
+            (I::Iname(set), Value::Iname(s)) => Ok(set.insert(s)),
+            (I::Uuid(set), Value::Uuid(u)) => Ok(set.insert(u)),
+            (I::Bool(bs), Value::Bool(b)) => {
                 bs.insert(b);
                 Ok(true)
             }
-            (I::Syntax(set), PartialValue::Syntax(s)) => Ok(set.insert(s)),
-            (I::Index(set), PartialValue::Index(i)) => Ok(set.insert(i)),
-            (I::Refer(set), PartialValue::Refer(u)) => Ok(set.insert(u)),
-            (I::JsonFilt(set), PartialValue::JsonFilt(f)) => Ok(set.insert(f)),
-            (I::Cred(map), PartialValue::Cred(t)) => {
+            (I::Syntax(set), Value::Syntax(s)) => Ok(set.insert(s)),
+            (I::Index(set), Value::Index(i)) => Ok(set.insert(i)),
+            (I::Refer(set), Value::Refer(u)) => Ok(set.insert(u)),
+            (I::JsonFilt(set), Value::JsonFilt(f)) => Ok(set.insert(f)),
+            (I::Cred(map), Value::Cred(t, c)) => {
                 if let BTreeEntry::Vacant(e) = map.entry(t) {
-                    match data.map(|b| (*b).clone()) {
-                        Some(DataValue::Cred(c)) => Ok({
-                            e.insert(c);
-                            true
-                        }),
-                        _ => Err(OperationError::InvalidValueState),
-                    }
+                    e.insert(c);
+                    Ok(true)
                 } else {
                     Ok(false)
                 }
             }
-            (I::SshKey(map), PartialValue::SshKey(t)) => {
+            (I::SshKey(map), Value::SshKey(t, k)) => {
                 if let BTreeEntry::Vacant(e) = map.entry(t) {
-                    match data.map(|b| (*b).clone()) {
-                        Some(DataValue::SshKey(k)) => Ok({
-                            e.insert(k);
-                            true
-                        }),
-                        _ => Err(OperationError::InvalidValueState),
-                    }
+                    e.insert(k);
+                    Ok(true)
                 } else {
                     Ok(false)
                 }
             }
-            (I::SecretValue(set), PartialValue::SecretValue) => match data.map(|b| (*b).clone()) {
-                Some(DataValue::SecretValue(c)) => Ok(set.insert(c)),
-                _ => Err(OperationError::InvalidValueState),
-            },
-            (I::Spn(set), PartialValue::Spn(n, d)) => Ok(set.insert((n, d))),
-            (I::Uint32(set), PartialValue::Uint32(i)) => Ok(set.insert(i)),
-            (I::Cid(set), PartialValue::Cid(c)) => Ok(set.insert(c)),
-            (I::Nsuniqueid(set), PartialValue::Nsuniqueid(u)) => Ok(set.insert(u)),
-            (I::DateTime(set), PartialValue::DateTime(dt)) => Ok(set.insert(dt)),
-            (I::EmailAddress(set), PartialValue::EmailAddress(e)) => Ok(set.insert(e)),
-            (I::Url(set), PartialValue::Url(u)) => Ok(set.insert(u)),
-            (I::OauthScope(set), PartialValue::OauthScope(u)) => Ok(set.insert(u)),
-            (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u)) => {
+            (I::SecretValue(set), Value::SecretValue(c)) => Ok(set.insert(c)),
+            (I::Spn(set), Value::Spn(n, d)) => Ok(set.insert((n, d))),
+            (I::Uint32(set), Value::Uint32(i)) => Ok(set.insert(i)),
+            (I::Cid(set), Value::Cid(c)) => Ok(set.insert(c)),
+            (I::Nsuniqueid(set), Value::Nsuniqueid(u)) => Ok(set.insert(u)),
+            (I::DateTime(set), Value::DateTime(dt)) => Ok(set.insert(dt)),
+            (I::EmailAddress { primary, set }, Value::EmailAddress(e, is_primary)) => {
+                // Need to check primary first.
+                if is_primary {
+                    *primary = Some(e.clone());
+                };
+                Ok(set.insert(e))
+            }
+            (I::PhoneNumber { primary, set }, Value::PhoneNumber(e, is_primary)) => {
+                // Need to check primary first.
+                if is_primary {
+                    *primary = Some(e.clone());
+                };
+                Ok(set.insert(e))
+            }
+            (I::Address { set }, Value::Address(e)) => {
+                // Need to check primary first.
+                Ok(set.insert(e))
+            }
+            (I::Url(set), Value::Url(u)) => Ok(set.insert(u)),
+            (I::OauthScope(set), Value::OauthScope(u)) => Ok(set.insert(u)),
+            (I::OauthScopeMap(map), Value::OauthScopeMap(u, m)) => {
                 if let BTreeEntry::Vacant(e) = map.entry(u) {
-                    match data.map(|b| (*b).clone()) {
-                        Some(DataValue::OauthScopeMap(k)) => Ok({
-                            e.insert(k);
-                            true
-                        }),
-                        _ => Err(OperationError::InvalidValueState),
-                    }
+                    e.insert(m);
+                    Ok(true)
                 } else {
                     Ok(false)
                 }
             }
-            (I::PrivateBinary(set), PartialValue::PrivateBinary) => {
-                match data.map(|b| (*b).clone()) {
-                    Some(DataValue::PrivateBinary(c)) => Ok(set.insert(c)),
-                    _ => Err(OperationError::InvalidValueState),
+            (I::PrivateBinary(set), Value::PrivateBinary(c)) => Ok(set.insert(c)),
+            (I::PublicBinary(map), Value::PublicBinary(tag, c)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(tag) {
+                    e.insert(c);
+                    Ok(true)
+                } else {
+                    Ok(false)
                 }
             }
+            (I::RestrictedString(set), Value::RestrictedString(s)) => Ok(set.insert(s)),
             (_, _) => Err(OperationError::InvalidValueState),
         }
+    }
+
+    fn insert_db_valuev1(&mut self, v: DbValueV1) -> Result<(), ()> {
+        match (&mut self.inner, v) {
+            (I::Utf8(set), DbValueV1::Utf8(s)) => Ok(set.insert(s)),
+            (I::Iutf8(set), DbValueV1::Iutf8(s)) => Ok(set.insert(s)),
+            (I::Iname(set), DbValueV1::Iname(s)) => Ok(set.insert(s)),
+            (I::Uuid(set), DbValueV1::Uuid(u)) => Ok(set.insert(u)),
+            (I::Bool(set), DbValueV1::Bool(b)) => {
+                set.insert(b);
+                Ok(true)
+            }
+            (I::Syntax(set), DbValueV1::SyntaxType(us)) => {
+                let s = SyntaxType::try_from(us)?;
+                Ok(set.insert(s))
+            }
+            (I::Index(set), DbValueV1::IndexType(ui)) => {
+                let i = IndexType::try_from(ui)?;
+                Ok(set.insert(i))
+            }
+            (I::Refer(set), DbValueV1::Reference(u)) => Ok(set.insert(u)),
+            (I::JsonFilt(set), DbValueV1::JsonFilter(s)) => {
+                let f = serde_json::from_str(&s).map_err(|_| ())?;
+                Ok(set.insert(f))
+            }
+            (I::Cred(map), DbValueV1::Credential(dvc)) => {
+                let t = dvc.tag.to_lowercase();
+                let c = Credential::try_from(dvc.data)?;
+                if let BTreeEntry::Vacant(e) = map.entry(t) {
+                    e.insert(c);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::SshKey(map), DbValueV1::SshKey(ts)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(ts.tag) {
+                    e.insert(ts.data);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::SecretValue(set), DbValueV1::SecretValue(c)) => Ok(set.insert(c)),
+            (I::Spn(set), DbValueV1::Spn(n, d)) => Ok(set.insert((n, d))),
+            (I::Uint32(set), DbValueV1::Uint32(i)) => Ok(set.insert(i)),
+            (I::Cid(set), DbValueV1::Cid(dc)) => {
+                let c = Cid {
+                    ts: dc.timestamp,
+                    d_uuid: dc.domain_id,
+                    s_uuid: dc.server_id,
+                };
+                Ok(set.insert(c))
+            }
+            (I::Nsuniqueid(set), DbValueV1::NsUniqueId(s)) => Ok(set.insert(s)),
+            (I::DateTime(set), DbValueV1::DateTime(s)) => {
+                let dt = OffsetDateTime::parse(s, time::Format::Rfc3339)
+                    .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+                    .map_err(|_| ())?;
+                Ok(set.insert(dt))
+            }
+            (
+                I::EmailAddress { primary, set },
+                DbValueV1::EmailAddress(DbValueEmailAddressV1 {
+                    d: email_addr,
+                    p: is_primary,
+                }),
+            ) => {
+                if is_primary {
+                    debug_assert!(primary.is_none());
+                    *primary = Some(email_addr.clone());
+                };
+
+                Ok(set.insert(email_addr))
+            }
+            (
+                I::PhoneNumber { primary, set },
+                DbValueV1::PhoneNumber(DbValuePhoneNumberV1 {
+                    d: phone_number,
+                    p: is_primary,
+                }),
+            ) => {
+                if is_primary {
+                    debug_assert!(primary.is_none());
+                    *primary = Some(phone_number.clone());
+                };
+                Ok(set.insert(phone_number))
+            }
+            (I::Address { set: _ }, DbValueV1::Address(_a)) => {
+                todo!()
+            }
+            (I::Url(set), DbValueV1::Url(u)) => Ok(set.insert(u)),
+            (I::OauthScope(set), DbValueV1::OauthScope(x)) => Ok(set.insert(x)),
+            (I::OauthScopeMap(map), DbValueV1::OauthScopeMap(osm)) => {
+                let u = osm.refer;
+                let m = osm.data.into_iter().collect();
+
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(m);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::PrivateBinary(set), DbValueV1::PrivateBinary(c)) => Ok(set.insert(c)),
+            (I::PublicBinary(map), DbValueV1::PublicBinary(tag, bin)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(tag) {
+                    e.insert(bin);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::RestrictedString(set), DbValueV1::RestrictedString(s)) => Ok(set.insert(s)),
+            (_, _) => Err(()),
+        }
+        .and_then(|is_new| {
+            debug_assert!(is_new);
+            // If its ok(false) error?
+            if is_new {
+                Ok(())
+            } else {
+                Err(())
+            }
+        })
     }
 
     /// # Safety
@@ -268,8 +500,32 @@ impl ValueSet {
             (I::DateTime(a), I::DateTime(b)) => {
                 mergesets!(a, b)
             }
-            (I::EmailAddress(a), I::EmailAddress(b)) => {
-                mergesets!(a, b)
+            (
+                I::EmailAddress {
+                    primary: _,
+                    set: set_a,
+                },
+                I::EmailAddress {
+                    primary: _,
+                    set: set_b,
+                },
+            ) => {
+                mergesets!(set_a, set_b)
+            }
+            (
+                I::PhoneNumber {
+                    primary: _,
+                    set: set_a,
+                },
+                I::PhoneNumber {
+                    primary: _,
+                    set: set_b,
+                },
+            ) => {
+                mergesets!(set_a, set_b)
+            }
+            (I::Address { set: set_a }, I::Address { set: set_b }) => {
+                mergesets!(set_a, set_b)
             }
             (I::Url(a), I::Url(b)) => {
                 mergesets!(a, b)
@@ -281,6 +537,12 @@ impl ValueSet {
                 mergemaps!(a, b)
             }
             (I::PrivateBinary(a), I::PrivateBinary(b)) => {
+                mergesets!(a, b)
+            }
+            (I::PublicBinary(a), I::PublicBinary(b)) => {
+                mergemaps!(a, b)
+            }
+            (I::RestrictedString(a), I::RestrictedString(b)) => {
                 mergesets!(a, b)
             }
             // I think that in this case, we need to specify self / everything as we are changing
@@ -361,8 +623,14 @@ impl ValueSet {
                     set.insert(i);
                 });
             }
-            I::EmailAddress(set) => {
+            I::EmailAddress { primary: _, set } => {
                 set.extend(iter.filter_map(|v| v.to_emailaddress()));
+            }
+            I::PhoneNumber { primary: _, set } => {
+                set.extend(iter.filter_map(|v| v.to_phonenumber()));
+            }
+            I::Address { set } => {
+                set.extend(iter.filter_map(|v| v.to_address()));
             }
             I::Url(set) => {
                 iter.filter_map(|v| v.to_url().cloned()).for_each(|i| {
@@ -380,6 +648,12 @@ impl ValueSet {
                     .for_each(|i| {
                         set.insert(i);
                     });
+            }
+            I::PublicBinary(map) => {
+                map.extend(iter.filter_map(|v| v.to_publicbinary()));
+            }
+            I::RestrictedString(set) => {
+                set.extend(iter.filter_map(|v| v.to_restrictedstring()));
             }
         }
     }
@@ -437,7 +711,13 @@ impl ValueSet {
             I::DateTime(set) => {
                 set.clear();
             }
-            I::EmailAddress(set) => {
+            I::EmailAddress { primary: _, set } => {
+                set.clear();
+            }
+            I::PhoneNumber { primary: _, set } => {
+                set.clear();
+            }
+            I::Address { set } => {
                 set.clear();
             }
             I::Url(set) => {
@@ -450,6 +730,12 @@ impl ValueSet {
                 map.clear();
             }
             I::PrivateBinary(set) => {
+                set.clear();
+            }
+            I::PublicBinary(set) => {
+                set.clear();
+            }
+            I::RestrictedString(set) => {
                 set.clear();
             }
         };
@@ -510,8 +796,21 @@ impl ValueSet {
             (I::DateTime(set), PartialValue::DateTime(dt)) => {
                 set.remove(dt);
             }
-            (I::EmailAddress(set), PartialValue::EmailAddress(e)) => {
+            (I::EmailAddress { primary, set }, PartialValue::EmailAddress(e)) => {
+                if Some(e) == primary.as_ref() {
+                    *primary = None;
+                };
                 set.remove(e);
+            }
+            (I::PhoneNumber { primary, set }, PartialValue::PhoneNumber(e)) => {
+                if Some(e) == primary.as_ref() {
+                    *primary = None;
+                };
+                set.remove(e);
+            }
+            (I::Address { set: _ }, PartialValue::Address(_e)) => {
+                // set.remove(e);
+                todo!();
             }
             (I::Url(set), PartialValue::Url(u)) => {
                 set.remove(u);
@@ -525,6 +824,12 @@ impl ValueSet {
             }
             (I::PrivateBinary(_set), PartialValue::PrivateBinary) => {
                 debug_assert!(false)
+            }
+            (I::PublicBinary(map), PartialValue::PublicBinary(t)) => {
+                map.remove(t);
+            }
+            (I::RestrictedString(set), PartialValue::RestrictedString(s)) => {
+                set.remove(s);
             }
             (_, _) => {
                 debug_assert!(false)
@@ -554,12 +859,20 @@ impl ValueSet {
             (I::Cid(set), PartialValue::Cid(c)) => set.contains(c),
             (I::Nsuniqueid(set), PartialValue::Nsuniqueid(u)) => set.contains(u.as_str()),
             (I::DateTime(set), PartialValue::DateTime(dt)) => set.contains(dt),
-            (I::EmailAddress(set), PartialValue::EmailAddress(e)) => set.contains(e.as_str()),
+            (I::EmailAddress { primary: _, set }, PartialValue::EmailAddress(e)) => set.contains(e),
+            (I::PhoneNumber { primary: _, set }, PartialValue::PhoneNumber(e)) => set.contains(e),
+            (I::Address { set: _ }, PartialValue::Address(_e)) => {
+                todo!()
+            }
             (I::Url(set), PartialValue::Url(u)) => set.contains(u),
             (I::OauthScope(set), PartialValue::OauthScope(u)) => set.contains(u),
             (I::OauthScopeMap(map), PartialValue::OauthScopeMap(u))
             | (I::OauthScopeMap(map), PartialValue::Refer(u)) => map.contains_key(u),
             (I::PrivateBinary(_set), PartialValue::PrivateBinary) => false,
+            (I::PublicBinary(map), PartialValue::PublicBinary(t)) => map.contains_key(t.as_str()),
+            (I::RestrictedString(set), PartialValue::RestrictedString(s)) => {
+                set.contains(s.as_str())
+            }
             _ => false,
         }
     }
@@ -569,6 +882,9 @@ impl ValueSet {
             (I::Utf8(set), PartialValue::Utf8(s2)) => set.iter().any(|s1| s1.contains(s2)),
             (I::Iutf8(set), PartialValue::Iutf8(s2)) => set.iter().any(|s1| s1.contains(s2)),
             (I::Iname(set), PartialValue::Iname(s2)) => set.iter().any(|s1| s1.contains(s2)),
+            (I::RestrictedString(set), PartialValue::RestrictedString(s2)) => {
+                set.iter().any(|s1| s1.contains(s2))
+            }
             _ => false,
         }
     }
@@ -600,11 +916,15 @@ impl ValueSet {
             I::Cid(set) => set.len(),
             I::Nsuniqueid(set) => set.len(),
             I::DateTime(set) => set.len(),
-            I::EmailAddress(set) => set.len(),
+            I::EmailAddress { primary: _, set } => set.len(),
+            I::PhoneNumber { primary: _, set } => set.len(),
+            I::Address { set } => set.len(),
             I::Url(set) => set.len(),
             I::OauthScope(set) => set.len(),
             I::OauthScopeMap(set) => set.len(),
             I::PrivateBinary(set) => set.len(),
+            I::PublicBinary(map) => map.len(),
+            I::RestrictedString(set) => set.len(),
         }
     }
 
@@ -650,7 +970,10 @@ impl ValueSet {
                     odt.format(time::Format::Rfc3339)
                 })
                 .collect(),
-            I::EmailAddress(set) => set.iter().cloned().collect(),
+            I::EmailAddress { primary: _, set } => set.iter().cloned().collect(),
+            I::PhoneNumber { primary: _, set } => set.iter().cloned().collect(),
+            I::Address { set: _ } => todo!(),
+            // set.iter().cloned().collect(),
             // Don't you dare comment on this quinn, it's a URL not a str.
             I::Url(set) => set.iter().map(|u| u.to_string()).collect(),
             // Should we index this?
@@ -661,6 +984,8 @@ impl ValueSet {
                 .map(|u| u.to_hyphenated_ref().to_string())
                 .collect(),
             I::PrivateBinary(_set) => vec![],
+            I::PublicBinary(map) => map.keys().cloned().collect(),
+            I::RestrictedString(set) => set.iter().cloned().collect(),
         }
     }
 
@@ -825,15 +1150,52 @@ impl ValueSet {
                     })
                 }
             }
-            (I::EmailAddress(a), I::EmailAddress(b)) => {
-                let x: BTreeSet<_> = a.difference(b).cloned().collect();
+            (
+                I::EmailAddress {
+                    primary: _,
+                    set: set_a,
+                },
+                I::EmailAddress {
+                    primary: _,
+                    set: set_b,
+                },
+            ) => {
+                let x: BTreeSet<_> = set_a.difference(set_b).cloned().collect();
                 if x.is_empty() {
                     None
                 } else {
                     Some(ValueSet {
-                        inner: I::EmailAddress(x),
+                        inner: I::EmailAddress {
+                            primary: None,
+                            set: x,
+                        },
                     })
                 }
+            }
+            (
+                I::PhoneNumber {
+                    primary: _,
+                    set: set_a,
+                },
+                I::PhoneNumber {
+                    primary: _,
+                    set: set_b,
+                },
+            ) => {
+                let x: BTreeSet<_> = set_a.difference(set_b).cloned().collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::PhoneNumber {
+                            primary: None,
+                            set: x,
+                        },
+                    })
+                }
+            }
+            (I::Address { set: _set_a }, I::Address { set: _set_b }) => {
+                todo!()
             }
             (I::Url(a), I::Url(b)) => {
                 let x: SmolSet<_> = a.difference(b).cloned().collect();
@@ -857,7 +1219,7 @@ impl ValueSet {
                 let x: BTreeMap<_, _> = a
                     .iter()
                     .filter(|(k, _)| b.contains_key(k))
-                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .map(|(k, v)| (*k, v.clone()))
                     .collect();
                 if x.is_empty() {
                     None
@@ -874,6 +1236,30 @@ impl ValueSet {
                 } else {
                     Some(ValueSet {
                         inner: I::PrivateBinary(x),
+                    })
+                }
+            }
+            (I::PublicBinary(a), I::PublicBinary(b)) => {
+                let x: BTreeMap<_, _> = a
+                    .iter()
+                    .filter(|(k, _)| b.contains_key(k.as_str()))
+                    .map(|(k, v)| (k.clone(), v.clone()))
+                    .collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::PublicBinary(x),
+                    })
+                }
+            }
+            (I::RestrictedString(a), I::RestrictedString(b)) => {
+                let x: BTreeSet<_> = a.difference(b).cloned().collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::RestrictedString(x),
                     })
                 }
             }
@@ -914,83 +1300,9 @@ impl ValueSet {
 
     pub fn to_value_single(&self) -> Option<Value> {
         if self.len() != 1 {
-            return None;
-        }
-        // From here it's guarantee everything is len 1.
-        match &self.inner {
-            I::Utf8(set) => set.iter().take(1).next().cloned().map(Value::new_utf8),
-            I::Iutf8(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|s| s.as_str())
-                .map(Value::new_iutf8),
-            I::Iname(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|s| s.as_str())
-                .map(Value::new_iname),
-            I::Uuid(set) => set.iter().take(1).next().map(Value::new_uuidr),
-            I::Bool(set) => set.iter().take(1).next().copied().map(Value::new_bool),
-            I::Syntax(set) => set.iter().take(1).next().cloned().map(Value::new_syntax),
-            I::Index(set) => set.iter().take(1).next().cloned().map(Value::new_index),
-            I::Refer(set) => set.iter().take(1).next().map(Value::new_refer_r),
-            I::JsonFilt(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .cloned()
-                .map(Value::new_json_filter),
-            I::Cred(map) => map
-                .iter()
-                .take(1)
-                .next()
-                .map(|(t, c)| Value::new_credential(t, c.clone())),
-            I::SshKey(map) => map
-                .iter()
-                .take(1)
-                .next()
-                .map(|(t, k)| Value::new_sshkey_str(t, k)),
-            I::SecretValue(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|s| s.as_str())
-                .map(Value::new_secret_str),
-            I::Spn(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|(n, r)| Value::new_spn_str(n, r)),
-            I::Uint32(set) => set.iter().take(1).next().copied().map(Value::new_uint32),
-            I::Cid(set) => set.iter().take(1).next().cloned().map(Value::new_cid),
-            I::Nsuniqueid(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|s| s.as_str())
-                .map(Value::new_nsuniqueid_s),
-            I::DateTime(set) => set.iter().take(1).next().cloned().map(Value::new_datetime),
-            I::EmailAddress(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|s| s.as_str())
-                .map(Value::new_email_address_s),
-            I::Url(set) => set.iter().take(1).next().cloned().map(Value::new_url),
-            I::OauthScope(set) => set
-                .iter()
-                .take(1)
-                .next()
-                .map(|s| s.as_str())
-                .map(Value::new_oauthscope),
-            I::OauthScopeMap(map) => map
-                .iter()
-                .take(1)
-                .next()
-                .map(|(u, s)| Value::new_oauthscopemap(*u, s.clone())),
-            I::PrivateBinary(set) => set.iter().take(1).next().map(Value::new_privatebinary),
+            None
+        } else {
+            self.to_value_iter().take(1).next()
         }
     }
 
@@ -1145,6 +1457,20 @@ impl ValueSet {
         }
     }
 
+    pub fn to_email_address_primary_str(&self) -> Option<&str> {
+        match &self.inner {
+            I::EmailAddress { primary, set } => {
+                if let Some(p) = primary {
+                    debug_assert!(set.contains(p));
+                    Some(p.as_str())
+                } else {
+                    None
+                }
+            }
+            _ => None,
+        }
+    }
+
     pub fn to_private_binary_single(&self) -> Option<&[u8]> {
         match &self.inner {
             I::PrivateBinary(set) => {
@@ -1230,11 +1556,15 @@ impl ValueSet {
             I::Cid(set) => ProtoIter::Cid(set.iter()),
             I::Nsuniqueid(set) => ProtoIter::Nsuniqueid(set.iter()),
             I::DateTime(set) => ProtoIter::DateTime(set.iter()),
-            I::EmailAddress(set) => ProtoIter::EmailAddress(set.iter()),
+            I::EmailAddress { primary: _, set } => ProtoIter::EmailAddress(set.iter()),
+            I::PhoneNumber { primary: _, set } => ProtoIter::PhoneNumber(set.iter()),
+            I::Address { set } => ProtoIter::Address(set.iter()),
             I::Url(set) => ProtoIter::Url(set.iter()),
             I::OauthScope(set) => ProtoIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => ProtoIter::OauthScopeMap(set.iter()),
             I::PrivateBinary(set) => ProtoIter::PrivateBinary(set.iter()),
+            I::PublicBinary(set) => ProtoIter::PublicBinary(set.iter()),
+            I::RestrictedString(set) => ProtoIter::RestrictedString(set.iter()),
         }
     }
 
@@ -1257,11 +1587,19 @@ impl ValueSet {
             I::Cid(set) => DbValueV1Iter::Cid(set.iter()),
             I::Nsuniqueid(set) => DbValueV1Iter::Nsuniqueid(set.iter()),
             I::DateTime(set) => DbValueV1Iter::DateTime(set.iter()),
-            I::EmailAddress(set) => DbValueV1Iter::EmailAddress(set.iter()),
+            I::EmailAddress { primary, set } => {
+                DbValueV1Iter::EmailAddress(primary.as_deref(), set.iter())
+            }
+            I::PhoneNumber { primary, set } => {
+                DbValueV1Iter::PhoneNumber(primary.as_deref(), set.iter())
+            }
+            I::Address { set } => DbValueV1Iter::Address(set.iter()),
             I::Url(set) => DbValueV1Iter::Url(set.iter()),
             I::OauthScope(set) => DbValueV1Iter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => DbValueV1Iter::OauthScopeMap(set.iter()),
             I::PrivateBinary(set) => DbValueV1Iter::PrivateBinary(set.iter()),
+            I::PublicBinary(set) => DbValueV1Iter::PublicBinary(set.iter()),
+            I::RestrictedString(set) => DbValueV1Iter::RestrictedString(set.iter()),
         }
     }
 
@@ -1284,11 +1622,15 @@ impl ValueSet {
             I::Cid(set) => PartialValueIter::Cid(set.iter()),
             I::Nsuniqueid(set) => PartialValueIter::Nsuniqueid(set.iter()),
             I::DateTime(set) => PartialValueIter::DateTime(set.iter()),
-            I::EmailAddress(set) => PartialValueIter::EmailAddress(set.iter()),
+            I::EmailAddress { primary: _, set } => PartialValueIter::EmailAddress(set.iter()),
+            I::PhoneNumber { primary: _, set } => PartialValueIter::PhoneNumber(set.iter()),
+            I::Address { set } => PartialValueIter::Address(set.iter()),
             I::Url(set) => PartialValueIter::Url(set.iter()),
             I::OauthScope(set) => PartialValueIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => PartialValueIter::OauthScopeMap(set.iter()),
             I::PrivateBinary(set) => PartialValueIter::PrivateBinary(set.iter()),
+            I::PublicBinary(set) => PartialValueIter::PublicBinary(set.iter()),
+            I::RestrictedString(set) => PartialValueIter::RestrictedString(set.iter()),
         }
     }
 
@@ -1311,11 +1653,15 @@ impl ValueSet {
             I::Cid(set) => ValueIter::Cid(set.iter()),
             I::Nsuniqueid(set) => ValueIter::Nsuniqueid(set.iter()),
             I::DateTime(set) => ValueIter::DateTime(set.iter()),
-            I::EmailAddress(set) => ValueIter::EmailAddress(set.iter()),
+            I::EmailAddress { primary: _, set } => ValueIter::EmailAddress(set.iter()),
+            I::PhoneNumber { primary: _, set } => ValueIter::PhoneNumber(set.iter()),
+            I::Address { set } => ValueIter::Address(set.iter()),
             I::Url(set) => ValueIter::Url(set.iter()),
             I::OauthScope(set) => ValueIter::OauthScope(set.iter()),
             I::OauthScopeMap(set) => ValueIter::OauthScopeMap(set.iter()),
             I::PrivateBinary(set) => ValueIter::PrivateBinary(set.iter()),
+            I::PublicBinary(set) => ValueIter::PublicBinary(set.iter()),
+            I::RestrictedString(set) => ValueIter::RestrictedString(set.iter()),
         }
     }
 
@@ -1336,6 +1682,26 @@ impl ValueSet {
             let v = maybe_v?;
             // Need to error if wrong type
             vs.insert_checked(v)?;
+        }
+        Ok(vs)
+    }
+
+    pub fn from_db_valuev1_iter(
+        mut iter: impl Iterator<Item = DbValueV1>,
+    ) -> Result<ValueSet, OperationError> {
+        let init = if let Some(v) = iter.next() {
+            v
+        } else {
+            admin_error!("Empty db valuev1 iterator");
+            return Err(OperationError::InvalidValueState);
+        };
+
+        let mut vs = ValueSet::try_from(init).map_err(|_| OperationError::InvalidValueState)?;
+
+        for v in iter {
+            // Need to error if wrong type
+            vs.insert_db_valuev1(v)
+                .map_err(|_| OperationError::InvalidValueState)?;
         }
         Ok(vs)
     }
@@ -1409,7 +1775,7 @@ impl ValueSet {
     }
 
     pub fn is_email_address(&self) -> bool {
-        matches!(self.inner, I::EmailAddress(_))
+        matches!(self.inner, I::EmailAddress { primary: _, set: _ })
     }
 
     pub fn is_url(&self) -> bool {
@@ -1426,6 +1792,40 @@ impl ValueSet {
 
     pub fn is_privatebinary(&self) -> bool {
         matches!(self.inner, I::PrivateBinary(_))
+    }
+
+    pub fn validate(&self) -> bool {
+        match &self.inner {
+            I::Iname(set) => set.iter().all(|s| {
+                match Uuid::parse_str(s) {
+                    // It is a uuid, disallow.
+                    Ok(_) => false,
+                    // Not a uuid, check it against the re.
+                    Err(_) => !INAME_RE.is_match(s),
+                }
+            }),
+            I::SshKey(map) => map
+                .values()
+                .all(|key| SshPublicKey::from_string(key).is_ok()),
+            I::Nsuniqueid(set) => set.iter().all(|s| NSUNIQUEID_RE.is_match(s)),
+            I::DateTime(set) => set.iter().all(|odt| odt.offset() == time::UtcOffset::UTC),
+            I::EmailAddress { primary, set } => {
+                set.iter()
+                    .all(|mail| validator::validate_email(mail.as_str()))
+                    && if let Some(p) = primary {
+                        set.contains(p)
+                    } else {
+                        true
+                    }
+            }
+            I::OauthScope(set) => set.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
+            I::OauthScopeMap(map) => map
+                .values()
+                .map(|set| set.iter())
+                .flatten()
+                .all(|s| OAUTHSCOPE_RE.is_match(s)),
+            _ => true,
+        }
     }
 
     pub fn migrate_iutf8_iname(&mut self) -> Result<(), OperationError> {
@@ -1465,11 +1865,33 @@ impl PartialEq for ValueSet {
             (I::Cid(a), I::Cid(b)) => a.eq(b),
             (I::Nsuniqueid(a), I::Nsuniqueid(b)) => a.eq(b),
             (I::DateTime(a), I::DateTime(b)) => a.eq(b),
-            (I::EmailAddress(a), I::EmailAddress(b)) => a.eq(b),
+            (
+                I::EmailAddress {
+                    primary: pa,
+                    set: set_a,
+                },
+                I::EmailAddress {
+                    primary: pb,
+                    set: set_b,
+                },
+            ) => pa.eq(pb) && set_a.eq(set_b),
+            (
+                I::PhoneNumber {
+                    primary: pa,
+                    set: set_a,
+                },
+                I::PhoneNumber {
+                    primary: pb,
+                    set: set_b,
+                },
+            ) => pa.eq(pb) && set_a.eq(set_b),
+            (I::Address { set: set_a }, I::Address { set: set_b }) => set_a.eq(set_b),
             (I::Url(a), I::Url(b)) => a.eq(b),
             (I::OauthScope(a), I::OauthScope(b)) => a.eq(b),
             (I::OauthScopeMap(a), I::OauthScopeMap(b)) => a.eq(b),
             (I::PrivateBinary(a), I::PrivateBinary(b)) => a.eq(b),
+            (I::PublicBinary(a), I::PublicBinary(b)) => a.eq(b),
+            (I::RestrictedString(a), I::RestrictedString(b)) => a.eq(b),
             _ => false,
         }
     }
@@ -1529,10 +1951,14 @@ pub enum ValueIter<'a> {
     Nsuniqueid(std::collections::btree_set::Iter<'a, String>),
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
+    PhoneNumber(std::collections::btree_set::Iter<'a, String>),
+    Address(std::collections::btree_set::Iter<'a, Address>),
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
+    RestrictedString(std::collections::btree_set::Iter<'a, String>),
 }
 
 impl<'a> Iterator for ValueIter<'a> {
@@ -1540,10 +1966,11 @@ impl<'a> Iterator for ValueIter<'a> {
 
     fn next(&mut self) -> Option<Value> {
         match self {
-            ValueIter::Utf8(iter) => iter.next().map(|i| Value::new_utf8s(i.as_str())),
-            ValueIter::Iutf8(iter) => iter.next().map(|i| Value::new_iutf8(i.as_str())),
-            ValueIter::Iname(iter) => iter.next().map(|i| Value::new_iname(i.as_str())),
-            ValueIter::Uuid(iter) => iter.next().map(|i| Value::new_uuidr(i)),
+            // Clippy may try to report these as bugs, but it's wrong.
+            ValueIter::Utf8(iter) => iter.next().map(|i| Value::new_utf8s(i)),
+            ValueIter::Iutf8(iter) => iter.next().map(|i| Value::new_iutf8(i)),
+            ValueIter::Iname(iter) => iter.next().map(|i| Value::new_iname(i)),
+            ValueIter::Uuid(iter) => iter.next().map(Value::new_uuidr),
             ValueIter::Bool(iter) => iter.next().map(
                 // Use the from bool impl.
                 Value::from,
@@ -1554,7 +1981,7 @@ impl<'a> Iterator for ValueIter<'a> {
             ValueIter::Index(iter) => iter.next().map(|i|
                 // Uses the from index type impl.
                 Value::from(i.clone())),
-            ValueIter::Refer(iter) => iter.next().map(|i| Value::new_refer_r(i)),
+            ValueIter::Refer(iter) => iter.next().map(Value::new_refer_r),
             ValueIter::JsonFilt(iter) => iter.next().map(|i| Value::from(i.clone())),
             ValueIter::Cred(iter) => iter
                 .next()
@@ -1568,19 +1995,29 @@ impl<'a> Iterator for ValueIter<'a> {
                 .map(|(n, d)| Value::new_spn_str(n.as_str(), d.as_str())),
             ValueIter::Uint32(iter) => iter.next().copied().map(Value::from),
             ValueIter::Cid(iter) => iter.next().map(|i| Value::new_cid(i.clone())),
-            ValueIter::Nsuniqueid(iter) => {
-                iter.next().map(|i| Value::new_email_address_s(i.as_str()))
-            }
+            ValueIter::Nsuniqueid(iter) => iter
+                .next()
+                .and_then(|i| Value::new_nsuniqueid_s(i.as_str())),
             ValueIter::DateTime(iter) => iter.next().copied().map(Value::from),
-            ValueIter::EmailAddress(iter) => {
-                iter.next().map(|i| Value::new_email_address_s(i.as_str()))
+            ValueIter::EmailAddress(iter) => iter
+                .next()
+                .and_then(|i| Value::new_email_address_s(i.as_str())),
+            ValueIter::PhoneNumber(iter) => {
+                iter.next().map(|i| Value::new_phonenumber_s(i.as_str()))
             }
+            ValueIter::Address(iter) => iter.next().map(|a| Value::new_address(a.clone())),
             ValueIter::Url(iter) => iter.next().map(|i| Value::from(i.clone())),
-            ValueIter::OauthScope(iter) => iter.next().map(|i| Value::new_oauthscope(i)),
+            ValueIter::OauthScope(iter) => iter.next().and_then(|i| Value::new_oauthscope(i)),
             ValueIter::OauthScopeMap(iter) => iter
                 .next()
-                .map(|(group, scopes)| Value::new_oauthscopemap(*group, scopes.clone())),
+                .and_then(|(group, scopes)| Value::new_oauthscopemap(*group, scopes.clone())),
             ValueIter::PrivateBinary(iter) => iter.next().map(|i| Value::new_privatebinary(i)),
+            ValueIter::PublicBinary(iter) => iter
+                .next()
+                .map(|(t, b)| Value::new_publicbinary(t.clone(), b.clone())),
+            ValueIter::RestrictedString(iter) => {
+                iter.next().map(|i| Value::new_restrictedstring(i.clone()))
+            }
         }
     }
 }
@@ -1604,10 +2041,14 @@ pub enum PartialValueIter<'a> {
     Nsuniqueid(std::collections::btree_set::Iter<'a, String>),
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
+    PhoneNumber(std::collections::btree_set::Iter<'a, String>),
+    Address(std::collections::btree_set::Iter<'a, Address>),
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
+    RestrictedString(std::collections::btree_set::Iter<'a, String>),
 }
 
 impl<'a> Iterator for PartialValueIter<'a> {
@@ -1624,7 +2065,7 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::Iname(iter) => {
                 iter.next().map(|i| PartialValue::new_iname(i.as_str()))
             }
-            PartialValueIter::Uuid(iter) => iter.next().map(|i| PartialValue::new_uuidr(i)),
+            PartialValueIter::Uuid(iter) => iter.next().map(PartialValue::new_uuidr),
             PartialValueIter::Bool(iter) => iter.next().map(
                 // Use the from bool impl.
                 PartialValue::from,
@@ -1635,7 +2076,7 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::Index(iter) => iter.next().map(|i|
                 // Uses the from index type impl.
                 PartialValue::from(i.clone())),
-            PartialValueIter::Refer(iter) => iter.next().map(|i| PartialValue::new_refer_r(i)),
+            PartialValueIter::Refer(iter) => iter.next().map(PartialValue::new_refer_r),
             PartialValueIter::JsonFilt(iter) => iter.next().map(|i| PartialValue::from(i.clone())),
             PartialValueIter::Cred(iter) => iter
                 .next()
@@ -1658,6 +2099,12 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::EmailAddress(iter) => iter
                 .next()
                 .map(|i| PartialValue::new_email_address_s(i.as_str())),
+            PartialValueIter::PhoneNumber(iter) => iter
+                .next()
+                .map(|i| PartialValue::new_phonenumber_s(i.as_str())),
+            PartialValueIter::Address(iter) => iter
+                .next()
+                .map(|a| PartialValue::new_address(a.formatted.as_str())),
             PartialValueIter::Url(iter) => iter.next().map(|i| PartialValue::from(i.clone())),
             PartialValueIter::OauthScope(iter) => {
                 iter.next().map(|i| PartialValue::new_oauthscope(i))
@@ -1668,6 +2115,12 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::PrivateBinary(iter) => {
                 iter.next().map(|_| PartialValue::PrivateBinary)
             }
+            PartialValueIter::PublicBinary(iter) => iter
+                .next()
+                .map(|(tag, _key)| PartialValue::new_publicbinary_tag_s(tag.as_str())),
+            PartialValueIter::RestrictedString(iter) => iter
+                .next()
+                .map(|i| PartialValue::new_restrictedstring_s(i.as_str())),
         }
     }
 }
@@ -1690,11 +2143,21 @@ pub enum DbValueV1Iter<'a> {
     Cid(SmolSetIter<'a, [Cid; 1]>),
     Nsuniqueid(std::collections::btree_set::Iter<'a, String>),
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
-    EmailAddress(std::collections::btree_set::Iter<'a, String>),
+    EmailAddress(
+        Option<&'a str>,
+        std::collections::btree_set::Iter<'a, String>,
+    ),
+    PhoneNumber(
+        Option<&'a str>,
+        std::collections::btree_set::Iter<'a, String>,
+    ),
+    Address(std::collections::btree_set::Iter<'a, Address>),
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
+    RestrictedString(std::collections::btree_set::Iter<'a, String>),
 }
 
 impl<'a> Iterator for DbValueV1Iter<'a> {
@@ -1749,9 +2212,28 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 DbValueV1::DateTime(odt.format(time::Format::Rfc3339))
             }),
-            DbValueV1Iter::EmailAddress(iter) => iter
-                .next()
-                .map(|i| DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: i.clone() })),
+            DbValueV1Iter::EmailAddress(pri, iter) => iter.next().map(|i| {
+                DbValueV1::EmailAddress(DbValueEmailAddressV1 {
+                    d: i.clone(),
+                    p: Some(i.as_str()) == *pri,
+                })
+            }),
+            DbValueV1Iter::PhoneNumber(pri, iter) => iter.next().map(|i| {
+                DbValueV1::PhoneNumber(DbValuePhoneNumberV1 {
+                    d: i.clone(),
+                    p: Some(i.as_str()) == *pri,
+                })
+            }),
+            DbValueV1Iter::Address(iter) => iter.next().map(|a| {
+                DbValueV1::Address(DbValueAddressV1 {
+                    formatted: a.formatted.clone(),
+                    street_address: a.street_address.clone(),
+                    locality: a.locality.clone(),
+                    region: a.region.clone(),
+                    postal_code: a.postal_code.clone(),
+                    country: a.country.clone(),
+                })
+            }),
             DbValueV1Iter::Url(iter) => iter.next().map(|i| DbValueV1::Url(i.clone())),
             DbValueV1Iter::OauthScope(iter) => {
                 iter.next().map(|i| DbValueV1::OauthScope(i.clone()))
@@ -1764,6 +2246,12 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
             }),
             DbValueV1Iter::PrivateBinary(iter) => {
                 iter.next().map(|i| DbValueV1::PrivateBinary(i.clone()))
+            }
+            DbValueV1Iter::PublicBinary(iter) => iter
+                .next()
+                .map(|(t, b)| DbValueV1::PublicBinary(t.clone(), b.clone())),
+            DbValueV1Iter::RestrictedString(iter) => {
+                iter.next().map(|i| DbValueV1::RestrictedString(i.clone()))
             }
         }
     }
@@ -1788,10 +2276,14 @@ pub enum ProtoIter<'a> {
     Nsuniqueid(std::collections::btree_set::Iter<'a, String>),
     DateTime(SmolSetIter<'a, [OffsetDateTime; 1]>),
     EmailAddress(std::collections::btree_set::Iter<'a, String>),
+    PhoneNumber(std::collections::btree_set::Iter<'a, String>),
+    Address(std::collections::btree_set::Iter<'a, Address>),
     Url(SmolSetIter<'a, [Url; 1]>),
     OauthScope(std::collections::btree_set::Iter<'a, String>),
     OauthScopeMap(std::collections::btree_map::Iter<'a, Uuid, BTreeSet<String>>),
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
+    PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
+    RestrictedString(std::collections::btree_set::Iter<'a, String>),
 }
 
 impl<'a> Iterator for ProtoIter<'a> {
@@ -1838,19 +2330,26 @@ impl<'a> Iterator for ProtoIter<'a> {
                 odt.format(time::Format::Rfc3339)
             }),
             ProtoIter::EmailAddress(iter) => iter.next().cloned(),
+            ProtoIter::PhoneNumber(iter) => iter.next().cloned(),
+            ProtoIter::Address(iter) => iter.next().map(|a| a.formatted.clone()),
             ProtoIter::Url(iter) => iter.next().map(|i| i.to_string()),
             ProtoIter::OauthScope(iter) => iter.next().cloned(),
             ProtoIter::OauthScopeMap(iter) => iter
                 .next()
                 .map(|(u, m)| format!("{}: {:?}", ValueSet::uuid_to_proto_string(u), m)),
             ProtoIter::PrivateBinary(iter) => iter.next().map(|_| "private_binary".to_string()),
+
+            ProtoIter::PublicBinary(iter) => iter
+                .next()
+                .map(|(t, b)| format!("{}: {}", t, base64::encode_config(&b, base64::URL_SAFE))),
+            ProtoIter::RestrictedString(iter) => iter.next().cloned(),
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::value::Value;
+    use crate::value::{PartialValue, Value};
     use crate::valueset::ValueSet;
 
     #[test]
@@ -1859,5 +2358,55 @@ mod tests {
         assert!(vs.insert_checked(Value::new_uint32(0)) == Ok(false));
         assert!(vs.insert_checked(Value::new_uint32(1)) == Ok(true));
         assert!(vs.insert_checked(Value::new_uint32(1)) == Ok(false));
+    }
+
+    #[test]
+    fn test_valueset_emailaddress() {
+        // Can be created
+        //
+        let mut vs =
+            ValueSet::new(Value::new_email_address_s("claire@example.com").expect("Invalid Email"));
+
+        assert!(vs.len() == 1);
+        assert!(vs.to_email_address_primary_str().is_none());
+
+        // Add another, still not primary.
+        assert!(
+            vs.insert_checked(
+                Value::new_email_address_s("alice@example.com").expect("Invalid Email")
+            ) == Ok(true)
+        );
+
+        assert!(vs.len() == 2);
+        assert!(vs.to_email_address_primary_str().is_none());
+
+        // Update primary
+        assert!(
+            vs.insert_checked(
+                Value::new_email_address_primary_s("primary@example.com").expect("Invalid Email")
+            ) == Ok(true)
+        );
+        assert!(vs.to_email_address_primary_str() == Some("primary@example.com"));
+
+        // Restore from dbv1, ensure correct primary
+
+        let vs2 = ValueSet::from_db_valuev1_iter(vs.to_db_valuev1_iter())
+            .expect("Failed to construct vs2 from dbvalue");
+
+        assert!(vs == vs2);
+        assert!(vs.to_email_address_primary_str() == vs2.to_email_address_primary_str());
+
+        // Remove primary, assert it's gone.
+        assert!(vs.remove(&PartialValue::new_email_address_s("primary@example.com")));
+        assert!(vs.len() == 2);
+        assert!(vs.to_email_address_primary_str().is_none());
+
+        // Restore form dbv1, no primary.
+
+        let vs3 = ValueSet::from_db_valuev1_iter(vs.to_db_valuev1_iter())
+            .expect("Failed to construct vs2 from dbvalue");
+        assert!(vs == vs3);
+        assert!(vs.to_email_address_primary_str() != vs2.to_email_address_primary_str());
+        assert!(vs.to_email_address_primary_str() == vs3.to_email_address_primary_str());
     }
 }

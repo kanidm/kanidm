@@ -70,9 +70,7 @@ fn setup_backend_vacuum(
         config.db_arc_size,
     );
 
-    let be = Backend::new(cfg, idxmeta, vacuum);
-    // debug!
-    be
+    Backend::new(cfg, idxmeta, vacuum)
 }
 
 // TODO #54: We could move most of the be/schema/qs setup and startup
@@ -99,7 +97,7 @@ fn setup_qs_idms(
 
     // We generate a SINGLE idms only!
 
-    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), config.origin.clone())?;
+    let (idms, idms_delayed) = IdmServer::new(query_server.clone(), &config.origin)?;
 
     Ok((query_server, idms, idms_delayed))
 }

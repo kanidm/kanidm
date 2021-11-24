@@ -715,13 +715,17 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("test")),
+            (
+                "oauth2_rs_implicit_scopes",
+                Value::new_oauthscope("test").expect("Invalid scope")
+            ),
             (
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(
                     Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").expect("uuid"),
                     btreeset!["read".to_string()]
                 )
+                .expect("Invalid scope")
             )
         );
 

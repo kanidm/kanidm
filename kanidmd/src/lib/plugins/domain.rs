@@ -10,6 +10,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::prelude::*;
 use bundy::hs512::HS512;
 use kanidm_proto::v1::OperationError;
+use std::iter::once;
 use tracing::trace;
 
 lazy_static! {
@@ -35,12 +36,12 @@ impl Plugin for Domain {
             {
                 // We always set this, because the DB uuid is authorative.
                 let u = Value::new_uuid(qs.get_domain_uuid());
-                e.set_ava("domain_uuid", btreeset![u]);
+                e.set_ava("domain_uuid", once(u));
                 trace!("plugin_domain: Applying uuid transform");
                 // We only apply this if one isn't provided.
                 if !e.attribute_pres("domain_name") {
                     let n = Value::new_iname("example.com");
-                    e.set_ava("domain_name", btreeset![n]);
+                    e.set_ava("domain_name", once(n));
                     trace!("plugin_domain: Applying domain_name transform");
                 }
                 if !e.attribute_pres("domain_token_key") {
@@ -50,7 +51,7 @@ impl Plugin for Domain {
                             admin_error!(err = ?e, "Failed to generate domain_token_key");
                             OperationError::InvalidState
                         })?;
-                    e.set_ava("domain_token_key", btreeset![k]);
+                    e.set_ava("domain_token_key", once(k));
                     trace!("plugin_domain: Applying domain_token_key transform");
                 }
                 trace!(?e);
@@ -77,7 +78,7 @@ impl Plugin for Domain {
                             admin_error!(err = ?e, "Failed to generate domain_token_key");
                             OperationError::InvalidState
                         })?;
-                    e.set_ava("domain_token_key", btreeset![k]);
+                    e.set_ava("domain_token_key", once(k));
                     trace!("plugin_domain: Applying domain_token_key transform");
                 }
                 trace!(?e);

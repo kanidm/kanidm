@@ -60,6 +60,8 @@ impl Modify {
 
 #[derive(Debug, Default)]
 pub struct ModifyList<VALID> {
+    // This is never read, it's just used for state machine enforcement.
+    #[allow(dead_code)]
     valid: VALID,
     // The order of this list matters. Each change must be done in order.
     mods: Vec<Modify>,

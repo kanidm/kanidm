@@ -1400,6 +1400,7 @@ impl KanidmAsyncClient {
             .await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn idm_oauth2_rs_update(
         &self,
         id: &str,

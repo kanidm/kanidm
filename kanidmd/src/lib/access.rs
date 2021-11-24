@@ -287,6 +287,9 @@ impl AccessControlModify {
 #[derive(Debug, Clone)]
 struct AccessControlProfile {
     name: String,
+    // Currently we retrieve this but don't use it. We could depending on how we change
+    // the acp update routine.
+    #[allow(dead_code)]
     uuid: Uuid,
     receiver: Filter<FilterValid>,
     targetscope: Filter<FilterValid>,

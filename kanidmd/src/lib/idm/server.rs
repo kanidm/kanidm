@@ -145,7 +145,7 @@ impl IdmServer {
     // TODO: Make number of authsessions configurable!!!
     pub fn new(
         qs: QueryServer,
-        origin: String,
+        origin: &str,
         // ct: Duration,
     ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
@@ -171,7 +171,7 @@ impl IdmServer {
         };
 
         // Check that it gels with our origin.
-        let origin_url = Url::parse(origin.as_str())
+        let origin_url = Url::parse(origin)
             .map_err(|_e| {
                 admin_error!("Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}", origin);
                 OperationError::InvalidState

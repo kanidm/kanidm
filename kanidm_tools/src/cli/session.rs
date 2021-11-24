@@ -115,11 +115,11 @@ pub fn write_tokens(tokens: &BTreeMap<String, String>) -> Result<(), ()> {
 }
 
 /// An interactive dialog to choose from given options
-fn get_index_choice_dialoguer(msg: &str, options: &Vec<String>) -> usize {
+fn get_index_choice_dialoguer(msg: &str, options: &[String]) -> usize {
     let user_select = Select::with_theme(&ColorfulTheme::default())
         .with_prompt(msg)
         .default(0)
-        .items(&options)
+        .items(options)
         .interact();
 
     let selection = match user_select {
@@ -238,7 +238,7 @@ impl LoginOpt {
                     options.push(val.to_string());
                 }
                 let msg = "Please choose how you want to authenticate:";
-                let selection = get_index_choice_dialoguer(&msg, &options);
+                let selection = get_index_choice_dialoguer(msg, &options);
 
                 #[allow(clippy::expect_used)]
                 mechs
@@ -276,7 +276,7 @@ impl LoginOpt {
                         options.push(val.to_string());
                     }
                     let msg = "Please choose what credential to provide:";
-                    let selection = get_index_choice_dialoguer(&msg, &options);
+                    let selection = get_index_choice_dialoguer(msg, &options);
 
                     #[allow(clippy::expect_used)]
                     allowed

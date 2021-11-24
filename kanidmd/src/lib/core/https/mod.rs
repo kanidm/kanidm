@@ -111,20 +111,24 @@ pub fn to_tide_response<T: Serialize>(
             })
         }
         Err(e) => {
-            let sc = match &e {
+            let mut res = match &e {
                 OperationError::NotAuthenticated | OperationError::SessionExpired => {
-                    tide::StatusCode::Unauthorized
+                    // https://datatracker.ietf.org/doc/html/rfc7235#section-4.1
+                    let mut res = tide::Response::new(tide::StatusCode::Unauthorized);
+                    res.insert_header("WWW-Authenticate", "Bearer");
+                    res
                 }
                 OperationError::SystemProtectedObject | OperationError::AccessDenied => {
-                    tide::StatusCode::Forbidden
+                    tide::Response::new(tide::StatusCode::Forbidden)
                 }
-                OperationError::NoMatchingEntries => tide::StatusCode::NotFound,
+                OperationError::NoMatchingEntries => {
+                    tide::Response::new(tide::StatusCode::NotFound)
+                }
                 OperationError::EmptyRequest | OperationError::SchemaViolation(_) => {
-                    tide::StatusCode::BadRequest
+                    tide::Response::new(tide::StatusCode::BadRequest)
                 }
-                _ => tide::StatusCode::InternalServerError,
+                _ => tide::Response::new(tide::StatusCode::InternalServerError),
             };
-            let mut res = tide::Response::new(sc);
             tide::Body::from_json(&e).map(|b| {
                 res.set_body(b);
                 res
@@ -162,13 +166,8 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     Ok(res)
 }
 
+#[derive(Default)]
 struct NoCacheMiddleware;
-
-impl Default for NoCacheMiddleware {
-    fn default() -> Self {
-        NoCacheMiddleware {}
-    }
-}
 
 #[async_trait::async_trait]
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for NoCacheMiddleware {
@@ -184,13 +183,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for NoCacheMi
     }
 }
 
+#[derive(Default)]
 struct CacheableMiddleware;
-
-impl Default for CacheableMiddleware {
-    fn default() -> Self {
-        CacheableMiddleware {}
-    }
-}
 
 #[async_trait::async_trait]
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for CacheableMiddleware {
@@ -205,13 +199,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for Cacheable
     }
 }
 
+#[derive(Default)]
 struct StaticContentMiddleware;
-
-impl Default for StaticContentMiddleware {
-    fn default() -> Self {
-        StaticContentMiddleware {}
-    }
-}
 
 #[async_trait::async_trait]
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticContentMiddleware {
@@ -226,13 +215,8 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StaticCon
     }
 }
 
+#[derive(Default)]
 struct StrictResponseMiddleware;
-
-impl Default for StrictResponseMiddleware {
-    fn default() -> Self {
-        StrictResponseMiddleware {}
-    }
-}
 
 #[async_trait::async_trait]
 impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictResponseMiddleware {

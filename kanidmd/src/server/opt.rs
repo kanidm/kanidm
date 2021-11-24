@@ -52,6 +52,7 @@ struct DbScanListIndex {
     commonopts: CommonOpt,
 }
 
+/*
 #[derive(Debug, StructOpt)]
 struct DbScanGetIndex {
     /// The name of the index to list
@@ -61,6 +62,7 @@ struct DbScanGetIndex {
     #[structopt(flatten)]
     commonopts: CommonOpt,
 }
+*/
 
 #[derive(Debug, StructOpt)]
 struct DbScanGetId2Entry {
