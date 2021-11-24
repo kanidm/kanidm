@@ -73,7 +73,7 @@ An example is located in [examples/server.toml](../../examples/server.toml).
 
 ### Domain Name
 
-You then *MUST* to set your domain name so that security principal names (spn's) are generated correctly.
+You then *MUST* set your domain name so that security principal names (spn's) are generated correctly.
 This domain name _must_ match the url/origin of the server that you plan to use to interact with
 so that other features work correctly. It is possible to change this domain name later.
 
