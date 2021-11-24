@@ -3887,6 +3887,9 @@
 <span id="3887">3887</span>
 <span id="3888">3888</span>
 <span id="3889">3889</span>
+<span id="3890">3890</span>
+<span id="3891">3891</span>
+<span id="3892">3892</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -4067,7 +4070,10 @@
             })
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">url</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">valid</span> <span class="op">=</span> <span class="ident">url</span>.<span class="ident">domain</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">effective_domain</span><span class="op">|</span> {
-                    <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="ident">rp_id</span>)
+                    <span class="comment">// We need to prepend the &#39;.&#39; here to ensure that myexample.com != example.com,</span>
+                    <span class="comment">// rather than just ends with.</span>
+                    <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;.{}&quot;</span>, <span class="ident">rp_id</span>)) 
+                    <span class="op">|</span><span class="op">|</span> <span class="ident">effective_domain</span> <span class="op">=</span><span class="op">=</span> <span class="ident">rp_id</span>
                 }).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
                 <span class="kw">if</span> <span class="ident">valid</span> {
