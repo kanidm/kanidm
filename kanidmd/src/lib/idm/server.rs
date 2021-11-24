@@ -178,7 +178,7 @@ impl IdmServer {
             })
             .and_then(|url| {
                 let valid = url.domain().map(|effective_domain| {
-                    effective_domain.ends_with(&rp_id)
+                    effective_domain.ends_with(&(".".to_string() + rp_id.as_str())) || effective_domain == rp_id
                 }).unwrap_or(false);
 
                 if valid {
