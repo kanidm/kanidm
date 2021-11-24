@@ -3890,6 +3890,8 @@
 <span id="3890">3890</span>
 <span id="3891">3891</span>
 <span id="3892">3892</span>
+<span id="3893">3893</span>
+<span id="3894">3894</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -4079,7 +4081,9 @@
                 <span class="kw">if</span> <span class="ident">valid</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">url</span>)
                 } <span class="kw">else</span> {
-                    <span class="macro">admin_error!</span>(<span class="string">&quot;Effective domain is not a descendent of server domain name (rp_id). You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}&quot;</span>, <span class="ident">origin</span>, <span class="ident">rp_id</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;Effective domain is not a descendent of server domain name (rp_id).&quot;</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;You must change origin or domain name to be consistent. ed: {:?} - rp_id: {:?}&quot;</span>, <span class="ident">origin</span>, <span class="ident">rp_id</span>);
+                    <span class="macro">admin_error!</span>(<span class="string">&quot;To change the origin or domain name see: https://kanidm.github.io/kanidm/server_configuration.html&quot;</span>);
                     <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
                 }
             })<span class="question-mark">?</span>;
