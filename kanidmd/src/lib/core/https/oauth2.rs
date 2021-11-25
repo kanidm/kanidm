@@ -241,6 +241,11 @@ async fn oauth2_authorise(
             Ok(tide::Response::new(tide::StatusCode::Unauthorized))
         }
         Err(e) => {
+            admin_error!(
+                "Unable to authorise - Error ID: {} error: {}",
+                &hvalue,
+                &e.to_string()
+            );
             redir_url
                 .query_pairs_mut()
                 .clear()
