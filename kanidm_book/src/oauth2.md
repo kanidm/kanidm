@@ -188,12 +188,14 @@ or with an appropriate include.
     OIDCRedirectURI http://resource.example.com/protected/redirect_uri
     OIDCCryptoPassphrase <random password here>
     OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<resource server name>/.well-known/openid-configuration
-    OIDCScope "openid other_scopes"
+    OIDCScope "openid" 
     OIDCUserInfoTokenMethod authz_header
     OIDCClientID <resource server name>
     OIDCClientSecret <resource server password>
     OIDCPKCEMethod S256
     OIDCCookieSameSite On
+
+Other scopes can be added as required to the `OIDCScope` line, eg: `OIDCScope "openid scope2 scope3"`
 
 In the virtual host, to protect a location:
 
