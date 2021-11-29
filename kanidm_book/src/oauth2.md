@@ -194,7 +194,7 @@ or with an appropriate include.
     OIDCClientSecret <resource server password>
     OIDCPKCEMethod S256
     OIDCCookieSameSite On
-    # To set the `REMOTE_USER` field to the `preferred_username` instead of the UUID
+    # Set the `REMOTE_USER` field to the `preferred_username` instead of the UUID.
     # Remember that the username can change, but this can help with systems like Nagios which use this as a display name.
     # OIDCRemoteUserClaim preferred_username
 
