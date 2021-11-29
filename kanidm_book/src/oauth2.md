@@ -194,6 +194,11 @@ or with an appropriate include.
     OIDCClientSecret <resource server password>
     OIDCPKCEMethod S256
     OIDCCookieSameSite On
+    # To set the `REMOTE_USER` field to the `preferred_username` instead of the UUID
+    # Remember that the username can change, but this can help with systems like Nagios which use this as a display name.
+    # OIDCRemoteUserClaim preferred_username
+
+Other scopes can be added as required to the `OIDCScope` line, eg: `OIDCScope "openid scope2 scope3"`
 
 In the virtual host, to protect a location:
 
@@ -201,10 +206,6 @@ In the virtual host, to protect a location:
         AuthType openid-connect
         Require valid-user
     </Location>
-
-Other scopes can be added as required to the `OIDCScope` line, eg: `OIDCScope "openid scope2 scope3"`
-
-If you want to set the `REMOTE_USER` field to the `preferred_username` instead of the UUID, add the line `OIDCRemoteUserClaim preferred_username`. Remember that the username can change, but this can help with systems like Nagios which use this as a display name.
 
 ### Nextcloud
 
