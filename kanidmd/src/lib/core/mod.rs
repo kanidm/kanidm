@@ -387,7 +387,7 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         Ok(old_domain_name) => {
             if &old_domain_name == &new_domain_name {
                 admin_info!("Domain name not changing, stopping.");
-                std::process::exit(2);
+                std::process::exit(125); // ECANCELED
             }
         }
         Err(e) => {
