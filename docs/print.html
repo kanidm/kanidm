@@ -317,7 +317,7 @@ in place you can use a shell container that mounts the volume such as:</p>
 <p>OR for a shell into the volume:</p>
 <pre><code>docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
 </code></pre>
-<h1 id="continue-on-to-a-hrefserver_configurationhtmlconfiguring-the-servera"><a class="header" href="#continue-on-to-a-hrefserver_configurationhtmlconfiguring-the-servera">Continue on to <a href="server_configuration.html">Configuring the Server</a></a></h1>
+<h1 id="continue-on-to-configuring-the-server"><a class="header" href="#continue-on-to-configuring-the-server">Continue on to <a href="server_configuration.html">Configuring the Server</a></a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="configuring-the-server"><a class="header" href="#configuring-the-server">Configuring the Server</a></h2>
 <h3 id="configuring-servertoml"><a class="header" href="#configuring-servertoml">Configuring server.toml</a></h3>
 <p>You will also need a config file in the volume named <code>server.toml</code> (Within the container it should be <code>/data/server.toml</code>). Its contents should be as follows:</p>
@@ -1245,9 +1245,9 @@ one resource server will not affect others.</p>
 </code></pre>
 <h2 id="example-integrations"><a class="header" href="#example-integrations">Example Integrations</a></h2>
 <h3 id="apache-mod_auth_openidc"><a class="header" href="#apache-mod_auth_openidc">Apache mod_auth_openidc</a></h3>
-<p>Add the following to a mod_auth_openidc.conf. It should be included in a mods_enabled folder
+<p>Add the following to a <code>mod_auth_openidc.conf</code>. It should be included in a <code>mods_enabled</code> folder
 or with an appropriate include.</p>
-<pre><code>OIDCRedirectURI http://resource.example.com/protected/redirect_uri
+<pre><code>OIDCRedirectURI /protected/redirect_uri
 OIDCCryptoPassphrase &lt;random password here&gt;
 OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/&lt;resource server name&gt;/.well-known/openid-configuration
 OIDCScope &quot;openid&quot; 
@@ -1256,6 +1256,9 @@ OIDCClientID &lt;resource server name&gt;
 OIDCClientSecret &lt;resource server password&gt;
 OIDCPKCEMethod S256
 OIDCCookieSameSite On
+# Set the `REMOTE_USER` field to the `preferred_username` instead of the UUID.
+# Remember that the username can change, but this can help with systems like Nagios which use this as a display name.
+# OIDCRemoteUserClaim preferred_username
 </code></pre>
 <p>Other scopes can be added as required to the <code>OIDCScope</code> line, eg: <code>OIDCScope &quot;openid scope2 scope3&quot;</code></p>
 <p>In the virtual host, to protect a location:</p>
