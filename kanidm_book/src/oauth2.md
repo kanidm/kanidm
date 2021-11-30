@@ -182,10 +182,10 @@ To enable legacy cryptograhy (RSA PKCS1-5 SHA256):
 
 ### Apache mod\_auth\_openidc
 
-Add the following to a mod\_auth\_openidc.conf. It should be included in a mods\_enabled folder
+Add the following to a `mod_auth_openidc.conf`. It should be included in a `mods_enabled` folder
 or with an appropriate include.
 
-    OIDCRedirectURI http://resource.example.com/protected/redirect_uri
+    OIDCRedirectURI /protected/redirect_uri
     OIDCCryptoPassphrase <random password here>
     OIDCProviderMetadataURL https://kanidm.example.com/oauth2/openid/<resource server name>/.well-known/openid-configuration
     OIDCScope "openid" 
@@ -194,6 +194,9 @@ or with an appropriate include.
     OIDCClientSecret <resource server password>
     OIDCPKCEMethod S256
     OIDCCookieSameSite On
+    # Set the `REMOTE_USER` field to the `preferred_username` instead of the UUID.
+    # Remember that the username can change, but this can help with systems like Nagios which use this as a display name.
+    # OIDCRemoteUserClaim preferred_username
 
 Other scopes can be added as required to the `OIDCScope` line, eg: `OIDCScope "openid scope2 scope3"`
 
