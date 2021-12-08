@@ -382,6 +382,20 @@ pub fn domain_rename_core(config: &Configuration, new_domain_name: &str) {
         }
     };
 
+    // make sure we're actually changing the domain name...
+    match task::block_on(qs.read_async()).get_domain_name() {
+        Ok(old_domain_name) => {
+            if &old_domain_name == &new_domain_name {
+                admin_info!("Domain name not changing, stopping.");
+                return;
+            }
+        }
+        Err(e) => {
+            admin_error!("Failed to query domain name, quitting! -> {:?}", e);
+            return;
+        }
+    }
+
     let qs_write = task::block_on(qs.write_async(duration_from_epoch_now()));
     let r = qs_write
         .domain_rename(new_domain_name)
