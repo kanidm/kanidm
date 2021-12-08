@@ -43,6 +43,7 @@ pkgs:
       - platform/opensuse/kanidmd.service
     data:
       - src: kanidmd_web_ui/pkg
+        dst: kanidmd_web_ui/pkg
     docs:
       - src: LICENSE.md
       - src: README.md
