@@ -1,0 +1,53 @@
+rinstall: 0.1.0
+pkgs:
+  kanidm:
+    type: rust
+    exe:
+      - kanidm_badlist_preprocess
+      - kanidm
+      - kanidm_cache_clear
+      - kanidm_cache_invalidate
+      - kanidm_ssh_authorizedkeys
+      - kanidm_ssh_authorizedkeys_direct
+      - kanidm_unixd
+      - kanidm_unixd_tasks
+      - kanidm_unixd_status
+    admin-exe:
+      - kanidmd
+    libs:
+      - src: libnss_kanidm.so
+        dst: libnss_kanidm.so.2
+    # needs glob or https://github.com/rust-lang/cargo/issues/9858
+    completions:
+      bash:
+        - target/release/build/completions/kanidmd.bash
+        - target/release/build/completions/kanidm_badlist_preprocess.bash
+        - target/release/build/completions/kanidm.bash
+        - target/release/build/completions/kanidm_cache_clear.bash
+        - target/release/build/completions/kanidm_ssh_authorizedkeys.bash
+        - target/release/build/completions/kanidm_ssh_authorizedkeys_direct.bash
+        - target/release/build/completions/kanidm_unixd_status.bash
+      zsh:
+        - target/release/build/completions/_kanidmd
+        - target/release/build/completions/_kanidm_badlist_preprocess
+        - target/release/build/completions/_kanidm
+        - target/release/build/completions/_kanidm_cache_clear
+        - target/release/build/completions/_kanidm_ssh_authorizedkeys
+        - target/release/build/completions/_kanidm_ssh_authorizedkeys_direct
+        - target/release/build/completions/_kanidm_unixd_status
+    pam-modules:
+      - libpam_kanidm.so
+    systemd-units:
+      - platform/opensuse/kanidm-unixd-tasks.service
+      - platform/opensuse/kanidm-unixd.service
+      - platform/opensuse/kanidmd.service
+    data:
+      - src: kanidmd_web_ui/pkg
+        dst: kanidmd_web_ui/pkg
+    docs:
+      - src: LICENSE.md
+      - src: README.md
+      - src: kanidm_book/src
+        dst: docs
+    config:
+      - src: examples/server.toml
