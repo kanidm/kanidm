@@ -16,7 +16,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use kanidm_proto::v1::Modify;
 
-use log::{debug, error, info};
+use tracing::{debug, error, info};
 use rayon::prelude::*;
 use structopt::StructOpt;
 
@@ -26,10 +26,8 @@ fn main() {
     let opt = BadlistProcOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
-    } else {
-        ::std::env::set_var("RUST_LOG", "kanidm=info,kanidm_client=info");
     }
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     if opt.modlist {
         debug!("Running in modlist generation mode");

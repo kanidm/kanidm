@@ -9,7 +9,7 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use users::{get_effective_gid, get_effective_uid};
 
@@ -210,7 +210,7 @@ async fn main() {
         std::process::exit(1);
     }
 
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     let unixd_path = Path::new("/etc/kanidm/unixd");
     let unixd_path_str = match unixd_path.to_str() {

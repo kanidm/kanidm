@@ -1372,13 +1372,7 @@ mod tests {
 
     #[test]
     fn test_filter_optimise() {
-        use env_logger;
-        ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
-        let _ = env_logger::builder()
-            .format_timestamp(None)
-            .format_level(false)
-            .is_test(true)
-            .try_init();
+        let _ = tracing_subscriber::fmt().try_init();
         // Given sets of "optimisable" filters, optimise them.
         filter_optimise_assert!(
             f_and(vec![f_and(vec![f_eq(

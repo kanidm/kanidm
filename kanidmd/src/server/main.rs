@@ -213,11 +213,10 @@ async fn main() {
     }
 
     // ::std::env::set_var("RUST_LOG", "tide=info,kanidm=info,webauthn=debug");
-
-    env_logger::builder()
-        .format_timestamp(None)
-        .format_level(false)
-        .init();
+    // env_logger::builder()
+    //     .format_timestamp(None)
+    //     .format_level(false)
+    //     .init();
 
     match opt {
         KanidmdOpt::Server(_sopt) => {

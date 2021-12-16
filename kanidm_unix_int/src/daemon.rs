@@ -9,7 +9,7 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
@@ -377,8 +377,7 @@ async fn main() {
         std::process::exit(1);
     }
 
-    // ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     debug!("Profile -> {}", env!("KANIDM_PROFILE_NAME"));
     debug!("CPU Flags -> {}", env!("KANIDM_CPU_FLAGS"));

@@ -30,11 +30,11 @@ path = "src/badlist_preprocess.rs"
 [dependencies]
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.4" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.4" }
+tracing = "0.1"
+tracing-subscriber = "0.2"
 rpassword = "5.0"
 structopt = { version = "0.3", default-features = false }
 libc = "0.2"
-log = "0.4"
-env_logger = "0.9"
 serde = "1.0"
 serde_json = "1.0"
 shellexpand = "2.0"
