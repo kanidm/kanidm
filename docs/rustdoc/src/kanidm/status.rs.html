@@ -40,7 +40,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">StatusActor</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start</span>(<span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">start</span>(<span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">StatusActor</span> {
             <span class="ident">_log_level</span>: <span class="ident">log_level</span>,
         });
@@ -49,7 +49,7 @@
         <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">x_ptr</span>) }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_event</span>: <span class="ident">StatusRequestEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">_event</span>: <span class="ident">StatusRequestEvent</span>) -&gt; <span class="ident">bool</span> {
         <span class="macro">admin_info!</span>(<span class="string">&quot;status handler complete&quot;</span>);
         <span class="bool-val">true</span>
     }

@@ -125,43 +125,43 @@
     <span class="kw">let</span> <span class="ident">sereq</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAccountAllowed</span>(<span class="ident">opt</span>.<span class="ident">account_id</span>);
 
     <span class="kw">match</span> <span class="ident">block_on</span>(<span class="ident">call_daemon</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="ident">req</span>)) {
-        <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
+            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;auth success!&quot;</span>);
             }
-            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;auth failed!&quot;</span>);
             }
-            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;user unknown&quot;</span>);
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="comment">// unexpected response.</span>
                 <span class="macro">error!</span>(<span class="string">&quot;Error: unexpected response -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
             }
         },
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
         }
     }
 
     <span class="kw">match</span> <span class="ident">block_on</span>(<span class="ident">call_daemon</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="ident">sereq</span>)) {
-        <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">r</span> {
-            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
+            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;auth success!&quot;</span>);
             }
-            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;auth failed!&quot;</span>);
             }
-            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;user unknown&quot;</span>);
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="comment">// unexpected response.</span>
                 <span class="macro">error!</span>(<span class="string">&quot;Error: unexpected response -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
             }
         },
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
         }
     }

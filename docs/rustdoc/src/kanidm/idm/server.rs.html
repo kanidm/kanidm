@@ -4039,9 +4039,9 @@
     <span class="comment">// TODO: Make number of authsessions configurable!!!</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(
         <span class="ident">qs</span>: <span class="ident">QueryServer</span>,
-        <span class="ident">origin</span>: <span class="ident">String</span>,
+        <span class="ident">origin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="comment">// ct: Duration,</span>
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">IdmServer</span>, <span class="ident">IdmServerDelayed</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">IdmServer</span>, <span class="ident">IdmServerDelayed</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is calculated back from:</span>
         <span class="comment">//  500 auths / thread -&gt; 0.002 sec per op</span>
         <span class="comment">//      we can then spend up to ~0.001s hashing</span>
@@ -4065,7 +4065,7 @@
         };
 
         <span class="comment">// Check that it gels with our origin.</span>
-        <span class="kw">let</span> <span class="ident">origin_url</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="ident">origin</span>.<span class="ident">as_str</span>())
+        <span class="kw">let</span> <span class="ident">origin_url</span> <span class="op">=</span> <span class="ident">Url::parse</span>(<span class="ident">origin</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">_e</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to parse origin URL - refusing to start. You must correct the value for origin. {:?}&quot;</span>, <span class="ident">origin</span>);
                 <span class="ident">OperationError::InvalidState</span>
@@ -4075,7 +4075,7 @@
                     <span class="comment">// We need to prepend the &#39;.&#39; here to ensure that myexample.com != example.com,</span>
                     <span class="comment">// rather than just ends with.</span>
                     <span class="ident">effective_domain</span>.<span class="ident">ends_with</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;.{}&quot;</span>, <span class="ident">rp_id</span>)) 
-                    <span class="op">|</span><span class="op">|</span> <span class="ident">effective_domain</span> <span class="op">=</span><span class="op">=</span> <span class="ident">rp_id</span>
+                    <span class="op">|</span><span class="op">|</span> <span class="ident">effective_domain</span> <span class="op">==</span> <span class="ident">rp_id</span>
                 }).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>);
 
                 <span class="kw">if</span> <span class="ident">valid</span> {
@@ -4130,11 +4130,11 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdmServerAuthTransaction</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerAuthTransaction</span> {
         <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">auth_async</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdmServerAuthTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerAuthTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sid</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">StdRng::from_entropy</span>();
         <span class="ident">rng</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sid</span>);
@@ -4159,11 +4159,11 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">proxy_read</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">proxy_read</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) -&gt; <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">proxy_read_async</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">proxy_read_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">proxy_read_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="ident">IdmServerProxyReadTransaction</span> {
             <span class="ident">qs_read</span>: <span class="self">self</span>.<span class="ident">qs</span>.<span class="ident">read_async</span>().<span class="kw">await</span>,
             <span class="ident">uat_bundy_hmac</span>: <span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>.<span class="ident">read</span>(),
@@ -4172,11 +4172,11 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">proxy_write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyWriteTransaction</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">proxy_write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">IdmServerProxyWriteTransaction</span> {
         <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">proxy_write_async</span>(<span class="ident">ts</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">proxy_write_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">IdmServerProxyWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">proxy_write_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">IdmServerProxyWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">sid</span> <span class="op">=</span> [<span class="number">0</span>; <span class="number">4</span>];
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">StdRng::from_entropy</span>();
         <span class="ident">rng</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">sid</span>);
@@ -4199,7 +4199,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ts</span>: <span class="ident">Duration</span>,
         <span class="ident">da</span>: <span class="ident">DelayedAction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">pw</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">proxy_write_async</span>(<span class="ident">ts</span>).<span class="kw">await</span>;
         <span class="ident">pw</span>.<span class="ident">process_delayedaction</span>(<span class="ident">da</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">pw</span>.<span class="ident">commit</span>())
@@ -4212,19 +4212,19 @@
         <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">futures_task::noop_waker</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cx</span> <span class="op">=</span> <span class="ident">Context::from_waker</span>(<span class="kw-2">&amp;</span><span class="ident">waker</span>);
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">async_rx</span>.<span class="ident">poll_recv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cx</span>) {
-            <span class="ident">Poll::Pending</span> <span class="op">|</span> <span class="ident">Poll::Ready</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">Poll::Ready</span>(<span class="prelude-val">Some</span>(<span class="ident">_m</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;Task queue not empty&quot;</span>),
+            <span class="ident">Poll::Pending</span> <span class="op">|</span> <span class="ident">Poll::Ready</span>(<span class="prelude-val">None</span>) =&gt; {}
+            <span class="ident">Poll::Ready</span>(<span class="prelude-val">Some</span>(<span class="ident">_m</span>)) =&gt; <span class="macro">panic!</span>(<span class="string">&quot;Task queue not empty&quot;</span>),
         }
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_recv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DelayedAction</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_recv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">DelayedAction</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">waker</span> <span class="op">=</span> <span class="ident">futures_task::noop_waker</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cx</span> <span class="op">=</span> <span class="ident">Context::from_waker</span>(<span class="kw-2">&amp;</span><span class="ident">waker</span>);
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">async_rx</span>.<span class="ident">poll_recv</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">cx</span>) {
-            <span class="ident">Poll::Pending</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
-            <span class="ident">Poll::Ready</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::QueueDisconnected</span>),
-            <span class="ident">Poll::Ready</span>(<span class="prelude-val">Some</span>(<span class="ident">m</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">m</span>),
+            <span class="ident">Poll::Pending</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
+            <span class="ident">Poll::Ready</span>(<span class="prelude-val">None</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::QueueDisconnected</span>),
+            <span class="ident">Poll::Ready</span>(<span class="prelude-val">Some</span>(<span class="ident">m</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">m</span>),
         }
     }
 
@@ -4232,9 +4232,9 @@
         <span class="kw">loop</span> {
             <span class="kw">match</span> <span class="self">self</span>.<span class="ident">async_rx</span>.<span class="ident">recv</span>().<span class="kw">await</span> {
                 <span class="comment">// process it.</span>
-                <span class="prelude-val">Some</span>(<span class="ident">da</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">server</span>.<span class="ident">handle_delayedaction</span>(<span class="ident">da</span>).<span class="kw">await</span>,
+                <span class="prelude-val">Some</span>(<span class="ident">da</span>) =&gt; <span class="ident">server</span>.<span class="ident">handle_delayedaction</span>(<span class="ident">da</span>).<span class="kw">await</span>,
                 <span class="comment">// Channel has closed</span>
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,
+                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span>,
             }
         }
     }
@@ -4243,15 +4243,15 @@
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">trait</span> <span class="ident">IdmServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">QsTransactionType</span>: <span class="ident">QueryServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span>;
+    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HS512</span>;
+    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span>;
 
     <span class="kw">fn</span> <span class="ident">validate_and_parse_uat</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">token</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Given the token string, validate and recreate the UAT</span>
         <span class="kw">let</span> <span class="ident">bref</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_uat_bundy_txn</span>();
 
@@ -4277,7 +4277,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Account</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Account</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_qs_txn</span>().<span class="ident">internal_search_uuid</span>(<span class="ident">uuid</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;check_account_uuid_valid failed&quot;</span>);
             <span class="ident">e</span>
@@ -4298,7 +4298,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Identity</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Identity</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// From a UAT, get the current identity and associated information.</span>
         <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">get_qs_txn</span>()
@@ -4363,18 +4363,18 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IdmServerAuthTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">QsTransactionType</span> <span class="op">=</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span> {
+    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_read</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
+    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerAuthTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_sessionid_present</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">sessionid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_sessionid_present</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">sessionid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">session_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">read</span>();
         <span class="ident">session_read</span>.<span class="ident">contains_key</span>(<span class="ident">sessionid</span>)
     }
@@ -4395,12 +4395,12 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">ae</span>: <span class="kw-2">&amp;</span><span class="ident">AuthEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResult</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResult</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">ae</span>, <span class="string">&quot;Recieved&quot;</span>);
         <span class="comment">// Match on the auth event, to see what we need to do.</span>
 
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">ae</span>.<span class="ident">step</span> {
-            <span class="ident">AuthEventStep::Init</span>(<span class="ident">init</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthEventStep::Init</span>(<span class="ident">init</span>) =&gt; {
                 <span class="comment">// lperf_segment!(&quot;idm::server::auth&lt;Init&gt;&quot;, || {</span>
                 <span class="comment">// Allocate a session id, based on current time.</span>
                 <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">sid</span>);
@@ -4470,7 +4470,7 @@
                 };
 
                 <span class="kw">match</span> <span class="ident">auth_session</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">auth_session</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">auth_session</span>) =&gt; {
                         <span class="comment">// Now acquire the session tree for writing.</span>
                         <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">write</span>();
@@ -4486,7 +4486,7 @@
                         })<span class="question-mark">?</span>;
                         <span class="ident">session_write</span>.<span class="ident">commit</span>();
                     }
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">None</span> =&gt; {
                         <span class="macro">security_info!</span>(<span class="string">&quot;Authentication Session Unable to begin&quot;</span>);
                     }
                 };
@@ -4504,7 +4504,7 @@
                     <span class="ident">delay</span>,
                 })
             } <span class="comment">// AuthEventStep::Init</span>
-            <span class="ident">AuthEventStep::Begin</span>(<span class="ident">mech</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthEventStep::Begin</span>(<span class="ident">mech</span>) =&gt; {
                 <span class="comment">// lperf_segment!(&quot;idm::server::auth&lt;Begin&gt;&quot;, || {</span>
                 <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
                 <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
@@ -4554,7 +4554,7 @@
                 <span class="ident">session_write</span>.<span class="ident">commit</span>();
                 <span class="ident">r</span>
             } <span class="comment">// End AuthEventStep::Mech</span>
-            <span class="ident">AuthEventStep::Cred</span>(<span class="ident">creds</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthEventStep::Cred</span>(<span class="ident">creds</span>) =&gt; {
                 <span class="comment">// lperf_segment!(&quot;idm::server::auth&lt;Creds&gt;&quot;, || {</span>
                 <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
                 <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
@@ -4645,7 +4645,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">uae</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserAuthEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Get the entry/target we are working on.</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
@@ -4719,7 +4719,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">lae</span>: <span class="kw-2">&amp;</span><span class="ident">LdapAuthEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account_entry</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
             .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">lae</span>.<span class="ident">target</span>)
@@ -4729,7 +4729,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="comment">// if anonymous</span>
-        <span class="kw">if</span> <span class="ident">lae</span>.<span class="ident">target</span> <span class="op">=</span><span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span> {
+        <span class="kw">if</span> <span class="ident">lae</span>.<span class="ident">target</span> <span class="op">==</span> <span class="ident">UUID_ANONYMOUS</span> {
             <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">Account::try_from_entry_ro</span>(<span class="ident">account_entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">qs_read</span>)<span class="question-mark">?</span>;
             <span class="comment">// Check if the anon account has been locked.</span>
             <span class="kw">if</span> <span class="op">!</span><span class="ident">account</span>.<span class="ident">is_within_valid_time</span>(<span class="ident">ct</span>) {
@@ -4845,7 +4845,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">/*
         lperf_trace_segment!(&quot;idm::server::IdmServerAuthTransaction::commit&quot;, || {
             self.sessions.commit();
@@ -4858,11 +4858,11 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">QsTransactionType</span> <span class="op">=</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span> {
+    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_read</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
+    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>
     }
 }
@@ -4872,7 +4872,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">rate</span>: <span class="kw-2">&amp;</span><span class="ident">RadiusAuthTokenEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
             .<span class="ident">impersonate_search_ext_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">rate</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">rate</span>.<span class="ident">ident</span>)
@@ -4891,7 +4891,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">uute</span>: <span class="kw-2">&amp;</span><span class="ident">UnixUserTokenEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
             .<span class="ident">impersonate_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">uute</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">uute</span>.<span class="ident">ident</span>)
@@ -4909,7 +4909,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_unixgrouptoken</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">uute</span>: <span class="kw-2">&amp;</span><span class="ident">UnixGroupTokenEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
             .<span class="ident">impersonate_search_ext_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">uute</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">uute</span>.<span class="ident">ident</span>)
@@ -4924,7 +4924,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_credentialstatus</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">cse</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialStatusEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
             .<span class="ident">impersonate_search_ext_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">cse</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">cse</span>.<span class="ident">ident</span>)
@@ -4942,7 +4942,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_backup_codes</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">rbce</span>: <span class="kw-2">&amp;</span><span class="ident">ReadBackupCodeEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_read</span>
             .<span class="ident">impersonate_search_ext_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">rbce</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">rbce</span>.<span class="ident">ident</span>)
@@ -4963,7 +4963,7 @@
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">auth_req</span>: <span class="kw-2">&amp;</span><span class="ident">AuthorisationRequest</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">check_oauth2_authorisation</span>(<span class="ident">ident</span>, <span class="ident">uat</span>, <span class="ident">auth_req</span>, <span class="ident">ct</span>)
     }
@@ -4974,7 +4974,7 @@
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">consent_req</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">check_oauth2_authorise_permit</span>(<span class="ident">ident</span>, <span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">ct</span>)
     }
@@ -4985,7 +4985,7 @@
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">consent_req</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">check_oauth2_authorise_reject</span>(<span class="ident">ident</span>, <span class="ident">uat</span>, <span class="ident">consent_req</span>, <span class="ident">ct</span>)
     }
@@ -4995,7 +4995,7 @@
         <span class="ident">client_authz</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
         <span class="ident">token_req</span>: <span class="kw-2">&amp;</span><span class="ident">AccessTokenRequest</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>, <span class="ident">token_req</span>, <span class="ident">ct</span>)
     }
@@ -5005,7 +5005,7 @@
         <span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">intr_req</span>: <span class="kw-2">&amp;</span><span class="ident">AccessTokenIntrospectRequest</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">check_oauth2_token_introspect</span>(<span class="self">self</span>, <span class="ident">client_authz</span>, <span class="ident">intr_req</span>, <span class="ident">ct</span>)
     }
@@ -5015,7 +5015,7 @@
         <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>
             .<span class="ident">oauth2_openid_userinfo</span>(<span class="self">self</span>, <span class="ident">client_id</span>, <span class="ident">client_authz</span>, <span class="ident">ct</span>)
     }
@@ -5023,11 +5023,11 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_discovery</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>.<span class="ident">oauth2_openid_discovery</span>(<span class="ident">client_id</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">oauth2rs</span>.<span class="ident">oauth2_openid_publickey</span>(<span class="ident">client_id</span>)
     }
 }
@@ -5035,11 +5035,11 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">IdmServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">IdmServerProxyWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">QsTransactionType</span> <span class="op">=</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span> {
+    <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_write</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
+    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
         <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>
     }
 }
@@ -5058,7 +5058,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">related_inputs</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// password strength and badlisting is always global, rather than per-pw-policy.</span>
         <span class="comment">// pw-policy as check on the account is about requirements for mfa for example.</span>
         <span class="comment">//</span>
@@ -5107,7 +5107,7 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Account</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Account</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Get the account</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_write</span>
@@ -5133,7 +5133,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">pce</span>: <span class="kw-2">&amp;</span><span class="ident">PasswordChangeEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Get the modifications we *want* to perform.</span>
@@ -5206,7 +5206,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_unix_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">pce</span>: <span class="kw-2">&amp;</span><span class="ident">UnixPasswordChangeEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Get the account</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_write</span>
@@ -5294,7 +5294,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">cleartext</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// name to uuid</span>
         <span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">name_to_uuid</span>(<span class="ident">name</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;name to uuid failed&quot;</span>);
@@ -5332,7 +5332,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_account_password</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">gpe</span>: <span class="kw-2">&amp;</span><span class="ident">GeneratePasswordEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">gpe</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
         <span class="comment">// Ask if tis all good - this step checks pwpolicy and such</span>
 
@@ -5375,7 +5375,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">gbe</span>: <span class="kw-2">&amp;</span><span class="ident">GenerateBackupCodeEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">gbe</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Generate a new set of backup code.</span>
@@ -5412,7 +5412,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">rte</span>: <span class="kw-2">&amp;</span><span class="ident">RemoveBackupCodeEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">trace!</span>(<span class="ident">target</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">rte</span>.<span class="ident">target</span>, <span class="string">&quot;Attempting to remove backup code&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">rte</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
@@ -5440,7 +5440,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">regenerate_radius_secret</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">rrse</span>: <span class="kw-2">&amp;</span><span class="ident">RegenerateRadiusSecretEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">rrse</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Difference to the password above, this is intended to be read/copied</span>
@@ -5478,7 +5478,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">wre</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnInitRegisterEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">sid</span>);
 
@@ -5498,7 +5498,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reg_account_webauthn_complete</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">wre</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnDoRegisterEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">wre</span>.<span class="ident">session</span>;
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">webauthn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">webauthn</span>;
@@ -5550,7 +5550,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_account_webauthn</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">rwe</span>: <span class="kw-2">&amp;</span><span class="ident">RemoveWebauthnEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">trace!</span>(
             <span class="string">&quot;Attempting to remove webauthn {:?} -&gt; {:?}&quot;</span>,
             <span class="ident">rwe</span>.<span class="ident">label</span>,
@@ -5585,7 +5585,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">gte</span>: <span class="kw-2">&amp;</span><span class="ident">GenerateTotpEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">gte</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">sid</span>);
 
@@ -5607,7 +5607,7 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">vte</span>: <span class="kw-2">&amp;</span><span class="ident">VerifyTotpEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">vte</span>.<span class="ident">session</span>;
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">vte</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
         <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">vte</span>.<span class="ident">chal</span>;
@@ -5662,7 +5662,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">accept_account_sha1_totp</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">aste</span>: <span class="kw-2">&amp;</span><span class="ident">AcceptSha1TotpEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">aste</span>.<span class="ident">session</span>;
         <span class="kw">let</span> <span class="ident">origin</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">aste</span>.<span class="ident">ident</span>.<span class="ident">origin</span>).<span class="ident">into</span>();
 
@@ -5716,7 +5716,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">remove_account_totp</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">rte</span>: <span class="kw-2">&amp;</span><span class="ident">RemoveTotpEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">trace!</span>(<span class="ident">target</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">rte</span>.<span class="ident">target</span>, <span class="string">&quot;Attempting to remove totp&quot;</span>);
 
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">rte</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
@@ -5742,7 +5742,7 @@
     }
 
     <span class="comment">// -- delayed action processing --</span>
-    <span class="kw">fn</span> <span class="ident">process_pwupgrade</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">pwu</span>: <span class="kw-2">&amp;</span><span class="ident">PasswordUpgrade</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">process_pwupgrade</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">pwu</span>: <span class="kw-2">&amp;</span><span class="ident">PasswordUpgrade</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// get the account</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
 
@@ -5768,7 +5768,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">process_unixpwupgrade</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">pwu</span>: <span class="kw-2">&amp;</span><span class="ident">UnixPasswordUpgrade</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">process_unixpwupgrade</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">pwu</span>: <span class="kw-2">&amp;</span><span class="ident">UnixPasswordUpgrade</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">qs_write</span>
             .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>)
@@ -5802,7 +5802,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_webauthncounterinc</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">wci</span>: <span class="kw-2">&amp;</span><span class="ident">WebauthnCounterIncrement</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Generate an optional mod and then attempt to apply it.</span>
@@ -5828,7 +5828,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_backupcoderemoval</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">bcr</span>: <span class="kw-2">&amp;</span><span class="ident">BackupCodeRemoval</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">bcr</span>.<span class="ident">target_uuid</span>)<span class="question-mark">?</span>;
         <span class="comment">// Generate an optional mod and then attempt to apply it.</span>
         <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">account</span>
@@ -5847,16 +5847,16 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">process_delayedaction</span>(
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">da</span>: <span class="ident">DelayedAction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">da</span> {
-            <span class="ident">DelayedAction::PwUpgrade</span>(<span class="ident">pwu</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">process_pwupgrade</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>),
-            <span class="ident">DelayedAction::UnixPwUpgrade</span>(<span class="ident">upwu</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">process_unixpwupgrade</span>(<span class="kw-2">&amp;</span><span class="ident">upwu</span>),
-            <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="ident">wci</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">process_webauthncounterinc</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>),
-            <span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="ident">bcr</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>.<span class="ident">process_backupcoderemoval</span>(<span class="kw-2">&amp;</span><span class="ident">bcr</span>),
+            <span class="ident">DelayedAction::PwUpgrade</span>(<span class="ident">pwu</span>) =&gt; <span class="self">self</span>.<span class="ident">process_pwupgrade</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>),
+            <span class="ident">DelayedAction::UnixPwUpgrade</span>(<span class="ident">upwu</span>) =&gt; <span class="self">self</span>.<span class="ident">process_unixpwupgrade</span>(<span class="kw-2">&amp;</span><span class="ident">upwu</span>),
+            <span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="ident">wci</span>) =&gt; <span class="self">self</span>.<span class="ident">process_webauthncounterinc</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>),
+            <span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="ident">bcr</span>) =&gt; <span class="self">self</span>.<span class="ident">process_backupcoderemoval</span>(<span class="kw-2">&amp;</span><span class="ident">bcr</span>),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;idm::server::IdmServerProxyWriteTransaction::commit&quot;</span>, {
             <span class="kw">if</span> <span class="self">self</span>
                 .<span class="ident">qs_write</span>
@@ -5893,13 +5893,13 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">reload_password_badlist</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">reload_password_badlist</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_password_badlist</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">badlist_entry</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">badlist_entry</span>) =&gt; {
                 <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">pw_badlist_cache</span> <span class="op">=</span> <span class="ident">badlist_entry</span>;
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 }
@@ -5957,7 +5957,7 @@
                     <span class="comment">/* Some weird lifetime things happen here ... */</span>
 
                     <span class="kw">let</span> <span class="ident">sid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">r1</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                             <span class="kw">let</span> <span class="ident">AuthResult</span> {
                                 <span class="ident">sessionid</span>,
                                 <span class="ident">state</span>,
@@ -5965,14 +5965,14 @@
                             } <span class="op">=</span> <span class="ident">ar</span>;
                             <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                             <span class="kw">match</span> <span class="ident">state</span> {
-                                <span class="ident">AuthState::Choose</span>(<span class="kw-2">mut</span> <span class="ident">conts</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="ident">AuthState::Choose</span>(<span class="kw-2">mut</span> <span class="ident">conts</span>) =&gt; {
                                     <span class="comment">// Should only be one auth mech</span>
-                                    <span class="macro">assert!</span>(<span class="ident">conts</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+                                    <span class="macro">assert!</span>(<span class="ident">conts</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
                                     <span class="comment">// And it should be anonymous</span>
                                     <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">conts</span>.<span class="ident">pop</span>().<span class="ident">expect</span>(<span class="string">&quot;Should not fail&quot;</span>);
-                                    <span class="macro">assert!</span>(<span class="ident">m</span> <span class="op">=</span><span class="op">=</span> <span class="ident">AuthMech::Anonymous</span>);
+                                    <span class="macro">assert!</span>(<span class="ident">m</span> <span class="op">==</span> <span class="ident">AuthMech::Anonymous</span>);
                                 }
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="kw">_</span> =&gt; {
                                     <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-continue result!&quot;</span>
                                 );
@@ -5982,7 +5982,7 @@
                             <span class="comment">// Now pass back the sessionid, we are good to continue.</span>
                             <span class="ident">sessionid</span>
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                             <span class="comment">// Should not occur!</span>
                             <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                             <span class="macro">panic!</span>();
@@ -6005,7 +6005,7 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                     <span class="kw">match</span> <span class="ident">r2</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                             <span class="kw">let</span> <span class="ident">AuthResult</span> {
                                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
                                 <span class="ident">state</span>,
@@ -6014,12 +6014,12 @@
 
                             <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                             <span class="kw">match</span> <span class="ident">state</span> {
-                                <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
                                     <span class="comment">// Check the uat.</span>
-                                    <span class="macro">assert!</span>(<span class="ident">allowed</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
-                                    <span class="macro">assert!</span>(<span class="ident">allowed</span>.<span class="ident">first</span>() <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">AuthAllowed::Anonymous</span>));
+                                    <span class="macro">assert!</span>(<span class="ident">allowed</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
+                                    <span class="macro">assert!</span>(<span class="ident">allowed</span>.<span class="ident">first</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">AuthAllowed::Anonymous</span>));
                                 }
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="kw">_</span> =&gt; {
                                     <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-continue result!&quot;</span>
                                 );
@@ -6027,7 +6027,7 @@
                                 }
                             }
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                             <span class="comment">// Should not occur!</span>
                             <span class="macro">panic!</span>();
@@ -6048,7 +6048,7 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                     <span class="kw">match</span> <span class="ident">r2</span> {
-                        <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                             <span class="kw">let</span> <span class="ident">AuthResult</span> {
                                 <span class="ident">sessionid</span>: <span class="kw">_</span>,
                                 <span class="ident">state</span>,
@@ -6057,10 +6057,10 @@
 
                             <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                             <span class="kw">match</span> <span class="ident">state</span> {
-                                <span class="ident">AuthState::Success</span>(<span class="ident">_uat</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="ident">AuthState::Success</span>(<span class="ident">_uat</span>) =&gt; {
                                     <span class="comment">// Check the uat.</span>
                                 }
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="kw">_</span> =&gt; {
                                     <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;</span>
                                 );
@@ -6068,7 +6068,7 @@
                                 }
                             }
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                             <span class="comment">// Should not occur!</span>
                             <span class="macro">panic!</span>();
@@ -6098,13 +6098,13 @@
                     <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                     <span class="kw">match</span> <span class="ident">r2</span> {
-                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;Auth state machine not correctly enforced!&quot;</span>);
                             <span class="macro">panic!</span>();
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">e</span> {
-                            <span class="ident">OperationError::InvalidSessionState</span> <span class="op">=</span><span class="op">&gt;</span> {}
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">match</span> <span class="ident">e</span> {
+                            <span class="ident">OperationError::InvalidSessionState</span> =&gt; {}
+                            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                         },
                     };
                 }
@@ -6112,7 +6112,7 @@
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">init_admin_w_password</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">init_admin_w_password</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">p</span> <span class="op">=</span> <span class="ident">CryptoPolicy::minimum</span>();
         <span class="kw">let</span> <span class="ident">cred</span> <span class="op">=</span> <span class="ident">Credential::new_password_only</span>(<span class="kw-2">&amp;</span><span class="ident">p</span>, <span class="ident">pw</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">v_cred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">cred</span>);
@@ -6134,7 +6134,7 @@
         <span class="ident">qs_write</span>.<span class="ident">commit</span>()
     }
 
-    <span class="kw">fn</span> <span class="ident">init_admin_authsession_sid</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Uuid</span> {
+    <span class="kw">fn</span> <span class="ident">init_admin_authsession_sid</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Uuid</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_auth</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">auth</span>();
         <span class="kw">let</span> <span class="ident">admin_init</span> <span class="op">=</span> <span class="ident">AuthEvent::named_init</span>(<span class="ident">name</span>);
 
@@ -6148,8 +6148,8 @@
 
         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
         <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">AuthState::Choose</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthState::Choose</span>(<span class="kw">_</span>) =&gt; {}
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Sessions was not initialised&quot;</span>);
                 <span class="macro">panic!</span>();
             }
@@ -6169,8 +6169,8 @@
         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
 
         <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">AuthState::Continue</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthState::Continue</span>(<span class="kw">_</span>) =&gt; {}
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Sessions was not initialised&quot;</span>);
                 <span class="macro">panic!</span>();
             }
@@ -6181,7 +6181,7 @@
         <span class="ident">sessionid</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">check_admin_password</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">fn</span> <span class="ident">check_admin_password</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">let</span> <span class="ident">sid</span> <span class="op">=</span> <span class="ident">init_admin_authsession_sid</span>(<span class="ident">idms</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>), <span class="string">&quot;admin&quot;</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_auth</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">auth</span>();
@@ -6192,7 +6192,7 @@
         <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
         <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">r2</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">AuthResult</span> {
                     <span class="ident">sessionid</span>: <span class="kw">_</span>,
                     <span class="ident">state</span>,
@@ -6202,17 +6202,17 @@
                 <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
 
                 <span class="kw">match</span> <span class="ident">state</span> {
-                    <span class="ident">AuthState::Success</span>(<span class="ident">token</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">AuthState::Success</span>(<span class="ident">token</span>) =&gt; {
                         <span class="comment">// Check the uat.</span>
                         <span class="ident">token</span>
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;</span>);
                         <span class="macro">panic!</span>();
                     }
                 }
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="comment">// Should not occur!</span>
                 <span class="macro">panic!</span>();
@@ -6255,7 +6255,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                 <span class="kw">match</span> <span class="ident">r2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">AuthResult</span> {
                             <span class="ident">sessionid</span>: <span class="kw">_</span>,
                             <span class="ident">state</span>,
@@ -6263,10 +6263,10 @@
                         } <span class="op">=</span> <span class="ident">ar</span>;
                         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                         <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">AuthState::Success</span>(<span class="ident">_uat</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">AuthState::Success</span>(<span class="ident">_uat</span>) =&gt; {
                                 <span class="comment">// Check the uat.</span>
                             }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">_</span> =&gt; {
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;</span>
                                 );
@@ -6274,7 +6274,7 @@
                             }
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="comment">// Should not occur!</span>
                         <span class="macro">panic!</span>();
@@ -6306,7 +6306,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                 <span class="kw">match</span> <span class="ident">r2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">AuthResult</span> {
                             <span class="ident">sessionid</span>: <span class="kw">_</span>,
                             <span class="ident">state</span>,
@@ -6314,10 +6314,10 @@
                         } <span class="op">=</span> <span class="ident">ar</span>;
                         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                         <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">AuthState::Denied</span>(<span class="ident">_reason</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">AuthState::Denied</span>(<span class="ident">_reason</span>) =&gt; {
                                 <span class="comment">// Check the uat.</span>
                             }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">_</span> =&gt; {
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;</span>
                                 );
@@ -6325,7 +6325,7 @@
                             }
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="comment">// Should not occur!</span>
                         <span class="macro">panic!</span>();
@@ -6456,7 +6456,7 @@
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to generate radius auth token&quot;</span>);
 
                 <span class="comment">// view the token?</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span> <span class="op">=</span><span class="op">=</span> <span class="ident">tok_r</span>.<span class="ident">secret</span>);
+                <span class="macro">assert!</span>(<span class="ident">r1</span> <span class="op">==</span> <span class="ident">tok_r</span>.<span class="ident">secret</span>);
             }
         )
     }
@@ -6559,20 +6559,20 @@
                     .<span class="ident">get_unixgrouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">ugte</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to generate unix group token&quot;</span>);
 
-                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;testgroup&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">spn</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;testgroup@example.com&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;testgroup&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">spn</span> <span class="op">==</span> <span class="string">&quot;testgroup@example.com&quot;</span>);
 
                 <span class="kw">let</span> <span class="ident">uute</span> <span class="op">=</span> <span class="ident">UnixUserTokenEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>());
                 <span class="kw">let</span> <span class="ident">tok_r</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
                     .<span class="ident">get_unixusertoken</span>(<span class="kw-2">&amp;</span><span class="ident">uute</span>, <span class="ident">duration_from_epoch_now</span>())
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to generate unix user token&quot;</span>);
 
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">spn</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin@example.com&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">groups</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">groups</span>[<span class="number">0</span>].<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">groups</span>[<span class="number">1</span>].<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;testgroup&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">valid</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">true</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;admin&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">spn</span> <span class="op">==</span> <span class="string">&quot;admin@example.com&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">groups</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">groups</span>[<span class="number">0</span>].<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;admin&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">groups</span>[<span class="number">1</span>].<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;testgroup&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">valid</span> <span class="op">==</span> <span class="bool-val">true</span>);
 
                 <span class="comment">// Show we can get the admin as a unix group token too</span>
                 <span class="kw">let</span> <span class="ident">ugte</span> <span class="op">=</span> <span class="ident">UnixGroupTokenEvent::new_internal</span>(
@@ -6583,8 +6583,8 @@
                     .<span class="ident">get_unixgrouptoken</span>(<span class="kw-2">&amp;</span><span class="ident">ugte</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to generate unix group token&quot;</span>);
 
-                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">spn</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin@example.com&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;admin&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_g</span>.<span class="ident">spn</span> <span class="op">==</span> <span class="string">&quot;admin@example.com&quot;</span>);
             }
         )
     }
@@ -6622,8 +6622,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_good</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a1</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="comment">// Check bad password</span>
                 <span class="kw">let</span> <span class="ident">uuae_bad</span> <span class="op">=</span> <span class="ident">UnixUserAuthEvent::new_internal</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD_INC</span>);
@@ -6631,8 +6631,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_bad</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="macro">assert!</span>(<span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
 
@@ -6656,8 +6656,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_good</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a3</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="macro">assert!</span>(<span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
             }
@@ -6676,10 +6676,10 @@
                 <span class="kw">let</span> <span class="ident">vte1</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">Uuid::new_v4</span>(), <span class="number">0</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidRequestState</span>);
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                        <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">==</span> <span class="ident">OperationError::InvalidRequestState</span>);
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
 
                 <span class="comment">// reg, expire session, attempt verify (fail)</span>
@@ -6689,18 +6689,18 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> <span class="ident">sesid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">id</span>,
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="kw">_</span>) =&gt; <span class="ident">id</span>,
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
                 <span class="ident">idms_prox_write</span>.<span class="ident">expire_mfareg_sessions</span>(<span class="ident">expire</span>.<span class="ident">clone</span>());
 
                 <span class="kw">let</span> <span class="ident">vte2</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>, <span class="number">0</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidRequestState</span>);
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
+                        <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">==</span> <span class="ident">OperationError::InvalidRequestState</span>);
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
 
                 <span class="comment">// == Test TOTP on account with no password (fail)</span>
@@ -6708,8 +6708,8 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> (<span class="ident">sesid</span>, <span class="ident">tok</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">tok</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) =&gt; (<span class="ident">id</span>, <span class="ident">tok</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
                 <span class="comment">// get the correct otp</span>
                 <span class="kw">let</span> <span class="ident">r_tok</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="ident">tok</span>.<span class="ident">into</span>();
@@ -6720,8 +6720,8 @@
                 <span class="kw">let</span> <span class="ident">vte3</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>, <span class="ident">chal</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte3</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidState</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">==</span> <span class="ident">OperationError::InvalidState</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
 
                 <span class="comment">// Expire the session to allow it to reset.</span>
@@ -6736,8 +6736,8 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> (<span class="ident">sesid</span>, <span class="ident">tok</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">tok</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) =&gt; (<span class="ident">id</span>, <span class="ident">tok</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
                 <span class="comment">// get the correct otp</span>
                 <span class="kw">let</span> <span class="ident">r_tok</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="ident">tok</span>.<span class="ident">into</span>();
@@ -6748,8 +6748,8 @@
                 <span class="kw">let</span> <span class="ident">vte3</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ANONYMOUS</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>, <span class="ident">chal</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte3</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidRequestState</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">assert!</span>(<span class="ident">e</span> <span class="op">==</span> <span class="ident">OperationError::InvalidRequestState</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
 
                 <span class="comment">// == reg, verify w_ incorrect totp (fail)</span>
@@ -6757,15 +6757,15 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> (<span class="ident">_sesid</span>, <span class="ident">_tok</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">tok</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) =&gt; (<span class="ident">id</span>, <span class="ident">tok</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
 
                 <span class="comment">// We can reuse the OTP/Vte2 from before, since we want the invalid otp.</span>
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte2</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
                     <span class="comment">// On failure we get back another attempt to setup the token.</span>
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">_id</span>, <span class="ident">_tok</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">_id</span>, <span class="ident">_tok</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
                 <span class="ident">idms_prox_write</span>.<span class="ident">expire_mfareg_sessions</span>(<span class="ident">expire</span>.<span class="ident">clone</span>());
 
@@ -6775,8 +6775,8 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> (<span class="ident">sesid</span>, <span class="ident">tok</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">tok</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) =&gt; (<span class="ident">id</span>, <span class="ident">tok</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
                 <span class="comment">// We can&#39;t reuse the OTP/Vte from before, since the token seed changes</span>
                 <span class="kw">let</span> <span class="ident">r_tok</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="ident">tok</span>.<span class="ident">into</span>();
@@ -6787,8 +6787,8 @@
                 <span class="kw">let</span> <span class="ident">vte3</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>, <span class="ident">chal</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte3</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
                 <span class="ident">idms_prox_write</span>.<span class="ident">expire_mfareg_sessions</span>(<span class="ident">expire</span>.<span class="ident">clone</span>());
 
@@ -6819,8 +6819,8 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> (<span class="ident">sesid</span>, <span class="ident">tok</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">tok</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) =&gt; (<span class="ident">id</span>, <span class="ident">tok</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
 
                 <span class="kw">let</span> <span class="ident">r_tok</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="ident">tok</span>.<span class="ident">into</span>();
@@ -6836,15 +6836,15 @@
                 <span class="kw">let</span> <span class="ident">vte3</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>, <span class="ident">chal</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte3</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpInvalidSha1</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpInvalidSha1</span>(<span class="kw">_</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
 
                 <span class="kw">let</span> <span class="ident">aste</span> <span class="op">=</span> <span class="ident">AcceptSha1TotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">accept_account_sha1_totp</span>(<span class="kw-2">&amp;</span><span class="ident">aste</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
 
                 <span class="comment">// Done!</span>
@@ -6882,7 +6882,7 @@
                 <span class="comment">// process it.</span>
                 <span class="kw">let</span> <span class="ident">da</span> <span class="op">=</span> <span class="ident">idms_delayed</span>.<span class="ident">try_recv</span>().<span class="ident">expect</span>(<span class="string">&quot;invalid&quot;</span>);
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">duration_from_epoch_now</span>(), <span class="ident">da</span>));
-                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">=</span><span class="op">=</span> <span class="ident">r</span>);
+                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
                 <span class="comment">// Check the admin pw still matches</span>
                 <span class="ident">check_admin_password</span>(<span class="ident">idms</span>, <span class="string">&quot;password&quot;</span>);
                 <span class="comment">// No delayed action was queued.</span>
@@ -6928,8 +6928,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a1</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
                 <span class="comment">// The upgrade was queued</span>
@@ -6942,8 +6942,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
                 <span class="comment">// No delayed action was queued.</span>
@@ -7009,8 +7009,8 @@
 
                 <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                 <span class="kw">match</span> <span class="ident">state</span> {
-                    <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">panic!</span>();
                     }
                 };
@@ -7031,8 +7031,8 @@
 
                 <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                 <span class="kw">match</span> <span class="ident">state</span> {
-                    <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">panic!</span>();
                     }
                 };
@@ -7082,14 +7082,14 @@
                 <span class="comment">// Should this actually send an error with the details? Or just silently act as</span>
                 <span class="comment">// badpw?</span>
                 <span class="kw">match</span> <span class="ident">a1</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="kw">let</span> <span class="ident">a2</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_good</span>, <span class="ident">time_high</span>));
                 <span class="kw">match</span> <span class="ident">a2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
@@ -7101,15 +7101,15 @@
                     .<span class="ident">get_unixusertoken</span>(<span class="kw-2">&amp;</span><span class="ident">uute</span>, <span class="ident">time_low</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to generate unix user token&quot;</span>);
 
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">valid</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;admin&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">valid</span> <span class="op">==</span> <span class="bool-val">false</span>);
 
                 <span class="kw">let</span> <span class="ident">tok_r</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
                     .<span class="ident">get_unixusertoken</span>(<span class="kw-2">&amp;</span><span class="ident">uute</span>, <span class="ident">time_high</span>)
                     .<span class="ident">expect</span>(<span class="string">&quot;Failed to generate unix user token&quot;</span>);
 
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;admin&quot;</span>);
-                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">valid</span> <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">name</span> <span class="op">==</span> <span class="string">&quot;admin&quot;</span>);
+                <span class="macro">assert!</span>(<span class="ident">tok_r</span>.<span class="ident">valid</span> <span class="op">==</span> <span class="bool-val">false</span>);
             }
         )
     }
@@ -7175,7 +7175,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                 <span class="kw">match</span> <span class="ident">r2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">AuthResult</span> {
                             <span class="ident">sessionid</span>: <span class="kw">_</span>,
                             <span class="ident">state</span>,
@@ -7183,10 +7183,10 @@
                         } <span class="op">=</span> <span class="ident">ar</span>;
                         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                         <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
                                 <span class="macro">assert!</span>(<span class="ident">reason</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;Account is temporarily locked&quot;</span>);
                             }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">_</span> =&gt; {
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;</span>
                                 );
@@ -7194,7 +7194,7 @@
                             }
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="macro">panic!</span>();
                     }
@@ -7219,10 +7219,10 @@
 
                 <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                 <span class="kw">match</span> <span class="ident">state</span> {
-                    <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                        <span class="macro">assert!</span>(<span class="ident">reason</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;Account is temporarily locked&quot;</span>);
+                    <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
+                        <span class="macro">assert!</span>(<span class="ident">reason</span> <span class="op">==</span> <span class="string">&quot;Account is temporarily locked&quot;</span>);
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;Sessions was not denied (softlock)&quot;</span>);
                         <span class="macro">panic!</span>();
                     }
@@ -7250,7 +7250,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                 <span class="kw">match</span> <span class="ident">r2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">AuthResult</span> {
                             <span class="ident">sessionid</span>: <span class="kw">_</span>,
                             <span class="ident">state</span>,
@@ -7258,10 +7258,10 @@
                         } <span class="op">=</span> <span class="ident">ar</span>;
                         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                         <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">AuthState::Success</span>(<span class="ident">_uat</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">AuthState::Success</span>(<span class="ident">_uat</span>) =&gt; {
                                 <span class="comment">// Check the uat.</span>
                             }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">_</span> =&gt; {
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-succcess result!&quot;</span>
                                 );
@@ -7269,7 +7269,7 @@
                             }
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="comment">// Should not occur!</span>
                         <span class="macro">panic!</span>();
@@ -7316,7 +7316,7 @@
                 <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
 
                 <span class="kw">match</span> <span class="ident">r2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">AuthResult</span> {
                             <span class="ident">sessionid</span>: <span class="kw">_</span>,
                             <span class="ident">state</span>,
@@ -7324,10 +7324,10 @@
                         } <span class="op">=</span> <span class="ident">ar</span>;
                         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                         <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
                                 <span class="macro">assert!</span>(<span class="ident">reason</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;Account is temporarily locked&quot;</span>);
                             }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">_</span> =&gt; {
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;</span>
                                 );
@@ -7335,7 +7335,7 @@
                             }
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="macro">panic!</span>();
                     }
@@ -7352,7 +7352,7 @@
                 );
                 <span class="macro">debug!</span>(<span class="string">&quot;r2 ==&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
                 <span class="kw">match</span> <span class="ident">r2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ar</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">AuthResult</span> {
                             <span class="ident">sessionid</span>: <span class="kw">_</span>,
                             <span class="ident">state</span>,
@@ -7360,10 +7360,10 @@
                         } <span class="op">=</span> <span class="ident">ar</span>;
                         <span class="macro">debug_assert!</span>(<span class="ident">delay</span>.<span class="ident">is_none</span>());
                         <span class="kw">match</span> <span class="ident">state</span> {
-                            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) <span class="op">=</span><span class="op">&gt;</span> {
-                                <span class="macro">assert!</span>(<span class="ident">reason</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;Account is temporarily locked&quot;</span>);
+                            <span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>) =&gt; {
+                                <span class="macro">assert!</span>(<span class="ident">reason</span> <span class="op">==</span> <span class="string">&quot;Account is temporarily locked&quot;</span>);
                             }
-                            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="kw">_</span> =&gt; {
                                 <span class="macro">error!</span>(
                                     <span class="string">&quot;A critical error has occured! We have a non-denied result!&quot;</span>
                                 );
@@ -7371,7 +7371,7 @@
                             }
                         }
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;A critical error has occured! {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="macro">panic!</span>();
                     }
@@ -7414,8 +7414,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_bad</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a2</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="comment">// Now if we immediately auth again, should fail at same time due to SL</span>
@@ -7423,8 +7423,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_good</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a1</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="comment">// And then later, works because of SL lifting.</span>
@@ -7432,8 +7432,8 @@
                     <span class="ident">idms_auth</span>.<span class="ident">auth_unix</span>(<span class="kw-2">&amp;</span><span class="ident">uuae_good</span>, <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span> <span class="op">+</span> <span class="number">2</span>)),
                 );
                 <span class="kw">match</span> <span class="ident">a1</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">_tok</span>)) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="macro">assert!</span>(<span class="ident">idms_auth</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
@@ -7456,10 +7456,10 @@
                 );
 
                 <span class="kw">let</span> (<span class="ident">sessionid</span>, <span class="ident">ccr</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">reg_account_webauthn_init</span>(<span class="kw-2">&amp;</span><span class="ident">wrei</span>, <span class="ident">ct</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">sessionid</span>, <span class="ident">ccr</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">sessionid</span>, <span class="ident">ccr</span>)) =&gt; {
                         (<span class="ident">sessionid</span>, <span class="ident">ccr</span>)
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">panic!</span>();
                     }
                 };
@@ -7472,8 +7472,8 @@
                     <span class="ident">WebauthnDoRegisterEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sessionid</span>, <span class="ident">rego</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">reg_account_webauthn_complete</span>(<span class="kw-2">&amp;</span><span class="ident">wdre</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">panic!</span>();
                     }
                 };
@@ -7508,7 +7508,7 @@
                     <span class="ident">cid</span>: <span class="ident">wcred</span>.<span class="ident">cred_id</span>,
                 });
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">duration_from_epoch_now</span>(), <span class="ident">da</span>));
-                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">=</span><span class="op">=</span> <span class="ident">r</span>);
+                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
 
                 <span class="comment">// Check we can remove the webauthn device - provided we set a pw.</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
@@ -7516,10 +7516,10 @@
                     <span class="ident">RemoveWebauthnEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="string">&quot;softtoken&quot;</span>.<span class="ident">to_string</span>());
                 <span class="comment">// This fails because the acc is webauthn only.</span>
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">remove_account_webauthn</span>(<span class="kw-2">&amp;</span><span class="ident">rwe</span>) {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="kw">_</span>)) =&gt; {
                         <span class="comment">//ok</span>
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
                 <span class="comment">// Reg a pw.</span>
                 <span class="kw">let</span> <span class="ident">pce</span> <span class="op">=</span> <span class="ident">PasswordChangeEvent::new_internal</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD</span>);
@@ -7558,8 +7558,8 @@
                     .<span class="ident">generate_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">gte1</span>, <span class="ident">ct</span>.<span class="ident">clone</span>())
                     .<span class="ident">unwrap</span>();
                 <span class="kw">let</span> (<span class="ident">sesid</span>, <span class="ident">tok</span>) <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">id</span>, <span class="ident">tok</span>),
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
+                    <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">id</span>, <span class="ident">tok</span>) =&gt; (<span class="ident">id</span>, <span class="ident">tok</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(<span class="string">&quot;invalid state!&quot;</span>),
                 };
                 <span class="kw">let</span> <span class="ident">r_tok</span>: <span class="ident">Totp</span> <span class="op">=</span> <span class="ident">tok</span>.<span class="ident">into</span>();
                 <span class="kw">let</span> <span class="ident">chal</span> <span class="op">=</span> <span class="ident">r_tok</span>
@@ -7569,8 +7569,8 @@
                 <span class="kw">let</span> <span class="ident">vte3</span> <span class="op">=</span> <span class="ident">VerifyTotpEvent::new_internal</span>(<span class="ident">UUID_ADMIN</span>.<span class="ident">clone</span>(), <span class="ident">sesid</span>, <span class="ident">chal</span>);
 
                 <span class="kw">match</span> <span class="ident">idms_prox_write</span>.<span class="ident">verify_account_totp</span>(<span class="kw-2">&amp;</span><span class="ident">vte3</span>, <span class="ident">ct</span>.<span class="ident">clone</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                    <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                 };
                 <span class="ident">idms_prox_write</span>.<span class="ident">expire_mfareg_sessions</span>(<span class="ident">expire</span>.<span class="ident">clone</span>());
 
@@ -7599,7 +7599,7 @@
                     <span class="ident">code_to_remove</span>: <span class="ident">code_for_test</span>.<span class="ident">to_string</span>(),
                 });
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">delayed_action</span>(<span class="ident">duration_from_epoch_now</span>(), <span class="ident">da</span>));
-                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">=</span><span class="op">=</span> <span class="ident">r</span>);
+                <span class="macro">assert!</span>(<span class="prelude-val">Ok</span>(<span class="bool-val">true</span>) <span class="op">==</span> <span class="ident">r</span>);
 
                 <span class="comment">// Check the removed backup code is no longer in the set</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
@@ -7635,8 +7635,8 @@
 
                 <span class="comment">// In X time it should be INVALID</span>
                 <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">validate_and_parse_uat</span>(<span class="prelude-val">Some</span>(<span class="ident">token</span>.<span class="ident">as_str</span>()), <span class="ident">expiry</span>) {
-                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SessionExpired</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">OperationError::SessionExpired</span>) =&gt; {}
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 }
             }
         )

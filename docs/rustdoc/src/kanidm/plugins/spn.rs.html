@@ -381,6 +381,7 @@
 <span id="381">381</span>
 <span id="382">382</span>
 <span id="383">383</span>
+<span id="384">384</span>
 </pre><pre class="rust"><code><span class="comment">// Generate and manage spn&#39;s for all entries in the domain. Also deals with</span>
 <span class="comment">// the infrequent - but possible - case where a domain is renamed.</span>
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
@@ -392,6 +393,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::PartialValue</span>;
 <span class="comment">// use crate::value::{PartialValue, Value};</span>
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">OperationError</span>};
+<span class="kw">use</span> <span class="ident">std::iter::once</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Spn</span> {}
@@ -403,7 +405,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">Spn</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="string">&quot;plugin_spn&quot;</span>
     }
 
@@ -412,7 +414,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Always generate the spn and set it. Why? Because the effort</span>
         <span class="comment">// needed to validate is the same as generation, so we may as well</span>
         <span class="comment">// just generate and set blindly when required.</span>
@@ -453,7 +455,7 @@
                         <span class="ident">e</span>
                     })<span class="question-mark">?</span>;
                 <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, <span class="ident">spn</span>);
-                <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="macro">btreeset!</span>[<span class="ident">spn</span>]);
+                <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="ident">once</span>(<span class="ident">spn</span>));
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -463,7 +465,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Always generate and set *if* spn was an attribute on any of the mod</span>
         <span class="comment">// list events.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">domain_name</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="prelude-val">None</span>;
@@ -499,7 +501,7 @@
                         <span class="ident">e</span>
                     })<span class="question-mark">?</span>;
                 <span class="macro">trace!</span>(<span class="string">&quot;plugin_spn: set spn to {:?}&quot;</span>, <span class="ident">spn</span>);
-                <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="macro">btreeset!</span>[<span class="ident">spn</span>]);
+                <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;spn&quot;</span>, <span class="ident">once</span>(<span class="ident">spn</span>));
             }
         }
         <span class="prelude-val">Ok</span>(())
@@ -511,7 +513,7 @@
         <span class="ident">pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// On modify, if changing domain_name on UUID_DOMAIN_INFO</span>
         <span class="comment">//    trigger the spn regen ... which is expensive. Future</span>
         <span class="comment">// TODO #157: will be improvements to modify on large txns.</span>
@@ -528,8 +530,8 @@
         });
 
         <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">domain_name_changed</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(()),
         };
 
         <span class="macro">admin_info!</span>(
@@ -548,7 +550,7 @@
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Verify that all items with spn&#39;s have valid spns.</span>
         <span class="comment">//   We need to consider the case that an item has a different origin domain too,</span>
         <span class="comment">// so we should be able to verify that *those* spns validate to the trusted domain info</span>
@@ -558,8 +560,8 @@
             .<span class="ident">get_domain_name</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">dn</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">dn</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
+            <span class="prelude-val">Ok</span>(<span class="ident">dn</span>) =&gt; <span class="ident">dn</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
         };
 
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="macro">f_or!</span>([
@@ -571,16 +573,16 @@
             .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
+            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) =&gt; <span class="ident">all_cand</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
         };
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
 
         <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">all_cand</span> {
             <span class="kw">let</span> <span class="ident">g_spn</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">generate_spn</span>(<span class="ident">domain_name</span>.<span class="ident">as_str</span>()) {
-                <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">None</span> =&gt; {
                     <span class="macro">admin_error!</span>(
                         <span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>.<span class="ident">get_uuid</span>(),
                         <span class="string">&quot;Entry SPN could not be generated (missing name!?)&quot;</span>,
@@ -591,7 +593,7 @@
                 }
             };
             <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">r_spn</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">r_spn</span>) =&gt; {
                     <span class="macro">trace!</span>(<span class="string">&quot;verify spn: s {:?} == ex {:?} ?&quot;</span>, <span class="ident">r_spn</span>, <span class="ident">g_spn</span>);
                     <span class="kw">if</span> <span class="ident">r_spn</span> <span class="op">!</span><span class="op">=</span> <span class="ident">g_spn</span> {
                         <span class="macro">admin_error!</span>(
@@ -604,7 +606,7 @@
                         <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidSpn</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())))
                     }
                 }
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">None</span> =&gt; {
                     <span class="macro">admin_error!</span>(<span class="ident">uuid</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>.<span class="ident">get_uuid</span>(), <span class="string">&quot;Entry does not contain an SPN&quot;</span>);
                     <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidSpn</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())))
                 }
@@ -741,7 +743,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">e_pre_spn</span> <span class="op">=</span> <span class="ident">e_pre</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">e_pre_spn</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ex1</span>);
+            <span class="macro">assert!</span>(<span class="ident">e_pre_spn</span> <span class="op">==</span> <span class="ident">ex1</span>);
 
             <span class="comment">// trigger the domain_name change (this will be a cli option to the server</span>
             <span class="comment">// in the final version), but it will still call the same qs function to perform the</span>
@@ -758,7 +760,7 @@
             <span class="kw">let</span> <span class="ident">e_post_spn</span> <span class="op">=</span> <span class="ident">e_post</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;spn&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;must not fail&quot;</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e_post_spn</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">ex2</span>);
-            <span class="macro">assert!</span>(<span class="ident">e_post_spn</span> <span class="op">=</span><span class="op">=</span> <span class="ident">ex2</span>);
+            <span class="macro">assert!</span>(<span class="ident">e_post_spn</span> <span class="op">==</span> <span class="ident">ex2</span>);
 
             <span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">expect</span>(<span class="string">&quot;Must not fail&quot;</span>);
         });

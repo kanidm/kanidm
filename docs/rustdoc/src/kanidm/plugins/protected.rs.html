@@ -460,7 +460,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">Protected</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="string">&quot;plugin_protected&quot;</span>
     }
 
@@ -469,7 +469,7 @@
         <span class="comment">// List of what we will commit that is valid?</span>
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span>],
         <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">ce</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
             <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
@@ -495,29 +495,29 @@
         <span class="comment">// Should these be EntrySealed?</span>
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
             <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());
         }
         <span class="comment">// Prevent adding class: system, domain_info, tombstone, or recycled.</span>
         <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">m</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">m</span> {
-            <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="ident">v</span>) =&gt; {
                 <span class="comment">// TODO: Can we avoid this clone?</span>
-                <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;class&quot;</span>
-                    <span class="op">&amp;&amp;</span> (<span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_DOMAIN_INFO</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_INFO</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_CONFIG</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_TOMBSTONE</span>)
-                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_RECYCLED</span>))
+                <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;class&quot;</span>
+                    <span class="op">&amp;&amp;</span> (<span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_DOMAIN_INFO</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_INFO</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_SYSTEM_CONFIG</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_TOMBSTONE</span>)
+                        <span class="op">|</span><span class="op">|</span> <span class="ident">v</span> <span class="op">==</span> <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="ident">VCLASS_RECYCLED</span>))
                 {
                     <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>)
                 } <span class="kw">else</span> {
                     <span class="prelude-val">Ok</span>(())
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Ok</span>(()),
         })<span class="question-mark">?</span>;
 
         <span class="comment">// HARD block mods on tombstone or recycle. We soft block on the rest as they may</span>
@@ -549,11 +549,11 @@
         <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">iter</span>().<span class="ident">try_fold</span>((), <span class="op">|</span>(), <span class="ident">m</span><span class="op">|</span> {
             <span class="comment">// Already hit an error, move on.</span>
             <span class="kw">let</span> <span class="ident">a</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">m</span> {
-                <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Removed</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Purged</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>,
+                <span class="ident">Modify::Present</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Removed</span>(<span class="ident">a</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">Modify::Purged</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>,
             };
             <span class="kw">match</span> <span class="ident">ALLOWED_ATTRS</span>.<span class="ident">get</span>(<span class="ident">a</span>.<span class="ident">as_str</span>()) {
-                <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
+                <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::SystemProtectedObject</span>),
             }
         })
     }
@@ -563,7 +563,7 @@
         <span class="comment">// Should these be EntrySealed</span>
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">de</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
             <span class="macro">trace!</span>(<span class="string">&quot;Internal operation, not enforcing system object protection&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(());

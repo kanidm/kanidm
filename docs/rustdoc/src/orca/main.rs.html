@@ -248,11 +248,11 @@
 <span class="macro">include!</span>(<span class="string">&quot;./opt.rs&quot;</span>);
 
 <span class="kw">impl</span> <span class="ident">OrcaOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">OrcaOpt::PreProc</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">OrcaOpt::Setup</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">OrcaOpt::Run</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">OrcaOpt::PreProc</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">OrcaOpt::Setup</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">OrcaOpt::Run</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
         }
     }
 }
@@ -265,11 +265,11 @@
 
 <span class="kw">impl</span> <span class="ident">TargetServerBuilder</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServerBuilder::Kanidm</span>(<span class="ident">a</span>, <span class="ident">b</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">KaniHttpServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>),
-            <span class="ident">TargetServerBuilder::KanidmLdap</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">KaniLdapServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>),
-            <span class="ident">TargetServerBuilder::DirSrv</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">DirectoryServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>),
+            <span class="ident">TargetServerBuilder::Kanidm</span>(<span class="ident">a</span>, <span class="ident">b</span>) =&gt; <span class="ident">KaniHttpServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>),
+            <span class="ident">TargetServerBuilder::KanidmLdap</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>) =&gt; <span class="ident">KaniLdapServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>, <span class="ident">d</span>),
+            <span class="ident">TargetServerBuilder::DirSrv</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>) =&gt; <span class="ident">DirectoryServer::build</span>(<span class="ident">a</span>, <span class="ident">b</span>, <span class="ident">c</span>),
         }
     }
 }
@@ -281,43 +281,43 @@
 }
 
 <span class="kw">impl</span> <span class="ident">TargetServer</span> {
-    <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">info</span>(),
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">info</span>(),
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">info</span>(),
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">info</span>(),
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">info</span>(),
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">info</span>(),
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">rname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">rname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;kanidm_http&quot;</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;kanidm_ldap&quot;</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;directory_server&quot;</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_http&quot;</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;kanidm_ldap&quot;</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;directory_server&quot;</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TargetServerBuilder</span> {
+    <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TargetServerBuilder</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">builder</span>(),
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">builder</span>(),
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">builder</span>(),
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">builder</span>(),
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">builder</span>(),
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">builder</span>(),
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_admin_connection</span>().<span class="kw">await</span>,
         }
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_admin_delete_uuids</span>(<span class="ident">targets</span>).<span class="kw">await</span>,
         }
     }
 
@@ -325,17 +325,17 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">targets</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
         <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">data::Entity</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; {
                 <span class="ident">k</span>.<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
                     .<span class="kw">await</span>
             }
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; {
                 <span class="ident">k</span>.<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
                     .<span class="kw">await</span>
             }
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; {
                 <span class="ident">k</span>.<span class="ident">setup_admin_precreate_entities</span>(<span class="ident">targets</span>, <span class="ident">all_entities</span>)
                     .<span class="kw">await</span>
             }
@@ -346,11 +346,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">access</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">data::EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">data::Entity</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">setup_access_controls</span>(<span class="ident">access</span>, <span class="ident">all_entities</span>).<span class="kw">await</span>,
         }
     }
 
@@ -359,19 +359,19 @@
         <span class="ident">test_start</span>: <span class="ident">Instant</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>,
         }
     }
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">close_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">close_connection</span>().<span class="kw">await</span>,
         }
     }
 
@@ -379,11 +379,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">test_start</span>: <span class="ident">Instant</span>,
         <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
-            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::Kanidm</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::KanidmLdap</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
+            <span class="ident">TargetServer::DirSrv</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>,
         }
     }
 }
@@ -405,11 +405,11 @@
     <span class="macro">info!</span>(<span class="string">&quot;Orca - the Kanidm Load Testing Utility.&quot;</span>);
     <span class="macro">debug!</span>(<span class="string">&quot;cli -&gt; {:?}&quot;</span>, <span class="ident">opt</span>);
     <span class="kw">match</span> <span class="ident">opt</span> {
-        <span class="ident">OrcaOpt::PreProc</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">preprocess::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">input_path</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">output_path</span>),
-        <span class="ident">OrcaOpt::Setup</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">OrcaOpt::PreProc</span>(<span class="ident">opt</span>) =&gt; <span class="ident">preprocess::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">input_path</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">output_path</span>),
+        <span class="ident">OrcaOpt::Setup</span>(<span class="ident">opt</span>) =&gt; {
             <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">setup::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">profile_path</span>).<span class="kw">await</span>;
         }
-        <span class="ident">OrcaOpt::Run</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">OrcaOpt::Run</span>(<span class="ident">opt</span>) =&gt; {
             <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">runner::doit</span>(<span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">test_type</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">opt</span>.<span class="ident">profile_path</span>).<span class="kw">await</span>;
             <span class="comment">// read the profile that we are going to be using/testing</span>
             <span class="comment">// load the related data (if any) or generate it</span>

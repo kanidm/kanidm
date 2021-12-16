@@ -143,21 +143,21 @@
 
 <span class="kw">impl</span> <span class="ident">TreeMiddleware</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_stdout</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_stdout</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">TreeMiddleware</span> {
             <span class="ident">output</span>: <span class="ident">TreeIo::Stdout</span>,
         }
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_stderr</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_stderr</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">TreeMiddleware</span> {
             <span class="ident">output</span>: <span class="ident">TreeIo::Stderr</span>,
         }
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_file</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_file</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">TreeMiddleware</span> {
             <span class="ident">output</span>: <span class="ident">TreeIo::File</span>(<span class="ident">PathBuf::from</span>(<span class="ident">path</span>)),
         }
@@ -169,7 +169,7 @@
         <span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>,
         <span class="ident">next</span>: <span class="ident">Next</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">State</span><span class="op">&gt;</span>,
         <span class="ident">output</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    ) -&gt; <span class="ident">tide::Result</span> {
         <span class="kw">struct</span> <span class="ident">TreeMiddlewareFinished</span>;
 
         <span class="kw">if</span> <span class="ident">req</span>.<span class="ident">ext</span>::<span class="op">&lt;</span><span class="ident">TreeMiddlewareFinished</span><span class="op">&gt;</span>().<span class="ident">is_some</span>() {
@@ -239,11 +239,11 @@
 
 <span class="attribute">#[<span class="ident">async_trait::async_trait</span>]</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">State</span>: <span class="ident">Clone</span> <span class="op">+</span> <span class="ident">Send</span> <span class="op">+</span> <span class="ident">Sync</span> <span class="op">+</span> <span class="lifetime">&#39;static</span><span class="op">&gt;</span> <span class="ident">Middleware</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TreeMiddleware</span> {
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">req</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>, <span class="ident">next</span>: <span class="ident">Next</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">State</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">tide::Result</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">handle</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">req</span>: <span class="ident">Request</span><span class="op">&lt;</span><span class="ident">State</span><span class="op">&gt;</span>, <span class="ident">next</span>: <span class="ident">Next</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span>, <span class="ident">State</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
         <span class="kw">let</span> <span class="ident">output</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">output</span> {
-            <span class="ident">TreeIo::Stdout</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;console stdout&quot;</span>,
-            <span class="ident">TreeIo::Stderr</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;console stderr&quot;</span>,
-            <span class="ident">TreeIo::File</span>(<span class="kw-2">ref</span> <span class="ident">path</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="ident">TreeIo::Stdout</span> =&gt; <span class="string">&quot;console stdout&quot;</span>,
+            <span class="ident">TreeIo::Stderr</span> =&gt; <span class="string">&quot;console stderr&quot;</span>,
+            <span class="ident">TreeIo::File</span>(<span class="kw-2">ref</span> <span class="ident">path</span>) =&gt; <span class="ident">path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="macro">panic!</span>(<span class="string">&quot;File path isn&#39;t UTF-8, cannot write to file: {:#?}&quot;</span>, <span class="ident">path</span>)
                 <span class="comment">// warn!(</span>
                 <span class="comment">//     &quot;File path isn&#39;t UTF-8, logging to stderr instead: {:#?}&quot;,</span>

@@ -139,52 +139,52 @@
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Oauth2Opt</span>;
 
 <span class="kw">impl</span> <span class="ident">Oauth2Opt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Oauth2Opt::List</span>(<span class="ident">copt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::Get</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::CreateBasic</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::SetImplictScopes</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::CreateScopeMap</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::DeleteScopeMap</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::EnablePkce</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::DisablePkce</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::EnableLegacyCrypto</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">Oauth2Opt::DisableLegacyCrypto</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::List</span>(<span class="ident">copt</span>) =&gt; <span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::Get</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::CreateBasic</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::SetImplictScopes</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::CreateScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::DeleteScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::EnablePkce</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::DisablePkce</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::EnableLegacyCrypto</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::DisableLegacyCrypto</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
         }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Oauth2Opt::List</span>(<span class="ident">copt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::List</span>(<span class="ident">copt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_list</span>() {
-                    <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">ent</span><span class="op">|</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">ent</span>)),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">ent</span><span class="op">|</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">ent</span>)),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::Get</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::Get</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_get</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">e</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>),
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;No matching entries&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">e</span>)) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;No matching entries&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::CreateBasic</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::CreateBasic</span>(<span class="ident">cbopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_basic_create</span>(
                     <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
                     <span class="ident">cbopt</span>.<span class="ident">displayname</span>.<span class="ident">as_str</span>(),
                     <span class="ident">cbopt</span>.<span class="ident">origin</span>.<span class="ident">as_str</span>(),
                 ) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::SetImplictScopes</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::SetImplictScopes</span>(<span class="ident">cbopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_update</span>(
                     <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
@@ -196,31 +196,31 @@
                     <span class="bool-val">false</span>,
                     <span class="bool-val">false</span>,
                 ) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::CreateScopeMap</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::CreateScopeMap</span>(<span class="ident">cbopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_create_scope_map</span>(
                     <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
                     <span class="ident">cbopt</span>.<span class="ident">group</span>.<span class="ident">as_str</span>(),
                     <span class="ident">cbopt</span>.<span class="ident">scopes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">as_str</span>()).<span class="ident">collect</span>(),
                 ) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::DeleteScopeMap</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::DeleteScopeMap</span>(<span class="ident">cbopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>
                     .<span class="ident">idm_oauth2_rs_delete_scope_map</span>(<span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">cbopt</span>.<span class="ident">group</span>.<span class="ident">as_str</span>())
                 {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_update</span>(
                     <span class="ident">cbopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
@@ -232,43 +232,43 @@
                     <span class="bool-val">true</span>,
                     <span class="bool-val">true</span>,
                 ) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_delete</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::EnablePkce</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::EnablePkce</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_enable_pkce</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::DisablePkce</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::DisablePkce</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_disable_pkce</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::EnableLegacyCrypto</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::EnableLegacyCrypto</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_enable_legacy_crypto</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
-            <span class="ident">Oauth2Opt::DisableLegacyCrypto</span>(<span class="ident">nopt</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2Opt::DisableLegacyCrypto</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_disable_legacy_crypto</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
         }

@@ -1549,6 +1549,7 @@
 <span id="1549">1549</span>
 <span id="1550">1550</span>
 <span id="1551">1551</span>
+<span id="1552">1552</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClientBuilder</span>, <span class="ident">APPLICATION_JSON</span>, <span class="ident">KOPID</span>, <span class="ident">KSESSIONID</span>};
 <span class="kw">use</span> <span class="ident">reqwest::header::CONTENT_TYPE</span>;
 <span class="kw">use</span> <span class="ident">serde::de::DeserializeOwned</span>;
@@ -1576,11 +1577,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">KanidmAsyncClient</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="self">self</span>.<span class="ident">origin</span>.<span class="ident">as_str</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_url</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_url</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">as_str</span>()
     }
 
@@ -1589,12 +1590,12 @@
         <span class="kw-2">*</span><span class="ident">tguard</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">new_token</span>);
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_token</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">get_token</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">tguard</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">bearer_token</span>.<span class="ident">read</span>().<span class="kw">await</span>;
         (<span class="kw-2">*</span><span class="ident">tguard</span>).<span class="ident">as_ref</span>().<span class="ident">cloned</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_session</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_session</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
         <span class="comment">// Copy our builder, and then just process it.</span>
         <span class="kw">let</span> <span class="ident">builder</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">builder</span>.<span class="ident">clone</span>();
         <span class="ident">builder</span>.<span class="ident">build_async</span>()
@@ -1609,7 +1610,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">request</span>: <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
 
         <span class="kw">let</span> <span class="ident">req_string</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">ClientError::JsonEncode</span>)<span class="question-mark">?</span>;
@@ -1660,8 +1661,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1680,7 +1681,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">request</span>: <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
 
         <span class="kw">let</span> <span class="ident">req_string</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">ClientError::JsonEncode</span>)<span class="question-mark">?</span>;
@@ -1710,8 +1711,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1730,7 +1731,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">request</span>: <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
 
         <span class="kw">let</span> <span class="ident">req_string</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">ClientError::JsonEncode</span>)<span class="question-mark">?</span>;
@@ -1764,8 +1765,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1784,7 +1785,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">request</span>: <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
 
         <span class="kw">let</span> <span class="ident">req_string</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">ClientError::JsonEncode</span>)<span class="question-mark">?</span>;
@@ -1814,8 +1815,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1830,7 +1831,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">ClientError::JsonDecode</span>(<span class="ident">e</span>, <span class="ident">opid</span>))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">perform_get_request</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">DeserializeOwned</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">perform_get_request</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">DeserializeOwned</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">T</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
         <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">client</span>.<span class="ident">get</span>(<span class="ident">dest</span>.<span class="ident">as_str</span>());
 
@@ -1855,8 +1856,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1871,7 +1872,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">ClientError::JsonDecode</span>(<span class="ident">e</span>, <span class="ident">opid</span>))
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">perform_delete_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">perform_delete_request</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
 
         <span class="kw">let</span> <span class="ident">response</span> <span class="op">=</span> <span class="self">self</span>
@@ -1899,8 +1900,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1919,7 +1920,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">dest</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">request</span>: <span class="ident">R</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dest</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_url</span>(), <span class="ident">dest</span>);
 
         <span class="kw">let</span> <span class="ident">req_string</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>).<span class="ident">map_err</span>(<span class="ident">ClientError::JsonEncode</span>)<span class="question-mark">?</span>;
@@ -1949,8 +1950,8 @@
         <span class="macro">debug!</span>(<span class="string">&quot;opid -&gt; {:?}&quot;</span>, <span class="ident">opid</span>);
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -1965,7 +1966,7 @@
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">ClientError::JsonDecode</span>(<span class="ident">e</span>, <span class="ident">opid</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_init</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_init</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_init</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Init</span>(<span class="ident">ident</span>.<span class="ident">to_string</span>()),
         };
@@ -1978,13 +1979,13 @@
             <span class="ident">v</span>.<span class="ident">state</span>
         })
         .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">state</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">AuthState::Choose</span>(<span class="ident">mechs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">mechs</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="ident">AuthState::Choose</span>(<span class="ident">mechs</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">mechs</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         })
         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">mechs</span><span class="op">|</span> <span class="ident">mechs</span>.<span class="ident">into_iter</span>().<span class="ident">collect</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_begin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mech</span>: <span class="ident">AuthMech</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_begin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mech</span>: <span class="ident">AuthMech</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_begin</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Begin</span>(<span class="ident">mech</span>),
         };
@@ -1996,14 +1997,14 @@
             <span class="ident">v</span>.<span class="ident">state</span>
         })
         .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">state</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">allowed</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">allowed</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         })
         <span class="comment">// For converting to a Set</span>
         <span class="comment">// .map(|allowed| allowed.into_iter().collect())</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_anon</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Anonymous</span>),
         };
@@ -2018,7 +2019,7 @@
         <span class="ident">r</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Password</span>(<span class="ident">password</span>.<span class="ident">to_string</span>())),
         };
@@ -2035,7 +2036,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backup_code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::BackupCode</span>(<span class="ident">backup_code</span>.<span class="ident">to_string</span>())),
         };
@@ -2049,7 +2050,7 @@
         <span class="ident">r</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">totp</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">totp</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Totp</span>(<span class="ident">totp</span>)),
         };
@@ -2066,7 +2067,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_step_webauthn_complete</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthRequest</span> {
             <span class="ident">step</span>: <span class="ident">AuthStep::Cred</span>(<span class="ident">AuthCredential::Webauthn</span>(<span class="ident">pkc</span>)),
         };
@@ -2080,10 +2081,10 @@
         <span class="ident">r</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mechs</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_init</span>(<span class="string">&quot;anonymous&quot;</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::Anonymous</span>) {
@@ -2092,18 +2093,18 @@
         }
 
         <span class="kw">let</span> <span class="ident">_state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::Anonymous</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_anonymous</span>().<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Success</span>(<span class="ident">token</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthState::Success</span>(<span class="ident">token</span>) =&gt; {
                 <span class="self">self</span>.<span class="ident">set_token</span>(<span class="ident">token</span>.<span class="ident">clone</span>()).<span class="kw">await</span>;
                 <span class="prelude-val">Ok</span>(())
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
@@ -2111,10 +2112,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mechs</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_init</span>(<span class="ident">ident</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::Password</span>) {
@@ -2123,15 +2124,15 @@
         }
 
         <span class="kw">let</span> <span class="ident">_state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::Password</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Success</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="ident">AuthState::Success</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
@@ -2140,10 +2141,10 @@
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">totp</span>: <span class="ident">u32</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mechs</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_init</span>(<span class="ident">ident</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::PasswordMfa</span>) {
@@ -2152,8 +2153,8 @@
         }
 
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::PasswordMfa</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">state</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthAllowed::Totp</span>) {
@@ -2165,13 +2166,13 @@
 
         <span class="comment">// Should need to continue.</span>
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">allowed</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthAllowed::Password</span>) {
                     <span class="macro">debug!</span>(<span class="string">&quot;Password step not offered.&quot;</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>);
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;Invalid AuthState presented.&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>);
             }
@@ -2180,8 +2181,8 @@
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
@@ -2190,10 +2191,10 @@
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">backup_code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mechs</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_init</span>(<span class="ident">ident</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::PasswordMfa</span>) {
@@ -2202,8 +2203,8 @@
         }
 
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::PasswordMfa</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">state</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthAllowed::BackupCode</span>) {
@@ -2215,13 +2216,13 @@
 
         <span class="comment">// Should need to continue.</span>
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">allowed</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthAllowed::Password</span>) {
                     <span class="macro">debug!</span>(<span class="string">&quot;Password step not offered.&quot;</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>);
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;Invalid AuthState presented.&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>);
             }
@@ -2230,18 +2231,18 @@
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>).<span class="kw">await</span><span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_begin</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RequestChallengeResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RequestChallengeResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mechs</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_init</span>(<span class="ident">ident</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="kw">if</span> <span class="op">!</span><span class="ident">mechs</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">AuthMech::Webauthn</span>) {
@@ -2250,33 +2251,33 @@
         }
 
         <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">auth_step_begin</span>(<span class="ident">AuthMech::Webauthn</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>.<span class="ident">pop</span>(),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">pop</span>(),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         };
 
         <span class="comment">// State is now a set of auth continues.</span>
         <span class="kw">match</span> <span class="ident">state</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">r</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">r</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">r</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">r</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_complete</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">auth_step_webauthn_complete</span>(<span class="ident">pkc</span>).<span class="kw">await</span><span class="question-mark">?</span>;
         <span class="kw">match</span> <span class="ident">r</span>.<span class="ident">state</span> {
-            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
+            <span class="ident">AuthState::Success</span>(<span class="ident">_token</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::AuthenticationFailed</span>),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">auth_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">whoami</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Entry</span>, <span class="ident">UserAuthToken</span>)<span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">whoami</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Entry</span>, <span class="ident">UserAuthToken</span>)<span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">whoami_dest</span> <span class="op">=</span> [<span class="self">self</span>.<span class="ident">addr</span>.<span class="ident">as_str</span>(), <span class="string">&quot;/v1/self&quot;</span>].<span class="ident">concat</span>();
         <span class="comment">// format!(&quot;{}/v1/self&quot;, self.addr);</span>
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">whoami_dest</span>);
@@ -2303,9 +2304,9 @@
 
         <span class="kw">match</span> <span class="ident">response</span>.<span class="ident">status</span>() {
             <span class="comment">// Continue to process.</span>
-            <span class="ident">reqwest::StatusCode::OK</span> <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="ident">reqwest::StatusCode::UNAUTHORIZED</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
-            <span class="ident">unexpect</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">reqwest::StatusCode::OK</span> =&gt; {}
+            <span class="ident">reqwest::StatusCode::UNAUTHORIZED</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="ident">unexpect</span> =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::Http</span>(
                     <span class="ident">unexpect</span>,
                     <span class="ident">response</span>.<span class="ident">json</span>().<span class="kw">await</span>.<span class="ident">ok</span>(),
@@ -2323,23 +2324,23 @@
     }
 
     <span class="comment">// Raw DB actions</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="ident">SearchRequest</span> { <span class="ident">filter</span> };
         <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SearchResponse</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="string">&quot;/v1/raw/search&quot;</span>, <span class="ident">sr</span>).<span class="kw">await</span>;
         <span class="ident">r</span>.<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">entries</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">c</span> <span class="op">=</span> <span class="ident">CreateRequest</span> { <span class="ident">entries</span> };
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="string">&quot;/v1/raw/create&quot;</span>, <span class="ident">c</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>, <span class="ident">modlist</span>: <span class="ident">ModifyList</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>, <span class="ident">modlist</span>: <span class="ident">ModifyList</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">mr</span> <span class="op">=</span> <span class="ident">ModifyRequest</span> { <span class="ident">filter</span>, <span class="ident">modlist</span> };
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="string">&quot;/v1/raw/modify&quot;</span>, <span class="ident">mr</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">dr</span> <span class="op">=</span> <span class="ident">DeleteRequest</span> { <span class="ident">filter</span> };
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="string">&quot;/v1/raw/delete&quot;</span>, <span class="ident">dr</span>).<span class="kw">await</span>
     }
@@ -2347,11 +2348,11 @@
     <span class="comment">// === idm actions here ==</span>
 
     <span class="comment">// ===== GROUPS</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/group&quot;</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2359,12 +2360,12 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_get_members</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}/_attr/member&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_group</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -2378,7 +2379,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">members</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">v</span>).<span class="ident">to_string</span>()).<span class="ident">collect</span>();
         <span class="self">self</span>.<span class="ident">perform_put_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}/_attr/member&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), <span class="ident">m</span>)
             .<span class="kw">await</span>
@@ -2388,7 +2389,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">members</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">v</span>).<span class="ident">to_string</span>()).<span class="ident">collect</span>();
         <span class="self">self</span>.<span class="ident">perform_post_request</span>([<span class="string">&quot;/v1/group/&quot;</span>, <span class="ident">id</span>, <span class="string">&quot;/_attr/member&quot;</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>(), <span class="ident">m</span>)
             .<span class="kw">await</span>
@@ -2398,7 +2399,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="macro">debug!</span>(
             <span class="string">&quot;{}&quot;</span>,
             <span class="kw-2">&amp;</span>[
@@ -2416,7 +2417,7 @@
         .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_purge_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_purge_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}/_attr/member&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2425,30 +2426,30 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">gx</span> <span class="op">=</span> <span class="ident">GroupUnixExtend</span> { <span class="ident">gidnumber</span> };
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/group/{}/_unix&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), <span class="ident">gx</span>)
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="comment">// Format doesn&#39;t work in async</span>
         <span class="comment">// format!(&quot;/v1/account/{}/_unix/_token&quot;, id).as_str()</span>
         <span class="self">self</span>.<span class="ident">perform_get_request</span>([<span class="string">&quot;/v1/group/&quot;</span>, <span class="ident">id</span>, <span class="string">&quot;/_unix/_token&quot;</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_group_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>([<span class="string">&quot;/v1/group/&quot;</span>, <span class="ident">id</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
     <span class="comment">// ==== ACCOUNTS</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/account&quot;</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_acct</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -2461,30 +2462,30 @@
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="string">&quot;/v1/account&quot;</span>, <span class="ident">new_acct</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_set_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_set_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">SingleStringRequest</span> { <span class="ident">value</span>: <span class="ident">cleartext</span> };
 
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="string">&quot;/v1/self/_credential/primary/set_password&quot;</span>, <span class="ident">s</span>)
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_set_displayname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_set_displayname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">idm_account_set_attr</span>(<span class="ident">id</span>, <span class="string">&quot;displayname&quot;</span>, <span class="kw-2">&amp;</span>[<span class="ident">dn</span>]).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="comment">// Format doesn&#39;t work in async</span>
         <span class="comment">// format!(&quot;/v1/account/{}/_unix/_token&quot;, id).as_str()</span>
         <span class="self">self</span>.<span class="ident">perform_get_request</span>([<span class="string">&quot;/v1/account/&quot;</span>, <span class="ident">id</span>, <span class="string">&quot;/_unix/_token&quot;</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>([<span class="string">&quot;/v1/account/&quot;</span>, <span class="ident">id</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2494,7 +2495,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">values</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">msg</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">v</span>).<span class="ident">to_string</span>()).<span class="ident">collect</span>();
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_attr/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">attr</span>).<span class="ident">as_str</span>(), <span class="ident">msg</span>)
             .<span class="kw">await</span>
@@ -2505,7 +2506,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">values</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">m</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> (<span class="kw-2">*</span><span class="ident">v</span>).<span class="ident">to_string</span>()).<span class="ident">collect</span>();
         <span class="self">self</span>.<span class="ident">perform_put_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_attr/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">attr</span>).<span class="ident">as_str</span>(), <span class="ident">m</span>)
             .<span class="kw">await</span>
@@ -2515,12 +2516,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_attr/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">attr</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_purge_attr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_purge_attr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_attr/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">attr</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2529,7 +2530,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::Password</span>(<span class="ident">pw</span>.<span class="ident">to_string</span>());
         <span class="self">self</span>.<span class="ident">perform_put_request</span>(
             <span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_credential/primary&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(),
@@ -2542,7 +2543,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_put_request</span>(
             <span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_attr/password_import&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(),
             <span class="macro">vec!</span>[<span class="ident">pw</span>.<span class="ident">to_string</span>()],
@@ -2553,7 +2554,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_set_generated</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::GeneratePassword</span>;
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2562,9 +2563,9 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Token</span>(<span class="ident">p</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">p</span>),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Token</span>(<span class="ident">p</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">p</span>),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
@@ -2572,7 +2573,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_generate_totp</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">TotpSecret</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">TotpSecret</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::TotpGenerate</span>;
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2581,9 +2582,9 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">u</span>, <span class="ident">s</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">u</span>, <span class="ident">s</span>)),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">u</span>, <span class="ident">s</span>)) =&gt; <span class="prelude-val">Ok</span>((<span class="ident">u</span>, <span class="ident">s</span>)),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
@@ -2593,7 +2594,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">otp</span>: <span class="ident">u32</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::TotpVerify</span>(<span class="ident">session</span>, <span class="ident">otp</span>);
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2602,11 +2603,11 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">u</span>, <span class="ident">s</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::TotpVerifyFailed</span>(<span class="ident">u</span>, <span class="ident">s</span>)),
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpInvalidSha1</span>(<span class="ident">u</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::TotpInvalidSha1</span>(<span class="ident">u</span>)),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">u</span>, <span class="ident">s</span>)) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::TotpVerifyFailed</span>(<span class="ident">u</span>, <span class="ident">s</span>)),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::TotpInvalidSha1</span>(<span class="ident">u</span>)) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::TotpInvalidSha1</span>(<span class="ident">u</span>)),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
@@ -2615,7 +2616,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::TotpAcceptSha1</span>(<span class="ident">session</span>);
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2624,16 +2625,16 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_remove_totp</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::TotpRemove</span>;
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2642,9 +2643,9 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
@@ -2652,7 +2653,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::WebauthnBegin</span>(<span class="ident">label</span>.<span class="ident">to_string</span>());
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2661,9 +2662,9 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">u</span>, <span class="ident">s</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>((<span class="ident">u</span>, <span class="ident">s</span>)),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">u</span>, <span class="ident">s</span>)) =&gt; <span class="prelude-val">Ok</span>((<span class="ident">u</span>, <span class="ident">s</span>)),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
@@ -2672,7 +2673,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">rego</span>: <span class="ident">RegisterPublicKeyCredential</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::WebauthnRegister</span>(<span class="ident">session</span>, <span class="ident">rego</span>);
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2681,9 +2682,9 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
@@ -2691,7 +2692,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::WebauthnRemove</span>(<span class="ident">label</span>.<span class="ident">to_string</span>());
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2700,16 +2701,16 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_generate_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::BackupCodeGenerate</span>;
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2718,16 +2719,16 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::BackupCodes</span>(<span class="ident">s</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">s</span>),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::BackupCodes</span>(<span class="ident">s</span>)) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">s</span>),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_remove_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::BackupCodeRemove</span>;
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_put_request</span>(
@@ -2736,16 +2737,16 @@
             )
             .<span class="kw">await</span>;
         <span class="kw">match</span> <span class="ident">res</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">SetCredentialResponse::Success</span>) =&gt; <span class="prelude-val">Ok</span>(()),
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">ClientError::EmptyResponse</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_get_credential_status</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">res</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_credential/_status&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>;
@@ -2761,7 +2762,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_get</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_radius&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2769,12 +2770,12 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_regenerate</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_radius&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), ())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_radius&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2782,7 +2783,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_token_get</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_radius/_token&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2792,7 +2793,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
         <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ux</span> <span class="op">=</span> <span class="ident">AccountUnixExtend</span> {
             <span class="ident">shell</span>: <span class="ident">shell</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>),
             <span class="ident">gidnumber</span>,
@@ -2801,7 +2802,7 @@
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_put</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_put</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">SingleStringRequest</span> {
             <span class="ident">value</span>: <span class="ident">cred</span>.<span class="ident">to_string</span>(),
         };
@@ -2812,7 +2813,7 @@
         .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>([<span class="string">&quot;/v1/account/&quot;</span>, <span class="ident">id</span>, <span class="string">&quot;/_unix/_credential&quot;</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2821,7 +2822,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">SingleStringRequest</span> {
             <span class="ident">value</span>: <span class="ident">cred</span>.<span class="ident">to_string</span>(),
         };
@@ -2829,7 +2830,7 @@
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_get_ssh_pubkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_get_ssh_pubkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_ssh_pubkeys&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2839,13 +2840,13 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pubkey</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">sk</span> <span class="op">=</span> (<span class="ident">tag</span>.<span class="ident">to_string</span>(), <span class="ident">pubkey</span>.<span class="ident">to_string</span>());
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_ssh_pubkeys&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), <span class="ident">sk</span>)
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_person_extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_person_extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_person/_extend&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), ())
             .<span class="kw">await</span>
     }
@@ -2854,7 +2855,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_ssh_pubkeys/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">tag</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
@@ -2863,18 +2864,18 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_ssh_pubkeys/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">tag</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
     <span class="comment">// ==== domain_info (aka domain)</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/domain&quot;</span>).<span class="kw">await</span>;
         <span class="ident">r</span>.<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">pop</span>().<span class="ident">ok_or</span>(<span class="ident">ClientError::EmptyResponse</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_get_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_get_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/domain/_attr/domain_ssid&quot;</span>)
             .<span class="kw">await</span>
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw-2">mut</span> <span class="ident">r</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">|</span>
@@ -2885,44 +2886,44 @@
                 ))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_set_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ssid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_set_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ssid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_put_request</span>(<span class="string">&quot;/v1/domain/_attr/domain_ssid&quot;</span>, <span class="macro">vec!</span>[<span class="ident">ssid</span>.<span class="ident">to_string</span>()])
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_reset_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_domain_reset_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="string">&quot;/v1/domain/_attr/domain_token_key&quot;</span>)
             .<span class="kw">await</span>
     }
 
     <span class="comment">// ==== schema</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/schema&quot;</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/schema/attributetype&quot;</span>).<span class="kw">await</span>
     }
 
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_get</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/schema/attributetype/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/schema/classtype&quot;</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/schema/classtype/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
     <span class="comment">// ==== Oauth2 resource server configuration</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/oauth2&quot;</span>).<span class="kw">await</span>
     }
 
@@ -2931,7 +2932,7 @@
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">displayname</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">origin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">new_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry::default</span>();
         <span class="ident">new_oauth2_rs</span>
             .<span class="ident">attrs</span>
@@ -2946,11 +2947,12 @@
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/oauth2/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_update</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -2961,7 +2963,7 @@
         <span class="ident">reset_secret</span>: <span class="ident">bool</span>,
         <span class="ident">reset_token_key</span>: <span class="ident">bool</span>,
         <span class="ident">reset_sign_key</span>: <span class="ident">bool</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -3014,7 +3016,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">scopes</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>();
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(
             <span class="macro">format!</span>(<span class="string">&quot;/v1/oauth2/{}/_scopemap/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">group</span>).<span class="ident">as_str</span>(),
@@ -3027,17 +3029,17 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/oauth2/{}/_scopemap/{}&quot;</span>, <span class="ident">id</span>, <span class="ident">group</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_delete_request</span>([<span class="string">&quot;/v1/oauth2/&quot;</span>, <span class="ident">id</span>].<span class="ident">concat</span>().<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -3049,7 +3051,7 @@
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -3061,7 +3063,7 @@
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -3073,7 +3075,7 @@
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">update_oauth2_rs</span> <span class="op">=</span> <span class="ident">Entry</span> {
             <span class="ident">attrs</span>: <span class="ident">BTreeMap::new</span>(),
         };
@@ -3086,16 +3088,16 @@
     }
 
     <span class="comment">// ==== recycle bin</span>
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="string">&quot;/v1/recycle_bin&quot;</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/recycle_bin/{}&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
             .<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_revive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">recycle_bin_revive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">perform_post_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/recycle_bin/{}/_revive&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>(), ())
             .<span class="kw">await</span>
     }

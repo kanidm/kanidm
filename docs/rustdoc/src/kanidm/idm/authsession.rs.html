@@ -2115,11 +2115,11 @@
     <span class="doccomment">/// that will be used for this session. This credential handler is a &quot;self contained&quot;</span>
     <span class="doccomment">/// unit that defines what is possible to use during this authentication session to prevent</span>
     <span class="doccomment">/// inconsistency.</span>
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">c</span>: <span class="kw-2">&amp;</span><span class="ident">Credential</span>, <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">c</span>.<span class="ident">type_</span> {
-            <span class="ident">CredentialType::Password</span>(<span class="ident">pw</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">CredHandler::Password</span>(<span class="ident">pw</span>.<span class="ident">clone</span>(), <span class="bool-val">false</span>)),
-            <span class="ident">CredentialType::GeneratedPassword</span>(<span class="ident">pw</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">CredHandler::Password</span>(<span class="ident">pw</span>.<span class="ident">clone</span>(), <span class="bool-val">true</span>)),
-            <span class="ident">CredentialType::PasswordMfa</span>(<span class="ident">pw</span>, <span class="ident">maybe_totp</span>, <span class="ident">maybe_wan</span>, <span class="ident">maybe_backup_code</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">CredentialType::Password</span>(<span class="ident">pw</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CredHandler::Password</span>(<span class="ident">pw</span>.<span class="ident">clone</span>(), <span class="bool-val">false</span>)),
+            <span class="ident">CredentialType::GeneratedPassword</span>(<span class="ident">pw</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">CredHandler::Password</span>(<span class="ident">pw</span>.<span class="ident">clone</span>(), <span class="bool-val">true</span>)),
+            <span class="ident">CredentialType::PasswordMfa</span>(<span class="ident">pw</span>, <span class="ident">maybe_totp</span>, <span class="ident">maybe_wan</span>, <span class="ident">maybe_backup_code</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">wan</span> <span class="op">=</span> <span class="kw">if</span> <span class="op">!</span><span class="ident">maybe_wan</span>.<span class="ident">is_empty</span>() {
                     <span class="ident">webauthn</span>
                         .<span class="ident">generate_challenge_authenticate</span>(<span class="ident">maybe_wan</span>.<span class="ident">values</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
@@ -2151,7 +2151,7 @@
 
                 <span class="prelude-val">Ok</span>(<span class="ident">CredHandler::PasswordMfa</span>(<span class="ident">cmfa</span>))
             }
-            <span class="ident">CredentialType::Webauthn</span>(<span class="ident">wan</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">webauthn</span>
+            <span class="ident">CredentialType::Webauthn</span>(<span class="ident">wan</span>) =&gt; <span class="ident">webauthn</span>
                 .<span class="ident">generate_challenge_authenticate</span>(<span class="ident">wan</span>.<span class="ident">values</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>())
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">chal</span>, <span class="ident">wan_state</span>)<span class="op">|</span> {
                     <span class="ident">CredHandler::Webauthn</span>(<span class="ident">CredWebauthn</span> {
@@ -2189,14 +2189,14 @@
     }
 
     <span class="doccomment">/// validate that the client wants to authenticate as the anonymous user.</span>
-    <span class="kw">fn</span> <span class="ident">validate_anonymous</span>(<span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">AuthCredential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CredState</span> {
+    <span class="kw">fn</span> <span class="ident">validate_anonymous</span>(<span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">AuthCredential</span>) -&gt; <span class="ident">CredState</span> {
         <span class="kw">match</span> <span class="ident">cred</span> {
-            <span class="ident">AuthCredential::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthCredential::Anonymous</span> =&gt; {
                 <span class="comment">// For anonymous, no claims will ever be issued.</span>
                 <span class="macro">security_info!</span>(<span class="string">&quot;Handler::Anonymous -&gt; Result::Success&quot;</span>);
                 <span class="ident">CredState::Success</span>(<span class="ident">AuthType::Anonymous</span>)
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">security_error!</span>(
                     <span class="string">&quot;Handler::Anonymous -&gt; Result::Denied - invalid cred type for handler&quot;</span>
                 );
@@ -2213,16 +2213,16 @@
         <span class="ident">who</span>: <span class="ident">Uuid</span>,
         <span class="ident">async_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
         <span class="ident">pw_badlist_set</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CredState</span> {
+    ) -&gt; <span class="ident">CredState</span> {
         <span class="kw">match</span> <span class="ident">cred</span> {
-            <span class="ident">AuthCredential::Password</span>(<span class="ident">cleartext</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthCredential::Password</span>(<span class="ident">cleartext</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>.<span class="ident">as_str</span>()).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>) {
                     <span class="kw">match</span> <span class="ident">pw_badlist_set</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">cleartext</span>.<span class="ident">to_lowercase</span>()) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">cleartext</span>.<span class="ident">to_lowercase</span>()) =&gt; {
                             <span class="macro">security_error!</span>(<span class="string">&quot;Handler::Password -&gt; Result::Denied - Password found in badlist during login&quot;</span>);
                             <span class="ident">CredState::Denied</span>(<span class="ident">PW_BADLIST_MSG</span>)
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">_</span> =&gt; {
                             <span class="macro">security_info!</span>(<span class="string">&quot;Handler::Password -&gt; Result::Success&quot;</span>);
                             <span class="ident"><span class="self">Self</span>::maybe_pw_upgrade</span>(<span class="ident">pw</span>, <span class="ident">who</span>, <span class="ident">cleartext</span>.<span class="ident">as_str</span>(), <span class="ident">async_tx</span>);
                             <span class="kw">if</span> <span class="ident">generated</span> {
@@ -2238,7 +2238,7 @@
                 }
             }
             <span class="comment">// All other cases fail.</span>
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">security_error!</span>(
                     <span class="string">&quot;Handler::Password -&gt; Result::Denied - invalid cred type for handler&quot;</span>
                 );
@@ -2258,9 +2258,9 @@
         <span class="ident">who</span>: <span class="ident">Uuid</span>,
         <span class="ident">async_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
         <span class="ident">pw_badlist_set</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CredState</span> {
+    ) -&gt; <span class="ident">CredState</span> {
         <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">pw_mfa</span>.<span class="ident">mfa_state</span>, <span class="kw-2">&amp;</span><span class="ident">pw_mfa</span>.<span class="ident">pw_state</span>) {
-            (<span class="ident">CredVerifyState::Init</span>, <span class="ident">CredVerifyState::Init</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="ident">CredVerifyState::Init</span>, <span class="ident">CredVerifyState::Init</span>) =&gt; {
                 <span class="comment">// MFA first</span>
                 <span class="kw">match</span> (
                     <span class="ident">cred</span>,
@@ -2268,9 +2268,9 @@
                     <span class="ident">pw_mfa</span>.<span class="ident">wan</span>.<span class="ident">as_ref</span>(),
                     <span class="ident">pw_mfa</span>.<span class="ident">backup_code</span>.<span class="ident">as_ref</span>(),
                 ) {
-                    (<span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>), <span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">wan_state</span>)), <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    (<span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>), <span class="kw">_</span>, <span class="prelude-val">Some</span>((<span class="kw">_</span>, <span class="ident">wan_state</span>)), <span class="kw">_</span>) =&gt; {
                         <span class="kw">match</span> <span class="ident">webauthn</span>.<span class="ident">authenticate_credential</span>(<span class="ident">resp</span>, <span class="ident">wan_state</span>) {
-                            <span class="prelude-val">Ok</span>((<span class="ident">cid</span>, <span class="ident">auth_data</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="prelude-val">Ok</span>((<span class="ident">cid</span>, <span class="ident">auth_data</span>)) =&gt; {
                                 <span class="ident">pw_mfa</span>.<span class="ident">mfa_state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Success</span>;
                                 <span class="comment">// Success. Determine if we need to update the counter</span>
                                 <span class="comment">// async from r.</span>
@@ -2290,7 +2290,7 @@
                                 };
                                 <span class="ident">CredState::Continue</span>(<span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>])
                             }
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                                 <span class="ident">pw_mfa</span>.<span class="ident">mfa_state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Fail</span>;
                                 <span class="comment">// Denied.</span>
                                 <span class="macro">security_error!</span>(
@@ -2301,7 +2301,7 @@
                             }
                         }
                     }
-                    (<span class="ident">AuthCredential::Totp</span>(<span class="ident">totp_chal</span>), <span class="prelude-val">Some</span>(<span class="ident">totp</span>), <span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    (<span class="ident">AuthCredential::Totp</span>(<span class="ident">totp_chal</span>), <span class="prelude-val">Some</span>(<span class="ident">totp</span>), <span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
                         <span class="kw">if</span> <span class="ident">totp</span>.<span class="ident">verify</span>(<span class="kw-2">*</span><span class="ident">totp_chal</span>, <span class="ident">ts</span>) {
                             <span class="ident">pw_mfa</span>.<span class="ident">mfa_state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Success</span>;
                             <span class="macro">security_info!</span>(
@@ -2316,7 +2316,7 @@
                             <span class="ident">CredState::Denied</span>(<span class="ident">BAD_TOTP_MSG</span>)
                         }
                     }
-                    (<span class="ident">AuthCredential::BackupCode</span>(<span class="ident">code_chal</span>), <span class="kw">_</span>, <span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="ident">backup_codes</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                    (<span class="ident">AuthCredential::BackupCode</span>(<span class="ident">code_chal</span>), <span class="kw">_</span>, <span class="kw">_</span>, <span class="prelude-val">Some</span>(<span class="ident">backup_codes</span>)) =&gt; {
                         <span class="kw">if</span> <span class="ident">backup_codes</span>.<span class="ident">verify</span>(<span class="ident">code_chal</span>) {
                             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">_e</span>) <span class="op">=</span>
                                 <span class="ident">async_tx</span>.<span class="ident">send</span>(<span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="ident">BackupCodeRemoval</span> {
@@ -2337,24 +2337,24 @@
                             <span class="ident">CredState::Denied</span>(<span class="ident">BAD_BACKUPCODE_MSG</span>)
                         }
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">security_error!</span>(<span class="string">&quot;Handler::PasswordMfa -&gt; Result::Denied - invalid cred type for handler&quot;</span>);
                         <span class="ident">CredState::Denied</span>(<span class="ident">BAD_AUTH_TYPE_MSG</span>)
                     }
                 }
             }
-            (<span class="ident">CredVerifyState::Success</span>, <span class="ident">CredVerifyState::Init</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            (<span class="ident">CredVerifyState::Success</span>, <span class="ident">CredVerifyState::Init</span>) =&gt; {
                 <span class="comment">// PW second.</span>
                 <span class="kw">match</span> <span class="ident">cred</span> {
-                    <span class="ident">AuthCredential::Password</span>(<span class="ident">cleartext</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">AuthCredential::Password</span>(<span class="ident">cleartext</span>) =&gt; {
                         <span class="kw">if</span> <span class="ident">pw_mfa</span>.<span class="ident">pw</span>.<span class="ident">verify</span>(<span class="ident">cleartext</span>.<span class="ident">as_str</span>()).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>) {
                             <span class="kw">match</span> <span class="ident">pw_badlist_set</span> {
-                                <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">cleartext</span>.<span class="ident">to_lowercase</span>()) <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="kw">if</span> <span class="ident">p</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">cleartext</span>.<span class="ident">to_lowercase</span>()) =&gt; {
                                     <span class="ident">pw_mfa</span>.<span class="ident">pw_state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Fail</span>;
                                     <span class="macro">security_error!</span>(<span class="string">&quot;Handler::PasswordMfa -&gt; Result::Denied - Password found in badlist during login&quot;</span>);
                                     <span class="ident">CredState::Denied</span>(<span class="ident">PW_BADLIST_MSG</span>)
                                 }
-                                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                                <span class="kw">_</span> =&gt; {
                                     <span class="ident">pw_mfa</span>.<span class="ident">pw_state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Success</span>;
                                     <span class="macro">security_info!</span>(<span class="string">&quot;Handler::PasswordMfa -&gt; Result::Success - TOTP/WebAuthn/BackupCode OK, password OK&quot;</span>);
                                     <span class="ident"><span class="self">Self</span>::maybe_pw_upgrade</span>(
@@ -2372,13 +2372,13 @@
                             <span class="ident">CredState::Denied</span>(<span class="ident">BAD_PASSWORD_MSG</span>)
                         }
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">security_error!</span>(<span class="string">&quot;Handler::PasswordMfa -&gt; Result::Denied - invalid cred type for handler&quot;</span>);
                         <span class="ident">CredState::Denied</span>(<span class="ident">BAD_AUTH_TYPE_MSG</span>)
                     }
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">security_error!</span>(
                     <span class="string">&quot;Handler::PasswordMfa -&gt; Result::lenied - invalid credential mfa and pw state&quot;</span>
                 );
@@ -2394,17 +2394,17 @@
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
         <span class="ident">who</span>: <span class="ident">Uuid</span>,
         <span class="ident">async_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CredState</span> {
+    ) -&gt; <span class="ident">CredState</span> {
         <span class="kw">if</span> <span class="ident">wan_cred</span>.<span class="ident">state</span> <span class="op">!</span><span class="op">=</span> <span class="ident">CredVerifyState::Init</span> {
             <span class="macro">security_error!</span>(<span class="string">&quot;Handler::Webauthn -&gt; Result::Denied - Internal State Already Fail&quot;</span>);
             <span class="kw">return</span> <span class="ident">CredState::Denied</span>(<span class="ident">BAD_WEBAUTHN_MSG</span>);
         }
 
         <span class="kw">match</span> <span class="ident">cred</span> {
-            <span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthCredential::Webauthn</span>(<span class="ident">resp</span>) =&gt; {
                 <span class="comment">// lets see how we go.</span>
                 <span class="kw">match</span> <span class="ident">webauthn</span>.<span class="ident">authenticate_credential</span>(<span class="ident">resp</span>, <span class="kw-2">&amp;</span><span class="ident">wan_cred</span>.<span class="ident">wan_state</span>) {
-                    <span class="prelude-val">Ok</span>((<span class="ident">cid</span>, <span class="ident">auth_data</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>((<span class="ident">cid</span>, <span class="ident">auth_data</span>)) =&gt; {
                         <span class="ident">wan_cred</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Success</span>;
                         <span class="comment">// Success. Determine if we need to update the counter</span>
                         <span class="comment">// async from r.</span>
@@ -2422,7 +2422,7 @@
                         };
                         <span class="ident">CredState::Success</span>(<span class="ident">AuthType::Webauthn</span>)
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="ident">wan_cred</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">CredVerifyState::Fail</span>;
                         <span class="comment">// Denied.</span>
                         <span class="macro">security_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Handler::Webauthn -&gt; Result::Denied - webauthn error&quot;</span>);
@@ -2430,7 +2430,7 @@
                     }
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">_</span> =&gt; {
                 <span class="macro">security_error!</span>(
                     <span class="string">&quot;Handler::Webauthn -&gt; Result::Denied - invalid cred type for handler&quot;</span>
                 );
@@ -2449,13 +2449,13 @@
         <span class="ident">async_tx</span>: <span class="kw-2">&amp;</span><span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
         <span class="ident">pw_badlist_set</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">CredState</span> {
+    ) -&gt; <span class="ident">CredState</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">CredHandler::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::validate_anonymous</span>(<span class="ident">cred</span>),
-            <span class="ident">CredHandler::Password</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">pw</span>, <span class="ident">generated</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">CredHandler::Anonymous</span> =&gt; <span class="ident"><span class="self">Self</span>::validate_anonymous</span>(<span class="ident">cred</span>),
+            <span class="ident">CredHandler::Password</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">pw</span>, <span class="ident">generated</span>) =&gt; {
                 <span class="ident"><span class="self">Self</span>::validate_password</span>(<span class="ident">cred</span>, <span class="ident">pw</span>, <span class="kw-2">*</span><span class="ident">generated</span>, <span class="ident">who</span>, <span class="ident">async_tx</span>, <span class="ident">pw_badlist_set</span>)
             }
-            <span class="ident">CredHandler::PasswordMfa</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">pw_mfa</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident"><span class="self">Self</span>::validate_password_mfa</span>(
+            <span class="ident">CredHandler::PasswordMfa</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">pw_mfa</span>) =&gt; <span class="ident"><span class="self">Self</span>::validate_password_mfa</span>(
                 <span class="ident">cred</span>,
                 <span class="ident">ts</span>,
                 <span class="ident">pw_mfa</span>,
@@ -2464,7 +2464,7 @@
                 <span class="ident">async_tx</span>,
                 <span class="ident">pw_badlist_set</span>,
             ),
-            <span class="ident">CredHandler::Webauthn</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">wan_cred</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">CredHandler::Webauthn</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">wan_cred</span>) =&gt; {
                 <span class="ident"><span class="self">Self</span>::validate_webauthn</span>(<span class="ident">cred</span>, <span class="ident">wan_cred</span>, <span class="ident">webauthn</span>, <span class="ident">who</span>, <span class="ident">async_tx</span>)
             }
         }
@@ -2472,11 +2472,11 @@
 
     <span class="doccomment">/// Determine based on the current status, what is the next allowed step that</span>
     <span class="doccomment">/// can proceed.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">next_auth_allowed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">next_auth_allowed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">CredHandler::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Anonymous</span>],
-            <span class="ident">CredHandler::Password</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>],
-            <span class="ident">CredHandler::PasswordMfa</span>(<span class="kw-2">ref</span> <span class="ident">pw_mfa</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">pw_mfa</span>
+            <span class="ident">CredHandler::Anonymous</span> =&gt; <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Anonymous</span>],
+            <span class="ident">CredHandler::Password</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>],
+            <span class="ident">CredHandler::PasswordMfa</span>(<span class="kw-2">ref</span> <span class="ident">pw_mfa</span>) =&gt; <span class="ident">pw_mfa</span>
                 .<span class="ident">backup_code</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">AuthAllowed::BackupCode</span>)
@@ -2488,27 +2488,27 @@
                         .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">chal</span>, <span class="kw">_</span>)<span class="op">|</span> <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>.<span class="ident">clone</span>())),
                 )
                 .<span class="ident">collect</span>(),
-            <span class="ident">CredHandler::Webauthn</span>(<span class="ident">webauthn</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">webauthn</span>.<span class="ident">chal</span>.<span class="ident">clone</span>())],
+            <span class="ident">CredHandler::Webauthn</span>(<span class="ident">webauthn</span>) =&gt; <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">webauthn</span>.<span class="ident">chal</span>.<span class="ident">clone</span>())],
         }
     }
 
     <span class="doccomment">/// Determine which mechanismes can proceed given the requested mechanism.</span>
-    <span class="kw">fn</span> <span class="ident">can_proceed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mech</span>: <span class="kw-2">&amp;</span><span class="ident">AuthMech</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">can_proceed</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mech</span>: <span class="kw-2">&amp;</span><span class="ident">AuthMech</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> (<span class="self">self</span>, <span class="ident">mech</span>) {
             (<span class="ident">CredHandler::Anonymous</span>, <span class="ident">AuthMech::Anonymous</span>)
             <span class="op">|</span> (<span class="ident">CredHandler::Password</span>(<span class="kw">_</span>, <span class="kw">_</span>), <span class="ident">AuthMech::Password</span>)
             <span class="op">|</span> (<span class="ident">CredHandler::PasswordMfa</span>(<span class="kw">_</span>), <span class="ident">AuthMech::PasswordMfa</span>)
-            <span class="op">|</span> (<span class="ident">CredHandler::Webauthn</span>(<span class="kw">_</span>), <span class="ident">AuthMech::Webauthn</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-            (<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">false</span>,
+            <span class="op">|</span> (<span class="ident">CredHandler::Webauthn</span>(<span class="kw">_</span>), <span class="ident">AuthMech::Webauthn</span>) =&gt; <span class="bool-val">true</span>,
+            (<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">allows_mech</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AuthMech</span> {
+    <span class="kw">fn</span> <span class="ident">allows_mech</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AuthMech</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">CredHandler::Anonymous</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AuthMech::Anonymous</span>,
-            <span class="ident">CredHandler::Password</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AuthMech::Password</span>,
-            <span class="ident">CredHandler::PasswordMfa</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AuthMech::PasswordMfa</span>,
-            <span class="ident">CredHandler::Webauthn</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">AuthMech::Webauthn</span>,
+            <span class="ident">CredHandler::Anonymous</span> =&gt; <span class="ident">AuthMech::Anonymous</span>,
+            <span class="ident">CredHandler::Password</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">AuthMech::Password</span>,
+            <span class="ident">CredHandler::PasswordMfa</span>(<span class="kw">_</span>) =&gt; <span class="ident">AuthMech::PasswordMfa</span>,
+            <span class="ident">CredHandler::Webauthn</span>(<span class="kw">_</span>) =&gt; <span class="ident">AuthMech::Webauthn</span>,
         }
     }
 }
@@ -2529,10 +2529,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">AuthSessionState</span> {
-    <span class="kw">fn</span> <span class="ident">is_denied</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">is_denied</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
-            <span class="ident">AuthSessionState::Denied</span>(<span class="ident">x</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">x</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            <span class="ident">AuthSessionState::Denied</span>(<span class="ident">x</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">x</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
 }
@@ -2559,7 +2559,7 @@
         <span class="ident">account</span>: <span class="ident">Account</span>,
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">AuthState</span>) {
+    ) -&gt; (<span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">AuthState</span>) {
         <span class="comment">// During this setup, determine the credential handler that we&#39;ll be using</span>
         <span class="comment">// for this session. This is currently based on presentation of an application</span>
         <span class="comment">// id.</span>
@@ -2572,7 +2572,7 @@
             } <span class="kw">else</span> {
                 <span class="comment">// Now we see if they have one ...</span>
                 <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">primary</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">cred</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Some</span>(<span class="ident">cred</span>) =&gt; {
                         <span class="comment">// TODO: Make it possible to have multiple creds.</span>
                         <span class="comment">// Probably means new authsession has to be failable</span>
                         <span class="ident">CredHandler::try_from</span>(<span class="ident">cred</span>, <span class="ident">webauthn</span>)
@@ -2584,7 +2584,7 @@
                                 <span class="ident">AuthSessionState::Denied</span>(<span class="string">&quot;invalid credential state&quot;</span>)
                             })
                     }
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">None</span> =&gt; {
                         <span class="macro">security_info!</span>(<span class="string">&quot;account has no primary credentials&quot;</span>);
                         <span class="ident">AuthSessionState::Denied</span>(<span class="string">&quot;invalid credential state&quot;</span>)
                     }
@@ -2612,7 +2612,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_account</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">Account</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_account</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">Account</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">account</span>
     }
 
@@ -2624,7 +2624,7 @@
         <span class="ident">mech</span>: <span class="kw-2">&amp;</span><span class="ident">AuthMech</span>,
         <span class="comment">// time: &amp;Duration,</span>
         <span class="comment">// webauthn: &amp;Webauthn&lt;WebauthnDomainConfig&gt;,</span>
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Given some auth mech, select which credential(s) are apropriate</span>
         <span class="comment">// and attempt to use them.</span>
 
@@ -2633,13 +2633,13 @@
         <span class="kw">let</span> (<span class="ident">next_state</span>, <span class="ident">response</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">state</span> {
             <span class="ident">AuthSessionState::Success</span>
             <span class="op">|</span> <span class="ident">AuthSessionState::Denied</span>(<span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">AuthSessionState::InProgress</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> (
+            <span class="op">|</span> <span class="ident">AuthSessionState::InProgress</span>(<span class="kw">_</span>) =&gt; (
                 <span class="prelude-val">None</span>,
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAuthState</span>(
                     <span class="string">&quot;session already finalised!&quot;</span>.<span class="ident">to_string</span>(),
                 )),
             ),
-            <span class="ident">AuthSessionState::Init</span>(<span class="ident">handlers</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthSessionState::Init</span>(<span class="ident">handlers</span>) =&gt; {
                 <span class="comment">// Which handlers are relevant?</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">allowed_handlers</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">handlers</span>
                     .<span class="ident">iter</span>()
@@ -2690,14 +2690,14 @@
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
         <span class="ident">pw_badlist_set</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">uat_bundy_hmac</span>: <span class="kw-2">&amp;</span><span class="ident">HS512</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">next_state</span>, <span class="ident">response</span>) <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">AuthSessionState::Init</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">AuthSessionState::Success</span> <span class="op">|</span> <span class="ident">AuthSessionState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthSessionState::Init</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">AuthSessionState::Success</span> <span class="op">|</span> <span class="ident">AuthSessionState::Denied</span>(<span class="kw">_</span>) =&gt; {
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAuthState</span>(
                     <span class="string">&quot;session already finalised!&quot;</span>.<span class="ident">to_string</span>(),
                 ));
             }
-            <span class="ident">AuthSessionState::InProgress</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">handler</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">AuthSessionState::InProgress</span>(<span class="kw-2">ref</span> <span class="kw-2">mut</span> <span class="ident">handler</span>) =&gt; {
                 <span class="kw">match</span> <span class="ident">handler</span>.<span class="ident">validate</span>(
                     <span class="ident">cred</span>,
                     <span class="ident">time</span>,
@@ -2706,7 +2706,7 @@
                     <span class="ident">webauthn</span>,
                     <span class="ident">pw_badlist_set</span>,
                 ) {
-                    <span class="ident">CredState::Success</span>(<span class="ident">auth_type</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">CredState::Success</span>(<span class="ident">auth_type</span>) =&gt; {
                         <span class="macro">security_info!</span>(<span class="string">&quot;Successful cred handling&quot;</span>);
                         <span class="comment">// TODO: put the operation id into the call to `to_userauthtoken`</span>
                         <span class="comment">// Can&#39;t `unwrap` the uuid until full integration, because some unit tests</span>
@@ -2732,11 +2732,11 @@
                             <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="ident">token</span>)),
                         )
                     }
-                    <span class="ident">CredState::Continue</span>(<span class="ident">allowed</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">CredState::Continue</span>(<span class="ident">allowed</span>) =&gt; {
                         <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">allowed</span>, <span class="string">&quot;Request credential continuation&quot;</span>);
                         (<span class="prelude-val">None</span>, <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">allowed</span>)))
                     }
-                    <span class="ident">CredState::Denied</span>(<span class="ident">reason</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">CredState::Denied</span>(<span class="ident">reason</span>) =&gt; {
                         <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">reason</span>, <span class="string">&quot;Credentials denied&quot;</span>);
                         (
                             <span class="prelude-val">Some</span>(<span class="ident">AuthSessionState::Denied</span>(<span class="ident">reason</span>)),
@@ -2767,18 +2767,18 @@
     }
 
     <span class="doccomment">/// End the session, defaulting to a denied.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">end_session</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">reason</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">end_session</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">reason</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">next_state</span> <span class="op">=</span> <span class="ident">AuthSessionState::Denied</span>(<span class="ident">reason</span>);
         <span class="ident">std::mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">next_state</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">reason</span>.<span class="ident">to_string</span>()))
     }
 
-    <span class="kw">fn</span> <span class="ident">valid_auth_mechs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">valid_auth_mechs</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
             <span class="ident">AuthSessionState::Success</span>
             <span class="op">|</span> <span class="ident">AuthSessionState::Denied</span>(<span class="kw">_</span>)
-            <span class="op">|</span> <span class="ident">AuthSessionState::InProgress</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
-            <span class="ident">AuthSessionState::Init</span>(<span class="ident">handlers</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="op">|</span> <span class="ident">AuthSessionState::InProgress</span>(<span class="kw">_</span>) =&gt; <span class="ident">Vec::new</span>(),
+            <span class="ident">AuthSessionState::Init</span>(<span class="ident">handlers</span>) =&gt; {
                 <span class="comment">// Iterate over the handlers into what mechs they are</span>
                 <span class="comment">// and filter to unique?</span>
                 <span class="ident">handlers</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">h</span><span class="op">|</span> <span class="ident">h</span>.<span class="ident">allows_mech</span>()).<span class="ident">collect</span>()
@@ -2815,13 +2815,13 @@
     <span class="kw">use</span> <span class="ident">bundy::hs512::HS512</span>;
     <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
-    <span class="kw">fn</span> <span class="ident">create_pw_badlist_cache</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">create_pw_badlist_cache</span>() -&gt; <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">s</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
         <span class="ident">s</span>.<span class="ident">insert</span>((<span class="kw-2">&amp;</span><span class="string">&quot;list@no3IBTyqHu$bad&quot;</span>).<span class="ident">to_lowercase</span>());
         <span class="ident">s</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">create_webauthn</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">create_webauthn</span>() -&gt; <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span> {
         <span class="ident">Webauthn::new</span>(<span class="ident">WebauthnDomainConfig</span> {
             <span class="ident">rp_name</span>: <span class="string">&quot;example.com&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">origin</span>: <span class="ident">url::Url::parse</span>(<span class="string">&quot;https://idm.example.com&quot;</span>).<span class="ident">unwrap</span>(),
@@ -2829,7 +2829,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">create_hs512</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">HS512</span> {
+    <span class="kw">fn</span> <span class="ident">create_hs512</span>() -&gt; <span class="ident">HS512</span> {
         <span class="kw">let</span> <span class="ident">pkey_str</span> <span class="op">=</span> <span class="ident">HS512::generate_key</span>().<span class="ident">unwrap</span>();
         <span class="ident">HS512::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">pkey_str</span>).<span class="ident">unwrap</span>()
     }
@@ -2868,7 +2868,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span>
                 <span class="ident">AuthSession::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">unwrap</span>();
@@ -2922,8 +2922,8 @@
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
             <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
         ) {
-            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="kw">_</span>)) =&gt; {}
+            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
         };
 
         <span class="comment">// === Now begin a new session, and use a good pw.</span>
@@ -2940,8 +2940,8 @@
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
             <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
         ) {
-            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
         };
 
         <span class="ident">drop</span>(<span class="ident">async_tx</span>);
@@ -2975,8 +2975,8 @@
             <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
             <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
         ) {
-            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">PW_BADLIST_MSG</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+            <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">PW_BADLIST_MSG</span>),
+            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
         };
 
         <span class="ident">drop</span>(<span class="ident">async_tx</span>);
@@ -2987,7 +2987,7 @@
         (
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span>
                 <span class="ident">AuthSession::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">expect</span>(<span class="string">&quot;Session was unable to be created.&quot;</span>);
@@ -3008,16 +3008,16 @@
 
             <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Continue</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
                 <span class="macro">assert!</span>(
-                    <span class="bool-val">true</span> <span class="op">=</span><span class="op">=</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
+                    <span class="bool-val">true</span> <span class="op">==</span> <span class="ident">auth_mechs</span>.<span class="ident">iter</span>().<span class="ident">fold</span>(<span class="bool-val">false</span>, <span class="op">|</span><span class="ident">acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
                         <span class="comment">// TODO: How to return webauthn chal?</span>
-                        <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) =&gt; {
                             <span class="ident">rchal</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">chal</span>.<span class="ident">clone</span>());
                             <span class="bool-val">true</span>
                         }
                         <span class="comment">// Why does this also return `true`? If we hit this but not</span>
                         <span class="comment">// Webauthn, then we will panic when unwrapping `rchal` later...</span>
-                        <span class="ident">AuthAllowed::Totp</span> <span class="op">=</span><span class="op">&gt;</span> <span class="bool-val">true</span>,
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">acc</span>,
+                        <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="bool-val">true</span>,
+                        <span class="kw">_</span> =&gt; <span class="ident">acc</span>,
                     })
                 );
 
@@ -3085,8 +3085,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3105,8 +3105,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
         <span class="comment">// check send bad totp, should fail immediate</span>
@@ -3122,8 +3122,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_TOTP_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_TOTP_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3141,8 +3141,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_bad</span>.<span class="ident">to_string</span>()),
@@ -3152,8 +3152,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_PASSWORD_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_PASSWORD_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3171,8 +3171,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_good</span>.<span class="ident">to_string</span>()),
@@ -3182,8 +3182,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3238,8 +3238,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_badlist</span>.<span class="ident">to_string</span>()),
@@ -3249,8 +3249,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">PW_BADLIST_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">PW_BADLIST_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3263,7 +3263,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">audit</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="kw">let</span> (<span class="ident">session</span>, <span class="ident">state</span>) <span class="op">=</span>
                 <span class="ident">AuthSession::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">account</span>.<span class="ident">clone</span>(), <span class="macro-nonterminal">$</span><span class="macro-nonterminal">webauthn</span>, <span class="ident">duration_from_epoch_now</span>());
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">session</span>.<span class="ident">unwrap</span>();
@@ -3279,12 +3279,12 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to select Webauthn mech.&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">wan_chal</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Continue</span>(<span class="ident">auth_mechs</span>) <span class="op">=</span> <span class="ident">state</span> {
-                <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+                <span class="macro">assert!</span>(<span class="ident">auth_mechs</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
                 <span class="ident">auth_mechs</span>
                     .<span class="ident">into_iter</span>()
                     .<span class="ident">fold</span>(<span class="prelude-val">None</span>, <span class="op">|</span><span class="ident">_acc</span>, <span class="ident">x</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">x</span> {
-                        <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">chal</span>),
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                        <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">chal</span>),
+                        <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
                     })
                     .<span class="ident">expect</span>(<span class="string">&quot;No webauthn challenge found.&quot;</span>)
             } <span class="kw">else</span> {
@@ -3297,7 +3297,7 @@
 
     <span class="kw">fn</span> <span class="ident">setup_webauthn</span>(
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (
+    ) -&gt; (
         <span class="ident">webauthn_rs::Webauthn</span><span class="op">&lt;</span><span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span><span class="op">&gt;</span>,
         <span class="ident">webauthn_authenticator_rs::WebauthnAuthenticator</span><span class="op">&lt;</span><span class="ident">U2FSoft</span><span class="op">&gt;</span>,
         <span class="ident">webauthn_rs::proto::Credential</span>,
@@ -3351,8 +3351,8 @@
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3372,15 +3372,15 @@
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
         <span class="comment">// Check the async counter update was sent.</span>
         <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) =&gt; {}
+            <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
         }
 
         <span class="comment">// Check bad challenge.</span>
@@ -3401,8 +3401,8 @@
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3443,8 +3443,8 @@
                 <span class="prelude-val">None</span>,
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3487,8 +3487,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3505,8 +3505,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3533,8 +3533,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3556,8 +3556,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_bad</span>.<span class="ident">to_string</span>()),
@@ -3567,14 +3567,14 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_PASSWORD_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_PASSWORD_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
             <span class="comment">// Check the async counter update was sent.</span>
             <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
             }
         }
 
@@ -3596,8 +3596,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_good</span>.<span class="ident">to_string</span>()),
@@ -3607,14 +3607,14 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
             <span class="comment">// Check the async counter update was sent.</span>
             <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
             }
         }
 
@@ -3668,8 +3668,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3686,8 +3686,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_TOTP_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_TOTP_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3712,8 +3712,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_WEBAUTHN_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3735,8 +3735,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_bad</span>.<span class="ident">to_string</span>()),
@@ -3746,14 +3746,14 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_PASSWORD_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_PASSWORD_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
             <span class="comment">// Check the async counter update was sent.</span>
             <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
             }
         }
 
@@ -3770,8 +3770,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_bad</span>.<span class="ident">to_string</span>()),
@@ -3781,8 +3781,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_PASSWORD_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_PASSWORD_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3799,8 +3799,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_good</span>.<span class="ident">to_string</span>()),
@@ -3810,8 +3810,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 
@@ -3833,8 +3833,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_good</span>.<span class="ident">to_string</span>()),
@@ -3844,14 +3844,14 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
             <span class="comment">// Check the async counter update was sent.</span>
             <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::WebauthnCounterIncrement</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
             }
         }
 
@@ -3916,8 +3916,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_AUTH_TYPE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
         <span class="comment">// check send wrong backup code, should fail immediate</span>
@@ -3933,8 +3933,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_BACKUPCODE_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_BACKUPCODE_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
         <span class="comment">// check send good backup code, should continue</span>
@@ -3951,8 +3951,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_bad</span>.<span class="ident">to_string</span>()),
@@ -3962,14 +3962,14 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">=</span><span class="op">=</span> <span class="ident">BAD_PASSWORD_MSG</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Denied</span>(<span class="ident">msg</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">msg</span> <span class="op">==</span> <span class="ident">BAD_PASSWORD_MSG</span>),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
         <span class="comment">// Can&#39;t process BackupCodeRemoval without the server instance</span>
         <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="kw">_</span>)) =&gt; {}
+            <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
         }
 
         <span class="comment">// check send good backup code, should continue</span>
@@ -3986,8 +3986,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_good</span>.<span class="ident">to_string</span>()),
@@ -3997,14 +3997,14 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
         <span class="comment">// Can&#39;t process BackupCodeRemoval without the server instance</span>
         <span class="kw">match</span> <span class="ident">async_rx</span>.<span class="ident">blocking_recv</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">DelayedAction::BackupCodeRemoval</span>(<span class="kw">_</span>)) =&gt; {}
+            <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
         }
 
         <span class="comment">// TOTP should also work:</span>
@@ -4022,8 +4022,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Continue</span>(<span class="ident">cont</span>)) =&gt; <span class="macro">assert!</span>(<span class="ident">cont</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">AuthAllowed::Password</span>]),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
             <span class="kw">match</span> <span class="ident">session</span>.<span class="ident">validate_creds</span>(
                 <span class="kw-2">&amp;</span><span class="ident">AuthCredential::Password</span>(<span class="ident">pw_good</span>.<span class="ident">to_string</span>()),
@@ -4033,8 +4033,8 @@
                 <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">pw_badlist_cache</span>),
                 <span class="kw-2">&amp;</span><span class="ident">hs512</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) <span class="op">=</span><span class="op">&gt;</span> {}
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">AuthState::Success</span>(<span class="kw">_</span>)) =&gt; {}
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
         }
 

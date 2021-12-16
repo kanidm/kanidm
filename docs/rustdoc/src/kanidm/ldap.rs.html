@@ -894,7 +894,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">LdapServer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// let ct = duration_from_epoch_now();</span>
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>());
         <span class="comment">// This is the rootdse path.</span>
@@ -964,10 +964,10 @@
         <span class="ident">sr</span>: <span class="kw-2">&amp;</span><span class="ident">SearchRequest</span>,
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">LdapBoundToken</span>,
         <span class="comment">// eventid: &amp;Uuid,</span>
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapMsg</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">LdapMsg</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">admin_info!</span>(<span class="string">&quot;Attempt LDAP Search for {}&quot;</span>, <span class="ident">uat</span>.<span class="ident">spn</span>);
         <span class="comment">// If the request is &quot;&quot;, Base, Present(&quot;objectclass&quot;), [], then we want the rootdse.</span>
-        <span class="kw">if</span> <span class="ident">sr</span>.<span class="ident">base</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">sr</span>.<span class="ident">scope</span> <span class="op">=</span><span class="op">=</span> <span class="ident">LdapSearchScope::Base</span> {
+        <span class="kw">if</span> <span class="ident">sr</span>.<span class="ident">base</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">sr</span>.<span class="ident">scope</span> <span class="op">==</span> <span class="ident">LdapSearchScope::Base</span> {
             <span class="macro">admin_info!</span>(<span class="string">&quot;LDAP Search success - RootDSE&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[
                 <span class="ident">sr</span>.<span class="ident">gen_result_entry</span>(<span class="self">self</span>.<span class="ident">rootdse</span>.<span class="ident">clone</span>()),
@@ -980,20 +980,20 @@
             <span class="comment">// This scoping returns an extra filter component.</span>
 
             <span class="kw">let</span> (<span class="ident">opt_attr</span>, <span class="ident">opt_value</span>) <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">dnre</span>.<span class="ident">captures</span>(<span class="ident">sr</span>.<span class="ident">base</span>.<span class="ident">as_str</span>()) {
-                <span class="prelude-val">Some</span>(<span class="ident">caps</span>) <span class="op">=</span><span class="op">&gt;</span> (
+                <span class="prelude-val">Some</span>(<span class="ident">caps</span>) =&gt; (
                     <span class="ident">caps</span>.<span class="ident">name</span>(<span class="string">&quot;attr&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>()),
                     <span class="ident">caps</span>.<span class="ident">name</span>(<span class="string">&quot;val&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>()),
                 ),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">None</span> =&gt; {
                     <span class="macro">request_error!</span>(<span class="string">&quot;LDAP Search failure - invalid basedn&quot;</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
                 }
             };
 
             <span class="kw">let</span> <span class="ident">req_dn</span> <span class="op">=</span> <span class="kw">match</span> (<span class="ident">opt_attr</span>, <span class="ident">opt_value</span>) {
-                (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">v</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>)),
-                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">v</span>)) =&gt; <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>)),
+                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; <span class="prelude-val">None</span>,
+                <span class="kw">_</span> =&gt; {
                     <span class="macro">request_error!</span>(<span class="string">&quot;LDAP Search failure - invalid rdn&quot;</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
                 }
@@ -1004,24 +1004,24 @@
             <span class="comment">// Map the Some(a,v) to ...?</span>
 
             <span class="kw">let</span> <span class="ident">ext_filter</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">sr</span>.<span class="ident">scope</span>, <span class="ident">req_dn</span>) {
-                (<span class="ident">LdapSearchScope::OneLevel</span>, <span class="prelude-val">Some</span>(<span class="ident">_r</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="ident">sr</span>.<span class="ident">gen_success</span>()]),
-                (<span class="ident">LdapSearchScope::OneLevel</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="ident">LdapSearchScope::OneLevel</span>, <span class="prelude-val">Some</span>(<span class="ident">_r</span>)) =&gt; <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[<span class="ident">sr</span>.<span class="ident">gen_success</span>()]),
+                (<span class="ident">LdapSearchScope::OneLevel</span>, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// exclude domain_info</span>
                     <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Not</span>(<span class="ident">Box::new</span>(<span class="ident">LdapFilter::Equality</span>(
                         <span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>(),
                         <span class="ident">STR_UUID_DOMAIN_INFO</span>.<span class="ident">to_string</span>(),
                     ))))
                 }
-                (<span class="ident">LdapSearchScope::Base</span>, <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(<span class="ident">a</span>, <span class="ident">v</span>)),
-                (<span class="ident">LdapSearchScope::Base</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="ident">LdapSearchScope::Base</span>, <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>))) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(<span class="ident">a</span>, <span class="ident">v</span>)),
+                (<span class="ident">LdapSearchScope::Base</span>, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// domain_info</span>
                     <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(
                         <span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>(),
                         <span class="ident">STR_UUID_DOMAIN_INFO</span>.<span class="ident">to_string</span>(),
                     ))
                 }
-                (<span class="ident">LdapSearchScope::Subtree</span>, <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>))) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(<span class="ident">a</span>, <span class="ident">v</span>)),
-                (<span class="ident">LdapSearchScope::Subtree</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="ident">LdapSearchScope::Subtree</span>, <span class="prelude-val">Some</span>((<span class="ident">a</span>, <span class="ident">v</span>))) =&gt; <span class="prelude-val">Some</span>(<span class="ident">LdapFilter::Equality</span>(<span class="ident">a</span>, <span class="ident">v</span>)),
+                (<span class="ident">LdapSearchScope::Subtree</span>, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// No filter changes needed.</span>
                     <span class="prelude-val">None</span>
                 }
@@ -1036,9 +1036,9 @@
                 <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
             } <span class="kw">else</span> {
                 <span class="ident">sr</span>.<span class="ident">attrs</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
-                    <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;*&quot;</span> {
+                    <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;*&quot;</span> {
                         <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
-                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;+&quot;</span> {
+                    } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;+&quot;</span> {
                         <span class="comment">// This forces the BE to get all the attrs so we can</span>
                         <span class="comment">// map all vattrs.</span>
                         <span class="ident">all_attrs</span> <span class="op">=</span> <span class="bool-val">true</span>;
@@ -1059,7 +1059,7 @@
                     .<span class="ident">attrs</span>
                     .<span class="ident">iter</span>()
                     .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;*&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;+&quot;</span> {
+                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;*&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;+&quot;</span> {
                             <span class="prelude-val">None</span>
                         } <span class="kw">else</span> {
                             <span class="prelude-val">Some</span>(<span class="ident">a</span>.<span class="ident">to_lowercase</span>())
@@ -1073,7 +1073,7 @@
                     .<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">a</span><span class="op">|</span> {
                         <span class="comment">// EntryDN and DN have special handling in to_ldap in Entry. We don&#39;t</span>
                         <span class="comment">// need these here, we know they will be returned as part of the transform.</span>
-                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;entrydn&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">a</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;dn&quot;</span> {
+                        <span class="kw">if</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;entrydn&quot;</span> <span class="op">|</span><span class="op">|</span> <span class="ident">a</span> <span class="op">==</span> <span class="string">&quot;dn&quot;</span> {
                             <span class="prelude-val">None</span>
                         } <span class="kw">else</span> {
                             <span class="prelude-val">Some</span>(<span class="ident">AttrString::from</span>(<span class="ident">ldap_vattr_map</span>(<span class="ident">a</span>)))
@@ -1094,7 +1094,7 @@
 
                 <span class="comment">// join the filter, with ext_filter</span>
                 <span class="kw">let</span> <span class="ident">lfilter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ext_filter</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">ext</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">LdapFilter::And</span>(<span class="macro">vec!</span>[
+                    <span class="prelude-val">Some</span>(<span class="ident">ext</span>) =&gt; <span class="ident">LdapFilter::And</span>(<span class="macro">vec!</span>[
                         <span class="ident">sr</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
                         <span class="ident">ext</span>,
                         <span class="ident">LdapFilter::Not</span>(<span class="ident">Box::new</span>(<span class="ident">LdapFilter::Or</span>(<span class="macro">vec!</span>[
@@ -1106,7 +1106,7 @@
                             ),
                         ]))),
                     ]),
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">LdapFilter::And</span>(<span class="macro">vec!</span>[
+                    <span class="prelude-val">None</span> =&gt; <span class="ident">LdapFilter::And</span>(<span class="macro">vec!</span>[
                         <span class="ident">sr</span>.<span class="ident">filter</span>.<span class="ident">clone</span>(),
                         <span class="ident">LdapFilter::Not</span>(<span class="ident">Box::new</span>(<span class="ident">LdapFilter::Or</span>(<span class="macro">vec!</span>[
                             <span class="ident">LdapFilter::Equality</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;classtype&quot;</span>.<span class="ident">to_string</span>()),
@@ -1184,7 +1184,7 @@
         <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
         <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">security_info!</span>(
             <span class="string">&quot;Attempt LDAP Bind for {}&quot;</span>,
             <span class="kw">if</span> <span class="ident">dn</span>.<span class="ident">is_empty</span>() { <span class="string">&quot;anonymous&quot;</span> } <span class="kw">else</span> { <span class="ident">dn</span> }
@@ -1208,8 +1208,8 @@
                 .<span class="ident">captures</span>(<span class="ident">dn</span>)
                 .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">caps</span><span class="op">|</span> <span class="ident">caps</span>.<span class="ident">name</span>(<span class="string">&quot;val&quot;</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">as_str</span>().<span class="ident">to_string</span>()))
             {
-                <span class="prelude-val">Some</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>,
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
+                <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
             };
 
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">rdn</span>, <span class="string">&quot;relative dn&quot;</span>);
@@ -1244,21 +1244,21 @@
         <span class="ident">server_op</span>: <span class="ident">ServerOps</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>,
         <span class="ident">eventid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">server_op</span> {
-            <span class="ident">ServerOps::SimpleBind</span>(<span class="ident">sbr</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+            <span class="ident">ServerOps::SimpleBind</span>(<span class="ident">sbr</span>) =&gt; <span class="self">self</span>
                 .<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="ident">sbr</span>.<span class="ident">dn</span>.<span class="ident">as_str</span>(), <span class="ident">sbr</span>.<span class="ident">pw</span>.<span class="ident">as_str</span>())
                 .<span class="kw">await</span>
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                    <span class="prelude-val">Some</span>(<span class="ident">lbt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">LdapResponseState::Bind</span>(<span class="ident">lbt</span>, <span class="ident">sbr</span>.<span class="ident">gen_success</span>()),
-                    <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">LdapResponseState::Respond</span>(<span class="ident">sbr</span>.<span class="ident">gen_invalid_cred</span>()),
+                    <span class="prelude-val">Some</span>(<span class="ident">lbt</span>) =&gt; <span class="ident">LdapResponseState::Bind</span>(<span class="ident">lbt</span>, <span class="ident">sbr</span>.<span class="ident">gen_success</span>()),
+                    <span class="prelude-val">None</span> =&gt; <span class="ident">LdapResponseState::Respond</span>(<span class="ident">sbr</span>.<span class="ident">gen_invalid_cred</span>()),
                 })
                 .<span class="ident">or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                     <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
                     <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sbr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)))
                 }),
-            <span class="ident">ServerOps::Search</span>(<span class="ident">sr</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">uat</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+            <span class="ident">ServerOps::Search</span>(<span class="ident">sr</span>) =&gt; <span class="kw">match</span> <span class="ident">uat</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">u</span>) =&gt; <span class="self">self</span>
                     .<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">u</span>)
                     .<span class="kw">await</span>
                     .<span class="ident">map</span>(<span class="ident">LdapResponseState::MultiPartResponse</span>)
@@ -1266,16 +1266,16 @@
                         <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
                         <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)))
                     }),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">None</span> =&gt; {
                     <span class="comment">// Search can occur without a bind, so bind first.</span>
                     <span class="kw">let</span> <span class="ident">lbt</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>).<span class="kw">await</span> {
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">lbt</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">lbt</span>,
-                        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">lbt</span>)) =&gt; <span class="ident">lbt</span>,
+                        <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>) =&gt; {
                             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(
                                 <span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">LdapResultCode::InvalidCredentials</span>, <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>()),
                             ))
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                             <span class="kw">let</span> (<span class="ident">rc</span>, <span class="ident">msg</span>) <span class="op">=</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>);
                             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">sr</span>.<span class="ident">gen_error</span>(<span class="ident">rc</span>, <span class="ident">msg</span>)));
                         }
@@ -1290,15 +1290,15 @@
                         })
                 }
             },
-            <span class="ident">ServerOps::Unbind</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">ServerOps::Unbind</span>(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// No need to notify on unbind (per rfc4511)</span>
                 <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Unbind</span>)
             }
-            <span class="ident">ServerOps::Whoami</span>(<span class="ident">wr</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">uat</span> {
-                <span class="prelude-val">Some</span>(<span class="ident">u</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(
+            <span class="ident">ServerOps::Whoami</span>(<span class="ident">wr</span>) =&gt; <span class="kw">match</span> <span class="ident">uat</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">u</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(
                     <span class="ident">wr</span>.<span class="ident">gen_success</span>(<span class="macro">format!</span>(<span class="string">&quot;u: {}&quot;</span>, <span class="ident">u</span>.<span class="ident">spn</span>).<span class="ident">as_str</span>()),
                 )),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">wr</span>.<span class="ident">gen_operror</span>(
+                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">wr</span>.<span class="ident">gen_operror</span>(
                     <span class="macro">format!</span>(<span class="string">&quot;Unbound Connection {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">eventid</span>).<span class="ident">as_str</span>(),
                 ))),
             },
@@ -1306,7 +1306,7 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">ldap_domain_to_dc</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+<span class="kw">fn</span> <span class="ident">ldap_domain_to_dc</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">output</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">String::new</span>();
     <span class="ident">input</span>.<span class="ident">split</span>(<span class="string">&#39;.&#39;</span>).<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">dc</span><span class="op">|</span> {
         <span class="ident">output</span>.<span class="ident">push_str</span>(<span class="string">&quot;dc=&quot;</span>);
@@ -1319,23 +1319,23 @@
     <span class="ident">output</span>
 }
 
-<span class="kw">fn</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>: <span class="ident">OperationError</span>) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">LdapResultCode</span>, <span class="ident">String</span>) {
+<span class="kw">fn</span> <span class="ident">operationerr_to_ldapresultcode</span>(<span class="ident">e</span>: <span class="ident">OperationError</span>) -&gt; (<span class="ident">LdapResultCode</span>, <span class="ident">String</span>) {
     <span class="kw">match</span> <span class="ident">e</span> {
-        <span class="ident">OperationError::InvalidRequestState</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">OperationError::InvalidRequestState</span> =&gt; {
             (<span class="ident">LdapResultCode::ConstraintViolation</span>, <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>())
         }
-        <span class="ident">OperationError::InvalidAttributeName</span>(<span class="ident">s</span>) <span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">OperationError::InvalidAttributeName</span>(<span class="ident">s</span>) <span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="ident">s</span>) =&gt; {
             (<span class="ident">LdapResultCode::InvalidAttributeSyntax</span>, <span class="ident">s</span>)
         }
-        <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">se</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">se</span>) =&gt; {
             (<span class="ident">LdapResultCode::UnwillingToPerform</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">se</span>))
         }
-        <span class="ident">e</span> <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">LdapResultCode::Other</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>)),
+        <span class="ident">e</span> =&gt; (<span class="ident">LdapResultCode::Other</span>, <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>)),
     }
 }
 
 <span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_all_vattrs</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_all_vattrs</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
     <span class="macro">vec!</span>[
         <span class="string">&quot;entryuuid&quot;</span>.<span class="ident">to_string</span>(),
         <span class="string">&quot;objectclass&quot;</span>.<span class="ident">to_string</span>(),
@@ -1350,7 +1350,7 @@
 }
 
 <span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_vattr_map</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_vattr_map</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
     <span class="comment">// ⚠️  WARNING ⚠️</span>
     <span class="comment">// If you modify this list you MUST add these values to</span>
     <span class="comment">// corresponding phantom attributes in the schema to prevent</span>
@@ -1358,20 +1358,20 @@
     <span class="comment">//</span>
     <span class="comment">//   LDAP NAME     KANI ATTR SOURCE NAME</span>
     <span class="kw">match</span> <span class="ident">input</span> {
-        <span class="string">&quot;entryuuid&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;uuid&quot;</span>,
-        <span class="string">&quot;objectclass&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;class&quot;</span>,
-        <span class="string">&quot;email&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;mail&quot;</span>,
-        <span class="string">&quot;emailaddress&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;mail&quot;</span>,
-        <span class="string">&quot;keys&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;ssh_publickey&quot;</span>,
-        <span class="string">&quot;sshpublickey&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;ssh_publickey&quot;</span>,
-        <span class="string">&quot;cn&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;name&quot;</span>,
-        <span class="string">&quot;uidnumber&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;gidnumber&quot;</span>,
-        <span class="ident">a</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>,
+        <span class="string">&quot;entryuuid&quot;</span> =&gt; <span class="string">&quot;uuid&quot;</span>,
+        <span class="string">&quot;objectclass&quot;</span> =&gt; <span class="string">&quot;class&quot;</span>,
+        <span class="string">&quot;email&quot;</span> =&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;emailaddress&quot;</span> =&gt; <span class="string">&quot;mail&quot;</span>,
+        <span class="string">&quot;keys&quot;</span> =&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
+        <span class="string">&quot;sshpublickey&quot;</span> =&gt; <span class="string">&quot;ssh_publickey&quot;</span>,
+        <span class="string">&quot;cn&quot;</span> =&gt; <span class="string">&quot;name&quot;</span>,
+        <span class="string">&quot;uidnumber&quot;</span> =&gt; <span class="string">&quot;gidnumber&quot;</span>,
+        <span class="ident">a</span> =&gt; <span class="ident">a</span>,
     }
 }
 
 <span class="attribute">#[<span class="ident">inline</span>]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_attr_filter_map</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">AttrString</span> {
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">ldap_attr_filter_map</span>(<span class="ident">input</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">AttrString</span> {
     <span class="ident">AttrString::from</span>(<span class="ident">ldap_vattr_map</span>(<span class="kw-2">&amp;</span><span class="ident">input</span>.<span class="ident">to_lowercase</span>()))
 }
 
@@ -1419,7 +1419,7 @@
                 <span class="kw">let</span> <span class="ident">anon_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">anon_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span>);
+                <span class="macro">assert!</span>(<span class="ident">anon_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="ident">UUID_ANONYMOUS</span>);
                 <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;test&quot;</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">is_none</span>());
@@ -1428,16 +1428,16 @@
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
                     <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin@example.com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                         .<span class="ident">unwrap</span>()
                         .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="ident">STR_UUID_ADMIN</span>, <span class="ident">TEST_PASSWORD</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="string">&quot;name=admin,dc=example,dc=com&quot;</span>,
@@ -1445,7 +1445,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="string">&quot;spn=admin@example.com,dc=example,dc=com&quot;</span>,
@@ -1453,7 +1453,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="macro">format!</span>(<span class="string">&quot;uuid={},dc=example,dc=com&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
@@ -1461,17 +1461,17 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
 
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;name=admin&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
                     <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;spn=admin@example.com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                         .<span class="ident">unwrap</span>()
                         .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
@@ -1479,13 +1479,13 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
 
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span>
                     <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin,dc=example,dc=com&quot;</span>, <span class="ident">TEST_PASSWORD</span>))
                         .<span class="ident">unwrap</span>()
                         .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="string">&quot;admin@example.com,dc=example,dc=com&quot;</span>,
@@ -1493,7 +1493,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
                 <span class="kw">let</span> <span class="ident">admin_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(
                     <span class="ident">idms</span>,
                     <span class="macro">format!</span>(<span class="string">&quot;{},dc=example,dc=com&quot;</span>, <span class="ident">STR_UUID_ADMIN</span>).<span class="ident">as_str</span>(),
@@ -1501,7 +1501,7 @@
                 ))
                 .<span class="ident">unwrap</span>()
                 .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
+                <span class="macro">assert!</span>(<span class="ident">admin_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>);
 
                 <span class="comment">// Bad password, check last to prevent softlocking of the admin account.</span>
                 <span class="macro">assert!</span>(<span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;admin&quot;</span>, <span class="string">&quot;test&quot;</span>))
@@ -1540,8 +1540,8 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dn</span>:<span class="ident">expr</span>,
             $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="op">*</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
-            <span class="macro">assert!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>.<span class="ident">dn</span> <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dn</span>);
+        ) =&gt; {{
+            <span class="macro">assert!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>.<span class="ident">dn</span> <span class="op">==</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">dn</span>);
             <span class="comment">// Build a set from the attrs.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
             <span class="kw">for</span> <span class="ident">a</span> <span class="kw">in</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>.<span class="ident">attributes</span>.<span class="ident">iter</span>() {
@@ -1598,7 +1598,7 @@
                 <span class="kw">let</span> <span class="ident">anon_t</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_bind</span>(<span class="ident">idms</span>, <span class="string">&quot;&quot;</span>, <span class="string">&quot;&quot;</span>))
                     .<span class="ident">unwrap</span>()
                     .<span class="ident">unwrap</span>();
-                <span class="macro">assert!</span>(<span class="ident">anon_t</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span>);
+                <span class="macro">assert!</span>(<span class="ident">anon_t</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="ident">UUID_ANONYMOUS</span>);
 
                 <span class="comment">// Check that when we request *, we get default list.</span>
                 <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="ident">SearchRequest</span> {
@@ -1611,9 +1611,9 @@
                 <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_t</span>)).<span class="ident">unwrap</span>();
 
                 <span class="comment">// The result, and the ldap proto success msg.</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
+                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
                 <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
                             <span class="ident">lsre</span>,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
@@ -1629,7 +1629,7 @@
                             (<span class="string">&quot;uuid&quot;</span>, <span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>)
                         );
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="comment">// Check that when we request +, we get all attrs and the vattrs</span>
@@ -1643,9 +1643,9 @@
                 <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_t</span>)).<span class="ident">unwrap</span>();
 
                 <span class="comment">// The result, and the ldap proto success msg.</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
+                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
                 <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
                             <span class="ident">lsre</span>,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
@@ -1665,7 +1665,7 @@
                             (<span class="string">&quot;keys&quot;</span>, <span class="ident">ssh_ed25519</span>)
                         );
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
 
                 <span class="comment">// Check that when we request an attr by name, we get all of them correctly.</span>
@@ -1684,9 +1684,9 @@
                 <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">ldaps</span>.<span class="ident">do_search</span>(<span class="ident">idms</span>, <span class="kw-2">&amp;</span><span class="ident">sr</span>, <span class="kw-2">&amp;</span><span class="ident">anon_t</span>)).<span class="ident">unwrap</span>();
 
                 <span class="comment">// The result, and the ldap proto success msg.</span>
-                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
+                <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
                 <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">r1</span>[<span class="number">0</span>].<span class="ident">op</span> {
-                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">LdapOp::SearchResultEntry</span>(<span class="ident">lsre</span>) =&gt; {
                         <span class="macro">assert_entry_contains!</span>(
                             <span class="ident">lsre</span>,
                             <span class="string">&quot;spn=testperson1@example.com,dc=example,dc=com&quot;</span>,
@@ -1696,7 +1696,7 @@
                             (<span class="string">&quot;keys&quot;</span>, <span class="ident">ssh_ed25519</span>)
                         );
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">assert!</span>(<span class="bool-val">false</span>),
+                    <span class="kw">_</span> =&gt; <span class="macro">assert!</span>(<span class="bool-val">false</span>),
                 };
             }
         )

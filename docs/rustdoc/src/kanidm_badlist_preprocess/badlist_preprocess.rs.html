@@ -187,8 +187,8 @@
 
     <span class="comment">// We open the file early to find out if we can create it or not.</span>
     <span class="kw">let</span> <span class="ident">fileout</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::create</span>(<span class="ident">opt</span>.<span class="ident">outfile</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to create file - {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="kw">return</span>;
         }
@@ -210,8 +210,8 @@
     <span class="comment">// Read them all in, remove blank lines.</span>
     <span class="kw">for</span> <span class="ident">f</span> <span class="kw">in</span> <span class="ident">opt</span>.<span class="ident">password_list</span>.<span class="ident">iter</span>() {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">file</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::open</span>(<span class="ident">f</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">info!</span>(<span class="string">&quot;Skipping file -&gt; {:?}&quot;</span>, <span class="ident">f</span>);
                 <span class="kw">continue</span>;
             }
@@ -238,7 +238,7 @@
         .<span class="ident">into_par_iter</span>()
         .<span class="ident">inspect</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">tc</span> <span class="op">=</span> <span class="ident">count</span>.<span class="ident">fetch_add</span>(<span class="number">1</span>, <span class="ident">Ordering::AcqRel</span>);
-            <span class="kw">if</span> <span class="ident">tc</span> <span class="op">%</span> <span class="number">1000</span> <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="ident">tc</span> <span class="op">%</span> <span class="number">1000</span> <span class="op">==</span> <span class="number">0</span> {
                 <span class="macro">info!</span>(<span class="string">&quot;{} ...&quot;</span>, <span class="ident">tc</span>)
             }
         })
@@ -251,8 +251,8 @@
             }
             <span class="kw">match</span> <span class="ident">zxcvbn::zxcvbn</span>(<span class="ident">v</span>.<span class="ident">as_str</span>(), <span class="ident">site_opts</span>.<span class="ident">as_slice</span>()) {
                 <span class="comment">// score of 2 or less is too weak and we&#39;d already reject it.</span>
-                <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>.<span class="ident">score</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">3</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>.<span class="ident">score</span>() <span class="op">&gt;</span><span class="op">=</span> <span class="number">3</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">error!</span>(<span class="string">&quot;zxcvbn unable to process &#39;{}&#39; - {:?}&quot;</span>, <span class="ident">v</span>.<span class="ident">as_str</span>(), <span class="ident">e</span>);
                     <span class="macro">error!</span>(<span class="string">&quot;adding to badlist anyway ...&quot;</span>);
                     <span class="bool-val">true</span>
@@ -279,9 +279,9 @@
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">Modify::Present</span>(<span class="string">&quot;badlist_password&quot;</span>.<span class="ident">to_string</span>(), <span class="ident">p</span>))
             .<span class="ident">collect</span>();
         <span class="kw">match</span> <span class="ident">serde_json::to_writer</span>(<span class="ident">bwrite</span>, <span class="kw-2">&amp;</span><span class="ident">modlist</span>) {
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span>
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt;
                 <span class="macro">info!</span>(<span class="string">&quot;next step: kanidm raw modify -D admin &#39;{{\&quot;Eq\&quot;: [\&quot;uuid\&quot;, \&quot;00000000-0000-0000-0000-ffffff000026\&quot;]}}&#39; &lt;outfile&gt;&quot;</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to serialised modifications - {:?}&quot;</span>, <span class="ident">e</span>)
             }
         }

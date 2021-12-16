@@ -4064,14 +4064,6 @@
 <span id="4064">4064</span>
 <span id="4065">4065</span>
 <span id="4066">4066</span>
-<span id="4067">4067</span>
-<span id="4068">4068</span>
-<span id="4069">4069</span>
-<span id="4070">4070</span>
-<span id="4071">4071</span>
-<span id="4072">4072</span>
-<span id="4073">4073</span>
-<span id="4074">4074</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4192,18 +4184,18 @@
 <span class="doccomment">/// [`QueryServerWriteTransaction`]: struct.QueryServerWriteTransaction.html</span>
 <span class="kw">pub</span> <span class="kw">trait</span> <span class="ident">QueryServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">BackendTransactionType</span>: <span class="ident">BackendTransaction</span>;
-    <span class="kw">fn</span> <span class="ident">get_be_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::BackendTransactionType</span>;
+    <span class="kw">fn</span> <span class="ident">get_be_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::BackendTransactionType</span>;
 
     <span class="kw">type</span> <span class="ident">SchemaTransactionType</span>: <span class="ident">SchemaTransaction</span>;
-    <span class="kw">fn</span> <span class="ident">get_schema</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::SchemaTransactionType</span>;
+    <span class="kw">fn</span> <span class="ident">get_schema</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::SchemaTransactionType</span>;
 
     <span class="kw">type</span> <span class="ident">AccessControlsTransactionType</span>: <span class="ident">AccessControlsTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
-    <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::AccessControlsTransactionType</span>;
+    <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::AccessControlsTransactionType</span>;
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::mut_from_ref</span>)]</span>
     <span class="kw">fn</span> <span class="ident">get_resolve_filter_cache</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+    ) -&gt; <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
     <span class="doccomment">/// Conduct a search and apply access controls to yield a set of entries that</span>
     <span class="doccomment">/// have been reduced to the set of user visible avas. Note that if you provide</span>
@@ -4217,7 +4209,7 @@
     <span class="kw">fn</span> <span class="ident">search_ext</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">se</span>: <span class="kw-2">&amp;</span><span class="ident">SearchEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::search_ext&quot;</span>, {
             <span class="comment">/*
              * This just wraps search, but it&#39;s for the external interface
@@ -4238,7 +4230,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">se</span>: <span class="kw-2">&amp;</span><span class="ident">SearchEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">se</span>: <span class="kw-2">&amp;</span><span class="ident">SearchEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::search&quot;</span>, {
             <span class="kw">if</span> <span class="ident">se</span>.<span class="ident">ident</span>.<span class="ident">is_internal</span>() {
                 <span class="macro">trace!</span>(<span class="ident">internal_filter</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">se</span>.<span class="ident">filter</span>, <span class="string">&quot;search&quot;</span>);
@@ -4294,7 +4286,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ee</span>: <span class="kw-2">&amp;</span><span class="ident">ExistsEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ee</span>: <span class="kw-2">&amp;</span><span class="ident">ExistsEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::exists&quot;</span>, {
             <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>();
             <span class="kw">let</span> <span class="ident">idxmeta</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_idxmeta_ref</span>();
@@ -4334,7 +4326,7 @@
     <span class="comment">//</span>
     <span class="comment">// Remember, we don&#39;t care if the name is invalid, because search</span>
     <span class="comment">// will validate/normalise the filter we construct for us. COOL!</span>
-    <span class="kw">fn</span> <span class="ident">name_to_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">name_to_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Is it just a uuid?</span>
         <span class="ident">Uuid::parse_str</span>(<span class="ident">name</span>).<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">lname</span> <span class="op">=</span> <span class="ident">name</span>.<span class="ident">to_lowercase</span>();
@@ -4344,7 +4336,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">uuid2spn</span>(<span class="ident">uuid</span>)<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">n</span>) <span class="op">=</span> <span class="ident">r</span> {
@@ -4356,7 +4348,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// If we have a some, pass it on, else unwrap into a default.</span>
         <span class="self">self</span>.<span class="ident">get_be_txn</span>()
             .<span class="ident">uuid2rdn</span>(<span class="ident">uuid</span>)
@@ -4364,7 +4356,7 @@
     }
 
     <span class="comment">// From internal, generate an exists event and dispatch</span>
-    <span class="kw">fn</span> <span class="ident">internal_exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">internal_exists</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_exists&quot;</span>, {
             <span class="comment">// Check the filter</span>
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
@@ -4380,7 +4372,7 @@
     <span class="kw">fn</span> <span class="ident">internal_search</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search&quot;</span>, {
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
                 .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
@@ -4395,7 +4387,7 @@
         <span class="ident">f_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
         <span class="ident">f_intent_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_valid&quot;</span>, {
             <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_impersonate</span>(<span class="ident">event</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>);
             <span class="self">self</span>.<span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>)
@@ -4408,7 +4400,7 @@
         <span class="ident">f_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
         <span class="ident">f_intent_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">se</span> <span class="op">=</span> <span class="ident">SearchEvent::new_impersonate</span>(<span class="ident">event</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>);
         <span class="self">self</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>)
     }
@@ -4419,7 +4411,7 @@
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">filter_intent</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
             .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -4434,7 +4426,7 @@
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">filter_intent</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_ext_valid&quot;</span>, {
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
                 .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
@@ -4451,7 +4443,7 @@
     <span class="kw">fn</span> <span class="ident">internal_search_uuid</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_uuid&quot;</span>, {
             <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_uuid&lt;filter_validate&gt;&quot;</span>, {
@@ -4463,8 +4455,8 @@
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="ident">se</span>)<span class="question-mark">?</span>;
             <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">pop</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">entry</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() =&gt; <span class="prelude-val">Ok</span>(<span class="ident">entry</span>),
+                <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
             }
         })
     }
@@ -4473,15 +4465,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_ext_uuid&quot;</span>, {
             <span class="kw">let</span> <span class="ident">filter_intent</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
             <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">impersonate_search_ext</span>(<span class="ident">filter</span>, <span class="ident">filter_intent</span>, <span class="ident">event</span>)<span class="question-mark">?</span>;
             <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">pop</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">entry</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() =&gt; <span class="prelude-val">Ok</span>(<span class="ident">entry</span>),
+                <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
             }
         })
     }
@@ -4490,22 +4482,22 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_uuid&quot;</span>, {
             <span class="kw">let</span> <span class="ident">filter_intent</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
             <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">uuid</span>)));
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">impersonate_search</span>(<span class="ident">filter</span>, <span class="ident">filter_intent</span>, <span class="ident">event</span>)<span class="question-mark">?</span>;
             <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">pop</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">entry</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                <span class="prelude-val">Some</span>(<span class="ident">entry</span>) <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() =&gt; <span class="prelude-val">Ok</span>(<span class="ident">entry</span>),
+                <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
             }
         })
     }
 
     <span class="doccomment">/// Do a schema aware conversion from a String:String to String:Value for modification</span>
     <span class="doccomment">/// present.</span>
-    <span class="kw">fn</span> <span class="ident">clone_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Value</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">clone_value</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Value</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_schema</span>();
 
         <span class="comment">// Should this actually be a fn of Value - no - I think that introduces issues with the</span>
@@ -4513,18 +4505,18 @@
 
         <span class="comment">// Lookup the attr</span>
         <span class="kw">match</span> <span class="ident">schema</span>.<span class="ident">get_attributes</span>().<span class="ident">get</span>(<span class="ident">attr</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">schema_a</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">schema_a</span>) =&gt; {
                 <span class="kw">match</span> <span class="ident">schema_a</span>.<span class="ident">syntax</span> {
-                    <span class="ident">SyntaxType::UTF8STRING</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_utf8</span>(<span class="ident">value</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::Utf8StringInsensitive</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_iutf8</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::Utf8StringIname</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_iname</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::Boolean</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_bools</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::UTF8STRING</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Value::new_utf8</span>(<span class="ident">value</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::Utf8StringInsensitive</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Value::new_iutf8</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::Utf8StringIname</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">Value::new_iname</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::Boolean</span> =&gt; <span class="ident">Value::new_bools</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid boolean syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::SYNTAX_ID</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_syntaxs</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::SYNTAX_ID</span> =&gt; <span class="ident">Value::new_syntaxs</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Syntax syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::INDEX_ID</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_indexs</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::INDEX_ID</span> =&gt; <span class="ident">Value::new_indexs</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Index syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::Uuid</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::Uuid</span> =&gt; {
                         <span class="comment">// It&#39;s a uuid - we do NOT check for existance, because that</span>
                         <span class="comment">// could be revealing or disclosing - it is up to acp to assert</span>
                         <span class="comment">// if we can see the value or not, and it&#39;s not up to us to</span>
@@ -4537,45 +4529,48 @@
                                 <span class="comment">// all subsequent filter tests because it ... well, doesn&#39;t exist.</span>
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>( <span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or</span>(<span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">Value::new_uuid</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
                             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid UUID syntax&quot;</span>.<span class="ident">to_string</span>()))
                     }
-                    <span class="ident">SyntaxType::REFERENCE_UUID</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::REFERENCE_UUID</span> =&gt; {
                         <span class="comment">// See comments above.</span>
                         <span class="ident">Value::new_refer_s</span>(<span class="ident">value</span>)
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
                                     .<span class="ident">name_to_uuid</span>( <span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                    .<span class="ident">unwrap_or</span>(<span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">Value::new_refer</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
                             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Reference syntax&quot;</span>.<span class="ident">to_string</span>()))
                     }
-                    <span class="ident">SyntaxType::JSON_FILTER</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_json_filter_s</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::JSON_FILTER</span> =&gt; <span class="ident">Value::new_json_filter_s</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Filter syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::Credential</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Credentials can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::SecretUtf8String</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Radius secrets can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::SshKey</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;SSH public keys can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::SecurityPrincipalName</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;SPNs are generated and not able to be set.&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::UINT32</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_uint32_str</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::Credential</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Credentials can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::SecretUtf8String</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Radius secrets can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::SshKey</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;SSH public keys can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::SecurityPrincipalName</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;SPNs are generated and not able to be set.&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::UINT32</span> =&gt; <span class="ident">Value::new_uint32_str</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid uint32 syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::Cid</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;CIDs are generated and not able to be set.&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::NsUniqueId</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_nsuniqueid_s</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::DateTime</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_datetime_s</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::Cid</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;CIDs are generated and not able to be set.&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::NsUniqueId</span> =&gt; <span class="ident">Value::new_nsuniqueid_s</span>(<span class="ident">value</span>)
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid NsUniqueId syntax&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::DateTime</span> =&gt; <span class="ident">Value::new_datetime_s</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid DateTime (rfc3339) syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::EmailAddress</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_email_address_s</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Value::new_url_s</span>(<span class="ident">value</span>)
+                    <span class="ident">SyntaxType::EmailAddress</span> =&gt; <span class="ident">Value::new_email_address_s</span>(<span class="ident">value</span>)
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Email Address syntax&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::Url</span> =&gt; <span class="ident">Value::new_url_s</span>(<span class="ident">value</span>)
                         .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Url (whatwg/url) syntax&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_oauthscope</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Oauth Scope Maps can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Private Binary Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::OauthScope</span> =&gt; <span class="ident">Value::new_oauthscope</span>(<span class="ident">value</span>)
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Oauth Scope syntax&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::OauthScopeMap</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Oauth Scope Maps can not be supplied through modification - please use the IDM api&quot;</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::PrivateBinary</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Private Binary Values can not be supplied through modification&quot;</span>.<span class="ident">to_string</span>())),
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No attribute of this name exists - fail fast, there is no point to</span>
                 <span class="comment">// proceed, as nothing can be satisfied.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttributeName</span>(<span class="ident">attr</span>.<span class="ident">to_string</span>()))
@@ -4583,35 +4578,33 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">clone_partialvalue</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">clone_partialvalue</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_schema</span>();
 
         <span class="comment">// Lookup the attr</span>
         <span class="kw">match</span> <span class="ident">schema</span>.<span class="ident">get_attributes</span>().<span class="ident">get</span>(<span class="ident">attr</span>) {
-            <span class="prelude-val">Some</span>(<span class="ident">schema_a</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">schema_a</span>) =&gt; {
                 <span class="kw">match</span> <span class="ident">schema_a</span>.<span class="ident">syntax</span> {
-                    <span class="ident">SyntaxType::UTF8STRING</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_utf8</span>(<span class="ident">value</span>.<span class="ident">to_string</span>())),
-                    <span class="ident">SyntaxType::Utf8StringInsensitive</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_iutf8</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::Utf8StringIname</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_iname</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::Boolean</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_bools</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::UTF8STRING</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_utf8</span>(<span class="ident">value</span>.<span class="ident">to_string</span>())),
+                    <span class="ident">SyntaxType::Utf8StringInsensitive</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_iutf8</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::Utf8StringIname</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_iname</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::Boolean</span> =&gt; <span class="ident">PartialValue::new_bools</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid boolean syntax&quot;</span>.<span class="ident">to_string</span>())
                     }),
-                    <span class="ident">SyntaxType::SYNTAX_ID</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_syntaxs</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::SYNTAX_ID</span> =&gt; <span class="ident">PartialValue::new_syntaxs</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Syntax syntax&quot;</span>.<span class="ident">to_string</span>())
                     }),
-                    <span class="ident">SyntaxType::INDEX_ID</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_indexs</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::INDEX_ID</span> =&gt; <span class="ident">PartialValue::new_indexs</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Index syntax&quot;</span>.<span class="ident">to_string</span>())
                     }),
-                    <span class="ident">SyntaxType::Uuid</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::Uuid</span> =&gt; {
                         <span class="ident">PartialValue::new_uuids</span>(<span class="ident">value</span>)
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
                                 <span class="comment">// it&#39;s not a uuid, try to resolve it.</span>
                                 <span class="comment">// if the value is NOT found, we map to &quot;does not exist&quot; to allow</span>
                                 <span class="comment">// the value to continue being evaluated, which of course, will fail</span>
                                 <span class="comment">// all subsequent filter tests because it ... well, doesn&#39;t exist.</span>
-                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
-                                    .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_to_uuid</span>(<span class="ident">value</span>).<span class="ident">unwrap_or</span>(<span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_uuid</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4631,13 +4624,11 @@
                         <span class="comment">//         PartialValue::new_uuid(un)</span>
                         <span class="comment">//     }))</span>
                     }
-                    <span class="ident">SyntaxType::REFERENCE_UUID</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::REFERENCE_UUID</span> =&gt; {
                         <span class="comment">// See comments above.</span>
                         <span class="ident">PartialValue::new_refer_s</span>(<span class="ident">value</span>)
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
-                                    .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_to_uuid</span>(<span class="ident">value</span>).<span class="ident">unwrap_or</span>(<span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_refer</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4648,13 +4639,11 @@
                                 )
                             })
                     }
-                    <span class="ident">SyntaxType::OauthScopeMap</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::OauthScopeMap</span> =&gt; {
                         <span class="comment">// See comments above.</span>
                         <span class="ident">PartialValue::new_oauthscopemap_s</span>(<span class="ident">value</span>)
                             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>
-                                    .<span class="ident">name_to_uuid</span>(<span class="ident">value</span>)
-                                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">UUID_DOES_NOT_EXIST</span>);
+                                <span class="kw">let</span> <span class="ident">un</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">name_to_uuid</span>(<span class="ident">value</span>).<span class="ident">unwrap_or</span>(<span class="ident">UUID_DOES_NOT_EXIST</span>);
                                 <span class="prelude-val">Some</span>(<span class="ident">PartialValue::new_oauthscopemap</span>(<span class="ident">un</span>))
                             })
                             <span class="comment">// I think this is unreachable due to how the .or_else works.</span>
@@ -4666,42 +4655,42 @@
                             })
                     }
 
-                    <span class="ident">SyntaxType::JSON_FILTER</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::JSON_FILTER</span> =&gt; {
                         <span class="ident">PartialValue::new_json_filter_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                             <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid Filter syntax&quot;</span>.<span class="ident">to_string</span>())
                         })
                     }
-                    <span class="ident">SyntaxType::Credential</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_credential_tag</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::SecretUtf8String</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_secret_str</span>()),
-                    <span class="ident">SyntaxType::SshKey</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_sshkey_tag_s</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::SecurityPrincipalName</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">SyntaxType::Credential</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_credential_tag</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::SecretUtf8String</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_secret_str</span>()),
+                    <span class="ident">SyntaxType::SshKey</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_sshkey_tag_s</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::SecurityPrincipalName</span> =&gt; {
                         <span class="ident">PartialValue::new_spn_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                             <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid spn syntax&quot;</span>.<span class="ident">to_string</span>())
                         })
                     }
-                    <span class="ident">SyntaxType::UINT32</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_uint32_str</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::UINT32</span> =&gt; <span class="ident">PartialValue::new_uint32_str</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid uint32 syntax&quot;</span>.<span class="ident">to_string</span>())
                     }),
-                    <span class="ident">SyntaxType::Cid</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_cid_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::Cid</span> =&gt; <span class="ident">PartialValue::new_cid_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;Invalid cid syntax&quot;</span>.<span class="ident">to_string</span>())
                     }),
-                    <span class="ident">SyntaxType::NsUniqueId</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_nsuniqueid_s</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::DateTime</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_datetime_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::NsUniqueId</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_nsuniqueid_s</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::DateTime</span> =&gt; <span class="ident">PartialValue::new_datetime_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(
                             <span class="string">&quot;Invalid DateTime (rfc3339) syntax&quot;</span>.<span class="ident">to_string</span>(),
                         )
                     }),
-                    <span class="ident">SyntaxType::EmailAddress</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_email_address_s</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::Url</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">PartialValue::new_url_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::EmailAddress</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_email_address_s</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::Url</span> =&gt; <span class="ident">PartialValue::new_url_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="ident">OperationError::InvalidAttribute</span>(
                             <span class="string">&quot;Invalid Url (whatwg/url) syntax&quot;</span>.<span class="ident">to_string</span>(),
                         )
                     }),
-                    <span class="ident">SyntaxType::OauthScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_oauthscope</span>(<span class="ident">value</span>)),
-                    <span class="ident">SyntaxType::PrivateBinary</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::PrivateBinary</span>),
+                    <span class="ident">SyntaxType::OauthScope</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_oauthscope</span>(<span class="ident">value</span>)),
+                    <span class="ident">SyntaxType::PrivateBinary</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::PrivateBinary</span>),
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No attribute of this name exists - fail fast, there is no point to</span>
                 <span class="comment">// proceed, as nothing can be satisfied.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAttributeName</span>(<span class="ident">attr</span>.<span class="ident">to_string</span>()))
@@ -4710,15 +4699,15 @@
     }
 
     <span class="comment">// In the opposite direction, we can resolve values for presentation</span>
-    <span class="kw">fn</span> <span class="ident">resolve_valueset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">resolve_valueset</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">r_set</span>) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">as_refer_set</span>() {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">r_set</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ur</span><span class="op">|</span> {
                     <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">ur</span>)<span class="question-mark">?</span>;
                     <span class="kw">match</span> <span class="ident">nv</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()),
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">ur</span>)),
+                        <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()),
+                        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">ur</span>)),
                     }
                 })
                 .<span class="ident">collect</span>();
@@ -4729,8 +4718,8 @@
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">m</span>)<span class="op">|</span> {
                     <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">u</span>)<span class="question-mark">?</span>;
                     <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">nv</span> {
-                        <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>(),
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">u</span>),
+                        <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>(),
+                        <span class="prelude-val">None</span> =&gt; <span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">u</span>),
                     };
                     <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{}: {:?}&quot;</span>, <span class="ident">u</span>, <span class="ident">m</span>))
                 })
@@ -4746,7 +4735,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>,
         <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">r_set</span>) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">as_refer_set</span>() {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">r_set</span>
                 .<span class="ident">iter</span>()
@@ -4767,7 +4756,7 @@
 
     <span class="comment">// This is a prebaked helper to get the domain name for related modules.</span>
     <span class="comment">// in the future we could make this cache the value to avoid entry lookups.</span>
-    <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="ident">e</span>.<span class="ident">get_ava_single_str</span>(<span class="string">&quot;domain_name&quot;</span>)
@@ -4780,7 +4769,7 @@
             })
     }
 
-    <span class="kw">fn</span> <span class="ident">get_domain_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_domain_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="ident">e</span>.<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;domain_token_key&quot;</span>)
@@ -4794,14 +4783,14 @@
     }
 
     <span class="comment">// This is a helper to get password badlist.</span>
-    <span class="kw">fn</span> <span class="ident">get_password_badlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_password_badlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_SYSTEM_CONFIG</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_as_str</span>(<span class="string">&quot;badlist_password&quot;</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">vs_str_iter</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">vs_str_iter</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">badlist_hashset</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs_str_iter</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>();
                     <span class="prelude-val">Ok</span>(<span class="ident">badlist_hashset</span>)
                 }
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryState</span>),
+                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryState</span>),
             })
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to retrieve system configuration&quot;</span>);
@@ -4809,7 +4798,7 @@
             })
     }
 
-    <span class="kw">fn</span> <span class="ident">get_oauth2rs_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_oauth2rs_set</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(
             <span class="string">&quot;class&quot;</span>,
             <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;oauth2_resource_server&quot;</span>)
@@ -4823,25 +4812,25 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">QueryServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">BackendTransactionType</span> <span class="op">=</span> <span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_be_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_be_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">be_txn</span>
     }
 
     <span class="kw">type</span> <span class="ident">SchemaTransactionType</span> <span class="op">=</span> <span class="ident">SchemaReadTransaction</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_schema</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">SchemaReadTransaction</span> {
+    <span class="kw">fn</span> <span class="ident">get_schema</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">SchemaReadTransaction</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>
     }
 
     <span class="kw">type</span> <span class="ident">AccessControlsTransactionType</span> <span class="op">=</span> <span class="ident">AccessControlsReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">AccessControlsReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">AccessControlsReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">accesscontrols</span>
     }
 
     <span class="kw">fn</span> <span class="ident">get_resolve_filter_cache</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>
+    ) -&gt; <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>
     {
         <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="ident">mptr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">resolve_filter_cache</span>.<span class="ident">as_ptr</span>();
@@ -4859,7 +4848,7 @@
     <span class="comment">// Verify the data content of the server is as expected. This will probably</span>
     <span class="comment">// call various functions for validation, including possibly plugin</span>
     <span class="comment">// verifications.</span>
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// If we fail after backend, we need to return NOW because we can&#39;t</span>
         <span class="comment">// assert any other faith in the DB states.</span>
         <span class="comment">//  * backend</span>
@@ -4896,25 +4885,25 @@
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">QueryServerTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">type</span> <span class="ident">BackendTransactionType</span> <span class="op">=</span> <span class="ident">BackendWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_be_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">BackendWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_be_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">BackendWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">be_txn</span>
     }
 
     <span class="kw">type</span> <span class="ident">SchemaTransactionType</span> <span class="op">=</span> <span class="ident">SchemaWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_schema</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">SchemaWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_schema</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">SchemaWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>
     }
 
     <span class="kw">type</span> <span class="ident">AccessControlsTransactionType</span> <span class="op">=</span> <span class="ident">AccessControlsWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">AccessControlsWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">AccessControlsWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">accesscontrols</span>
     }
 
     <span class="kw">fn</span> <span class="ident">get_resolve_filter_cache</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>
+    ) -&gt; <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span>
     {
         <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="ident">mptr</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">resolve_filter_cache</span>.<span class="ident">as_ptr</span>();
@@ -4928,13 +4917,8 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">QueryServerMeta</span> {
-    <span class="kw">pub</span> <span class="ident">max_cid</span>: <span class="ident">Cid</span>,
-}
-
 <span class="kw">impl</span> <span class="ident">QueryServer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">be</span>: <span class="ident">Backend</span>, <span class="ident">schema</span>: <span class="ident">Schema</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">be</span>: <span class="ident">Backend</span>, <span class="ident">schema</span>: <span class="ident">Schema</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> (<span class="ident">s_uuid</span>, <span class="ident">d_uuid</span>) <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">wr</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">write</span>();
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> (<span class="ident">wr</span>.<span class="ident">get_db_s_uuid</span>(), <span class="ident">wr</span>.<span class="ident">get_db_d_uuid</span>());
@@ -4965,11 +4949,11 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">QueryServerReadTransaction</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">QueryServerReadTransaction</span> {
         <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">read_async</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">read_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="comment">// We need to ensure a db conn will be available</span>
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">db_ticket</span> <span class="op">=</span> <span class="self">self</span>
@@ -4988,12 +4972,12 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">QueryServerWriteTransaction</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">QueryServerWriteTransaction</span> {
         <span class="comment">// Feed the current schema index metadata to the be write transaction.</span>
         <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">write_async</span>(<span class="ident">ts</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">write_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="comment">// Guarantee we are the only writer on the thread pool</span>
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">write_ticket</span> <span class="op">=</span> <span class="self">self</span>
@@ -5041,7 +5025,7 @@
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">initialise_helper</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">initialise_helper</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ts</span>: <span class="ident">Duration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// First, check our database version - attempt to do an initial indexing</span>
         <span class="comment">// based on the in memory configuration</span>
         <span class="comment">//</span>
@@ -5103,9 +5087,9 @@
         <span class="comment">// effect as ... there is nothing to migrate! It allows reset of the version to 0 to force</span>
         <span class="comment">// db migrations to take place.</span>
         <span class="kw">let</span> <span class="ident">system_info_version</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">migrate_txn</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_SYSTEM_INFO</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">e</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;version&quot;</span>).<span class="ident">unwrap_or</span>(<span class="number">0</span>)),
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="number">0</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">r</span>),
+            <span class="prelude-val">Ok</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">e</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;version&quot;</span>).<span class="ident">unwrap_or</span>(<span class="number">0</span>)),
+            <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="number">0</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">r</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">r</span>),
         }<span class="question-mark">?</span>;
         <span class="macro">admin_info!</span>(<span class="question-mark">?</span><span class="ident">system_info_version</span>);
 
@@ -5133,14 +5117,14 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">verify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r_txn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">read_async</span>());
         <span class="ident">r_txn</span>.<span class="ident">verify</span>()
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::create&quot;</span>, {
             <span class="comment">// The create event is a raw, read only representation of the request</span>
             <span class="comment">// that was made to us, including information about the identity</span>
@@ -5281,7 +5265,7 @@
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::delete&quot;</span>, {
             <span class="comment">// Do you have access to view all the set members? Reduce based on your</span>
             <span class="comment">// read permissions and attrs</span>
@@ -5418,7 +5402,7 @@
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_tombstones</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_tombstones</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::purge_tombstones&quot;</span>, {
             <span class="comment">// delete everything that is a tombstone.</span>
             <span class="kw">let</span> <span class="ident">cid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">cid</span>.<span class="ident">sub_secs</span>(<span class="ident">CHANGELOG_MAX_AGE</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -5448,7 +5432,7 @@
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_recycled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_recycled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::purge_recycled&quot;</span>, {
             <span class="comment">// Send everything that is recycled to tombstone</span>
             <span class="comment">// Search all recycled</span>
@@ -5497,7 +5481,7 @@
     }
 
     <span class="comment">// Should this take a revive event?</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">revive_recycled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">re</span>: <span class="kw-2">&amp;</span><span class="ident">ReviveRecycledEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">revive_recycled</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">re</span>: <span class="kw-2">&amp;</span><span class="ident">ReviveRecycledEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::revive_recycled&quot;</span>, {
             <span class="comment">// Revive an entry to live. This is a specialised (limited)</span>
             <span class="comment">// modify proxy.</span>
@@ -5576,7 +5560,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">modify_pre_apply</span><span class="op">&lt;</span><span class="lifetime">&#39;x</span><span class="op">&gt;</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;x</span> <span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyPartial</span><span class="op">&lt;</span><span class="lifetime">&#39;x</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyPartial</span><span class="op">&lt;</span><span class="lifetime">&#39;x</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::modify_pre_apply&quot;</span>, {
             <span class="comment">// Get the candidates.</span>
             <span class="comment">// Modify applies a modlist to a filter, so we need to internal search</span>
@@ -5588,7 +5572,7 @@
             <span class="comment">// Validate input.</span>
 
             <span class="comment">// Is the modlist non zero?</span>
-            <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">0</span> {
+            <span class="kw">if</span> <span class="ident">me</span>.<span class="ident">modlist</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">0</span> {
                 <span class="macro">request_error!</span>(<span class="string">&quot;modify: empty modify request&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>);
             }
@@ -5686,7 +5670,7 @@
         })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">modify_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mp</span>: <span class="ident">ModifyPartial</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">modify_apply</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mp</span>: <span class="ident">ModifyPartial</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::modify_apply&quot;</span>, {
             <span class="kw">let</span> <span class="ident">ModifyPartial</span> {
                 <span class="ident">norm_cand</span>,
@@ -5778,7 +5762,7 @@
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::cognitive_complexity</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::modify&quot;</span>, {
             <span class="kw">let</span> <span class="ident">mp</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">modify_pre_apply</span>(<span class="ident">me</span>)<span class="question-mark">?</span> };
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">mp</span> {
@@ -5796,7 +5780,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">internal_search_writeable</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntryTuple</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntryTuple</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_search_writeable&quot;</span>, {
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
                 .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
@@ -5823,7 +5807,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">pre_candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">candidates</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_batch_modify&quot;</span>, {
             <span class="kw">if</span> <span class="ident">pre_candidates</span>.<span class="ident">is_empty</span>() <span class="op">&amp;&amp;</span> <span class="ident">candidates</span>.<span class="ident">is_empty</span>() {
                 <span class="comment">// No action needed.</span>
@@ -5854,7 +5838,7 @@
                     .<span class="ident">iter</span>()
                     .<span class="ident">zip</span>(<span class="ident">norm_cand</span>.<span class="ident">iter</span>())
                     .<span class="ident">try_for_each</span>(<span class="op">|</span>(<span class="ident">pre</span>, <span class="ident">post</span>)<span class="op">|</span> {
-                        <span class="kw">if</span> <span class="ident">pre</span>.<span class="ident">get_uuid</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">post</span>.<span class="ident">get_uuid</span>() {
+                        <span class="kw">if</span> <span class="ident">pre</span>.<span class="ident">get_uuid</span>() <span class="op">==</span> <span class="ident">post</span>.<span class="ident">get_uuid</span>() {
                             <span class="prelude-val">Ok</span>(())
                         } <span class="kw">else</span> {
                             <span class="macro">admin_error!</span>(<span class="string">&quot;modify - cand sets not correctly aligned&quot;</span>);
@@ -5926,7 +5910,7 @@
     }
 
     <span class="doccomment">/// Migrate 2 to 3 changes the name, domain_name types from iutf8 to iname.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_2_to_3</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_2_to_3</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_2_to_3&quot;</span>, {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 2 to 3 migration. THIS MAY TAKE A LONG TIME!&quot;</span>);
             <span class="comment">// Get all entries where pres name or domain_name. INCLUDE TS + RECYCLE.</span>
@@ -5967,8 +5951,8 @@
                 .<span class="ident">collect</span>();
 
             <span class="kw">let</span> <span class="ident">norm_cand</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">res</span> {
-                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;migrate_2_to_3 schema error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>));
                 }
@@ -5988,7 +5972,7 @@
 
     <span class="doccomment">/// Migrate 3 to 4 - this triggers a regen of the domains security token</span>
     <span class="doccomment">/// as we previously did not have it in the entry.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_3_to_4</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_3_to_4</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_3_to_4&quot;</span>, {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 3 to 4 migration.&quot;</span>);
             <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, (<span class="kw-2">*</span><span class="ident">PVUUID_DOMAIN_INFO</span>).<span class="ident">clone</span>()));
@@ -6000,7 +5984,7 @@
 
     <span class="doccomment">/// Migrate 4 to 5 - this triggers a regen of all oauth2 RS es256 der keys</span>
     <span class="doccomment">/// as we previously did not generate them on entry creation.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_4_to_5</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_4_to_5</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_4_to_5&quot;</span>, {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 4 to 5 migration.&quot;</span>);
             <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
@@ -6020,14 +6004,14 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">internal_create</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Start the audit scope</span>
         <span class="comment">// Create the CreateEvent</span>
         <span class="kw">let</span> <span class="ident">ce</span> <span class="op">=</span> <span class="ident">CreateEvent::new_internal</span>(<span class="ident">entries</span>);
         <span class="self">self</span>.<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">internal_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">internal_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
             .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
             .<span class="ident">map_err</span>(<span class="ident">OperationError::SchemaViolation</span>)<span class="question-mark">?</span>;
@@ -6039,7 +6023,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">filter</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::intenal_modify&quot;</span>, {
             <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>
                 .<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>())
@@ -6058,7 +6042,7 @@
         <span class="ident">f_intent_valid</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>,
         <span class="ident">m_valid</span>: <span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">me</span> <span class="op">=</span> <span class="ident">ModifyEvent::new_impersonate</span>(<span class="ident">event</span>, <span class="ident">f_valid</span>, <span class="ident">f_intent_valid</span>, <span class="ident">m_valid</span>);
         <span class="self">self</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me</span>)
     }
@@ -6069,7 +6053,7 @@
         <span class="ident">filter_intent</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="string">&quot;filter Schema Invalid {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
@@ -6091,7 +6075,7 @@
         <span class="ident">filter_intent</span>: <span class="kw-2">&amp;</span><span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">Identity</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyEvent</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyEvent</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">f_valid</span> <span class="op">=</span> <span class="ident">filter</span>.<span class="ident">validate</span>(<span class="self">self</span>.<span class="ident">get_schema</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="string">&quot;filter Schema Invalid {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)
@@ -6129,7 +6113,7 @@
     }
     */</span>
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">internal_migrate_or_create_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">e_str</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">internal_migrate_or_create_str</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">e_str</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;server::internal_migrate_or_create_str&quot;</span>, {
             <span class="ident">Entry::from_proto_entry_str</span>(<span class="ident">e_str</span>, <span class="self">self</span>)
                 <span class="comment">/*
@@ -6148,7 +6132,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">internal_migrate_or_create</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// if the thing exists, ensure the set of attributes on</span>
         <span class="comment">// Entry A match and are present (but don&#39;t delete multivalue, or extended</span>
         <span class="comment">// attributes in the situation.</span>
@@ -6161,8 +6145,8 @@
         <span class="macro">admin_info!</span>(<span class="string">&quot;internal_migrate_or_create operating on {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>());
 
         <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">filter_from_attrs</span>(<span class="kw-2">&amp;</span>[<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>)]) {
-            <span class="prelude-val">Some</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::FilterGeneration</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::FilterGeneration</span>),
         };
 
         <span class="macro">trace!</span>(<span class="string">&quot;internal_migrate_or_create search {:?}&quot;</span>, <span class="ident">filt</span>);
@@ -6172,15 +6156,15 @@
         <span class="kw">if</span> <span class="ident">results</span>.<span class="ident">is_empty</span>() {
             <span class="comment">// It does not exist. Create it.</span>
             <span class="self">self</span>.<span class="ident">internal_create</span>(<span class="macro">vec!</span>[<span class="ident">e</span>])
-        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">results</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span> {
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">results</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span> {
             <span class="comment">// If the thing is subset, pass</span>
             <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">gen_modlist_assert</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">schema</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">modlist</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">modlist</span>) =&gt; {
                     <span class="comment">// Apply to &amp;results[0]</span>
                     <span class="macro">trace!</span>(<span class="string">&quot;Generated modlist -&gt; {:?}&quot;</span>, <span class="ident">modlist</span>);
                     <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>, <span class="kw-2">&amp;</span><span class="ident">modlist</span>)
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(<span class="ident">e</span>)),
             }
         } <span class="kw">else</span> {
             <span class="macro">admin_error!</span>(
@@ -6256,7 +6240,7 @@
     }
     */</span>
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_schema_core</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_schema_core</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_schema_core -&gt; start ...&quot;</span>);
         <span class="comment">// Load in all the &quot;core&quot; schema, that we already have in &quot;memory&quot;.</span>
         <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">schema</span>.<span class="ident">to_entries</span>();
@@ -6276,7 +6260,7 @@
         <span class="ident">r</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_schema_idm</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_schema_idm</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">admin_info!</span>(<span class="string">&quot;initialise_schema_idm -&gt; start ...&quot;</span>);
         <span class="comment">// List of IDM schemas to init.</span>
         <span class="kw">let</span> <span class="ident">idm_schema</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro">vec!</span>[
@@ -6334,7 +6318,7 @@
     }
 
     <span class="comment">// This function is idempotent</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_idm</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">initialise_idm</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// First, check the system_info object. This stores some server information</span>
         <span class="comment">// and details. It&#39;s a pretty const thing. Also check anonymous, important to many</span>
         <span class="comment">// concepts.</span>
@@ -6460,7 +6444,7 @@
         <span class="prelude-val">Ok</span>(())
     }
 
-    <span class="kw">fn</span> <span class="ident">reload_schema</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">reload_schema</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;server::reload_schema&quot;</span>, {
             <span class="comment">// supply entries to the writable schema to reload from.</span>
             <span class="comment">// find all attributes.</span>
@@ -6522,7 +6506,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">reload_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">reload_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// supply entries to the writable access controls to reload from.</span>
         <span class="comment">// This has to be done in FOUR passes - one for each type!</span>
         <span class="comment">//</span>
@@ -6646,20 +6630,20 @@
         })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Uuid</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
         <span class="self">self</span>.<span class="ident">d_uuid</span>
     }
 
     <span class="doccomment">/// Initiate a domain rename process. This is generally an internal function but it&#39;s</span>
     <span class="doccomment">/// exposed to the cli for admins to be able to initiate the process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_rename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_rename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">modl</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;domain_name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="ident">new_domain_name</span>));
         <span class="kw">let</span> <span class="ident">udi</span> <span class="op">=</span> <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>);
         <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">udi</span>));
         <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>, <span class="kw-2">&amp;</span><span class="ident">modl</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reindex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reindex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// initiate a be reindex here. This could have been from first run checking</span>
         <span class="comment">// the versions, or it could just be from the cli where an admin needs to do an</span>
         <span class="comment">// indexing.</span>
@@ -6670,23 +6654,23 @@
         <span class="self">self</span>.<span class="ident">changed_schema</span>.<span class="ident">set</span>(<span class="bool-val">true</span>);
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">upgrade_reindex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">upgrade_reindex</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">v</span>: <span class="ident">i64</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">be_txn</span>.<span class="ident">upgrade_reindex</span>(<span class="ident">v</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> {
         <span class="kw">unsafe</span> { <span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">changed_uuid</span>.<span class="ident">as_ptr</span>()) }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_ouath2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_ouath2</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">changed_oauth2</span>.<span class="ident">get</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_domain</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_changed_domain</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">commit</span>(<span class="kw-2">mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This could be faster if we cache the set of classes changed</span>
         <span class="comment">// in an operation so we can check if we need to do the reload or not</span>
         <span class="comment">//</span>
@@ -6784,7 +6768,7 @@
 
             <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">server_txn</span>.<span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="ident">se2</span>).<span class="ident">expect</span>(<span class="string">&quot;search failure&quot;</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;--&gt; {:?}&quot;</span>, <span class="ident">r2</span>);
-            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="kw">let</span> <span class="ident">expected</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="macro">vec!</span>[<span class="ident">Arc::new</span>(<span class="ident">e</span>.<span class="ident">into_sealed_committed</span>())] };
 
@@ -6864,7 +6848,7 @@
                     <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[]),
                 )
             };
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_emp</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>));
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_emp</span>) <span class="op">==</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::EmptyRequest</span>));
 
             <span class="comment">// Mod changes no objects</span>
             <span class="kw">let</span> <span class="ident">me_nochg</span> <span class="op">=</span> <span class="kw">unsafe</span> {
@@ -6877,7 +6861,7 @@
                     )]),
                 )
             };
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_nochg</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>));
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_nochg</span>) <span class="op">==</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>));
 
             <span class="comment">// Filter is invalid to schema - to check this due to changes in the way events are</span>
             <span class="comment">// handled, we put this via the internal modify function to get the modlist</span>
@@ -6892,7 +6876,7 @@
             );
             <span class="macro">assert!</span>(
                 <span class="ident">r_inv_1</span>
-                    <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(
+                    <span class="op">==</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(
                         <span class="ident">SchemaError::InvalidAttribute</span>(<span class="string">&quot;tnanuanou&quot;</span>.<span class="ident">to_string</span>())
                     ))
             );
@@ -6909,7 +6893,7 @@
             };
             <span class="macro">assert!</span>(
                 <span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_inv_m</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(
+                    <span class="op">==</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SchemaViolation</span>(
                         <span class="ident">SchemaError::InvalidAttribute</span>(<span class="string">&quot;htnaonu&quot;</span>.<span class="ident">to_string</span>())
                     ))
             );
@@ -7165,7 +7149,7 @@
             <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">internal_search</span>(<span class="ident">filt_i_ts</span>.<span class="ident">clone</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;internal search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="comment">// If we purge now, nothing happens, we aren&#39;t past the time window.</span>
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">purge_tombstones</span>().<span class="ident">is_ok</span>());
@@ -7173,7 +7157,7 @@
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">internal_search</span>(<span class="ident">filt_i_ts</span>.<span class="ident">clone</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;internal search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="comment">// Commit</span>
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
@@ -7286,14 +7270,14 @@
 
             <span class="comment">// Can in be seen by special search? (external recycle search)</span>
             <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">server_txn</span>.<span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="ident">sre_rc</span>).<span class="ident">expect</span>(<span class="string">&quot;search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
+            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
 
             <span class="comment">// Can it be seen (internal search)</span>
             <span class="comment">// Internal search should see it.</span>
             <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">internal_search</span>(<span class="ident">filt_i_rc</span>.<span class="ident">clone</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;internal search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">2</span>);
+            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">2</span>);
 
             <span class="comment">// There are now two paths forward</span>
             <span class="comment">//  revival or purge!</span>
@@ -7304,7 +7288,7 @@
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">internal_search</span>(<span class="ident">filt_i_rc</span>.<span class="ident">clone</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;internal search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="comment">// Commit</span>
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
@@ -7325,13 +7309,13 @@
             <span class="kw">let</span> <span class="ident">r5</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">internal_search</span>(<span class="ident">filt_i_ts</span>.<span class="ident">clone</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;internal search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r5</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r5</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="comment">// There should be one entry</span>
             <span class="kw">let</span> <span class="ident">r6</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">internal_search</span>(<span class="ident">filt_i_per</span>.<span class="ident">clone</span>())
                 .<span class="ident">expect</span>(<span class="string">&quot;internal search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r6</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r6</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
         })
@@ -7374,7 +7358,7 @@
             <span class="kw">let</span> <span class="ident">filt_rc</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;recycled&quot;</span>)));
             <span class="kw">let</span> <span class="ident">sre_rc</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">SearchEvent::new_rec_impersonate_entry</span>(<span class="ident">admin</span>, <span class="ident">filt_rc</span>.<span class="ident">clone</span>()) };
             <span class="kw">let</span> <span class="ident">r2</span> <span class="op">=</span> <span class="ident">server_txn</span>.<span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="ident">sre_rc</span>).<span class="ident">expect</span>(<span class="string">&quot;search failed&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="number">1</span>);
+            <span class="macro">assert!</span>(<span class="ident">r2</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="number">1</span>);
 
             <span class="comment">// Create dup uuid (rej)</span>
             <span class="comment">// After a delete -&gt; recycle, create duplicate name etc.</span>
@@ -7445,16 +7429,16 @@
             <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).<span class="ident">unwrap</span>());
             <span class="comment">// There is nothing.</span>
-            <span class="macro">assert!</span>(<span class="ident">r1</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
+            <span class="macro">assert!</span>(<span class="ident">r1</span> <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
             <span class="comment">// Name does exist</span>
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>());
             <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">r3</span>);
-            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">unwrap</span>().<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
+            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">unwrap</span>().<span class="ident">unwrap</span>() <span class="op">==</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
             <span class="comment">// Name is not syntax normalised (but exists)</span>
             <span class="kw">let</span> <span class="ident">r4</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).<span class="ident">unwrap</span>());
-            <span class="macro">assert!</span>(<span class="ident">r4</span>.<span class="ident">unwrap</span>().<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
+            <span class="macro">assert!</span>(<span class="ident">r4</span>.<span class="ident">unwrap</span>().<span class="ident">unwrap</span>() <span class="op">==</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
         })
     }
 
@@ -7483,16 +7467,16 @@
             <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).<span class="ident">unwrap</span>());
             <span class="comment">// There is nothing.</span>
-            <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>);
             <span class="comment">// Name does exist</span>
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>());
             <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">r3</span>);
-            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
             <span class="comment">// Uuid is not syntax normalised (but exists)</span>
             <span class="kw">let</span> <span class="ident">r4</span> <span class="op">=</span> <span class="ident">server_txn</span>
                 .<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).<span class="ident">unwrap</span>());
-            <span class="macro">assert!</span>(<span class="ident">r4</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">r4</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
         })
     }
 
@@ -7521,15 +7505,15 @@
             <span class="macro">assert!</span>(<span class="ident">cr</span>.<span class="ident">is_ok</span>());
 
             <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>())
+                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>())
             );
 
             <span class="macro">assert!</span>(
                 <span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>)))
+                    <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>)))
             );
 
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">name_to_uuid</span>(<span class="string">&quot;testperson1&quot;</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">tuuid</span>));
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">name_to_uuid</span>(<span class="string">&quot;testperson1&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="ident">tuuid</span>));
 
             <span class="comment">// delete</span>
             <span class="kw">let</span> <span class="ident">de_sin</span> <span class="op">=</span> <span class="kw">unsafe</span> {
@@ -7543,10 +7527,10 @@
             <span class="comment">// all should fail</span>
             <span class="macro">assert!</span>(
                 <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>.<span class="ident">to_string</span>())
+                    <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>.<span class="ident">to_string</span>())
             );
 
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
 
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">name_to_uuid</span>(<span class="string">&quot;testperson1&quot;</span>).<span class="ident">is_err</span>());
 
@@ -7565,15 +7549,15 @@
             <span class="comment">// all checks pass</span>
 
             <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>())
+                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>())
             );
 
             <span class="macro">assert!</span>(
                 <span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>)))
+                    <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>)))
             );
 
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">name_to_uuid</span>(<span class="string">&quot;testperson1&quot;</span>) <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">tuuid</span>));
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">name_to_uuid</span>(<span class="string">&quot;testperson1&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="ident">tuuid</span>));
         })
     }
 
@@ -7610,7 +7594,7 @@
             <span class="comment">// test attr reference</span>
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>.<span class="ident">clone_value</span>(<span class="kw-2">&amp;</span><span class="string">&quot;member&quot;</span>.<span class="ident">to_string</span>(), <span class="kw-2">&amp;</span><span class="string">&quot;testperson1&quot;</span>.<span class="ident">to_string</span>());
 
-            <span class="macro">assert!</span>(<span class="ident">r3</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_refer_s</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>()));
+            <span class="macro">assert!</span>(<span class="ident">r3</span> <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_refer_s</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>()));
 
             <span class="comment">// test attr reference already resolved.</span>
             <span class="kw">let</span> <span class="ident">r4</span> <span class="op">=</span> <span class="ident">server_txn</span>.<span class="ident">clone_value</span>(
@@ -7619,7 +7603,7 @@
             );
 
             <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">r4</span>);
-            <span class="macro">assert!</span>(<span class="ident">r4</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_refer_s</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>()));
+            <span class="macro">assert!</span>(<span class="ident">r4</span> <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="ident">Value::new_refer_s</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>()));
         })
     }
 
@@ -7842,7 +7826,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">create_user</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">create_user</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
         <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;person&quot;</span>)),
@@ -7853,7 +7837,7 @@
         )
     }
 
-    <span class="kw">fn</span> <span class="ident">create_group</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">create_group</span>(<span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
             (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;object&quot;</span>)),
             (<span class="string">&quot;class&quot;</span>, <span class="ident">Value::new_class</span>(<span class="string">&quot;group&quot;</span>)),
@@ -7867,7 +7851,7 @@
         <span class="ident">e1</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">check_entry_has_mo</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">mo</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">fn</span> <span class="ident">check_entry_has_mo</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">mo</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">qs</span>
             .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_iname</span>(<span class="ident">name</span>))))
             .<span class="ident">unwrap</span>()
@@ -7988,7 +7972,7 @@
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">revive_recycled</span>(<span class="kw-2">&amp;</span><span class="ident">rev3</span>).<span class="ident">is_ok</span>());
             <span class="macro">assert!</span>(
                 <span class="ident">check_entry_has_mo</span>(<span class="kw-2">&amp;</span><span class="ident">server_txn</span>, <span class="string">&quot;u3&quot;</span>, <span class="string">&quot;36048117-e479-45ed-aeb5-611e8d83d5b1&quot;</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span>
+                    <span class="op">==</span> <span class="bool-val">false</span>
             );
 
             <span class="comment">// Revive u4, should NOT have the MO.</span>
@@ -8001,7 +7985,7 @@
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">revive_recycled</span>(<span class="kw-2">&amp;</span><span class="ident">rev4a</span>).<span class="ident">is_ok</span>());
             <span class="macro">assert!</span>(
                 <span class="ident">check_entry_has_mo</span>(<span class="kw-2">&amp;</span><span class="ident">server_txn</span>, <span class="string">&quot;u4&quot;</span>, <span class="string">&quot;d5c59ac6-c533-4b00-989f-d0e183f07bab&quot;</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span>
+                    <span class="op">==</span> <span class="bool-val">false</span>
             );
 
             <span class="comment">// Now revive g4, should allow MO onto u4.</span>
@@ -8014,7 +7998,7 @@
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">revive_recycled</span>(<span class="kw-2">&amp;</span><span class="ident">rev4b</span>).<span class="ident">is_ok</span>());
             <span class="macro">assert!</span>(
                 <span class="ident">check_entry_has_mo</span>(<span class="kw-2">&amp;</span><span class="ident">server_txn</span>, <span class="string">&quot;u4&quot;</span>, <span class="string">&quot;d5c59ac6-c533-4b00-989f-d0e183f07bab&quot;</span>)
-                    <span class="op">=</span><span class="op">=</span> <span class="bool-val">false</span>
+                    <span class="op">==</span> <span class="bool-val">false</span>
             );
 
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());

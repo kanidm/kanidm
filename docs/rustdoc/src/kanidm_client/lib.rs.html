@@ -979,6 +979,7 @@
 <span id="979">979</span>
 <span id="980">980</span>
 <span id="981">981</span>
+<span id="982">982</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -1060,7 +1061,7 @@
     <span class="ident">use_system_proxies</span>: <span class="ident">bool</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">read_file_metadata</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">P</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Metadata</span>, ()<span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">read_file_metadata</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span><span class="op">&gt;</span>(<span class="ident">path</span>: <span class="kw-2">&amp;</span><span class="ident">P</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Metadata</span>, ()<span class="op">&gt;</span> {
     <span class="ident">metadata</span>(<span class="ident">path</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
         <span class="macro">error!</span>(
             <span class="string">&quot;Unable to read metadata for {} - {:?}&quot;</span>,
@@ -1071,7 +1072,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">KanidmClientBuilder</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>: <span class="prelude-val">None</span>,
             <span class="ident">verify_ca</span>: <span class="bool-val">true</span>,
@@ -1082,7 +1083,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">parse_certificate</span>(<span class="ident">ca_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">reqwest::Certificate</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">parse_certificate</span>(<span class="ident">ca_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">reqwest::Certificate</span>, ()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buf</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="comment">// Is the CA secure?</span>
         <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)]</span>
@@ -1112,7 +1113,7 @@
         <span class="ident">reqwest::Certificate::from_pem</span>(<span class="kw-2">&amp;</span><span class="ident">buf</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> ())
     }
 
-    <span class="kw">fn</span> <span class="ident">apply_config_options</span>(<span class="self">self</span>, <span class="ident">kcc</span>: <span class="ident">KanidmClientConfig</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">apply_config_options</span>(<span class="self">self</span>, <span class="ident">kcc</span>: <span class="ident">KanidmClientConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>,
             <span class="ident">verify_ca</span>,
@@ -1123,8 +1124,8 @@
         } <span class="op">=</span> <span class="self">self</span>;
         <span class="comment">// Process and apply all our options if they exist.</span>
         <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">kcc</span>.<span class="ident">uri</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">uri</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">uri</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">uri</span>),
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;No URI in config supplied to apply_config_options&quot;</span>);
                 <span class="ident">address</span>
             }
@@ -1132,8 +1133,8 @@
         <span class="kw">let</span> <span class="ident">verify_ca</span> <span class="op">=</span> <span class="ident">kcc</span>.<span class="ident">verify_ca</span>.<span class="ident">unwrap_or</span>(<span class="ident">verify_ca</span>);
         <span class="kw">let</span> <span class="ident">verify_hostnames</span> <span class="op">=</span> <span class="ident">kcc</span>.<span class="ident">verify_hostnames</span>.<span class="ident">unwrap_or</span>(<span class="ident">verify_hostnames</span>);
         <span class="kw">let</span> <span class="ident">ca</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">kcc</span>.<span class="ident">ca_path</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">ca_path</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident"><span class="self">Self</span>::parse_certificate</span>(<span class="ident">ca_path</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ca</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">ca_path</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident"><span class="self">Self</span>::parse_certificate</span>(<span class="ident">ca_path</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="ident">ca</span>,
         };
 
         <span class="prelude-val">Ok</span>(<span class="ident">KanidmClientBuilder</span> {
@@ -1150,29 +1151,29 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read_options_from_optional_config</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">AsRef</span><span class="op">&lt;</span><span class="ident">Path</span><span class="op">&gt;</span> <span class="op">+</span> <span class="ident">std::fmt::Debug</span><span class="op">&gt;</span>(
         <span class="self">self</span>,
         <span class="ident">config_path</span>: <span class="ident">P</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="macro">debug!</span>(<span class="string">&quot;Attempting to load configuration from {:#?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">config_path</span>);
         <span class="comment">// If the file does not exist, we skip this function.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::open</span>(<span class="kw-2">&amp;</span><span class="ident">config_path</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; {
                 <span class="macro">debug!</span>(<span class="string">&quot;Successfully opened configuration file {:#?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">config_path</span>);
                 <span class="ident">f</span>
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">kind</span>() {
-                    <span class="ident">ErrorKind::NotFound</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">ErrorKind::NotFound</span> =&gt; {
                         <span class="macro">debug!</span>(
                             <span class="string">&quot;Configuration file {:#?} not found, skipping.&quot;</span>,
                             <span class="kw-2">&amp;</span><span class="ident">config_path</span>
                         );
                     }
-                    <span class="ident">ErrorKind::PermissionDenied</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">ErrorKind::PermissionDenied</span> =&gt; {
                         <span class="macro">warn!</span>(
                             <span class="string">&quot;Permission denied loading configuration file {:#?}, skipping.&quot;</span>,
                             <span class="kw-2">&amp;</span><span class="ident">config_path</span>
                         );
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">debug!</span>(
                             <span class="string">&quot;Unable to open config file {:#?} [{:?}], skipping ...&quot;</span>,
                             <span class="kw-2">&amp;</span><span class="ident">config_path</span>, <span class="ident">e</span>
@@ -1193,7 +1194,7 @@
         <span class="self">self</span>.<span class="ident">apply_config_options</span>(<span class="ident">config</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">address</span>(<span class="self">self</span>, <span class="ident">address</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">address</span>(<span class="self">self</span>, <span class="ident">address</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>: <span class="prelude-val">Some</span>(<span class="ident">address</span>),
             <span class="ident">verify_ca</span>: <span class="self">self</span>.<span class="ident">verify_ca</span>,
@@ -1204,7 +1205,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">danger_accept_invalid_hostnames</span>(<span class="self">self</span>, <span class="ident">accept_invalid_hostnames</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">danger_accept_invalid_hostnames</span>(<span class="self">self</span>, <span class="ident">accept_invalid_hostnames</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>: <span class="self">self</span>.<span class="ident">address</span>,
             <span class="ident">verify_ca</span>: <span class="self">self</span>.<span class="ident">verify_ca</span>,
@@ -1216,7 +1217,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">danger_accept_invalid_certs</span>(<span class="self">self</span>, <span class="ident">accept_invalid_certs</span>: <span class="ident">bool</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">danger_accept_invalid_certs</span>(<span class="self">self</span>, <span class="ident">accept_invalid_certs</span>: <span class="ident">bool</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>: <span class="self">self</span>.<span class="ident">address</span>,
             <span class="comment">// We have to flip the bool state here due to english language.</span>
@@ -1228,7 +1229,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">secs</span>: <span class="ident">u64</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">connect_timeout</span>(<span class="self">self</span>, <span class="ident">secs</span>: <span class="ident">u64</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>: <span class="self">self</span>.<span class="ident">address</span>,
             <span class="ident">verify_ca</span>: <span class="self">self</span>.<span class="ident">verify_ca</span>,
@@ -1239,7 +1240,7 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">no_proxy</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">no_proxy</span>(<span class="self">self</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">KanidmClientBuilder</span> {
             <span class="ident">address</span>: <span class="self">self</span>.<span class="ident">address</span>,
             <span class="ident">verify_ca</span>: <span class="self">self</span>.<span class="ident">verify_ca</span>,
@@ -1251,7 +1252,7 @@
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::result_unit_err</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_root_certificate_filepath</span>(<span class="self">self</span>, <span class="ident">ca_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_root_certificate_filepath</span>(<span class="self">self</span>, <span class="ident">ca_path</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="comment">//Okay we have a ca to add. Let&#39;s read it in and setup.</span>
         <span class="kw">let</span> <span class="ident">ca</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::parse_certificate</span>(<span class="ident">ca_path</span>)<span class="question-mark">?</span>;
 
@@ -1283,23 +1284,23 @@
     }
 
     <span class="doccomment">/// Generates a useragent header based on the package name and version</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">user_agent</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">user_agent</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">static</span> <span class="ident">APP_USER_AGENT</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span>
             <span class="macro">concat!</span>(<span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_NAME&quot;</span>), <span class="string">&quot;/&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;CARGO_PKG_VERSION&quot;</span>),);
         <span class="ident">APP_USER_AGENT</span>
     }
 
     <span class="doccomment">/// Consume self and return an async client.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmClient</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmClient</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">build_async</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">asclient</span><span class="op">|</span> <span class="ident">KanidmClient</span> { <span class="ident">asclient</span> })
     }
 
     <span class="doccomment">/// Async client</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build_async</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmAsyncClient</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build_async</span>(<span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmAsyncClient</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
         <span class="comment">// Errghh, how to handle this cleaner.</span>
         <span class="kw">let</span> <span class="ident">address</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">address</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>.<span class="ident">clone</span>(),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">clone</span>(),
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Configuration option &#39;uri&#39; missing from client configuration, cannot continue client startup without specifying a server to connect to. 🤔&quot;</span>);
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
             }
@@ -1313,20 +1314,20 @@
             .<span class="ident">danger_accept_invalid_certs</span>(<span class="op">!</span><span class="self">self</span>.<span class="ident">verify_ca</span>);
 
         <span class="kw">let</span> <span class="ident">client_builder</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">use_system_proxies</span> {
-            <span class="bool-val">true</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">client_builder</span>,
-            <span class="bool-val">false</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">client_builder</span>.<span class="ident">no_proxy</span>(),
+            <span class="bool-val">true</span> =&gt; <span class="ident">client_builder</span>,
+            <span class="bool-val">false</span> =&gt; <span class="ident">client_builder</span>.<span class="ident">no_proxy</span>(),
         };
 
         <span class="kw">let</span> <span class="ident">client_builder</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ca</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">cert</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">client_builder</span>.<span class="ident">add_root_certificate</span>(<span class="ident">cert</span>.<span class="ident">clone</span>()),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">client_builder</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">cert</span>) =&gt; <span class="ident">client_builder</span>.<span class="ident">add_root_certificate</span>(<span class="ident">cert</span>.<span class="ident">clone</span>()),
+            <span class="prelude-val">None</span> =&gt; <span class="ident">client_builder</span>,
         };
 
         <span class="kw">let</span> <span class="ident">client_builder</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">connect_timeout</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">secs</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">client_builder</span>
+            <span class="prelude-val">Some</span>(<span class="ident">secs</span>) =&gt; <span class="ident">client_builder</span>
                 .<span class="ident">connect_timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="kw-2">*</span><span class="ident">secs</span>))
                 .<span class="ident">timeout</span>(<span class="ident">Duration::from_secs</span>(<span class="kw-2">*</span><span class="ident">secs</span>)),
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">client_builder</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="ident">client_builder</span>,
         };
 
         <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">client_builder</span>.<span class="ident">build</span>()<span class="question-mark">?</span>;
@@ -1355,7 +1356,7 @@
 }
 
 <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-<span class="kw">fn</span> <span class="ident">tokio_block_on</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">R</span>
+<span class="kw">fn</span> <span class="ident">tokio_block_on</span><span class="op">&lt;</span><span class="ident">R</span>, <span class="ident">F</span><span class="op">&gt;</span>(<span class="ident">f</span>: <span class="ident">F</span>) -&gt; <span class="ident">R</span>
 <span class="kw">where</span>
     <span class="ident">F</span>: <span class="ident">std::future::Future</span> <span class="op">+</span> <span class="ident">std::future::Future</span><span class="op">&lt;</span><span class="ident">Output</span> <span class="op">=</span> <span class="ident">R</span><span class="op">&gt;</span>,
 {
@@ -1367,15 +1368,15 @@
 }
 
 <span class="kw">impl</span> <span class="ident">KanidmClient</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_origin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">get_origin</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_url</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_url</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">get_url</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_session</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_session</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">reqwest::Error</span><span class="op">&gt;</span> {
         <span class="comment">// Copy our builder, and then just process it.</span>
         <span class="self">self</span>.<span class="ident">asclient</span>
             .<span class="ident">new_session</span>()
@@ -1386,7 +1387,7 @@
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">set_token</span>(<span class="ident">new_token</span>));
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_token</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_token</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">get_token</span>())
     }
 
@@ -1396,47 +1397,47 @@
 
     <span class="comment">// whoami</span>
     <span class="comment">// Can&#39;t use generic get due to possible un-auth case.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">whoami</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Entry</span>, <span class="ident">UserAuthToken</span>)<span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">whoami</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">Entry</span>, <span class="ident">UserAuthToken</span>)<span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">whoami</span>())
     }
 
     <span class="comment">// auth</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_init</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_init</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Set</span><span class="op">&lt;</span><span class="ident">AuthMech</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_init</span>(<span class="ident">ident</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_begin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mech</span>: <span class="ident">AuthMech</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_begin</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">mech</span>: <span class="ident">AuthMech</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">AuthAllowed</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_begin</span>(<span class="ident">mech</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_anonymous</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_backup_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backup_code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_backup_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">backup_code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_backup_code</span>(<span class="ident">backup_code</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">totp</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">totp</span>: <span class="ident">u32</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_totp</span>(<span class="ident">totp</span>))
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_step_webauthn_complete</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_step_webauthn_complete</span>(<span class="ident">pkc</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_anonymous</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_simple_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_simple_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_simple_password</span>(<span class="ident">ident</span>, <span class="ident">password</span>))
     }
 
@@ -1445,7 +1446,7 @@
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">totp</span>: <span class="ident">u32</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_password_totp</span>(<span class="ident">ident</span>, <span class="ident">password</span>, <span class="ident">totp</span>))
     }
 
@@ -1454,7 +1455,7 @@
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">password</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">backup_code</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">auth_password_backup_code</span>(<span class="ident">ident</span>, <span class="ident">password</span>, <span class="ident">backup_code</span>),
@@ -1464,58 +1465,58 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_begin</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">ident</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RequestChallengeResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RequestChallengeResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_webauthn_begin</span>(<span class="ident">ident</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_valid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_valid</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_complete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">auth_webauthn_complete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">pkc</span>: <span class="ident">PublicKeyCredential</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">auth_webauthn_complete</span>(<span class="ident">pkc</span>))
     }
 
     <span class="comment">// search</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">search</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">search</span>(<span class="ident">filter</span>))
     }
 
     <span class="comment">// create</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">create</span>(<span class="ident">entries</span>))
     }
 
     <span class="comment">// modify</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>, <span class="ident">modlist</span>: <span class="ident">ModifyList</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>, <span class="ident">modlist</span>: <span class="ident">ModifyList</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">modify</span>(<span class="ident">filter</span>, <span class="ident">modlist</span>))
     }
 
     <span class="comment">// delete</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">filter</span>: <span class="ident">Filter</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">delete</span>(<span class="ident">filter</span>))
     }
 
     <span class="comment">// === idm actions here ==</span>
 
     <span class="comment">// ===== GROUPS</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_list</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_get</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_get_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_get_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_get_members</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_set_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_set_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_set_members</span>(<span class="ident">id</span>, <span class="ident">members</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_add_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_add_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_add_members</span>(<span class="ident">id</span>, <span class="ident">members</span>))
     }
 
@@ -1523,15 +1524,15 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">members</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_remove_members</span>(<span class="ident">group</span>, <span class="ident">members</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_purge_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_purge_members</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_purge_members</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_unix_token_get</span>(<span class="ident">id</span>))
     }
 
@@ -1539,40 +1540,40 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_unix_extend</span>(<span class="ident">id</span>, <span class="ident">gidnumber</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_delete</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_group_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_group_create</span>(<span class="ident">name</span>))
     }
 
     <span class="comment">// ==== accounts</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_list</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_create</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_create</span>(<span class="ident">name</span>, <span class="ident">dn</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_set_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_set_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_set_password</span>(<span class="ident">cleartext</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_set_displayname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_set_displayname</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">dn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_set_displayname</span>(<span class="ident">id</span>, <span class="ident">dn</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_delete</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_get</span>(<span class="ident">id</span>))
     }
 
@@ -1580,7 +1581,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_get_attr</span>(<span class="ident">id</span>, <span class="ident">attr</span>))
     }
 
@@ -1590,14 +1591,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SetCredentialResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_set_password</span>(<span class="ident">id</span>, <span class="ident">pw</span>),
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_purge_attr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_purge_attr</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_purge_attr</span>(<span class="ident">id</span>, <span class="ident">attr</span>))
     }
 
@@ -1606,7 +1607,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">values</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_add_attr</span>(<span class="ident">id</span>, <span class="ident">attr</span>, <span class="ident">values</span>))
     }
 
@@ -1615,7 +1616,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">values</span>: <span class="kw-2">&amp;</span>[<span class="kw-2">&amp;</span><span class="ident">str</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_set_attr</span>(<span class="ident">id</span>, <span class="ident">attr</span>, <span class="ident">values</span>))
     }
 
@@ -1623,7 +1624,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_import_password</span>(<span class="ident">id</span>, <span class="ident">pw</span>),
@@ -1633,7 +1634,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_set_generated</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_set_generated</span>(<span class="ident">id</span>),
@@ -1644,7 +1645,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_generate_totp</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">TotpSecret</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">TotpSecret</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_generate_totp</span>(<span class="ident">id</span>),
@@ -1657,7 +1658,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">otp</span>: <span class="ident">u32</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_verify_totp</span>(<span class="ident">id</span>, <span class="ident">otp</span>, <span class="ident">session</span>),
@@ -1668,14 +1669,14 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_accept_sha1_totp</span>(<span class="ident">id</span>, <span class="ident">session</span>),
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_remove_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_remove_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_primary_credential_remove_totp</span>(<span class="ident">id</span>))
     }
 
@@ -1683,7 +1684,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_register_webauthn</span>(<span class="ident">id</span>, <span class="ident">label</span>),
@@ -1695,7 +1696,7 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">rego</span>: <span class="ident">RegisterPublicKeyCredential</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_complete_webuthn_registration</span>(<span class="ident">id</span>, <span class="ident">rego</span>, <span class="ident">session</span>),
@@ -1706,7 +1707,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_remove_webauthn</span>(<span class="ident">id</span>, <span class="ident">label</span>),
@@ -1716,7 +1717,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_generate_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_generate_backup_code</span>(<span class="ident">id</span>),
@@ -1726,7 +1727,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_primary_credential_remove_backup_code</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_account_primary_credential_remove_backup_code</span>(<span class="ident">id</span>),
@@ -1736,29 +1737,29 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_get_credential_status</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_get_credential_status</span>(<span class="ident">id</span>))
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_get</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_radius_credential_get</span>(<span class="ident">id</span>))
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_regenerate</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_radius_credential_regenerate</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_credential_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_radius_credential_delete</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_radius_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_radius_token_get</span>(<span class="ident">id</span>))
     }
 
@@ -1767,19 +1768,19 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
         <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_unix_extend</span>(<span class="ident">id</span>, <span class="ident">gidnumber</span>, <span class="ident">shell</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_token_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_unix_token_get</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_put</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_put</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_unix_cred_put</span>(<span class="ident">id</span>, <span class="ident">cred</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_unix_cred_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_unix_cred_delete</span>(<span class="ident">id</span>))
     }
 
@@ -1787,11 +1788,11 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">cred</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_unix_cred_verify</span>(<span class="ident">id</span>, <span class="ident">cred</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_get_ssh_pubkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_get_ssh_pubkeys</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_get_ssh_pubkeys</span>(<span class="ident">id</span>))
     }
 
@@ -1800,11 +1801,11 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pubkey</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_post_ssh_pubkey</span>(<span class="ident">id</span>, <span class="ident">tag</span>, <span class="ident">pubkey</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_person_extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_person_extend</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_person_extend</span>(<span class="ident">id</span>))
     }
 
@@ -1818,57 +1819,57 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_get_ssh_pubkey</span>(<span class="ident">id</span>, <span class="ident">tag</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_delete_ssh_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_account_delete_ssh_pubkey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">tag</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_account_delete_ssh_pubkey</span>(<span class="ident">id</span>, <span class="ident">tag</span>))
     }
 
     <span class="comment">// ==== domain_info (aka domain)</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Entry</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_get</span>())
     }
 
     <span class="comment">// pub fn idm_domain_get_attr</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_get_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_get_ssid</span>())
     }
 
     <span class="comment">// pub fn idm_domain_put_attr</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_set_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ssid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_set_ssid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ssid</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_set_ssid</span>(<span class="ident">ssid</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_reset_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_domain_reset_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_domain_reset_token_key</span>())
     }
 
     <span class="comment">// ==== schema</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_schema_list</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_schema_attributetype_list</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_attributetype_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_schema_attributetype_get</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_schema_classtype_list</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_schema_classtype_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_schema_classtype_get</span>(<span class="ident">id</span>))
     }
 
     <span class="comment">// ==== Oauth2 resource server configuration</span>
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_list</span>())
     }
 
@@ -1877,17 +1878,18 @@
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">displayname</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">origin</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_oauth2_rs_basic_create</span>(<span class="ident">name</span>, <span class="ident">displayname</span>, <span class="ident">origin</span>),
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_get</span>(<span class="ident">id</span>))
     }
 
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::too_many_arguments</span>)]</span>
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_update</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
@@ -1898,7 +1900,7 @@
         <span class="ident">reset_secret</span>: <span class="ident">bool</span>,
         <span class="ident">reset_token_key</span>: <span class="ident">bool</span>,
         <span class="ident">reset_sign_key</span>: <span class="ident">bool</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_update</span>(
             <span class="ident">id</span>,
             <span class="ident">name</span>,
@@ -1916,47 +1918,47 @@
         <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(
             <span class="self">self</span>.<span class="ident">asclient</span>
                 .<span class="ident">idm_oauth2_rs_create_scope_map</span>(<span class="ident">id</span>, <span class="ident">group</span>, <span class="ident">scopes</span>),
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete_scope_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete_scope_map</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">group</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_delete_scope_map</span>(<span class="ident">id</span>, <span class="ident">group</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_delete</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_delete</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_enable_pkce</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_pkce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_disable_pkce</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_enable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_enable_legacy_crypto</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">idm_oauth2_rs_disable_legacy_crypto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">idm_oauth2_rs_disable_legacy_crypto</span>(<span class="ident">id</span>))
     }
 
     <span class="comment">// ==== recycle bin</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycle_bin_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycle_bin_list</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">recycle_bin_list</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycle_bin_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycle_bin_get</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&gt;</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">recycle_bin_get</span>(<span class="ident">id</span>))
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycle_bin_revive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">recycle_bin_revive</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="ident">tokio_block_on</span>(<span class="self">self</span>.<span class="ident">asclient</span>.<span class="ident">recycle_bin_revive</span>(<span class="ident">id</span>))
     }
 }

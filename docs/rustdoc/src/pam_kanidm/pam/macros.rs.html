@@ -146,7 +146,7 @@
 <span class="doccomment">/// ```</span>
 <span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules!</span> <span class="ident">pam_hooks</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span>:<span class="ident">ident</span>) <span class="op">=</span><span class="op">&gt;</span> {
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident</span>:<span class="ident">ident</span>) =&gt; {
         <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="self">self</span>::pam_hooks_scope</span>::<span class="kw-2">*</span>;
         <span class="kw">mod</span> <span class="ident">pam_hooks_scope</span> {
             <span class="kw">use</span> <span class="ident">std::ffi::CStr</span>;
@@ -154,7 +154,7 @@
             <span class="kw">use</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::pam::constants</span>::{<span class="ident">PamFlag</span>, <span class="ident">PamResultCode</span>};
             <span class="kw">use</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">crate::pam::module</span>::{<span class="ident">PamHandle</span>, <span class="ident">PamHooks</span>};
 
-            <span class="kw">fn</span> <span class="ident">extract_argv</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">argc</span>: <span class="ident">c_int</span>, <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CStr</span><span class="op">&gt;</span> {
+            <span class="kw">fn</span> <span class="ident">extract_argv</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="ident">argc</span>: <span class="ident">c_int</span>, <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CStr</span><span class="op">&gt;</span> {
                 (<span class="number">0</span>..<span class="ident">argc</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">o</span><span class="op">|</span> <span class="kw">unsafe</span> { <span class="ident">CStr::from_ptr</span>(<span class="kw-2">*</span><span class="ident">argv</span>.<span class="ident">offset</span>(<span class="ident">o</span> <span class="kw">as</span> <span class="ident">isize</span>) <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>) })
                     .<span class="ident">collect</span>()
@@ -166,7 +166,7 @@
                 <span class="ident">flags</span>: <span class="ident">PamFlag</span>,
                 <span class="ident">argc</span>: <span class="ident">c_int</span>,
                 <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+            ) -&gt; <span class="ident">PamResultCode</span> {
                 <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">extract_argv</span>(<span class="ident">argc</span>, <span class="ident">argv</span>);
                 <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident::acct_mgmt</span>(<span class="ident">pamh</span>, <span class="ident">args</span>, <span class="ident">flags</span>)
             }
@@ -177,7 +177,7 @@
                 <span class="ident">flags</span>: <span class="ident">PamFlag</span>,
                 <span class="ident">argc</span>: <span class="ident">c_int</span>,
                 <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+            ) -&gt; <span class="ident">PamResultCode</span> {
                 <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">extract_argv</span>(<span class="ident">argc</span>, <span class="ident">argv</span>);
                 <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident::sm_authenticate</span>(<span class="ident">pamh</span>, <span class="ident">args</span>, <span class="ident">flags</span>)
             }
@@ -188,7 +188,7 @@
                 <span class="ident">flags</span>: <span class="ident">PamFlag</span>,
                 <span class="ident">argc</span>: <span class="ident">c_int</span>,
                 <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+            ) -&gt; <span class="ident">PamResultCode</span> {
                 <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">extract_argv</span>(<span class="ident">argc</span>, <span class="ident">argv</span>);
                 <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident::sm_chauthtok</span>(<span class="ident">pamh</span>, <span class="ident">args</span>, <span class="ident">flags</span>)
             }
@@ -199,7 +199,7 @@
                 <span class="ident">flags</span>: <span class="ident">PamFlag</span>,
                 <span class="ident">argc</span>: <span class="ident">c_int</span>,
                 <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+            ) -&gt; <span class="ident">PamResultCode</span> {
                 <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">extract_argv</span>(<span class="ident">argc</span>, <span class="ident">argv</span>);
                 <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident::sm_close_session</span>(<span class="ident">pamh</span>, <span class="ident">args</span>, <span class="ident">flags</span>)
             }
@@ -210,7 +210,7 @@
                 <span class="ident">flags</span>: <span class="ident">PamFlag</span>,
                 <span class="ident">argc</span>: <span class="ident">c_int</span>,
                 <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+            ) -&gt; <span class="ident">PamResultCode</span> {
                 <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">extract_argv</span>(<span class="ident">argc</span>, <span class="ident">argv</span>);
                 <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident::sm_open_session</span>(<span class="ident">pamh</span>, <span class="ident">args</span>, <span class="ident">flags</span>)
             }
@@ -221,7 +221,7 @@
                 <span class="ident">flags</span>: <span class="ident">PamFlag</span>,
                 <span class="ident">argc</span>: <span class="ident">c_int</span>,
                 <span class="ident">argv</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-            ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+            ) -&gt; <span class="ident">PamResultCode</span> {
                 <span class="kw">let</span> <span class="ident">args</span> <span class="op">=</span> <span class="ident">extract_argv</span>(<span class="ident">argc</span>, <span class="ident">argv</span>);
                 <span class="kw">super</span>::<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ident::sm_setcred</span>(<span class="ident">pamh</span>, <span class="ident">args</span>, <span class="ident">flags</span>)
             }

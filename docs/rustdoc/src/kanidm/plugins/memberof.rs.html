@@ -1576,7 +1576,7 @@
     <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
     <span class="ident">tgte</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">EntryInvalidCommitted</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
     <span class="comment">//  search where we are member</span>
     <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">qs</span>
         .<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="macro">f_and!</span>([
@@ -1631,7 +1631,7 @@
     <span class="comment">// TODO: Experiment with HashSet/BTreeSet here instead of vec.</span>
     <span class="comment">// May require https://github.com/rust-lang/rust/issues/62924 to allow poping</span>
     <span class="kw-2">mut</span> <span class="ident">group_affect</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
     <span class="macro">trace!</span>(<span class="string">&quot; =&gt; entering apply_memberof&quot;</span>);
     <span class="macro">trace!</span>(<span class="string">&quot; =&gt; initial group_affect {:?}&quot;</span>, <span class="ident">group_affect</span>);
 
@@ -1698,7 +1698,7 @@
             }
         }
 
-        <span class="macro">debug_assert!</span>(<span class="ident">pre_candidates</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">candidates</span>.<span class="ident">len</span>());
+        <span class="macro">debug_assert!</span>(<span class="ident">pre_candidates</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="ident">candidates</span>.<span class="ident">len</span>());
         <span class="comment">// Write this stripe if populated.</span>
         <span class="kw">if</span> <span class="op">!</span><span class="ident">pre_candidates</span>.<span class="ident">is_empty</span>() {
             <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
@@ -1737,7 +1737,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">MemberOf</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="string">&quot;memberof&quot;</span>
     }
 
@@ -1745,7 +1745,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">group_affect</span> <span class="op">=</span> <span class="ident">cand</span>
             .<span class="ident">iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>())
@@ -1772,7 +1772,7 @@
         <span class="ident">pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// TODO: Limit this to when it&#39;s a class, member, mo, dmo change instead.</span>
         <span class="kw">let</span> <span class="ident">group_affect</span> <span class="op">=</span> <span class="ident">cand</span>
             .<span class="ident">iter</span>()
@@ -1810,7 +1810,7 @@
         <span class="ident">_qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_de</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// It is not valid for a recycled group to be considered</span>
         <span class="comment">// a member of any other type. We simply purge the ava from</span>
         <span class="comment">// the entries. This is because it will be removed from all</span>
@@ -1829,7 +1829,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Similar condition to create - we only trigger updates on groups&#39;s members,</span>
         <span class="comment">// so that they can find they are no longer a mo of what was deleted.</span>
         <span class="kw">let</span> <span class="ident">group_affect</span> <span class="op">=</span> <span class="ident">cand</span>
@@ -1849,7 +1849,7 @@
         <span class="ident">apply_memberof</span>(<span class="ident">qs</span>, <span class="ident">group_affect</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
 
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
@@ -1858,8 +1858,8 @@
             .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
+            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) =&gt; <span class="ident">all_cand</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
         };
 
         <span class="comment">// for each entry in the DB (live).</span>
@@ -1873,8 +1873,8 @@
                 .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ConsistencyError::QueryServerSearchFailure</span>)
             {
-                <span class="prelude-val">Ok</span>(<span class="ident">d_mo</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">d_mo</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">e</span>)],
+                <span class="prelude-val">Ok</span>(<span class="ident">d_mo</span>) =&gt; <span class="ident">d_mo</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="prelude-val">Err</span>(<span class="ident">e</span>)],
             };
             <span class="comment">// for all direct -&gt; add uuid to map</span>
 
@@ -1886,10 +1886,10 @@
             <span class="macro">trace!</span>(<span class="string">&quot;DMO search groups {:?} -&gt; {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>(), <span class="ident">d_groups_set</span>);
 
             <span class="kw">match</span> (<span class="ident">e</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;directmemberof&quot;</span>), <span class="ident">d_groups_set</span>) {
-                (<span class="prelude-val">Some</span>(<span class="ident">edmos</span>), <span class="prelude-val">Some</span>(<span class="ident">dmos</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="prelude-val">Some</span>(<span class="ident">edmos</span>), <span class="prelude-val">Some</span>(<span class="ident">dmos</span>)) =&gt; {
                     <span class="comment">// Can they both be reference sets?</span>
                     <span class="kw">match</span> (<span class="ident">edmos</span>.<span class="ident">as_refer_set</span>(), <span class="ident">dmos</span>.<span class="ident">as_refer_set</span>()) {
-                        (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">b</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                        (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">b</span>)) =&gt; {
                             <span class="kw">let</span> <span class="ident">diff</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">a</span>.<span class="ident">symmetric_difference</span>(<span class="ident">b</span>).<span class="ident">collect</span>();
                             <span class="kw">if</span> <span class="op">!</span><span class="ident">diff</span>.<span class="ident">is_empty</span>() {
                                 <span class="macro">admin_error!</span>(
@@ -1900,16 +1900,16 @@
                                 <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::MemberOfInvalid</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())));
                             }
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="kw">_</span> =&gt; {
                             <span class="macro">admin_error!</span>(<span class="string">&quot;MemberOfInvalid: Entry {}, DMO has incorrect syntax&quot;</span>, <span class="ident">e</span>,);
                             <span class="ident">r</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::MemberOfInvalid</span>(<span class="ident">e</span>.<span class="ident">get_id</span>())));
                         }
                     }
                 }
-                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// Ok</span>
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">_</span> =&gt; {
                     <span class="macro">admin_error!</span>(
                         <span class="string">&quot;MemberOfInvalid directmemberof set and DMO search set differ in size: {}&quot;</span>,
                         <span class="ident">e</span>.<span class="ident">get_uuid</span>()
@@ -1985,14 +1985,14 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">mo</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">cand</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="macro">f_and!</span>([
                 <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuids</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>).<span class="ident">unwrap</span>()),
                 <span class="ident">f_eq</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">mo</span>, <span class="ident">PartialValue::new_refer_s</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>).<span class="ident">unwrap</span>())
             ]));
             <span class="kw">let</span> <span class="ident">cands</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="ident">filt</span>).<span class="ident">expect</span>(<span class="string">&quot;Internal search failure&quot;</span>);
             <span class="macro">debug!</span>(<span class="string">&quot;assert_mo_cands {:?}&quot;</span>, <span class="ident">cands</span>);
-            <span class="macro">assert!</span>(<span class="ident">cands</span>.<span class="ident">len</span>() <span class="op">=</span><span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">cand</span>);
+            <span class="macro">assert!</span>(<span class="ident">cands</span>.<span class="ident">len</span>() <span class="op">==</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">cand</span>);
         }};
     }
 
@@ -2001,7 +2001,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;memberof&quot;</span>, <span class="number">1</span>);
         }};
     }
@@ -2011,7 +2011,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;directmemberof&quot;</span>, <span class="number">1</span>);
         }};
     }
@@ -2021,7 +2021,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;memberof&quot;</span>, <span class="number">0</span>);
         }};
     }
@@ -2031,7 +2031,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="macro">assert_memberof_int!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ea</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">eb</span>, <span class="string">&quot;directmemberof&quot;</span>, <span class="number">0</span>);
         }};
     }

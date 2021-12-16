@@ -477,6 +477,8 @@
 <span id="477">477</span>
 <span id="478">478</span>
 <span id="479">479</span>
+<span id="480">480</span>
+<span id="481">481</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::BackupCodes</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::entry</span>::{<span class="ident">Entry</span>, <span class="ident">EntryCommitted</span>, <span class="ident">EntryReduced</span>, <span class="ident">EntrySealed</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
@@ -504,7 +506,7 @@
 }
 
 <span class="macro">macro_rules!</span> <span class="ident">try_from_entry</span> {
-    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">groups</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {{
+    (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">groups</span>:<span class="ident">expr</span>) =&gt; {{
         <span class="comment">// Check the classes</span>
         <span class="kw">if</span> <span class="op">!</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">attribute_equality</span>(<span class="string">&quot;class&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">PVCLASS_ACCOUNT</span>) {
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidAccountState</span>(
@@ -573,6 +575,8 @@
     <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
+    <span class="comment">// We want to allow this so that in the future we can populate this into oauth2 tokens</span>
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">dead_code</span>)]</span>
     <span class="kw">pub</span> <span class="ident">groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
@@ -591,7 +595,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_ro</span>(
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;idm::account::try_from_entry_ro&quot;</span>, {
             <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
             <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
@@ -601,7 +605,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_rw</span>(
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerWriteTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;idm::account::try_from_entry_rw&quot;</span>, {
             <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_rw</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
             <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
@@ -611,7 +615,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_reduced</span>(
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryReduced</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">QueryServerReadTransaction</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;idm::account::try_from_entry_reduced&quot;</span>, {
             <span class="kw">let</span> <span class="ident">groups</span> <span class="op">=</span> <span class="ident">Group::try_from_account_entry_red_ro</span>(<span class="ident">value</span>, <span class="ident">qs</span>)<span class="question-mark">?</span>;
             <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="ident">groups</span>)
@@ -620,7 +624,7 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">try_from_entry_no_groups</span>(
         <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">try_from_entry!</span>(<span class="ident">value</span>, <span class="macro">vec!</span>[])
     }
 
@@ -633,7 +637,7 @@
         <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">auth_type</span>: <span class="ident">AuthType</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span> {
         <span class="comment">// This could consume self?</span>
         <span class="comment">// The cred handler provided is what authenticated this user, so we can use it to</span>
         <span class="comment">// process what the proper claims should be.</span>
@@ -664,7 +668,7 @@
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">valid_from</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
         <span class="ident">expire</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">OffsetDateTime</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    ) -&gt; <span class="ident">bool</span> {
         <span class="kw">let</span> <span class="ident">cot</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
 
         <span class="kw">let</span> <span class="ident">vmin</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vft</span>) <span class="op">=</span> <span class="ident">valid_from</span> {
@@ -685,32 +689,32 @@
         <span class="ident">vmin</span> <span class="op">&amp;&amp;</span> <span class="ident">vmax</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_within_valid_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_within_valid_time</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">bool</span> {
         <span class="ident"><span class="self">Self</span>::check_within_valid_time</span>(<span class="ident">ct</span>, <span class="self">self</span>.<span class="ident">valid_from</span>.<span class="ident">as_ref</span>(), <span class="self">self</span>.<span class="ident">expire</span>.<span class="ident">as_ref</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Uuid</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">cred</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cred</span>.<span class="ident">uuid</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">UUID_ANONYMOUS</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">cred</span>) =&gt; <span class="ident">cred</span>.<span class="ident">uuid</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="ident">UUID_ANONYMOUS</span>,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_softlock_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CredSoftLockPolicy</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">primary_cred_softlock_policy</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CredSoftLockPolicy</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">primary</span>
             .<span class="ident">as_ref</span>()
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">cred</span><span class="op">|</span> <span class="ident">cred</span>.<span class="ident">softlock_policy</span>())
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
-        <span class="self">self</span>.<span class="ident">uuid</span> <span class="op">=</span><span class="op">=</span> <span class="ident">UUID_ANONYMOUS</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_anonymous</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
+        <span class="self">self</span>.<span class="ident">uuid</span> <span class="op">==</span> <span class="ident">UUID_ANONYMOUS</span>
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_generatedpassword_recover_mod</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="ident">CryptoPolicy</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">Credential::new_generatedpassword_only</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
         <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
@@ -720,16 +724,16 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="ident">CryptoPolicy</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">set_password</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                 <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
             }
             <span class="comment">// Make a new credential instead</span>
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">Credential::new_password_only</span>(<span class="ident">crypto_policy</span>, <span class="ident">cleartext</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                 <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
@@ -740,30 +744,30 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_totp_mod</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">token</span>: <span class="ident">Totp</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">update_totp</span>(<span class="ident">token</span>);
                 <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                 <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No credential exists, we can&#39;t supplementy it.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
             }
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_totp_remove_mod</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_totp_remove_mod</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">remove_totp</span>();
                 <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                 <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No credential exists, we can&#39;t remove what is not real.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
             }
@@ -774,10 +778,10 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">label</span>: <span class="ident">String</span>,
         <span class="ident">cred</span>: <span class="ident">WebauthnCredential</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">primary</span>.<span class="ident">append_webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Credential::new_webauthn_only</span>(<span class="ident">label</span>, <span class="ident">cred</span>),
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; <span class="ident">primary</span>.<span class="ident">append_webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="ident">Credential::new_webauthn_only</span>(<span class="ident">label</span>, <span class="ident">cred</span>),
         };
         <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
@@ -786,15 +790,15 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_webauthn_remove_mod</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">label</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">remove_webauthn</span>(<span class="ident">label</span>)<span class="question-mark">?</span>;
                 <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                 <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No credential exists, we can&#39;t remove what is not real.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
             }
@@ -806,42 +810,42 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">cid</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialID</span>,
         <span class="ident">counter</span>: <span class="ident">Counter</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">//</span>
         <span class="kw">let</span> <span class="ident">opt_ncred</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>() {
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">primary</span>.<span class="ident">update_webauthn_counter</span>(<span class="ident">cid</span>, <span class="ident">counter</span>)<span class="question-mark">?</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; <span class="ident">primary</span>.<span class="ident">update_webauthn_counter</span>(<span class="ident">cid</span>, <span class="ident">counter</span>)<span class="question-mark">?</span>,
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
         };
 
         <span class="kw">match</span> <span class="ident">opt_ncred</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">ncred</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">ncred</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ModifyList::new_purge_and_set</span>(
                     <span class="string">&quot;primary_credential&quot;</span>,
                     <span class="ident">vcred</span>,
                 )))
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
         }
     }
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_backup_code_mod</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">backup_codes</span>: <span class="ident">BackupCodes</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">r_ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">update_backup_code</span>(<span class="ident">backup_codes</span>);
                 <span class="kw">match</span> <span class="ident">r_ncred</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                         <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No credential exists, we can&#39;t supplementy it.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
             }
@@ -851,20 +855,20 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">invalidate_backup_code_mod</span>(
         <span class="self">self</span>,
         <span class="ident">code_to_remove</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">r_ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">invalidate_backup_code</span>(<span class="ident">code_to_remove</span>);
                 <span class="kw">match</span> <span class="ident">r_ncred</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                         <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No credential exists, we can&#39;t supplementy it.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
             }
@@ -873,27 +877,27 @@
 
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">gen_backup_code_remove_mod</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">primary</span> {
             <span class="comment">// Change the cred</span>
-            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">primary</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">r_ncred</span> <span class="op">=</span> <span class="ident">primary</span>.<span class="ident">remove_backup_code</span>();
                 <span class="kw">match</span> <span class="ident">r_ncred</span> {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ncred</span>) =&gt; {
                         <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_credential</span>(<span class="string">&quot;primary&quot;</span>, <span class="ident">ncred</span>);
                         <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;primary_credential&quot;</span>, <span class="ident">vcred</span>))
                     }
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="comment">// No credential exists, we can&#39;t remove what is not real.</span>
                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>)
             }
         }
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">check_credential_pw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">check_credential_pw</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">bool</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">primary</span>
             .<span class="ident">as_ref</span>()
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)
@@ -903,12 +907,12 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">regenerate_radius_secret_mod</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyInvalid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">vcred</span> <span class="op">=</span> <span class="ident">Value::new_secret_str</span>(<span class="ident">cleartext</span>);
         <span class="prelude-val">Ok</span>(<span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;radius_secret&quot;</span>, <span class="ident">vcred</span>))
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_credentialstatus</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_credentialstatus</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// In the future this will need to handle multiple credentials, not just single.</span>
 
         <span class="self">self</span>.<span class="ident">primary</span>
@@ -919,7 +923,7 @@
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::NoMatchingAttributes</span>)
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_backupcodesview</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_backupcodesview</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">primary</span>
             .<span class="ident">as_ref</span>()
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)

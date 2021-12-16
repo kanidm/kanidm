@@ -34,7 +34,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Timer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">Timer</span> {
             <span class="ident">duration</span>: <span class="ident">Duration::default</span>(),
             <span class="ident">start</span>: <span class="ident">Instant::now</span>(),
@@ -50,7 +50,7 @@
         <span class="self">self</span>.<span class="ident">start</span> <span class="op">=</span> <span class="ident">Instant::now</span>();
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">duration</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Duration</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">duration</span>(<span class="self">self</span>) -&gt; <span class="ident">Duration</span> {
         <span class="self">self</span>.<span class="ident">duration</span>
     }
 }

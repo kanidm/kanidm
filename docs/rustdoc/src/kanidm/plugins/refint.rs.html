@@ -757,6 +757,10 @@
 <span id="757">757</span>
 <span id="758">758</span>
 <span id="759">759</span>
+<span id="760">760</span>
+<span id="761">761</span>
+<span id="762">762</span>
+<span id="763">763</span>
 </pre><pre class="rust"><code><span class="comment">// Referential Integrity</span>
 <span class="comment">//</span>
 <span class="comment">// Given an entry, modification or change, ensure that all referential links</span>
@@ -790,7 +794,7 @@
     <span class="kw">fn</span> <span class="ident">check_uuids_exist</span>(
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">inner</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">inner</span>.<span class="ident">is_empty</span>() {
             <span class="comment">// There is nothing to check! Move on.</span>
             <span class="macro">trace!</span>(<span class="string">&quot;no reference types modified, skipping check&quot;</span>);
@@ -823,7 +827,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">ReferentialIntegrity</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="string">&quot;referential_integrity&quot;</span>
     }
 
@@ -845,7 +849,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
         <span class="kw">let</span> <span class="ident">ref_types</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_reference_types</span>();
 
@@ -885,7 +889,7 @@
         <span class="ident">_pre_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>],
         <span class="ident">_cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
         <span class="kw">let</span> <span class="ident">ref_types</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">get_reference_types</span>();
 
@@ -923,7 +927,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span>],
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">DeleteEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Delete is pretty different to the other pre checks. This is</span>
         <span class="comment">// actually the bulk of the work we&#39;ll do to clean up references</span>
         <span class="comment">// when they are deleted.</span>
@@ -972,7 +976,7 @@
         <span class="ident">qs</span>.<span class="ident">internal_batch_modify</span>(<span class="ident">pre_candidates</span>, <span class="ident">candidates</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Get all entries as cand</span>
         <span class="comment">//      build a cand-uuid set</span>
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
@@ -981,8 +985,8 @@
             .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
+            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) =&gt; <span class="ident">all_cand</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
         };
 
         <span class="kw">let</span> <span class="ident">acu_map</span>: <span class="ident">Set</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">all_cand</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>()).<span class="ident">collect</span>();
@@ -999,14 +1003,14 @@
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">c</span>.<span class="ident">get_ava_set</span>(<span class="kw-2">&amp;</span><span class="ident">rtype</span>.<span class="ident">name</span>) {
                     <span class="comment">// For each value in the set.</span>
                     <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">as_ref_uuid_iter</span>() {
-                        <span class="prelude-val">Some</span>(<span class="ident">uuid_iter</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Some</span>(<span class="ident">uuid_iter</span>) =&gt; {
                             <span class="kw">for</span> <span class="ident">vu</span> <span class="kw">in</span> <span class="ident">uuid_iter</span> {
                                 <span class="kw">if</span> <span class="ident">acu_map</span>.<span class="ident">get</span>(<span class="ident">vu</span>).<span class="ident">is_none</span>() {
                                     <span class="ident">res</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::RefintNotUpheld</span>(<span class="ident">c</span>.<span class="ident">get_id</span>())))
                                 }
                             }
                         }
-                        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">res</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidAttributeType</span>(
+                        <span class="prelude-val">None</span> =&gt; <span class="ident">res</span>.<span class="ident">push</span>(<span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::InvalidAttributeType</span>(
                             <span class="string">&quot;A non-value-ref type was found.&quot;</span>.<span class="ident">to_string</span>(),
                         ))),
                     }
@@ -1474,13 +1478,17 @@
                 <span class="string">&quot;oauth2_rs_origin&quot;</span>,
                 <span class="ident">Value::new_url_s</span>(<span class="string">&quot;https://demo.example.com&quot;</span>).<span class="ident">unwrap</span>()
             ),
-            (<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>, <span class="ident">Value::new_oauthscope</span>(<span class="string">&quot;test&quot;</span>)),
+            (
+                <span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>,
+                <span class="ident">Value::new_oauthscope</span>(<span class="string">&quot;test&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;Invalid scope&quot;</span>)
+            ),
             (
                 <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
                 <span class="ident">Value::new_oauthscopemap</span>(
                     <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;uuid&quot;</span>),
                     <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()]
                 )
+                .<span class="ident">expect</span>(<span class="string">&quot;Invalid scope&quot;</span>)
             )
         );
 

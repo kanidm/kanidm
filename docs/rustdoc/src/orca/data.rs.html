@@ -182,7 +182,7 @@
 <span class="kw">use</span> <span class="ident">rand::distributions::Alphanumeric</span>;
 <span class="kw">use</span> <span class="ident">rand</span>::{<span class="ident">thread_rng</span>, <span class="ident">Rng</span>};
 
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">readable_password_from_random</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">readable_password_from_random</span>() -&gt; <span class="ident">String</span> {
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">trng</span> <span class="op">=</span> <span class="ident">thread_rng</span>();
     <span class="macro">format!</span>(
         <span class="string">&quot;{}-{}-{}-{}&quot;</span>,
@@ -218,11 +218,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Account</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
         <span class="macro">format!</span>(<span class="string">&quot;uid={},ou=people,{}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">basedn</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">uuid</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
         <span class="kw">let</span> <span class="ident">id</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">gen</span>();
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;account_{}&quot;</span>, <span class="ident">id</span>);
@@ -245,11 +245,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Group</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
         <span class="macro">format!</span>(<span class="string">&quot;cn={},ou=groups,{}&quot;</span>, <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">basedn</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">uuid</span>: <span class="ident">Uuid</span>, <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">generate</span>(<span class="ident">uuid</span>: <span class="ident">Uuid</span>, <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">rand::thread_rng</span>();
 
         <span class="kw">let</span> <span class="ident">id</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">gen</span>();
@@ -270,31 +270,31 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Entity</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Uuid</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>.<span class="ident">uuid</span>,
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">g</span>.<span class="ident">uuid</span>,
+            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">uuid</span>,
+            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">uuid</span>,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">g</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">basedn</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="ident">basedn</span>),
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">g</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="ident">basedn</span>),
+            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="ident">basedn</span>),
+            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">g</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="ident">basedn</span>),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_entity_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">EntityType</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_entity_type</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">EntityType</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">EntityType::Account</span>(<span class="ident">a</span>.<span class="ident">uuid</span>),
-            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">EntityType::Group</span>(<span class="ident">g</span>.<span class="ident">uuid</span>),
+            <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; <span class="ident">EntityType::Account</span>(<span class="ident">a</span>.<span class="ident">uuid</span>),
+            <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="ident">EntityType::Group</span>(<span class="ident">g</span>.<span class="ident">uuid</span>),
         }
     }
 }
@@ -329,11 +329,11 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Op</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">require_reset</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">require_reset</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="kw">dyn</span> <span class="ident">Iterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">+</span> <span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">op_type</span> {
-            <span class="ident">OpType::Add</span>(<span class="ident">ids</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ids</span>.<span class="ident">iter</span>().<span class="ident">copied</span>())),
-            <span class="ident">OpType::Mod</span>(<span class="ident">changes</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">changes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>))),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+            <span class="ident">OpType::Add</span>(<span class="ident">ids</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">ids</span>.<span class="ident">iter</span>().<span class="ident">copied</span>())),
+            <span class="ident">OpType::Mod</span>(<span class="ident">changes</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">Box::new</span>(<span class="ident">changes</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="number">0</span>))),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
         }
     }
 }

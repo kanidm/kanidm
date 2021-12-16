@@ -87,7 +87,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamService</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamService</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_SERVICE</span>
     }
 }
@@ -96,7 +96,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamUser</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamUser</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_USER</span>
     }
 }
@@ -105,7 +105,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamUserPrompt</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamUserPrompt</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_USER_PROMPT</span>
     }
 }
@@ -114,7 +114,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamTty</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamTty</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_TTY</span>
     }
 }
@@ -123,7 +123,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamRUser</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamRUser</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_RUSER</span>
     }
 }
@@ -132,7 +132,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamRHost</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamRHost</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_RHOST</span>
     }
 }
@@ -141,7 +141,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamAuthTok</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamAuthTok</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_AUTHTOK</span>
     }
 }
@@ -150,7 +150,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">PamOldAuthTok</span> {}
 
 <span class="kw">impl</span> <span class="ident">PamItem</span> <span class="kw">for</span> <span class="ident">PamOldAuthTok</span> {
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span> {
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span> {
         <span class="ident">PAM_OLDAUTHTOK</span>
     }
 }

@@ -579,7 +579,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">PasswordChangeEvent</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">PasswordChangeEvent</span> {
             <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
             <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">target</span>,
@@ -591,7 +591,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="ident">ident</span>.<span class="ident">get_uuid</span>().<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidState</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">PasswordChangeEvent</span> {
@@ -606,7 +606,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">PasswordChangeEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -623,7 +623,7 @@
 
 <span class="kw">impl</span> <span class="ident">UnixPasswordChangeEvent</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">UnixPasswordChangeEvent</span> {
             <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
             <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">target</span>,
@@ -636,7 +636,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">UnixPasswordChangeEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -656,7 +656,7 @@
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">GeneratePasswordEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 }
@@ -672,12 +672,12 @@
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">GenerateBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">GenerateBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -694,12 +694,12 @@
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">RemoveBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">RemoveBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -717,12 +717,12 @@
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">RegenerateRadiusSecretEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">RegenerateRadiusSecretEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -740,12 +740,12 @@
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">RadiusAuthTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">RadiusAuthTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -763,12 +763,12 @@
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">UnixUserTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">UnixUserTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -786,12 +786,12 @@
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">UnixGroupTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">UnixGroupTokenEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -805,7 +805,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">UnixUserAuthEvent</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;UnixUserAuthEvent&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;ident&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ident</span>)
             .<span class="ident">field</span>(<span class="string">&quot;target&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">target</span>)
@@ -815,7 +815,7 @@
 
 <span class="kw">impl</span> <span class="ident">UnixUserAuthEvent</span> {
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">cleartext</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">UnixUserAuthEvent</span> {
             <span class="ident">ident</span>: <span class="ident">Identity::from_internal</span>(),
             <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">target</span>,
@@ -827,7 +827,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">UnixUserAuthEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -847,12 +847,12 @@
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">GenerateTotpEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">GenerateTotpEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -874,7 +874,7 @@
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
         <span class="ident">chal</span>: <span class="ident">u32</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">VerifyTotpEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -884,7 +884,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">session</span>: <span class="ident">Uuid</span>, <span class="ident">chal</span>: <span class="ident">u32</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">session</span>: <span class="ident">Uuid</span>, <span class="ident">chal</span>: <span class="ident">u32</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">VerifyTotpEvent</span> {
@@ -909,7 +909,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">AcceptSha1TotpEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -918,7 +918,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">session</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">session</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">AcceptSha1TotpEvent</span> {
@@ -940,12 +940,12 @@
         <span class="comment">// qs: &amp;QueryServerWriteTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">RemoveTotpEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">RemoveTotpEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -965,7 +965,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">label</span>: <span class="ident">String</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">WebauthnInitRegisterEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -974,7 +974,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">label</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">label</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
         <span class="ident">WebauthnInitRegisterEvent</span> {
             <span class="ident">ident</span>,
@@ -999,7 +999,7 @@
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">session</span>: <span class="ident">Uuid</span>,
         <span class="ident">chal</span>: <span class="ident">RegisterPublicKeyCredential</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">WebauthnDoRegisterEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -1009,7 +1009,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">session</span>: <span class="ident">Uuid</span>, <span class="ident">chal</span>: <span class="ident">RegisterPublicKeyCredential</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">session</span>: <span class="ident">Uuid</span>, <span class="ident">chal</span>: <span class="ident">RegisterPublicKeyCredential</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
         <span class="ident">WebauthnDoRegisterEvent</span> {
             <span class="ident">ident</span>,
@@ -1033,7 +1033,7 @@
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">label</span>: <span class="ident">String</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">RemoveWebauthnEvent</span> {
             <span class="ident">ident</span>,
             <span class="ident">target</span>,
@@ -1042,7 +1042,7 @@
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">label</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>, <span class="ident">label</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">RemoveWebauthnEvent</span> {
@@ -1064,12 +1064,12 @@
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">CredentialStatusEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">CredentialStatusEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -1087,12 +1087,12 @@
         <span class="comment">// qs: &amp;QueryServerReadTransaction,</span>
         <span class="ident">ident</span>: <span class="ident">Identity</span>,
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="prelude-val">Ok</span>(<span class="ident">ReadBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> })
     }
 
     <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_internal</span>(<span class="ident">target</span>: <span class="ident">Uuid</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">ident</span> <span class="op">=</span> <span class="ident">Identity::from_internal</span>();
 
         <span class="ident">ReadBackupCodeEvent</span> { <span class="ident">ident</span>, <span class="ident">target</span> }
@@ -1122,7 +1122,7 @@
         <span class="comment">// uat: Option&lt;UserAuthToken&gt;,</span>
         <span class="ident">target</span>: <span class="ident">Uuid</span>,
         <span class="ident">cleartext</span>: <span class="ident">String</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// let e = Event::from_ro_uat(audit, qs, uat)?;</span>
 
         <span class="prelude-val">Ok</span>(<span class="ident">LdapAuthEvent</span> {

@@ -286,7 +286,7 @@
         <span class="ident">pamh</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamHandle</span>,
         <span class="ident">module_data_name</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
         <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamDataT</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span>;
+    ) -&gt; <span class="ident">PamResultCode</span>;
 
     <span class="kw">fn</span> <span class="ident">pam_set_data</span>(
         <span class="ident">pamh</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamHandle</span>,
@@ -297,22 +297,22 @@
             <span class="ident">data</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">PamDataT</span>,
             <span class="ident">error_status</span>: <span class="ident">PamResultCode</span>,
         ),
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span>;
+    ) -&gt; <span class="ident">PamResultCode</span>;
 
     <span class="kw">fn</span> <span class="ident">pam_get_item</span>(
         <span class="ident">pamh</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamHandle</span>,
         <span class="ident">item_type</span>: <span class="ident">PamItemType</span>,
         <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamItemT</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span>;
+    ) -&gt; <span class="ident">PamResultCode</span>;
 
     <span class="kw">fn</span> <span class="ident">pam_set_item</span>(<span class="ident">pamh</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">PamHandle</span>, <span class="ident">item_type</span>: <span class="ident">PamItemType</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">PamItemT</span>)
-        <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span>;
+        -&gt; <span class="ident">PamResultCode</span>;
 
     <span class="kw">fn</span> <span class="ident">pam_get_user</span>(
         <span class="ident">pamh</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamHandle</span>,
         <span class="ident">user</span>: <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">c_char</span>,
         <span class="ident">prompt</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span>;
+    ) -&gt; <span class="ident">PamResultCode</span>;
 }
 
 <span class="kw">pub</span> <span class="kw">extern</span> <span class="string">&quot;C&quot;</span> <span class="kw">fn</span> <span class="ident">cleanup</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw">_</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamHandle</span>, <span class="ident">c_data</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">PamDataT</span>, <span class="kw">_</span>: <span class="ident">PamResultCode</span>) {
@@ -336,7 +336,7 @@
     <span class="doccomment">/// API contract specifies that when the API function `pam_get_item` is</span>
     <span class="doccomment">/// called with the constant PAM_CONV, it will return a value of type</span>
     <span class="doccomment">/// `PamConv`.</span>
-    <span class="kw">fn</span> <span class="ident">item_type</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamItemType</span>;
+    <span class="kw">fn</span> <span class="ident">item_type</span>() -&gt; <span class="ident">PamItemType</span>;
 }
 
 <span class="kw">impl</span> <span class="ident">PamHandle</span> {
@@ -345,11 +345,11 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// See `pam_get_data` in</span>
     <span class="doccomment">/// &lt;http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html&gt;</span>
-    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">get_data</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">get_data</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">PamResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">c_key</span> <span class="op">=</span> <span class="ident">CString::new</span>(<span class="ident">key</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamDataT</span> <span class="op">=</span> <span class="ident">ptr::null</span>();
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">pam_get_data</span>(<span class="self">self</span>, <span class="ident">c_key</span>.<span class="ident">as_ptr</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ptr</span>);
-        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">res</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">ptr</span>.<span class="ident">is_null</span>() {
+        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">res</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">ptr</span>.<span class="ident">is_null</span>() {
             <span class="kw">let</span> <span class="ident">typed_ptr</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">T</span> <span class="op">=</span> <span class="ident">ptr</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">T</span>;
             <span class="kw">let</span> <span class="ident">data</span>: <span class="kw-2">&amp;</span><span class="ident">T</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">typed_ptr</span>;
             <span class="prelude-val">Ok</span>(<span class="ident">data</span>)
@@ -363,14 +363,14 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// See `pam_set_data` in</span>
     <span class="doccomment">/// &lt;http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html&gt;</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_data</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">data</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_data</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">key</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">data</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>) -&gt; <span class="ident">PamResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">c_key</span> <span class="op">=</span> <span class="ident">CString::new</span>(<span class="ident">key</span>).<span class="ident">unwrap</span>();
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="ident">c_data</span>: <span class="ident">Box</span><span class="op">&lt;</span><span class="ident">PamDataT</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">mem::transmute</span>(<span class="ident">data</span>);
             <span class="kw">let</span> <span class="ident">c_data</span> <span class="op">=</span> <span class="ident">Box::into_raw</span>(<span class="ident">c_data</span>);
             <span class="ident">pam_set_data</span>(<span class="self">self</span>, <span class="ident">c_key</span>.<span class="ident">as_ptr</span>(), <span class="ident">c_data</span>, <span class="ident">cleanup</span>::<span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>)
         };
-        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">res</span> {
+        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">res</span>)
@@ -382,7 +382,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// See `pam_get_item` in</span>
     <span class="doccomment">/// &lt;http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html&gt;</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_item</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">PamItem</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_item</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">T</span>: <span class="ident">PamItem</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">PamResult</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">T</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamItemT</span> <span class="op">=</span> <span class="ident">ptr::null</span>();
         <span class="kw">let</span> (<span class="ident">res</span>, <span class="ident">item</span>) <span class="op">=</span> <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">pam_get_item</span>(<span class="self">self</span>, <span class="ident">T::item_type</span>(), <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ptr</span>);
@@ -390,7 +390,7 @@
             <span class="kw">let</span> <span class="ident">t</span>: <span class="kw-2">&amp;</span><span class="ident">T</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="ident">typed_ptr</span>;
             (<span class="ident">r</span>, <span class="ident">t</span>)
         };
-        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">res</span> {
+        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">res</span>)
@@ -404,7 +404,7 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// See `pam_set_item` in</span>
     <span class="doccomment">/// &lt;http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html&gt;</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_item_str</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">PamItem</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_item_str</span><span class="op">&lt;</span><span class="ident">T</span>: <span class="ident">PamItem</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">item</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="ident">PamResult</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">c_item</span> <span class="op">=</span> <span class="ident">CString::new</span>(<span class="ident">item</span>).<span class="ident">unwrap</span>();
 
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">unsafe</span> {
@@ -416,7 +416,7 @@
                 (<span class="ident">c_item</span>.<span class="ident">as_ptr</span>() <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamItemT</span>).<span class="ident">as_ref</span>().<span class="ident">unwrap</span>(),
             )
         };
-        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">res</span> {
+        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>(())
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">res</span>)
@@ -429,17 +429,17 @@
     <span class="doccomment">///</span>
     <span class="doccomment">/// See `pam_get_user` in</span>
     <span class="doccomment">/// &lt;http://www.linux-pam.org/Linux-PAM-html/mwg-expected-by-module-item.html&gt;</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_user</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">prompt</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResult</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_user</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">prompt</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>) -&gt; <span class="ident">PamResult</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ptr</span>: <span class="kw-2">*</span><span class="kw-2">mut</span> <span class="ident">c_char</span> <span class="op">=</span> <span class="ident">ptr::null_mut</span>();
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">prompt</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">p</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">p</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">c_prompt</span> <span class="op">=</span> <span class="ident">CString::new</span>(<span class="ident">p</span>).<span class="ident">unwrap</span>();
                 <span class="kw">unsafe</span> { <span class="ident">pam_get_user</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">ptr</span>, <span class="ident">c_prompt</span>.<span class="ident">as_ptr</span>()) }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="kw">unsafe</span> { <span class="ident">pam_get_user</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">ptr</span>, <span class="ident">ptr::null</span>()) },
+            <span class="prelude-val">None</span> =&gt; <span class="kw">unsafe</span> { <span class="ident">pam_get_user</span>(<span class="self">self</span>, <span class="kw-2">&amp;</span><span class="ident">ptr</span>, <span class="ident">ptr::null</span>()) },
         };
 
-        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">res</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">ptr</span>.<span class="ident">is_null</span>() {
+        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">res</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">ptr</span>.<span class="ident">is_null</span>() {
             <span class="kw">let</span> <span class="ident">const_ptr</span> <span class="op">=</span> <span class="ident">ptr</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>;
             <span class="kw">let</span> <span class="ident">bytes</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">CStr::from_ptr</span>(<span class="ident">const_ptr</span>).<span class="ident">to_bytes</span>() };
             <span class="ident">String::from_utf8</span>(<span class="ident">bytes</span>.<span class="ident">to_vec</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PamResultCode::PAM_CONV_ERR</span>)
@@ -448,11 +448,11 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_authtok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResult</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_authtok</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">PamResult</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ptr</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">PamItemT</span> <span class="op">=</span> <span class="ident">ptr::null</span>();
         <span class="kw">let</span> (<span class="ident">res</span>, <span class="ident">item</span>) <span class="op">=</span> <span class="kw">unsafe</span> {
             <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">pam_get_item</span>(<span class="self">self</span>, <span class="ident">PAM_AUTHTOK</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ptr</span>);
-            <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">r</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">ptr</span>.<span class="ident">is_null</span>() {
+            <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">r</span> <span class="op">&amp;&amp;</span> <span class="op">!</span><span class="ident">ptr</span>.<span class="ident">is_null</span>() {
                 <span class="kw">let</span> <span class="ident">typed_ptr</span>: <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span> <span class="op">=</span> <span class="ident">ptr</span> <span class="kw">as</span> <span class="kw-2">*</span><span class="kw">const</span> <span class="ident">c_char</span>;
                 <span class="prelude-val">Some</span>(<span class="ident">CStr::from_ptr</span>(<span class="ident">typed_ptr</span>).<span class="ident">to_string_lossy</span>().<span class="ident">into_owned</span>())
             } <span class="kw">else</span> {
@@ -460,7 +460,7 @@
             };
             (<span class="ident">r</span>, <span class="ident">t</span>)
         };
-        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">=</span><span class="op">=</span> <span class="ident">res</span> {
+        <span class="kw">if</span> <span class="ident">PamResultCode::PAM_SUCCESS</span> <span class="op">==</span> <span class="ident">res</span> {
             <span class="prelude-val">Ok</span>(<span class="ident">item</span>)
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">res</span>)
@@ -480,12 +480,12 @@
     <span class="doccomment">/// authentication module. This function checks for other things. Such things might be: the time of</span>
     <span class="doccomment">/// day or the date, the terminal line, remote hostname, etc. This function may also determine</span>
     <span class="doccomment">/// things like the expiration on passwords, and respond that the user change it before continuing.</span>
-    <span class="kw">fn</span> <span class="ident">acct_mgmt</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">acct_mgmt</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 
     <span class="doccomment">/// This function performs the task of authenticating the user.</span>
-    <span class="kw">fn</span> <span class="ident">sm_authenticate</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_authenticate</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 
@@ -495,17 +495,17 @@
     <span class="doccomment">/// PAM_PRELIM_CHECK and then, if the module does not return PAM_TRY_AGAIN, subsequently with</span>
     <span class="doccomment">/// PAM_UPDATE_AUTHTOK. It is only on the second call that the authorization token is</span>
     <span class="doccomment">/// (possibly) changed.</span>
-    <span class="kw">fn</span> <span class="ident">sm_chauthtok</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_chauthtok</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 
     <span class="doccomment">/// This function is called to terminate a session.</span>
-    <span class="kw">fn</span> <span class="ident">sm_close_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_close_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 
     <span class="doccomment">/// This function is called to commence a session.</span>
-    <span class="kw">fn</span> <span class="ident">sm_open_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_open_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 
@@ -514,7 +514,7 @@
     <span class="doccomment">/// information about a user than their authentication token. This function is used to make such</span>
     <span class="doccomment">/// information available to the application. It should only be called after the user has been</span>
     <span class="doccomment">/// authenticated but before a session has been established.</span>
-    <span class="kw">fn</span> <span class="ident">sm_setcred</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_setcred</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 }

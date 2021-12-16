@@ -79,36 +79,36 @@
 }
 
 <span class="kw">impl</span> <span class="ident">EventTag</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pretty</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pretty</span>(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">EventTag::AdminError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;admin.error&quot;</span>,
-            <span class="ident">EventTag::AdminWarn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;admin.warn&quot;</span>,
-            <span class="ident">EventTag::AdminInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;admin.info&quot;</span>,
-            <span class="ident">EventTag::RequestError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;request.error&quot;</span>,
-            <span class="ident">EventTag::RequestWarn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;request.warn&quot;</span>,
-            <span class="ident">EventTag::RequestInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;request.info&quot;</span>,
-            <span class="ident">EventTag::RequestTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;request.trace&quot;</span>,
-            <span class="ident">EventTag::SecurityCritical</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;security.critical&quot;</span>,
-            <span class="ident">EventTag::SecurityInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;security.info&quot;</span>,
-            <span class="ident">EventTag::SecurityAccess</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;security.access&quot;</span>,
-            <span class="ident">EventTag::SecurityError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;security.error&quot;</span>,
-            <span class="ident">EventTag::FilterError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;filter.error&quot;</span>,
-            <span class="ident">EventTag::FilterWarn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;filter.warn&quot;</span>,
-            <span class="ident">EventTag::FilterInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;filter.info&quot;</span>,
-            <span class="ident">EventTag::FilterTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;filter.trace&quot;</span>,
-            <span class="ident">EventTag::PerfTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;perf.trace&quot;</span>,
+            <span class="ident">EventTag::AdminError</span> =&gt; <span class="string">&quot;admin.error&quot;</span>,
+            <span class="ident">EventTag::AdminWarn</span> =&gt; <span class="string">&quot;admin.warn&quot;</span>,
+            <span class="ident">EventTag::AdminInfo</span> =&gt; <span class="string">&quot;admin.info&quot;</span>,
+            <span class="ident">EventTag::RequestError</span> =&gt; <span class="string">&quot;request.error&quot;</span>,
+            <span class="ident">EventTag::RequestWarn</span> =&gt; <span class="string">&quot;request.warn&quot;</span>,
+            <span class="ident">EventTag::RequestInfo</span> =&gt; <span class="string">&quot;request.info&quot;</span>,
+            <span class="ident">EventTag::RequestTrace</span> =&gt; <span class="string">&quot;request.trace&quot;</span>,
+            <span class="ident">EventTag::SecurityCritical</span> =&gt; <span class="string">&quot;security.critical&quot;</span>,
+            <span class="ident">EventTag::SecurityInfo</span> =&gt; <span class="string">&quot;security.info&quot;</span>,
+            <span class="ident">EventTag::SecurityAccess</span> =&gt; <span class="string">&quot;security.access&quot;</span>,
+            <span class="ident">EventTag::SecurityError</span> =&gt; <span class="string">&quot;security.error&quot;</span>,
+            <span class="ident">EventTag::FilterError</span> =&gt; <span class="string">&quot;filter.error&quot;</span>,
+            <span class="ident">EventTag::FilterWarn</span> =&gt; <span class="string">&quot;filter.warn&quot;</span>,
+            <span class="ident">EventTag::FilterInfo</span> =&gt; <span class="string">&quot;filter.info&quot;</span>,
+            <span class="ident">EventTag::FilterTrace</span> =&gt; <span class="string">&quot;filter.trace&quot;</span>,
+            <span class="ident">EventTag::PerfTrace</span> =&gt; <span class="string">&quot;perf.trace&quot;</span>,
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">emoji</span>(<span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">emoji</span>(<span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="kw">use</span> <span class="ident">EventTag</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AdminError</span> <span class="op">|</span> <span class="ident">FilterError</span> <span class="op">|</span> <span class="ident">RequestError</span> <span class="op">|</span> <span class="ident">SecurityError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;🚨&quot;</span>,
-            <span class="ident">AdminWarn</span> <span class="op">|</span> <span class="ident">FilterWarn</span> <span class="op">|</span> <span class="ident">RequestWarn</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;🚧&quot;</span>,
-            <span class="ident">AdminInfo</span> <span class="op">|</span> <span class="ident">FilterInfo</span> <span class="op">|</span> <span class="ident">RequestInfo</span> <span class="op">|</span> <span class="ident">SecurityInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;💬&quot;</span>,
-            <span class="ident">RequestTrace</span> <span class="op">|</span> <span class="ident">FilterTrace</span> <span class="op">|</span> <span class="ident">PerfTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;📍&quot;</span>,
-            <span class="ident">SecurityCritical</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;🔐&quot;</span>,
-            <span class="ident">SecurityAccess</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;🔓&quot;</span>,
+            <span class="ident">AdminError</span> <span class="op">|</span> <span class="ident">FilterError</span> <span class="op">|</span> <span class="ident">RequestError</span> <span class="op">|</span> <span class="ident">SecurityError</span> =&gt; <span class="string">&quot;🚨&quot;</span>,
+            <span class="ident">AdminWarn</span> <span class="op">|</span> <span class="ident">FilterWarn</span> <span class="op">|</span> <span class="ident">RequestWarn</span> =&gt; <span class="string">&quot;🚧&quot;</span>,
+            <span class="ident">AdminInfo</span> <span class="op">|</span> <span class="ident">FilterInfo</span> <span class="op">|</span> <span class="ident">RequestInfo</span> <span class="op">|</span> <span class="ident">SecurityInfo</span> =&gt; <span class="string">&quot;💬&quot;</span>,
+            <span class="ident">RequestTrace</span> <span class="op">|</span> <span class="ident">FilterTrace</span> <span class="op">|</span> <span class="ident">PerfTrace</span> =&gt; <span class="string">&quot;📍&quot;</span>,
+            <span class="ident">SecurityCritical</span> =&gt; <span class="string">&quot;🔐&quot;</span>,
+            <span class="ident">SecurityAccess</span> =&gt; <span class="string">&quot;🔓&quot;</span>,
         }
     }
 }

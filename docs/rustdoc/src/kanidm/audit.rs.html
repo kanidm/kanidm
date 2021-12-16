@@ -94,30 +94,30 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">LogTag</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">LogTag::AdminError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;admin::error 🚨&quot;</span>),
-            <span class="ident">LogTag::AdminWarning</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;admin::warning 🚧&quot;</span>),
-            <span class="ident">LogTag::AdminInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;admin::info&quot;</span>),
-            <span class="ident">LogTag::RequestError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::error 🚨&quot;</span>),
-            <span class="ident">LogTag::RequestWarning</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::warning&quot;</span>),
-            <span class="ident">LogTag::RequestInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::info&quot;</span>),
-            <span class="ident">LogTag::RequestTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::trace&quot;</span>),
-            <span class="ident">LogTag::SecurityCritical</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;security::critical 🐟&quot;</span>),
-            <span class="ident">LogTag::SecurityInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;security::info 🔐&quot;</span>),
-            <span class="ident">LogTag::SecurityAccess</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;security::access 🔓&quot;</span>),
-            <span class="ident">LogTag::FilterError</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::error 🚨&quot;</span>),
-            <span class="ident">LogTag::FilterWarning</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::warning 🚧&quot;</span>),
-            <span class="ident">LogTag::FilterInfo</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::info&quot;</span>),
-            <span class="ident">LogTag::FilterTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::trace&quot;</span>),
-            <span class="ident">LogTag::PerfOp</span> <span class="op">|</span> <span class="ident">LogTag::PerfCoarse</span> <span class="op">|</span> <span class="ident">LogTag::PerfTrace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;perf::trace &quot;</span>),
-            <span class="ident">LogTag::Trace</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;trace::⌦&quot;</span>),
+            <span class="ident">LogTag::AdminError</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;admin::error 🚨&quot;</span>),
+            <span class="ident">LogTag::AdminWarning</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;admin::warning 🚧&quot;</span>),
+            <span class="ident">LogTag::AdminInfo</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;admin::info&quot;</span>),
+            <span class="ident">LogTag::RequestError</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::error 🚨&quot;</span>),
+            <span class="ident">LogTag::RequestWarning</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::warning&quot;</span>),
+            <span class="ident">LogTag::RequestInfo</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::info&quot;</span>),
+            <span class="ident">LogTag::RequestTrace</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;request::trace&quot;</span>),
+            <span class="ident">LogTag::SecurityCritical</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;security::critical 🐟&quot;</span>),
+            <span class="ident">LogTag::SecurityInfo</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;security::info 🔐&quot;</span>),
+            <span class="ident">LogTag::SecurityAccess</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;security::access 🔓&quot;</span>),
+            <span class="ident">LogTag::FilterError</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::error 🚨&quot;</span>),
+            <span class="ident">LogTag::FilterWarning</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::warning 🚧&quot;</span>),
+            <span class="ident">LogTag::FilterInfo</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::info&quot;</span>),
+            <span class="ident">LogTag::FilterTrace</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;filter::trace&quot;</span>),
+            <span class="ident">LogTag::PerfOp</span> <span class="op">|</span> <span class="ident">LogTag::PerfCoarse</span> <span class="op">|</span> <span class="ident">LogTag::PerfTrace</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;perf::trace &quot;</span>),
+            <span class="ident">LogTag::Trace</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;trace::⌦&quot;</span>),
         }
     }
 }
 
 <span class="macro">macro_rules!</span> <span class="ident">limmediate_warning</span> {
-    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) <span class="op">=</span><span class="op">&gt;</span> ({
+    ($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>:<span class="ident">tt</span>)<span class="kw-2">*</span>) =&gt; ({
         <span class="comment">// use crate::audit::LogTag;</span>
         <span class="comment">// if ($audit.level &amp; LogTag::AdminWarning as u32) == LogTag::AdminWarning as u32 {</span>
             <span class="macro">eprint!</span>($(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">arg</span>)<span class="kw-2">*</span>)

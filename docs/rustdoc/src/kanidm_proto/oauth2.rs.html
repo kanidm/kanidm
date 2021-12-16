@@ -499,7 +499,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">AccessTokenIntrospectResponse</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inactive</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">inactive</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">AccessTokenIntrospectResponse</span> {
             <span class="ident">active</span>: <span class="bool-val">false</span>,
             <span class="ident">scope</span>: <span class="prelude-val">None</span>,
@@ -532,7 +532,7 @@
     <span class="ident">Fragment</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">response_modes_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseMode</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">response_modes_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ResponseMode</span><span class="op">&gt;</span> {
     <span class="macro">vec!</span>[<span class="ident">ResponseMode::Query</span>, <span class="ident">ResponseMode::Fragment</span>]
 }
 
@@ -544,7 +544,7 @@
     <span class="ident">Implicit</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">grant_types_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GrantType</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">grant_types_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">GrantType</span><span class="op">&gt;</span> {
     <span class="macro">vec!</span>[<span class="ident">GrantType::AuthorisationCode</span>, <span class="ident">GrantType::Implicit</span>]
 }
 
@@ -572,7 +572,7 @@
     <span class="ident">PrivateKeyJwt</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">token_endpoint_auth_methods_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TokenEndpointAuthMethod</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">token_endpoint_auth_methods_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">TokenEndpointAuthMethod</span><span class="op">&gt;</span> {
     <span class="macro">vec!</span>[<span class="ident">TokenEndpointAuthMethod::ClientSecretBasic</span>]
 }
 
@@ -594,23 +594,23 @@
     <span class="ident">Distributed</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">claim_types_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ClaimType</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">claim_types_supported_default</span>() -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ClaimType</span><span class="op">&gt;</span> {
     <span class="macro">vec!</span>[<span class="ident">ClaimType::Normal</span>]
 }
 
-<span class="kw">fn</span> <span class="ident">claims_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="kw">fn</span> <span class="ident">claims_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
     <span class="bool-val">false</span>
 }
 
-<span class="kw">fn</span> <span class="ident">request_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="kw">fn</span> <span class="ident">request_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
     <span class="bool-val">false</span>
 }
 
-<span class="kw">fn</span> <span class="ident">request_uri_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="kw">fn</span> <span class="ident">request_uri_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
     <span class="bool-val">true</span>
 }
 
-<span class="kw">fn</span> <span class="ident">require_request_uri_parameter_supported_default</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">bool</span> {
+<span class="kw">fn</span> <span class="ident">require_request_uri_parameter_supported_default</span>() -&gt; <span class="ident">bool</span> {
     <span class="bool-val">false</span>
 }
 

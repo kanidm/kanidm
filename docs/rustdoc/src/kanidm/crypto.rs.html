@@ -28,16 +28,16 @@
 
 <span class="doccomment">/// From the server configuration, generate an OpenSSL acceptor that we can use</span>
 <span class="doccomment">/// to build our sockets for https/ldaps.</span>
-<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">setup_tls</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Configuration</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SslAcceptorBuilder</span><span class="op">&gt;</span>, <span class="ident">ErrorStack</span><span class="op">&gt;</span> {
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">setup_tls</span>(<span class="ident">config</span>: <span class="kw-2">&amp;</span><span class="ident">Configuration</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SslAcceptorBuilder</span><span class="op">&gt;</span>, <span class="ident">ErrorStack</span><span class="op">&gt;</span> {
     <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">config</span>.<span class="ident">tls_config</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">tls_config</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Some</span>(<span class="ident">tls_config</span>) =&gt; {
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ssl_builder</span> <span class="op">=</span> <span class="ident">SslAcceptor::mozilla_modern</span>(<span class="ident">SslMethod::tls</span>())<span class="question-mark">?</span>;
             <span class="ident">ssl_builder</span>.<span class="ident">set_certificate_chain_file</span>(<span class="kw-2">&amp;</span><span class="ident">tls_config</span>.<span class="ident">chain</span>)<span class="question-mark">?</span>;
             <span class="ident">ssl_builder</span>.<span class="ident">set_private_key_file</span>(<span class="kw-2">&amp;</span><span class="ident">tls_config</span>.<span class="ident">key</span>, <span class="ident">SslFiletype::PEM</span>)<span class="question-mark">?</span>;
             <span class="ident">ssl_builder</span>.<span class="ident">check_private_key</span>()<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">ssl_builder</span>))
         }
-        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
+        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>),
     }
 }
 </code></pre></div>

@@ -155,17 +155,17 @@
     <span class="ident">NotFound</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">switch</span>(<span class="ident">routes</span>: <span class="kw-2">&amp;</span><span class="ident">Route</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Html</span> {
+<span class="kw">fn</span> <span class="ident">switch</span>(<span class="ident">routes</span>: <span class="kw-2">&amp;</span><span class="ident">Route</span>) -&gt; <span class="ident">Html</span> {
     <span class="ident">ConsoleService::log</span>(<span class="string">&quot;manager::switch&quot;</span>);
     <span class="kw">match</span> <span class="ident">routes</span> {
-        <span class="ident">Route::Landing</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Route::Landing</span> =&gt; {
             <span class="ident">yew_router::push_route</span>(<span class="ident">Route::Index</span>);
             <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">body</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">body</span><span class="op">&gt;</span> }
         }
-        <span class="ident">Route::Index</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ViewsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::Login</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">LoginApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::Oauth2</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">Oauth2App</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">Route::NotFound</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="ident">Route::Index</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ViewsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
+        <span class="ident">Route::Login</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">LoginApp</span> <span class="op">/</span><span class="op">&gt;</span> },
+        <span class="ident">Route::Oauth2</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">Oauth2App</span> <span class="op">/</span><span class="op">&gt;</span> },
+        <span class="ident">Route::NotFound</span> =&gt; {
             <span class="macro">html!</span> {
                 <span class="op">&lt;</span><span class="ident">body</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">h1</span><span class="op">&gt;</span>{ <span class="string">&quot;404&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
@@ -187,7 +187,7 @@
     <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">bool</span>;
     <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::Properties</span>, <span class="ident">link</span>: <span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::Properties</span>, <span class="ident">link</span>: <span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">ConsoleService::log</span>(<span class="string">&quot;manager::create&quot;</span>);
         <span class="ident">ManagerApp</span> {
             <span class="ident">link</span>,
@@ -195,12 +195,12 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">change</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::Properties</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ShouldRender</span> {
+    <span class="kw">fn</span> <span class="ident">change</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::Properties</span>) -&gt; <span class="ident">ShouldRender</span> {
         <span class="ident">ConsoleService::log</span>(<span class="string">&quot;manager::change&quot;</span>);
         <span class="bool-val">false</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">ShouldRender</span> {
+    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">ShouldRender</span> {
         <span class="ident">ConsoleService::log</span>(<span class="string">&quot;manager::update&quot;</span>);
         <span class="self">self</span>.<span class="ident">is_ready</span> <span class="op">=</span> <span class="ident">msg</span>;
         <span class="bool-val">true</span>
@@ -215,7 +215,7 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Html</span> {
+    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Html</span> {
         <span class="macro">html!</span> {
         <span class="op">&lt;</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="ident">head</span><span class="op">&gt;</span>

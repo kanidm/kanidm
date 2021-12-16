@@ -366,11 +366,11 @@
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Options</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> ();
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">args</span>: <span class="kw-2">&amp;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">opts</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">args</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">cs</span><span class="op">|</span> <span class="ident">cs</span>.<span class="ident">to_str</span>()).<span class="ident">collect</span>();
         <span class="kw">let</span> <span class="ident">gopts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">opts</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">println!</span>(<span class="string">&quot;Error in module args -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(());
             }
@@ -384,7 +384,7 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">get_cfg</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmUnixdConfig</span>, <span class="ident">PamResultCode</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">get_cfg</span>() -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">KanidmUnixdConfig</span>, <span class="ident">PamResultCode</span><span class="op">&gt;</span> {
     <span class="ident">KanidmUnixdConfig::new</span>()
         .<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>)
         .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>)
@@ -394,10 +394,10 @@
 <span class="macro">pam_hooks!</span>(<span class="ident">PamKanidm</span>);
 
 <span class="kw">impl</span> <span class="ident">PamHooks</span> <span class="kw">for</span> <span class="ident">PamKanidm</span> {
-    <span class="kw">fn</span> <span class="ident">acct_mgmt</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">acct_mgmt</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
         };
 
         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
@@ -407,8 +407,8 @@
         }
 
         <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_user</span>(<span class="prelude-val">None</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">aid</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) =&gt; <span class="ident">aid</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
@@ -417,28 +417,28 @@
         };
 
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">get_cfg</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cfg</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">e</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) =&gt; <span class="ident">cfg</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="ident">e</span>,
         };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAccountAllowed</span>(<span class="ident">account_id</span>);
         <span class="comment">// PamResultCode::PAM_IGNORE</span>
 
         <span class="kw">match</span> <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
+                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_SUCCESS&quot;</span>);
                     }
                     <span class="ident">PamResultCode::PAM_SUCCESS</span>
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
                     <span class="comment">// println!(&quot;PAM_IGNORE&quot;);</span>
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_AUTH_ERR&quot;</span>);
                     }
                     <span class="ident">PamResultCode::PAM_AUTH_ERR</span>
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) =&gt; {
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">ignore_unknown_user</span> {
                         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                             <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE&quot;</span>);
@@ -451,7 +451,7 @@
                         <span class="ident">PamResultCode::PAM_USER_UNKNOWN</span>
                     }
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">_</span> =&gt; {
                     <span class="comment">// unexpected response.</span>
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
@@ -459,7 +459,7 @@
                     <span class="ident">PamResultCode::PAM_IGNORE</span>
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;PamResultCode::PAM_IGNORE  -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
@@ -468,10 +468,10 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_authenticate</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_authenticate</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
         };
 
         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
@@ -481,16 +481,16 @@
         }
 
         <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_user</span>(<span class="prelude-val">None</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">aid</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) =&gt; <span class="ident">aid</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="kw">return</span> <span class="ident">e</span>;
             }
         };
 
         <span class="kw">let</span> <span class="ident">authtok</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_authtok</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">atok</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">atok</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">atok</span>) =&gt; <span class="ident">atok</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;Error get_authtok -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
@@ -499,8 +499,8 @@
         };
 
         <span class="kw">let</span> <span class="ident">authtok</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">authtok</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>,
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">use_first_pass</span> {
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;Don&#39;t have an authtok, returning PAM_AUTH_ERR&quot;</span>);
@@ -508,8 +508,8 @@
                     <span class="kw">return</span> <span class="ident">PamResultCode::PAM_AUTH_ERR</span>;
                 } <span class="kw">else</span> {
                     <span class="kw">let</span> <span class="ident">conv</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_item</span>::<span class="op">&lt;</span><span class="ident">PamConv</span><span class="op">&gt;</span>() {
-                        <span class="prelude-val">Ok</span>(<span class="ident">conv</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">conv</span>,
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">conv</span>) =&gt; <span class="ident">conv</span>,
+                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
                             <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                                 <span class="macro">println!</span>(<span class="string">&quot;Couldn&#39;t get pam_conv&quot;</span>);
                             }
@@ -517,16 +517,16 @@
                         }
                     };
                     <span class="kw">match</span> <span class="ident">conv</span>.<span class="ident">send</span>(<span class="ident">PAM_PROMPT_ECHO_OFF</span>, <span class="string">&quot;Password: &quot;</span>) {
-                        <span class="prelude-val">Ok</span>(<span class="ident">password</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">password</span> {
-                            <span class="prelude-val">Some</span>(<span class="ident">pw</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">pw</span>,
-                            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">password</span>) =&gt; <span class="kw">match</span> <span class="ident">password</span> {
+                            <span class="prelude-val">Some</span>(<span class="ident">pw</span>) =&gt; <span class="ident">pw</span>,
+                            <span class="prelude-val">None</span> =&gt; {
                                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                                     <span class="macro">println!</span>(<span class="string">&quot;No password&quot;</span>);
                                 }
                                 <span class="kw">return</span> <span class="ident">PamResultCode::PAM_CRED_INSUFFICIENT</span>;
                             }
                         },
-                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">err</span>) =&gt; {
                             <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                                 <span class="macro">println!</span>(<span class="string">&quot;Couldn&#39;t get password&quot;</span>);
                             }
@@ -538,22 +538,22 @@
         };
 
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">get_cfg</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cfg</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">e</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) =&gt; <span class="ident">cfg</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="ident">e</span>,
         };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAuthenticate</span>(<span class="ident">account_id</span>, <span class="ident">authtok</span>);
 
         <span class="kw">match</span> <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="kw">match</span> <span class="ident">r</span> {
+                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">true</span>)) =&gt; {
                     <span class="comment">// println!(&quot;PAM_SUCCESS&quot;);</span>
                     <span class="ident">PamResultCode::PAM_SUCCESS</span>
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">Some</span>(<span class="bool-val">false</span>)) =&gt; {
                     <span class="comment">// println!(&quot;PAM_AUTH_ERR&quot;);</span>
                     <span class="ident">PamResultCode::PAM_AUTH_ERR</span>
                 }
-                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">ClientResponse::PamStatus</span>(<span class="prelude-val">None</span>) =&gt; {
                     <span class="comment">// println!(&quot;PAM_USER_UNKNOWN&quot;);</span>
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">ignore_unknown_user</span> {
                         <span class="ident">PamResultCode::PAM_IGNORE</span>
@@ -561,7 +561,7 @@
                         <span class="ident">PamResultCode::PAM_USER_UNKNOWN</span>
                     }
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="kw">_</span> =&gt; {
                     <span class="comment">// unexpected response.</span>
                     <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                         <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE -&gt; {:?}&quot;</span>, <span class="ident">r</span>);
@@ -569,7 +569,7 @@
                     <span class="ident">PamResultCode::PAM_IGNORE</span>
                 }
             },
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
@@ -578,10 +578,10 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_chauthtok</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_chauthtok</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
         };
 
         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
@@ -592,10 +592,10 @@
         <span class="ident">PamResultCode::PAM_IGNORE</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_close_session</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_close_session</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
         };
 
         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
@@ -606,10 +606,10 @@
         <span class="ident">PamResultCode::PAM_SUCCESS</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_open_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_open_session</span>(<span class="ident">pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
         };
 
         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
@@ -619,8 +619,8 @@
         }
 
         <span class="kw">let</span> <span class="ident">account_id</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">pamh</span>.<span class="ident">get_user</span>(<span class="prelude-val">None</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">aid</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">aid</span>) =&gt; <span class="ident">aid</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;Error get_user -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
@@ -629,17 +629,17 @@
         };
 
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">get_cfg</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">cfg</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">e</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">cfg</span>) =&gt; <span class="ident">cfg</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="ident">e</span>,
         };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAccountBeginSession</span>(<span class="ident">account_id</span>);
 
         <span class="kw">match</span> <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">ClientResponse::Ok</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">ClientResponse::Ok</span>) =&gt; {
                 <span class="comment">// println!(&quot;PAM_SUCCESS&quot;);</span>
                 <span class="ident">PamResultCode::PAM_SUCCESS</span>
             }
-            <span class="ident">other</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">other</span> =&gt; {
                 <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {
                     <span class="macro">println!</span>(<span class="string">&quot;PAM_IGNORE  -&gt; {:?}&quot;</span>, <span class="ident">other</span>);
                 }
@@ -648,10 +648,10 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">sm_setcred</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">PamResultCode</span> {
+    <span class="kw">fn</span> <span class="ident">sm_setcred</span>(<span class="ident">_pamh</span>: <span class="kw-2">&amp;</span><span class="ident">PamHandle</span>, <span class="ident">args</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CStr</span><span class="op">&gt;</span>, <span class="ident">_flags</span>: <span class="ident">PamFlag</span>) -&gt; <span class="ident">PamResultCode</span> {
         <span class="kw">let</span> <span class="ident">opts</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Options::try_from</span>(<span class="kw-2">&amp;</span><span class="ident">args</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">o</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
+            <span class="prelude-val">Ok</span>(<span class="ident">o</span>) =&gt; <span class="ident">o</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="kw">return</span> <span class="ident">PamResultCode::PAM_SERVICE_ERR</span>,
         };
 
         <span class="kw">if</span> <span class="ident">opts</span>.<span class="ident">debug</span> {

@@ -422,15 +422,15 @@
 <span class="kw">impl</span> <span class="ident">FromStr</span> <span class="kw">for</span> <span class="ident">RawOpType</span> {
     <span class="kw">type</span> <span class="prelude-val">Err</span> <span class="op">=</span> ();
 
-    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">from_str</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Err</span><span class="op">&gt;</span> {
         <span class="kw">match</span> <span class="ident">s</span> {
-            <span class="string">&quot;precreate&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Precreate</span>),
-            <span class="string">&quot;srch&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Search</span>),
-            <span class="string">&quot;bind&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Bind</span>),
-            <span class="string">&quot;mod&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Mod</span>),
-            <span class="string">&quot;del&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Delete</span>),
-            <span class="string">&quot;add&quot;</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Add</span>),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(()),
+            <span class="string">&quot;precreate&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Precreate</span>),
+            <span class="string">&quot;srch&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Search</span>),
+            <span class="string">&quot;bind&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Bind</span>),
+            <span class="string">&quot;mod&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Mod</span>),
+            <span class="string">&quot;del&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Delete</span>),
+            <span class="string">&quot;add&quot;</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">RawOpType::Add</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(()),
         }
     }
 }
@@ -440,12 +440,12 @@
     <span class="ident">conn</span>: <span class="ident">i32</span>,
     <span class="ident">etime</span>: <span class="ident">Duration</span>,
     <span class="ident">ids</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
-    <span class="ident">nentries</span>: <span class="ident">u32</span>,
+    <span class="ident">_nentries</span>: <span class="ident">u32</span>,
     <span class="ident">rtime</span>: <span class="ident">Duration</span>,
     <span class="ident">op_type</span>: <span class="ident">RawOpType</span>,
 }
 
-<span class="kw">fn</span> <span class="ident">parse_rtime</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Duration</span>, ()<span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">parse_rtime</span>(<span class="ident">s</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Duration</span>, ()<span class="op">&gt;</span> {
     <span class="comment">// R times are &quot;0:00:00&quot; or &quot;1:34:51.714690&quot;</span>
     <span class="comment">// So we need to split on :, and then parse each part.</span>
     <span class="comment">// This is HH:MM:SS.ms</span>
@@ -466,9 +466,9 @@
 
 <span class="kw">impl</span> <span class="ident">Record</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::wrong_self_convention</span>)]</span>
-    <span class="kw">fn</span> <span class="ident">into_op</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>, <span class="ident">exists</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Op</span> {
+    <span class="kw">fn</span> <span class="ident">into_op</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>, <span class="ident">exists</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>) -&gt; <span class="ident">Op</span> {
         <span class="kw">let</span> <span class="ident">op_type</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">op_type</span> {
-            <span class="ident">RawOpType::Add</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">RawOpType::Add</span> =&gt; {
                 <span class="self">self</span>.<span class="ident">ids</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">idx</span>) <span class="op">=</span> <span class="ident">exists</span>.<span class="ident">binary_search</span>(<span class="ident">id</span>) {
                         <span class="ident">exists</span>.<span class="ident">insert</span>(<span class="ident">idx</span>, <span class="kw-2">*</span><span class="ident">id</span>);
@@ -486,8 +486,8 @@
 
                 <span class="ident">OpType::Add</span>(<span class="ident">new</span>)
             }
-            <span class="ident">RawOpType::Search</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">OpType::Search</span>(<span class="self">self</span>.<span class="ident">ids</span>.<span class="ident">clone</span>()),
-            <span class="ident">RawOpType::Mod</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">RawOpType::Search</span> =&gt; <span class="ident">OpType::Search</span>(<span class="self">self</span>.<span class="ident">ids</span>.<span class="ident">clone</span>()),
+            <span class="ident">RawOpType::Mod</span> =&gt; {
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rand::thread_rng</span>();
                 <span class="kw">let</span> <span class="ident">max_m</span> <span class="op">=</span> (<span class="ident">exists</span>.<span class="ident">len</span>() <span class="op">/</span> <span class="number">3</span>) <span class="op">+</span> <span class="number">1</span>;
                 <span class="kw">let</span> <span class="ident">mods</span> <span class="op">=</span> <span class="self">self</span>
@@ -495,14 +495,14 @@
                     .<span class="ident">iter</span>()
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> {
                         <span class="kw">match</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">id</span>) {
-                            <span class="prelude-val">Some</span>(<span class="ident">Entity::Account</span>(<span class="ident">_a</span>)) <span class="op">=</span><span class="op">&gt;</span> (<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">Change::Account</span>),
-                            <span class="prelude-val">Some</span>(<span class="ident">Entity::Group</span>(<span class="ident">_g</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="prelude-val">Some</span>(<span class="ident">Entity::Account</span>(<span class="ident">_a</span>)) =&gt; (<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">Change::Account</span>),
+                            <span class="prelude-val">Some</span>(<span class="ident">Entity::Group</span>(<span class="ident">_g</span>)) =&gt; {
                                 <span class="comment">// This could be better! It&#39;s quite an evil method at the moment...</span>
                                 <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">rng</span>.<span class="ident">gen_range</span>(<span class="number">0</span>..<span class="ident">max_m</span>);
                                 <span class="kw">let</span> <span class="ident">ngrp</span> <span class="op">=</span> <span class="ident">exists</span>.<span class="ident">choose_multiple</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">rng</span>, <span class="ident">m</span>).<span class="ident">cloned</span>().<span class="ident">collect</span>();
                                 (<span class="kw-2">*</span><span class="ident">id</span>, <span class="ident">Change::Group</span>(<span class="ident">ngrp</span>))
                             }
-                            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+                            <span class="prelude-val">None</span> =&gt; {
                                 <span class="macro">panic!</span>();
                             }
                         }
@@ -510,7 +510,7 @@
                     .<span class="ident">collect</span>();
                 <span class="ident">OpType::Mod</span>(<span class="ident">mods</span>)
             }
-            <span class="ident">RawOpType::Delete</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">RawOpType::Delete</span> =&gt; {
                 <span class="comment">// Remove them.</span>
                 <span class="self">self</span>.<span class="ident">ids</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">idx</span>) <span class="op">=</span> <span class="ident">exists</span>.<span class="ident">binary_search</span>(<span class="ident">id</span>) {
@@ -522,8 +522,8 @@
                 <span class="comment">// Could consider checking that everything DOES exist before we start ...</span>
                 <span class="ident">OpType::Delete</span>(<span class="self">self</span>.<span class="ident">ids</span>.<span class="ident">clone</span>())
             }
-            <span class="ident">RawOpType::Bind</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">OpType::Bind</span>(<span class="self">self</span>.<span class="ident">ids</span>[<span class="number">0</span>]),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+            <span class="ident">RawOpType::Bind</span> =&gt; <span class="ident">OpType::Bind</span>(<span class="self">self</span>.<span class="ident">ids</span>[<span class="number">0</span>]),
+            <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
         };
         <span class="ident">Op</span> {
             <span class="ident">orig_etime</span>: <span class="self">self</span>.<span class="ident">etime</span>,
@@ -536,7 +536,7 @@
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span><span class="ident">RawRecord</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Record</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> ();
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">RawRecord</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: <span class="ident">RawRecord</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">RawRecord</span> {
             <span class="ident">conn</span>,
             <span class="ident">etime</span>,
@@ -562,7 +562,7 @@
             <span class="ident">conn</span>,
             <span class="ident">etime</span>,
             <span class="ident">ids</span>,
-            <span class="ident">nentries</span>,
+            <span class="ident">_nentries</span>: <span class="ident">nentries</span>,
             <span class="ident">rtime</span>,
             <span class="ident">op_type</span>,
         })
@@ -577,16 +577,16 @@
     );
 
     <span class="kw">let</span> <span class="ident">file</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::open</span>(<span class="ident">input</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to open {} - {:?}&quot;</span>, <span class="ident">input</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>(), <span class="ident">e</span>);
             <span class="kw">return</span>;
         }
     };
 
     <span class="kw">let</span> <span class="ident">out_file</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::create</span>(<span class="ident">output</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to open {} - {:?}&quot;</span>, <span class="ident">output</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>(), <span class="ident">e</span>);
             <span class="kw">return</span>;
         }
@@ -595,8 +595,8 @@
     <span class="kw">let</span> <span class="ident">reader</span> <span class="op">=</span> <span class="ident">BufReader::new</span>(<span class="ident">file</span>);
 
     <span class="kw">let</span> <span class="ident">u</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">RawRecord</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_reader</span>(<span class="ident">reader</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">data</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">data</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">data</span>) =&gt; <span class="ident">data</span>,
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to parse {} - {:?}&quot;</span>, <span class="ident">input</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>(), <span class="ident">e</span>);
             <span class="kw">return</span>;
         }
@@ -605,8 +605,8 @@
     <span class="kw">let</span> <span class="ident">data</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">u</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">Record::try_from</span>).<span class="ident">collect</span>();
 
     <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">data</span> {
-        <span class="prelude-val">Ok</span>(<span class="ident">d</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">d</span>,
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">d</span>) =&gt; <span class="ident">d</span>,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to transform record&quot;</span>);
             <span class="kw">return</span>;
         }
@@ -625,15 +625,14 @@
     <span class="comment">// Remove anything that is a pre-create event.</span>
     <span class="kw">let</span> (<span class="ident">precreate</span>, <span class="kw-2">mut</span> <span class="ident">other</span>): (<span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>) <span class="op">=</span> <span class="ident">data</span>
         .<span class="ident">into_iter</span>()
-        .<span class="ident">partition</span>(<span class="op">|</span><span class="ident">rec</span><span class="op">|</span> <span class="ident">rec</span>.<span class="ident">op_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">RawOpType::Precreate</span>);
+        .<span class="ident">partition</span>(<span class="op">|</span><span class="ident">rec</span><span class="op">|</span> <span class="ident">rec</span>.<span class="ident">op_type</span> <span class="op">==</span> <span class="ident">RawOpType::Precreate</span>);
 
     <span class="comment">// Before we can precreate, we need an idea to what each</span>
     <span class="comment">// item is. Lets get all ids and see which ones ever did a bind.</span>
     <span class="comment">// This means they are probably an account.</span>
-
     <span class="kw">let</span> <span class="ident">accounts</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">other</span>
         .<span class="ident">iter</span>()
-        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">rec</span><span class="op">|</span> <span class="ident">rec</span>.<span class="ident">op_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">RawOpType::Bind</span>)
+        .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">rec</span><span class="op">|</span> <span class="ident">rec</span>.<span class="ident">op_type</span> <span class="op">==</span> <span class="ident">RawOpType::Bind</span>)
         .<span class="ident">flat_map</span>(<span class="op">|</span><span class="ident">rec</span><span class="op">|</span> <span class="ident">rec</span>.<span class="ident">ids</span>.<span class="ident">iter</span>())
         .<span class="ident">copied</span>()
         .<span class="ident">collect</span>();
@@ -670,14 +669,15 @@
     <span class="comment">// Order everything, this will make it easier to get everything into connection groups</span>
     <span class="comment">// with their sub-operations in a correct order.</span>
     <span class="ident">other</span>.<span class="ident">sort_by</span>(<span class="op">|</span><span class="ident">a</span>, <span class="ident">b</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">a</span>.<span class="ident">conn</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">conn</span>) {
-        <span class="ident">Ordering::Equal</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">a</span>.<span class="ident">rtime</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">rtime</span>),
-        <span class="ident">r</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>,
+        <span class="ident">Ordering::Equal</span> =&gt; <span class="ident">a</span>.<span class="ident">rtime</span>.<span class="ident">cmp</span>(<span class="kw-2">&amp;</span><span class="ident">b</span>.<span class="ident">rtime</span>),
+        <span class="ident">r</span> =&gt; <span class="ident">r</span>,
     });
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">connections</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">i32</span>, <span class="ident">Conn</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
 
     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">exists</span> <span class="op">=</span> <span class="ident">precreate</span>.<span class="ident">clone</span>();
 
+    <span class="comment">// Consume all the remaining records into connection structures.</span>
     <span class="ident">other</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">rec</span><span class="op">|</span> {
         <span class="macro">debug!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">rec</span>);
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">c</span>) <span class="op">=</span> <span class="ident">connections</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">rec</span>.<span class="ident">conn</span>) {
@@ -706,8 +706,8 @@
         <span class="ident">conn</span>.<span class="ident">ops</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">op</span><span class="op">|</span> {
             <span class="comment">// if it&#39;s a bind, update our current access.</span>
             <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">op</span>.<span class="ident">op_type</span> {
-                <span class="ident">OpType::Bind</span>(<span class="ident">id</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">curbind</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>),
-                <span class="ident">OpType::Add</span>(<span class="ident">list</span>) <span class="op">|</span> <span class="ident">OpType::Delete</span>(<span class="ident">list</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">OpType::Bind</span>(<span class="ident">id</span>) =&gt; <span class="ident">curbind</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>),
+                <span class="ident">OpType::Add</span>(<span class="ident">list</span>) <span class="op">|</span> <span class="ident">OpType::Delete</span>(<span class="ident">list</span>) =&gt; {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="ident">curbind</span>.<span class="ident">as_ref</span>() {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nlist</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">list</span>
                             .<span class="ident">iter</span>()
@@ -724,7 +724,7 @@
                         <span class="macro">panic!</span>();
                     }
                 }
-                <span class="ident">OpType::Mod</span>(<span class="ident">list</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">OpType::Mod</span>(<span class="ident">list</span>) =&gt; {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">id</span>) <span class="op">=</span> <span class="ident">curbind</span>.<span class="ident">as_ref</span>() {
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nlist</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">list</span>
                             .<span class="ident">iter</span>()
@@ -741,7 +741,7 @@
                         <span class="macro">panic!</span>();
                     }
                 }
-                <span class="ident">OpType::Search</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
+                <span class="ident">OpType::Search</span>(<span class="kw">_</span>) =&gt; {}
             }
             <span class="comment">// if it&#39;s a mod, declare we need that.</span>
         });

@@ -242,12 +242,12 @@
 
 <span class="kw">impl</span> <span class="ident">MfaRegNext</span> {
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::wrong_self_convention</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_proto</span>(<span class="self">self</span>, <span class="ident">u</span>: <span class="ident">Uuid</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">SetCredentialResponse</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_proto</span>(<span class="self">self</span>, <span class="ident">u</span>: <span class="ident">Uuid</span>) -&gt; <span class="ident">SetCredentialResponse</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">MfaRegNext::Success</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SetCredentialResponse::Success</span>,
-            <span class="ident">MfaRegNext::TotpCheck</span>(<span class="ident">secret</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">u</span>, <span class="ident">secret</span>),
-            <span class="ident">MfaRegNext::TotpInvalidSha1</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SetCredentialResponse::TotpInvalidSha1</span>(<span class="ident">u</span>),
-            <span class="ident">MfaRegNext::WebauthnChallenge</span>(<span class="ident">ccr</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MfaRegNext::Success</span> =&gt; <span class="ident">SetCredentialResponse::Success</span>,
+            <span class="ident">MfaRegNext::TotpCheck</span>(<span class="ident">secret</span>) =&gt; <span class="ident">SetCredentialResponse::TotpCheck</span>(<span class="ident">u</span>, <span class="ident">secret</span>),
+            <span class="ident">MfaRegNext::TotpInvalidSha1</span> =&gt; <span class="ident">SetCredentialResponse::TotpInvalidSha1</span>(<span class="ident">u</span>),
+            <span class="ident">MfaRegNext::WebauthnChallenge</span>(<span class="ident">ccr</span>) =&gt; {
                 <span class="ident">SetCredentialResponse::WebauthnCreateChallenge</span>(<span class="ident">u</span>, <span class="ident">ccr</span>)
             }
         }
@@ -278,7 +278,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">totp_new</span>(
         <span class="ident">origin</span>: <span class="ident">IdentityId</span>,
         <span class="ident">account</span>: <span class="ident">Account</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Based on the req, init our session, and the return the next step.</span>
         <span class="comment">// Store the ID of the event that start&#39;s the attempt</span>
         <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="ident">Totp::generate_secure</span>(<span class="ident">TOTP_DEFAULT_STEP</span>);
@@ -302,22 +302,22 @@
         <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">chal</span>: <span class="ident">u32</span>,
         <span class="ident">ct</span>: <span class="kw-2">&amp;</span><span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MfaRegNext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MfaRegCred</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MfaRegNext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MfaRegCred</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">origin</span> <span class="op">!</span><span class="op">=</span> <span class="ident">origin</span> <span class="op">|</span><span class="op">|</span> <span class="ident">target</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">account</span>.<span class="ident">uuid</span> {
             <span class="comment">// Verify that the same event source is the one continuing this attempt</span>
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
         };
 
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">token</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">token</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">token</span>.<span class="ident">verify</span>(<span class="ident">chal</span>, <span class="ident">ct</span>) {
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nstate</span> <span class="op">=</span> <span class="ident">MfaRegState::TotpDone</span>;
                     <span class="ident">mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">nstate</span>);
                     <span class="kw">match</span> <span class="ident">nstate</span> {
-                        <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">token</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">token</span>) =&gt; {
                             <span class="prelude-val">Ok</span>((<span class="ident">MfaRegNext::Success</span>, <span class="prelude-val">Some</span>(<span class="ident">MfaRegCred::Totp</span>(<span class="ident">token</span>))))
                         }
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
+                        <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
                     }
                 } <span class="kw">else</span> {
                     <span class="comment">// What if it&#39;s a broken authenticator app? Google authenticator</span>
@@ -343,7 +343,7 @@
                     }
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
         }
     }
 
@@ -351,26 +351,26 @@
         <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>,
         <span class="ident">origin</span>: <span class="kw-2">&amp;</span><span class="ident">IdentityId</span>,
         <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MfaRegNext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MfaRegCred</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MfaRegNext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MfaRegCred</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">origin</span> <span class="op">!</span><span class="op">=</span> <span class="ident">origin</span> <span class="op">|</span><span class="op">|</span> <span class="ident">target</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">account</span>.<span class="ident">uuid</span> {
             <span class="comment">// Verify that the same event source is the one continuing this attempt</span>
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
         };
 
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">_token</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">_token</span>) =&gt; {
                 <span class="comment">// They have accepted the token to be sha1, so lets yield that.</span>
                 <span class="comment">// The token was mutated to sha1 in the previous step.</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">nstate</span> <span class="op">=</span> <span class="ident">MfaRegState::TotpDone</span>;
                 <span class="ident">mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">nstate</span>);
                 <span class="kw">match</span> <span class="ident">nstate</span> {
-                    <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">token</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">token</span>) =&gt; {
                         <span class="prelude-val">Ok</span>((<span class="ident">MfaRegNext::Success</span>, <span class="prelude-val">Some</span>(<span class="ident">MfaRegCred::Totp</span>(<span class="ident">token</span>))))
                     }
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
+                    <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>),
                 }
             }
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
         }
     }
 
@@ -379,7 +379,7 @@
         <span class="ident">account</span>: <span class="ident">Account</span>,
         <span class="ident">label</span>: <span class="ident">String</span>,
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="self">Self</span>, <span class="ident">MfaRegNext</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Setup the registration.</span>
         <span class="kw">let</span> (<span class="ident">chal</span>, <span class="ident">reg_state</span>) <span class="op">=</span> <span class="ident">webauthn</span>
             .<span class="ident">generate_challenge_register</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">name</span>, <span class="bool-val">false</span>)
@@ -404,7 +404,7 @@
         <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>,
         <span class="ident">chal</span>: <span class="kw-2">&amp;</span><span class="ident">RegisterPublicKeyCredential</span>,
         <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MfaRegNext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MfaRegCred</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">MfaRegNext</span>, <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">MfaRegCred</span><span class="op">&gt;</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">origin</span> <span class="op">!</span><span class="op">=</span> <span class="ident">origin</span> <span class="op">|</span><span class="op">|</span> <span class="ident">target</span> <span class="op">!</span><span class="op">=</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">account</span>.<span class="ident">uuid</span> {
             <span class="comment">// Verify that the same event source is the one continuing this attempt</span>
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>);
@@ -415,14 +415,14 @@
         <span class="ident">mem::swap</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>.<span class="ident">state</span>, <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">nstate</span>);
 
         <span class="kw">match</span> <span class="ident">nstate</span> {
-            <span class="ident">MfaRegState::WebauthnInit</span>(<span class="ident">label</span>, <span class="ident">reg_state</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">webauthn</span>
+            <span class="ident">MfaRegState::WebauthnInit</span>(<span class="ident">label</span>, <span class="ident">reg_state</span>) =&gt; <span class="ident">webauthn</span>
                 .<span class="ident">register_credential</span>(<span class="ident">chal</span>, <span class="kw-2">&amp;</span><span class="ident">reg_state</span>, <span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>))
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to register webauthn credential -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="ident">OperationError::Webauthn</span>
                 })
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">cred</span>, <span class="kw">_</span>)<span class="op">|</span> (<span class="ident">MfaRegNext::Success</span>, <span class="prelude-val">Some</span>(<span class="ident">MfaRegCred::Webauthn</span>(<span class="ident">label</span>, <span class="ident">cred</span>)))),
-            <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
+            <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidRequestState</span>),
         }
     }
 }

@@ -125,6 +125,8 @@
 <span id="125">125</span>
 <span id="126">126</span>
 <span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
@@ -179,15 +181,17 @@
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
-<span class="kw">struct</span> <span class="ident">DbScanGetIndex</span> {
-    <span class="doccomment">/// The name of the index to list</span>
-    <span class="ident">index_name</span>: <span class="ident">String</span>,
-    <span class="doccomment">/// The name of the index key to retrieve</span>
-    <span class="ident">key</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
+<span class="comment">/*
+#[derive(Debug, StructOpt)]
+struct DbScanGetIndex {
+    /// The name of the index to list
+    index_name: String,
+    /// The name of the index key to retrieve
+    key: String,
+    #[structopt(flatten)]
+    commonopts: CommonOpt,
 }
+*/</span>
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">struct</span> <span class="ident">DbScanGetId2Entry</span> {

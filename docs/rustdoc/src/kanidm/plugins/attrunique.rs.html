@@ -340,6 +340,8 @@
 <span id="340">340</span>
 <span id="341">341</span>
 <span id="342">342</span>
+<span id="343">343</span>
+<span id="344">344</span>
 </pre><pre class="rust"><code><span class="comment">// Attribute uniqueness plugin. We read the schema and determine if the</span>
 <span class="comment">// value should be unique, and how to handle if it is not. This will</span>
 <span class="comment">// matter a lot when it comes to replication based on first-wins or</span>
@@ -360,14 +362,14 @@
 <span class="kw">fn</span> <span class="ident">get_cand_attr_set</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span>(
     <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span>],
     <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">PartialValue</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cand_attr</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">PartialValue</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">Uuid</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cand_attr</span>: <span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">PartialValue</span>, <span class="ident">Uuid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">BTreeMap::new</span>();
 
     <span class="ident">cand</span>.<span class="ident">iter</span>()
         .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_single</span>(<span class="string">&quot;uuid&quot;</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">v</span>.<span class="ident">to_partialvalue</span>(),
-                <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_single_uuid</span>(<span class="string">&quot;uuid&quot;</span>) {
+                <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="kw-2">*</span><span class="ident">v</span>,
+                <span class="prelude-val">None</span> =&gt; {
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryState</span>);
                 }
             };
@@ -375,10 +377,10 @@
             <span class="comment">//for each value in the ava.</span>
             <span class="ident">e</span>.<span class="ident">get_ava_set</span>(<span class="ident">attr</span>)
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> {
-                    <span class="ident">vs</span>.<span class="ident">to_partialvalue_iter</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> {
-                        <span class="kw">match</span> <span class="ident">cand_attr</span>.<span class="ident">insert</span>(<span class="ident">v</span>, <span class="ident">uuid</span>.<span class="ident">clone</span>()) {
-                            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(()),
-                            <span class="prelude-val">Some</span>(<span class="ident">vr</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="ident">vs</span>.<span class="ident">to_partialvalue_iter</span>()
+                        .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">cand_attr</span>.<span class="ident">insert</span>(<span class="ident">v</span>, <span class="ident">uuid</span>) {
+                            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(()),
+                            <span class="prelude-val">Some</span>(<span class="ident">vr</span>) =&gt; {
                                 <span class="macro">admin_error!</span>(
                                     <span class="string">&quot;ava already exists -&gt; {:?}: {:?} on {:?}&quot;</span>,
                                     <span class="ident">attr</span>,
@@ -389,8 +391,7 @@
                                     <span class="string">&quot;ava already exists&quot;</span>.<span class="ident">to_string</span>(),
                                 )))
                             }
-                        }
-                    })
+                        })
                 })
                 .<span class="ident">unwrap_or</span>(<span class="prelude-val">Ok</span>(()))
         })
@@ -401,7 +402,7 @@
     <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
     <span class="ident">cand</span>: <span class="kw-2">&amp;</span>[<span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">STATE</span><span class="op">&gt;</span>],
     <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
     <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">attr</span>);
 
     <span class="comment">// Build a set of all the value -&gt; uuid for the cands.</span>
@@ -428,7 +429,10 @@
             .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">v</span>, <span class="ident">uuid</span>)<span class="op">|</span> {
                 <span class="comment">// and[ attr eq k, andnot [ uuid eq v ]]</span>
                 <span class="comment">// Basically this says where name but also not self.</span>
-                <span class="ident">f_and</span>(<span class="macro">vec!</span>[<span class="ident">FC::Eq</span>(<span class="ident">attr</span>, <span class="ident">v</span>), <span class="ident">f_andnot</span>(<span class="ident">FC::Eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">uuid</span>))])
+                <span class="ident">f_and</span>(<span class="macro">vec!</span>[
+                    <span class="ident">FC::Eq</span>(<span class="ident">attr</span>, <span class="ident">v</span>),
+                    <span class="ident">f_andnot</span>(<span class="ident">FC::Eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">uuid</span>))),
+                ])
             })
             .<span class="ident">collect</span>()
     ));
@@ -452,7 +456,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Plugin</span> <span class="kw">for</span> <span class="ident">AttrUnique</span> {
-    <span class="kw">fn</span> <span class="ident">id</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
+    <span class="kw">fn</span> <span class="ident">id</span>() -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> {
         <span class="string">&quot;plugin_attrunique&quot;</span>
     }
 
@@ -460,7 +464,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_ce</span>: <span class="kw-2">&amp;</span><span class="ident">CreateEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Needs to clone to avoid a borrow issue?</span>
         <span class="kw">let</span> <span class="ident">uniqueattrs</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
@@ -477,7 +481,7 @@
         <span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerWriteTransaction</span>,
         <span class="ident">cand</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInvalid</span>, <span class="ident">EntryCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">_me</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyEvent</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Needs to clone to avoid a borrow issue?</span>
         <span class="kw">let</span> <span class="ident">uniqueattrs</span> <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">schema</span> <span class="op">=</span> <span class="ident">qs</span>.<span class="ident">get_schema</span>();
@@ -490,7 +494,7 @@
         <span class="ident">r</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">verify</span>(<span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServerReadTransaction</span>) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">ConsistencyError</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="comment">// Only check live entries, not recycled.</span>
         <span class="kw">let</span> <span class="ident">filt_in</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_pres</span>(<span class="string">&quot;class&quot;</span>));
 
@@ -498,8 +502,8 @@
             .<span class="ident">internal_search</span>(<span class="ident">filt_in</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="prelude-val">Err</span>(<span class="ident">ConsistencyError::QueryServerSearchFailure</span>))
         {
-            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">all_cand</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
+            <span class="prelude-val">Ok</span>(<span class="ident">all_cand</span>) =&gt; <span class="ident">all_cand</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="kw">return</span> <span class="macro">vec!</span>[<span class="ident">e</span>],
         };
 
         <span class="kw">let</span> <span class="ident">all_cand</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">all_cand</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()).<span class="ident">collect</span>();

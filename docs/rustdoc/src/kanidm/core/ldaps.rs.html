@@ -207,7 +207,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">LdapSession</span> {
-    <span class="kw">fn</span> <span class="ident">new</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">new</span>() -&gt; <span class="self">Self</span> {
         <span class="ident">LdapSession</span> {
             <span class="comment">// We start un-authenticated</span>
             <span class="ident">uat</span>: <span class="prelude-val">None</span>,
@@ -237,32 +237,32 @@
         <span class="kw">let</span> <span class="ident">qs_result</span> <span class="op">=</span> <span class="ident">qe_r_ref</span>.<span class="ident">handle_ldaprequest</span>(<span class="ident">eventid</span>, <span class="ident">protomsg</span>, <span class="ident">uat</span>).<span class="kw">await</span>;
 
         <span class="kw">match</span> <span class="ident">qs_result</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Unbind</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="kw">return</span>,
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Disconnect</span>(<span class="ident">rmsg</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Unbind</span>) =&gt; <span class="kw">return</span>,
+            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Disconnect</span>(<span class="ident">rmsg</span>)) =&gt; {
                 <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
                     <span class="kw">break</span>;
                 }
                 <span class="kw">break</span>;
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Bind</span>(<span class="ident">uat</span>, <span class="ident">rmsg</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Bind</span>(<span class="ident">uat</span>, <span class="ident">rmsg</span>)) =&gt; {
                 <span class="ident">session</span>.<span class="ident">uat</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">uat</span>);
                 <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
                     <span class="kw">break</span>;
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">rmsg</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::Respond</span>(<span class="ident">rmsg</span>)) =&gt; {
                 <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
                     <span class="kw">break</span>;
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::MultiPartResponse</span>(<span class="ident">v</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::MultiPartResponse</span>(<span class="ident">v</span>)) =&gt; {
                 <span class="kw">for</span> <span class="ident">rmsg</span> <span class="kw">in</span> <span class="ident">v</span>.<span class="ident">into_iter</span>() {
                     <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
                         <span class="kw">break</span>;
                     }
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::BindMultiPartResponse</span>(<span class="ident">uat</span>, <span class="ident">v</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">LdapResponseState::BindMultiPartResponse</span>(<span class="ident">uat</span>, <span class="ident">v</span>)) =&gt; {
                 <span class="ident">session</span>.<span class="ident">uat</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">uat</span>);
                 <span class="kw">for</span> <span class="ident">rmsg</span> <span class="kw">in</span> <span class="ident">v</span>.<span class="ident">into_iter</span>() {
                     <span class="kw">if</span> <span class="ident">w</span>.<span class="ident">send</span>(<span class="ident">rmsg</span>).<span class="kw">await</span>.<span class="ident">is_err</span>() {
@@ -270,7 +270,7 @@
                     }
                 }
             }
-            <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">None</span> =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Internal server error&quot;</span>);
                 <span class="kw">break</span>;
             }
@@ -286,14 +286,14 @@
 ) {
     <span class="kw">loop</span> {
         <span class="kw">match</span> <span class="ident">listener</span>.<span class="ident">accept</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>((<span class="ident">tcpstream</span>, <span class="ident">client_socket_addr</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>((<span class="ident">tcpstream</span>, <span class="ident">client_socket_addr</span>)) =&gt; {
                 <span class="comment">// Start the event</span>
                 <span class="comment">// From the parms we need to create an SslContext.</span>
                 <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">tlsstream</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Ssl::new</span>(<span class="ident">tls_parms</span>.<span class="ident">context</span>())
                     .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">tls_obj</span><span class="op">|</span> <span class="ident">SslStream::new</span>(<span class="ident">tls_obj</span>, <span class="ident">tcpstream</span>))
                 {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ta</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">ta</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">ta</span>) =&gt; <span class="ident">ta</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;LDAP TLS setup error, continuing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">continue</span>;
                     }
@@ -307,7 +307,7 @@
                 <span class="kw">let</span> <span class="ident">w</span> <span class="op">=</span> <span class="ident">FramedWrite::new</span>(<span class="ident">w</span>, <span class="ident">LdapCodec</span>);
                 <span class="ident">tokio::spawn</span>(<span class="ident">client_process</span>(<span class="ident">r</span>, <span class="ident">w</span>, <span class="ident">client_socket_addr</span>, <span class="ident">qe_r_ref</span>));
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             }
         }
@@ -318,7 +318,7 @@
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">acceptor</span>(<span class="ident">listener</span>: <span class="ident">TcpListener</span>, <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>) {
     <span class="kw">loop</span> {
         <span class="kw">match</span> <span class="ident">listener</span>.<span class="ident">accept</span>().<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>((<span class="ident">tcpstream</span>, <span class="ident">client_socket_addr</span>)) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>((<span class="ident">tcpstream</span>, <span class="ident">client_socket_addr</span>)) =&gt; {
                 <span class="comment">// Start the event</span>
                 <span class="kw">let</span> (<span class="ident">r</span>, <span class="ident">w</span>) <span class="op">=</span> <span class="ident">tokio::io::split</span>(<span class="ident">tcpstream</span>);
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">FramedRead::new</span>(<span class="ident">r</span>, <span class="ident">LdapCodec</span>);
@@ -326,7 +326,7 @@
                 <span class="comment">// Let it rip.</span>
                 <span class="ident">tokio::spawn</span>(<span class="ident">client_process</span>(<span class="ident">r</span>, <span class="ident">w</span>, <span class="ident">client_socket_addr</span>, <span class="ident">qe_r_ref</span>));
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;LDAP acceptor error, continuing -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             }
         }
@@ -337,7 +337,7 @@
     <span class="ident">address</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     <span class="ident">opt_tls_params</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">SslAcceptorBuilder</span><span class="op">&gt;</span>,
     <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     <span class="kw">if</span> <span class="ident">address</span>.<span class="ident">starts_with</span>(<span class="string">&quot;:::&quot;</span>) {
         <span class="comment">// takes :::xxxx to xxxx</span>
         <span class="kw">let</span> <span class="ident">port</span> <span class="op">=</span> <span class="ident">address</span>.<span class="ident">replacen</span>(<span class="string">&quot;:::&quot;</span>, <span class="string">&quot;&quot;</span>, <span class="number">1</span>);
@@ -356,12 +356,12 @@
     })<span class="question-mark">?</span>;
 
     <span class="kw">match</span> <span class="ident">opt_tls_params</span> {
-        <span class="prelude-val">Some</span>(<span class="ident">tls_params</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Some</span>(<span class="ident">tls_params</span>) =&gt; {
             <span class="macro">eprintln!</span>(<span class="string">&quot;Starting LDAPS interface ldaps://{} ...&quot;</span>, <span class="ident">address</span>);
             <span class="kw">let</span> <span class="ident">tls_parms</span> <span class="op">=</span> <span class="ident">tls_params</span>.<span class="ident">build</span>();
             <span class="ident">tokio::spawn</span>(<span class="ident">tls_acceptor</span>(<span class="ident">listener</span>, <span class="ident">tls_parms</span>, <span class="ident">qe_r_ref</span>));
         }
-        <span class="prelude-val">None</span> <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">None</span> =&gt; {
             <span class="macro">eprintln!</span>(<span class="string">&quot;Starting LDAP interface ldap://{} ...&quot;</span>, <span class="ident">address</span>);
             <span class="ident">tokio::spawn</span>(<span class="ident">acceptor</span>(<span class="ident">listener</span>, <span class="ident">qe_r_ref</span>));
         }

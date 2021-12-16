@@ -428,18 +428,18 @@
 }
 
 <span class="kw">impl</span> <span class="ident">DirectoryServer</span> {
-    <span class="kw">fn</span> <span class="ident">construct</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">dm_pw</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">construct</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">dm_pw</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, ()<span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ldap</span> <span class="op">=</span> <span class="ident">LdapClient::new</span>(<span class="ident">uri</span>, <span class="ident">basedn</span>, <span class="ident">LdapSchema::Rfc2307bis</span>)<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>(<span class="ident">DirectoryServer</span> { <span class="ident">ldap</span>, <span class="ident">dm_pw</span> })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">dm_pw</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">build</span>(<span class="ident">uri</span>: <span class="ident">String</span>, <span class="ident">dm_pw</span>: <span class="ident">String</span>, <span class="ident">basedn</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::construct</span>(<span class="ident">uri</span>, <span class="ident">dm_pw</span>, <span class="ident">basedn</span>).<span class="ident">map</span>(<span class="ident">TargetServer::DirSrv</span>)
     }
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::new_ret_no_self</span>)]</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">lconfig</span>: <span class="kw-2">&amp;</span><span class="ident">DsConfig</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">lconfig</span>: <span class="kw-2">&amp;</span><span class="ident">DsConfig</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">TargetServer</span>, ()<span class="op">&gt;</span> {
         <span class="ident"><span class="self">Self</span>::construct</span>(
             <span class="ident">lconfig</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
             <span class="ident">lconfig</span>.<span class="ident">dm_pw</span>.<span class="ident">clone</span>(),
@@ -448,11 +448,11 @@
         .<span class="ident">map</span>(<span class="ident">TargetServer::DirSrv</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">String</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">info</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="macro">format!</span>(<span class="string">&quot;Directory Server Connection: {}&quot;</span>, <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">uri</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">TargetServerBuilder</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">builder</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">TargetServerBuilder</span> {
         <span class="ident">TargetServerBuilder::DirSrv</span>(
             <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">uri</span>.<span class="ident">clone</span>(),
             <span class="self">self</span>.<span class="ident">dm_pw</span>.<span class="ident">clone</span>(),
@@ -460,11 +460,11 @@
         )
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">open_admin_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">open_dm_connection</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">dm_pw</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">setup_admin_delete_uuids</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">targets</span>: <span class="kw-2">&amp;</span>[<span class="ident">Uuid</span>]) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="comment">// We might hit admin limits depending on the dataset size, so we probably</span>
         <span class="comment">// need to do this iteratively eventually. Or just change the limits ...</span>
 
@@ -494,7 +494,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">targets</span>: <span class="kw-2">&amp;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
         <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="comment">// Check if ou=people and ou=group exist</span>
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">ldap</span>
@@ -560,7 +560,7 @@
             <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
             <span class="kw">let</span> <span class="ident">dn</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>);
             <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Entity::Account</span>(<span class="ident">a</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Entity::Account</span>(<span class="ident">a</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
                         <span class="ident">dn</span>,
                         <span class="ident">attributes</span>: <span class="macro">vec!</span>[
@@ -606,7 +606,7 @@
                     };
                     <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">add</span>(<span class="ident">account</span>).<span class="kw">await</span><span class="question-mark">?</span>;
                 }
-                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">group</span> <span class="op">=</span> <span class="ident">LdapAddRequest</span> {
                         <span class="ident">dn</span>,
                         <span class="ident">attributes</span>: <span class="macro">vec!</span>[
@@ -629,8 +629,8 @@
         <span class="kw">for</span> <span class="ident">g</span> <span class="kw">in</span> <span class="ident">targets</span>.<span class="ident">iter</span>().<span class="ident">filter_map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">e</span> <span class="op">=</span> <span class="ident">all_entities</span>.<span class="ident">get</span>(<span class="ident">u</span>).<span class="ident">unwrap</span>();
             <span class="kw">match</span> <span class="ident">e</span> {
-                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Some</span>(<span class="ident">g</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">None</span>,
+                <span class="ident">Entity::Group</span>(<span class="ident">g</span>) =&gt; <span class="prelude-val">Some</span>(<span class="ident">g</span>),
+                <span class="kw">_</span> =&gt; <span class="prelude-val">None</span>,
             }
         }) {
             <span class="comment">// List of dns</span>
@@ -664,7 +664,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">access</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">EntityType</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">all_entities</span>: <span class="kw-2">&amp;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">Entity</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
         <span class="comment">// Create top level priv groups</span>
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">ldap</span>
@@ -756,12 +756,12 @@
                 .<span class="ident">iter</span>()
                 .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">EntityType::Account</span>(<span class="kw">_</span>)))
                 .<span class="ident">count</span>()
-                <span class="op">=</span><span class="op">=</span> <span class="number">0</span>;
+                <span class="op">==</span> <span class="number">0</span>;
             <span class="kw">let</span> <span class="ident">need_group</span> <span class="op">=</span> <span class="ident">list</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">filter</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">matches!</span>(<span class="ident">v</span>, <span class="ident">EntityType::Group</span>(<span class="kw">_</span>)))
                 .<span class="ident">count</span>()
-                <span class="op">=</span><span class="op">=</span> <span class="number">0</span>;
+                <span class="op">==</span> <span class="number">0</span>;
 
             <span class="kw">if</span> <span class="ident">need_account</span> {
                 <span class="ident">priv_account</span>.<span class="ident">push</span>(<span class="ident">account</span>.<span class="ident">get_ds_ldap_dn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">basedn</span>))
@@ -810,7 +810,7 @@
         <span class="ident">test_start</span>: <span class="ident">Instant</span>,
         <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>), ()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="ident">name</span>, <span class="ident">pw</span>).<span class="kw">await</span>
     }
 
@@ -822,7 +822,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">test_start</span>: <span class="ident">Instant</span>,
         <span class="ident">ids</span>: <span class="kw-2">&amp;</span>[<span class="ident">String</span>],
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>), ()<span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">ldap</span>.<span class="ident">search_name</span>(<span class="ident">test_start</span>, <span class="ident">ids</span>).<span class="kw">await</span>
     }
 }

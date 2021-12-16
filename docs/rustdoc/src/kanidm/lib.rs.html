@@ -91,15 +91,19 @@
 <span id="91">91</span>
 <span id="92">92</span>
 <span id="93">93</span>
+<span id="94">94</span>
+<span id="95">95</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server</span>
 <span class="doccomment">//! which is used to process authentication, store identities and enforce access controls.</span>
 
 <span class="attribute">#![<span class="ident">recursion_limit</span> <span class="op">=</span> <span class="string">&quot;512&quot;</span>]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
+<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
+<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unimplemented</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::expect_used</span>)]</span>
-<span class="comment">// #![deny(clippy::panic)]</span>
+<span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::panic</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unreachable</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::await_holding_lock</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
@@ -138,8 +142,8 @@
 <span class="kw">mod</span> <span class="ident">interval</span>;
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">ldap</span>;
 <span class="kw">mod</span> <span class="ident">modify</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">value</span>;
-<span class="kw">pub</span> <span class="kw">mod</span> <span class="ident">valueset</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">value</span>;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">mod</span> <span class="ident">valueset</span>;
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">mod</span> <span class="ident">plugins</span>;
 <span class="kw">mod</span> <span class="ident">access</span>;

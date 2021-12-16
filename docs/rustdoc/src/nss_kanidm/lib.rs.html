@@ -194,60 +194,60 @@
 <span class="macro">libnss_passwd_hooks!</span>(<span class="ident">kanidm</span>, <span class="ident">KanidmPasswd</span>);
 
 <span class="kw">impl</span> <span class="ident">PasswdHooks</span> <span class="kw">for</span> <span class="ident">KanidmPasswd</span> {
-    <span class="kw">fn</span> <span class="ident">get_all_entries</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_all_entries</span>() -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
                 }
             };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::NssAccounts</span>;
         <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::NssAccounts</span>(<span class="ident">l</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">l</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">passwd_from_nssuser</span>).<span class="ident">collect</span>(),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
+                <span class="ident">ClientResponse::NssAccounts</span>(<span class="ident">l</span>) =&gt; <span class="ident">l</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">passwd_from_nssuser</span>).<span class="ident">collect</span>(),
+                <span class="kw">_</span> =&gt; <span class="ident">Vec::new</span>(),
             })
             .<span class="ident">map</span>(<span class="ident">Response::Success</span>)
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Response::Success</span>(<span class="macro">vec!</span>[]))
     }
 
-    <span class="kw">fn</span> <span class="ident">get_entry_by_uid</span>(<span class="ident">uid</span>: <span class="ident">libc::uid_t</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_entry_by_uid</span>(<span class="ident">uid</span>: <span class="ident">libc::uid_t</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
                 }
             };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::NssAccountByUid</span>(<span class="ident">uid</span>);
         <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::NssAccount</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>
+                <span class="ident">ClientResponse::NssAccount</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>
                     .<span class="ident">map</span>(<span class="ident">passwd_from_nssuser</span>)
                     .<span class="ident">map</span>(<span class="ident">Response::Success</span>)
                     .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Response::NotFound</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Response::NotFound</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">Response::NotFound</span>,
             })
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Response::NotFound</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_entry_by_name</span>(<span class="ident">name</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_entry_by_name</span>(<span class="ident">name</span>: <span class="ident">String</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Passwd</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
                 }
             };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::NssAccountByName</span>(<span class="ident">name</span>);
         <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::NssAccount</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>
+                <span class="ident">ClientResponse::NssAccount</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>
                     .<span class="ident">map</span>(<span class="ident">passwd_from_nssuser</span>)
                     .<span class="ident">map</span>(<span class="ident">Response::Success</span>)
                     .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Response::NotFound</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Response::NotFound</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">Response::NotFound</span>,
             })
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Response::NotFound</span>)
     }
@@ -257,66 +257,66 @@
 <span class="macro">libnss_group_hooks!</span>(<span class="ident">kanidm</span>, <span class="ident">KanidmGroup</span>);
 
 <span class="kw">impl</span> <span class="ident">GroupHooks</span> <span class="kw">for</span> <span class="ident">KanidmGroup</span> {
-    <span class="kw">fn</span> <span class="ident">get_all_entries</span>() <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_all_entries</span>() -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
                 }
             };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::NssGroups</span>;
         <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::NssGroups</span>(<span class="ident">l</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">l</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">group_from_nssgroup</span>).<span class="ident">collect</span>(),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Vec::new</span>(),
+                <span class="ident">ClientResponse::NssGroups</span>(<span class="ident">l</span>) =&gt; <span class="ident">l</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="ident">group_from_nssgroup</span>).<span class="ident">collect</span>(),
+                <span class="kw">_</span> =&gt; <span class="ident">Vec::new</span>(),
             })
             .<span class="ident">map</span>(<span class="ident">Response::Success</span>)
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Response::Success</span>(<span class="macro">vec!</span>[]))
     }
 
-    <span class="kw">fn</span> <span class="ident">get_entry_by_gid</span>(<span class="ident">gid</span>: <span class="ident">libc::gid_t</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_entry_by_gid</span>(<span class="ident">gid</span>: <span class="ident">libc::gid_t</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
                 }
             };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::NssGroupByGid</span>(<span class="ident">gid</span>);
         <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::NssGroup</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>
+                <span class="ident">ClientResponse::NssGroup</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>
                     .<span class="ident">map</span>(<span class="ident">group_from_nssgroup</span>)
                     .<span class="ident">map</span>(<span class="ident">Response::Success</span>)
                     .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Response::NotFound</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Response::NotFound</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">Response::NotFound</span>,
             })
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Response::NotFound</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">get_entry_by_name</span>(<span class="ident">name</span>: <span class="ident">String</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_entry_by_name</span>(<span class="ident">name</span>: <span class="ident">String</span>) -&gt; <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Group</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">cfg</span> <span class="op">=</span>
             <span class="kw">match</span> <span class="ident">KanidmUnixdConfig::new</span>().<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">c</span>,
-                <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">c</span>) =&gt; <span class="ident">c</span>,
+                <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                     <span class="kw">return</span> <span class="ident">Response::Unavail</span>;
                 }
             };
         <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::NssGroupByName</span>(<span class="ident">name</span>);
         <span class="ident">call_daemon_blocking</span>(<span class="ident">cfg</span>.<span class="ident">sock_path</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">req</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">r</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">r</span> {
-                <span class="ident">ClientResponse::NssGroup</span>(<span class="ident">opt</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">opt</span>
+                <span class="ident">ClientResponse::NssGroup</span>(<span class="ident">opt</span>) =&gt; <span class="ident">opt</span>
                     .<span class="ident">map</span>(<span class="ident">group_from_nssgroup</span>)
                     .<span class="ident">map</span>(<span class="ident">Response::Success</span>)
                     .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Response::NotFound</span>),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">Response::NotFound</span>,
+                <span class="kw">_</span> =&gt; <span class="ident">Response::NotFound</span>,
             })
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Response::NotFound</span>)
     }
 }
 
-<span class="kw">fn</span> <span class="ident">passwd_from_nssuser</span>(<span class="ident">nu</span>: <span class="ident">NssUser</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Passwd</span> {
+<span class="kw">fn</span> <span class="ident">passwd_from_nssuser</span>(<span class="ident">nu</span>: <span class="ident">NssUser</span>) -&gt; <span class="ident">Passwd</span> {
     <span class="ident">Passwd</span> {
         <span class="ident">name</span>: <span class="ident">nu</span>.<span class="ident">name</span>,
         <span class="ident">gecos</span>: <span class="ident">nu</span>.<span class="ident">gecos</span>,
@@ -328,7 +328,7 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">group_from_nssgroup</span>(<span class="ident">ng</span>: <span class="ident">NssGroup</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Group</span> {
+<span class="kw">fn</span> <span class="ident">group_from_nssgroup</span>(<span class="ident">ng</span>: <span class="ident">NssGroup</span>) -&gt; <span class="ident">Group</span> {
     <span class="ident">Group</span> {
         <span class="ident">name</span>: <span class="ident">ng</span>.<span class="ident">name</span>,
         <span class="ident">passwd</span>: <span class="string">&quot;x&quot;</span>.<span class="ident">to_string</span>(),

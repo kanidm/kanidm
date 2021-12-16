@@ -46,7 +46,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">TestProcessor</span> {}
 
 <span class="kw">impl</span> <span class="ident">ExportProcessor</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_sender</span>(<span class="ident">sender</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">TreePreProcessed</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">with_sender</span>(<span class="ident">sender</span>: <span class="ident">UnboundedSender</span><span class="op">&lt;</span><span class="ident">TreePreProcessed</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">ExportProcessor</span> { <span class="ident">sender</span> }
     }
 }

@@ -46,7 +46,7 @@
     <span class="ident">testtype</span>: <span class="kw-2">&amp;</span><span class="ident">TestTypeOpt</span>,
     <span class="ident">target</span>: <span class="kw-2">&amp;</span><span class="ident">TargetOpt</span>,
     <span class="ident">profile_path</span>: <span class="kw-2">&amp;</span><span class="ident">Path</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     <span class="macro">info!</span>(
         <span class="string">&quot;Performing test {} against {:?} from {}&quot;</span>,
         <span class="ident">testtype</span>,
@@ -67,7 +67,7 @@
 
     <span class="comment">// Match on what kind of test we are doing. It takes over from here.</span>
     <span class="kw">match</span> <span class="ident">testtype</span> {
-        <span class="ident">TestTypeOpt::SearchBasic</span> <span class="op">=</span><span class="op">&gt;</span> <span class="ident">search::basic</span>(<span class="ident">data</span>, <span class="ident">profile</span>, <span class="ident">server</span>, <span class="ident">result_path</span>).<span class="kw">await</span><span class="question-mark">?</span>,
+        <span class="ident">TestTypeOpt::SearchBasic</span> =&gt; <span class="ident">search::basic</span>(<span class="ident">data</span>, <span class="ident">profile</span>, <span class="ident">server</span>, <span class="ident">result_path</span>).<span class="kw">await</span><span class="question-mark">?</span>,
     };
 
     <span class="macro">info!</span>(<span class="string">&quot;Test {} complete.&quot;</span>, <span class="ident">testtype</span>);

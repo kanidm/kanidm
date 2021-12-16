@@ -368,7 +368,7 @@
     <span class="kw-2">mut</span> <span class="ident">broadcast_rx</span>: <span class="ident">tokio::sync::broadcast::Receiver</span><span class="op">&lt;</span><span class="ident">TestPhase</span><span class="op">&gt;</span>,
     <span class="ident">raw_results_rx</span>: <span class="kw-2">&amp;</span><span class="ident">crossbeam::channel::Receiver</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)<span class="op">&gt;</span>,
     <span class="ident">warmup_seconds</span>: <span class="ident">u32</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
+) -&gt; <span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Duration</span>, <span class="ident">Duration</span>, <span class="ident">usize</span>)<span class="op">&gt;</span> {
     <span class="macro">info!</span>(<span class="string">&quot;Starting test arbiter ...&quot;</span>);
 
     <span class="comment">// Wait on the message that the workers have started the warm up.</span>
@@ -389,13 +389,13 @@
     <span class="kw">loop</span> {
         <span class="kw">match</span> <span class="ident">raw_results_rx</span>.<span class="ident">recv_deadline</span>(<span class="ident">end_of_warmup</span>) {
             <span class="comment">// We are currently discarding results.</span>
-            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                 <span class="ident">count</span> <span class="op">+</span><span class="op">=</span> <span class="number">1</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="ident">RecvTimeoutError::Timeout</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">RecvTimeoutError::Timeout</span>) =&gt; {
                 <span class="kw">break</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Worker channel error&quot;</span>);
                 <span class="kw">return</span> <span class="ident">Vec::new</span>();
             }
@@ -412,11 +412,11 @@
     <span class="kw">loop</span> {
         <span class="kw">match</span> <span class="ident">raw_results_rx</span>.<span class="ident">recv_deadline</span>(<span class="ident">end_of_test</span>) {
             <span class="comment">// We are currently discarding results.</span>
-            <span class="prelude-val">Ok</span>(<span class="ident">datum</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">results</span>.<span class="ident">push</span>(<span class="ident">datum</span>),
-            <span class="prelude-val">Err</span>(<span class="ident">RecvTimeoutError::Timeout</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">datum</span>) =&gt; <span class="ident">results</span>.<span class="ident">push</span>(<span class="ident">datum</span>),
+            <span class="prelude-val">Err</span>(<span class="ident">RecvTimeoutError::Timeout</span>) =&gt; {
                 <span class="kw">break</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Worker channel error&quot;</span>);
                 <span class="kw">return</span> <span class="ident">Vec::new</span>();
             }
@@ -442,8 +442,8 @@
     <span class="macro">debug!</span>(<span class="string">&quot;Starting worker ...&quot;</span>);
 
     <span class="kw">let</span> <span class="ident">server</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">builder</span>.<span class="ident">build</span>() {
-        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-        <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+        <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to build client&quot;</span>);
             <span class="kw">return</span>;
         }
@@ -461,14 +461,14 @@
     <span class="kw">loop</span> {
         <span class="comment">// While nothing in broadcast.</span>
         <span class="kw">match</span> <span class="ident">broadcast_rx</span>.<span class="ident">try_recv</span>() {
-            <span class="prelude-val">Ok</span>(<span class="ident">TestPhase::Shutdown</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">TestPhase::Shutdown</span>) =&gt; {
                 <span class="comment">// Complete.</span>
                 <span class="kw">break</span>;
             }
-            <span class="prelude-val">Err</span>(<span class="ident">tokio::sync::broadcast::error::TryRecvError::Empty</span>) <span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">tokio::sync::broadcast::error::TryRecvError::Empty</span>) <span class="op">|</span> <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// Ignore</span>
             }
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;broadcast error&quot;</span>);
                 <span class="kw">return</span>;
             }
@@ -483,15 +483,15 @@
 
         <span class="comment">// Search something!</span>
         <span class="kw">let</span> <span class="ident">cr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">server</span>.<span class="ident">open_user_connection</span>(<span class="ident">test_start</span>, <span class="kw-2">&amp;</span><span class="ident">name</span>, <span class="kw-2">&amp;</span><span class="ident">pw</span>).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Failed to authenticate connection&quot;</span>);
                 <span class="kw">continue</span>;
             }
         };
         <span class="kw">let</span> <span class="ident">sr</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">server</span>.<span class="ident">search</span>(<span class="ident">test_start</span>, <span class="ident">s</span>.<span class="ident">as_slice</span>()).<span class="kw">await</span> {
-            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">r</span>,
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Search Error&quot;</span>);
                 <span class="kw">continue</span>;
             }
@@ -509,7 +509,7 @@
     <span class="ident">profile</span>: <span class="ident">Profile</span>,
     <span class="ident">server</span>: <span class="ident">TargetServer</span>,
     <span class="ident">result_path</span>: <span class="ident">PathBuf</span>,
-) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
+) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
     <span class="comment">// From all the data, process and find all the search events.</span>
     <span class="comment">// Create these into an Arc&lt;vec&gt; so they can be sampled from by workers.</span>
     <span class="kw">let</span> <span class="ident">searches</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">data</span>
@@ -628,8 +628,8 @@
     <span class="kw">let</span> <span class="ident">result_path</span> <span class="op">=</span> <span class="ident">result_path</span>.<span class="ident">join</span>(<span class="ident">result_name</span>);
 
     <span class="kw">let</span> <span class="ident">result_file</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">File::create</span>(<span class="kw-2">&amp;</span><span class="ident">result_path</span>) {
-        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">f</span>,
-        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+        <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
+        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to open {} - {:?}&quot;</span>, <span class="ident">result_path</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>(), <span class="ident">e</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(());
         }

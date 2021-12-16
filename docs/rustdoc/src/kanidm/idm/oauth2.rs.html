@@ -2312,6 +2312,10 @@
 <span id="2312">2312</span>
 <span id="2313">2313</span>
 <span id="2314">2314</span>
+<span id="2315">2315</span>
+<span id="2316">2316</span>
+<span id="2317">2317</span>
+<span id="2318">2318</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -2324,7 +2328,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::OAUTHSCOPE_RE</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">JwkKeySet</span>, <span class="ident">OidcToken</span>};
-<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">JwsSigner</span>, <span class="ident">JwsValidator</span>, <span class="ident">OidcClaims</span>, <span class="ident">OidcSubject</span>};
+<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">JwsSigner</span>, <span class="ident">OidcClaims</span>, <span class="ident">OidcSubject</span>};
 <span class="kw">use</span> <span class="ident">concread::cowcell</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">fernet::Fernet</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashMap</span>;
@@ -2381,20 +2385,20 @@
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Oauth2Error</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">write_str</span>(<span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Oauth2Error::AuthenticationRequired</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;authentication_required&quot;</span>,
-            <span class="ident">Oauth2Error::InvalidClientId</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;invalid_client_id&quot;</span>,
-            <span class="ident">Oauth2Error::InvalidOrigin</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;invalid_origin&quot;</span>,
-            <span class="ident">Oauth2Error::InvalidRequest</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;invalid_request&quot;</span>,
-            <span class="ident">Oauth2Error::UnauthorizedClient</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;unauthorized_client&quot;</span>,
-            <span class="ident">Oauth2Error::AccessDenied</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;access_denied&quot;</span>,
-            <span class="ident">Oauth2Error::UnsupportedResponseType</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;unsupported_response_type&quot;</span>,
-            <span class="ident">Oauth2Error::InvalidScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;invalid_scope&quot;</span>,
-            <span class="ident">Oauth2Error::ServerError</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;server_error&quot;</span>,
-            <span class="ident">Oauth2Error::TemporarilyUnavailable</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;temporarily_unavailable&quot;</span>,
-            <span class="ident">Oauth2Error::InvalidToken</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;invalid_token&quot;</span>,
-            <span class="ident">Oauth2Error::InsufficientScope</span> <span class="op">=</span><span class="op">&gt;</span> <span class="string">&quot;insufficient_scope&quot;</span>,
+            <span class="ident">Oauth2Error::AuthenticationRequired</span> =&gt; <span class="string">&quot;authentication_required&quot;</span>,
+            <span class="ident">Oauth2Error::InvalidClientId</span> =&gt; <span class="string">&quot;invalid_client_id&quot;</span>,
+            <span class="ident">Oauth2Error::InvalidOrigin</span> =&gt; <span class="string">&quot;invalid_origin&quot;</span>,
+            <span class="ident">Oauth2Error::InvalidRequest</span> =&gt; <span class="string">&quot;invalid_request&quot;</span>,
+            <span class="ident">Oauth2Error::UnauthorizedClient</span> =&gt; <span class="string">&quot;unauthorized_client&quot;</span>,
+            <span class="ident">Oauth2Error::AccessDenied</span> =&gt; <span class="string">&quot;access_denied&quot;</span>,
+            <span class="ident">Oauth2Error::UnsupportedResponseType</span> =&gt; <span class="string">&quot;unsupported_response_type&quot;</span>,
+            <span class="ident">Oauth2Error::InvalidScope</span> =&gt; <span class="string">&quot;invalid_scope&quot;</span>,
+            <span class="ident">Oauth2Error::ServerError</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;server_error&quot;</span>,
+            <span class="ident">Oauth2Error::TemporarilyUnavailable</span> =&gt; <span class="string">&quot;temporarily_unavailable&quot;</span>,
+            <span class="ident">Oauth2Error::InvalidToken</span> =&gt; <span class="string">&quot;invalid_token&quot;</span>,
+            <span class="ident">Oauth2Error::InsufficientScope</span> =&gt; <span class="string">&quot;insufficient_scope&quot;</span>,
         })
     }
 }
@@ -2442,10 +2446,10 @@
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">Oauth2TokenType</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">Oauth2TokenType::Access</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;access_token&quot;</span>),
-            <span class="ident">Oauth2TokenType::Refresh</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;refresh_token&quot;</span>),
+            <span class="ident">Oauth2TokenType::Access</span>(<span class="kw">_</span>) =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;access_token&quot;</span>),
+            <span class="ident">Oauth2TokenType::Refresh</span> =&gt; <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;refresh_token&quot;</span>),
         }
     }
 }
@@ -2486,7 +2490,7 @@
     <span class="comment">// Our internal exchange encryption material for this rs.</span>
     <span class="ident">token_fernet</span>: <span class="ident">Fernet</span>,
     <span class="ident">jws_signer</span>: <span class="ident">JwsSigner</span>,
-    <span class="ident">jws_validator</span>: <span class="ident">JwsValidator</span>,
+    <span class="comment">// jws_validator: JwsValidator,</span>
     <span class="comment">// Some clients, especially openid ones don&#39;t do pkce. SIGH.</span>
     <span class="comment">// Can we enforce nonce in this case?</span>
     <span class="ident">enable_pkce</span>: <span class="ident">bool</span>,
@@ -2501,7 +2505,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">std::fmt::Debug</span> <span class="kw">for</span> <span class="ident">Oauth2RS</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Oauth2RS&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;name&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">name</span>)
             .<span class="ident">field</span>(<span class="string">&quot;displayname&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">displayname</span>)
@@ -2535,7 +2539,7 @@
 <span class="kw">impl</span> <span class="ident">TryFrom</span><span class="op">&lt;</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Url</span>)<span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Oauth2ResourceServers</span> {
     <span class="kw">type</span> <span class="ident">Error</span> <span class="op">=</span> <span class="ident">OperationError</span>;
 
-    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Url</span>)) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">try_from</span>(<span class="ident">value</span>: (<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>, <span class="ident">Url</span>)) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="self">Self</span>, <span class="ident"><span class="self">Self</span>::Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">value</span>, <span class="ident">origin</span>) <span class="op">=</span> <span class="ident">value</span>;
         <span class="kw">let</span> <span class="ident">fernet</span> <span class="op">=</span>
             <span class="ident">Fernet::new</span>(<span class="kw-2">&amp;</span><span class="ident">Fernet::generate_key</span>()).<span class="ident">ok_or</span>(<span class="ident">OperationError::CryptographyError</span>)<span class="question-mark">?</span>;
@@ -2555,13 +2559,13 @@
 }
 
 <span class="kw">impl</span> <span class="ident">Oauth2ResourceServers</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Oauth2ResourceServersReadTransaction</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Oauth2ResourceServersReadTransaction</span> {
         <span class="ident">Oauth2ResourceServersReadTransaction</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">read</span>(),
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="ident">Oauth2ResourceServersWriteTransaction</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Oauth2ResourceServersWriteTransaction</span> {
         <span class="ident">Oauth2ResourceServersWriteTransaction</span> {
             <span class="ident">inner</span>: <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">write</span>(),
         }
@@ -2569,7 +2573,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Oauth2ResourceServersWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reload</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">reload</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">EntrySealedCommitted</span><span class="op">&gt;</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">rs_set</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashMap</span><span class="op">&lt;</span><span class="kw">_</span>, <span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">value</span>
             .<span class="ident">into_iter</span>()
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ent</span><span class="op">|</span> {
@@ -2615,13 +2619,13 @@
                     <span class="kw">let</span> <span class="ident">scope_maps</span> <span class="op">=</span> <span class="ident">ent</span>
                         .<span class="ident">get_ava_as_oauthscopemaps</span>(<span class="string">&quot;oauth2_rs_scope_map&quot;</span>)
                         .<span class="ident">cloned</span>()
-                        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">BTreeMap::new</span>());
+                        .<span class="ident">unwrap_or_else</span>(<span class="ident">BTreeMap::new</span>);
 
                     <span class="macro">trace!</span>(<span class="string">&quot;implicit_scopes&quot;</span>);
                     <span class="kw">let</span> <span class="ident">implicit_scopes</span> <span class="op">=</span> <span class="ident">ent</span>
                         .<span class="ident">get_ava_as_oauthscopes</span>(<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>)
                         .<span class="ident">map</span>(<span class="op">|</span><span class="ident">iter</span><span class="op">|</span> <span class="ident">iter</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>())
-                        .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Vec::new</span>());
+                        .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
 
                     <span class="macro">trace!</span>(<span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>);
                     <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">ent</span>.<span class="ident">get_ava_single_bool</span>(<span class="string">&quot;oauth2_jwt_legacy_crypto_enable&quot;</span>).<span class="ident">unwrap_or</span>(<span class="bool-val">false</span>) {
@@ -2648,10 +2652,12 @@
                             })<span class="question-mark">?</span>
                     };
 
-                    <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span> <span class="ident">jws_signer</span>.<span class="ident">get_validator</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                        <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to load JwsValidator from JwsSigner&quot;</span>);
-                        <span class="ident">OperationError::CryptographyError</span>
-                    })<span class="question-mark">?</span>;
+                    <span class="comment">/*
+                    let jws_validator = jws_signer.get_validator().map_err(|e| {
+                        admin_error!(err = ?e, &quot;Unable to load JwsValidator from JwsSigner&quot;);
+                        OperationError::CryptographyError
+                    })?;
+                    */</span>
 
                     <span class="kw">let</span> <span class="ident">enable_pkce</span> <span class="op">=</span> <span class="ident">ent</span>
                         .<span class="ident">get_ava_single_bool</span>(<span class="string">&quot;oauth2_allow_insecure_client_disable_pkce&quot;</span>)
@@ -2685,7 +2691,7 @@
                         <span class="ident">authz_secret</span>,
                         <span class="ident">token_fernet</span>,
                         <span class="ident">jws_signer</span>,
-                        <span class="ident">jws_validator</span>,
+                        <span class="comment">// jws_validator,</span>
                         <span class="ident">enable_pkce</span>,
                         <span class="ident">iss</span>: <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>(),
                         <span class="ident">authorization_endpoint</span>,
@@ -2722,7 +2728,7 @@
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">auth_req</span>: <span class="kw-2">&amp;</span><span class="ident">AuthorisationRequest</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="comment">// due to identity processing we already know that:</span>
         <span class="comment">// * the session must be authenticated, and valid</span>
         <span class="comment">// * is within it&#39;s valid time window.</span>
@@ -2767,14 +2773,12 @@
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
             }
             <span class="prelude-val">Some</span>(<span class="ident">pkce_request</span>.<span class="ident">code_challenge</span>.<span class="ident">clone</span>())
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">o2rs</span>.<span class="ident">enable_pkce</span> {
+            <span class="macro">security_error!</span>(<span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">name</span>, <span class="string">&quot;No PKCE code challenge was provided with client in enforced PKCE mode.&quot;</span>);
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
         } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="ident">o2rs</span>.<span class="ident">enable_pkce</span> {
-                <span class="macro">security_error!</span>(<span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">name</span>, <span class="string">&quot;No PKCE code challenge was provided with client in enforced PKCE mode.&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
-            } <span class="kw">else</span> {
-                <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">name</span>, <span class="string">&quot;Insecure client configuration - pkce is not enforced.&quot;</span>);
-                <span class="prelude-val">None</span>
-            }
+            <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">o2rs</span>.<span class="ident">name</span>, <span class="string">&quot;Insecure client configuration - pkce is not enforced.&quot;</span>);
+            <span class="prelude-val">None</span>
         };
 
         <span class="comment">// TODO: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters</span>
@@ -2799,7 +2803,7 @@
         <span class="comment">// NOTE: login_hint is handled in the UI code, not here.</span>
 
         <span class="comment">// Deny any uat with an auth method of anonymous</span>
-        <span class="kw">if</span> <span class="ident">uat</span>.<span class="ident">auth_type</span> <span class="op">=</span><span class="op">=</span> <span class="ident">AuthType::Anonymous</span> {
+        <span class="kw">if</span> <span class="ident">uat</span>.<span class="ident">auth_type</span> <span class="op">==</span> <span class="ident">AuthType::Anonymous</span> {
             <span class="macro">admin_error!</span>(
                 <span class="string">&quot;Invalid oauth2 request - refusing to allow user that authenticated with anonymous&quot;</span>
             );
@@ -2894,7 +2898,7 @@
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">consent_token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Decode the consent req with our system fernet key. Use a ttl of 5 minutes.</span>
         <span class="kw">let</span> <span class="ident">consent_req</span>: <span class="ident">ConsentToken</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">inner</span>
@@ -2964,7 +2968,7 @@
         <span class="ident">uat</span>: <span class="kw-2">&amp;</span><span class="ident">UserAuthToken</span>,
         <span class="ident">consent_token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Decode the consent req with our system fernet key. Use a ttl of 5 minutes.</span>
         <span class="kw">let</span> <span class="ident">consent_req</span>: <span class="ident">ConsentToken</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">inner</span>
@@ -3012,7 +3016,7 @@
         <span class="ident">client_authz</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span>,
         <span class="ident">token_req</span>: <span class="kw-2">&amp;</span><span class="ident">AccessTokenRequest</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="ident">token_req</span>.<span class="ident">grant_type</span> <span class="op">!</span><span class="op">=</span> <span class="string">&quot;authorization_code&quot;</span> {
             <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 grant_type (should be &#39;authorization_code&#39;)&quot;</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
@@ -3022,8 +3026,8 @@
             <span class="ident">parse_basic_authz</span>(<span class="ident">client_authz</span>)<span class="question-mark">?</span>
         } <span class="kw">else</span> {
             <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="ident">token_req</span>.<span class="ident">client_id</span>, <span class="kw-2">&amp;</span><span class="ident">token_req</span>.<span class="ident">client_secret</span>) {
-                (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">b</span>)) <span class="op">=</span><span class="op">&gt;</span> (<span class="ident">a</span>.<span class="ident">clone</span>(), <span class="ident">b</span>.<span class="ident">clone</span>()),
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                (<span class="prelude-val">Some</span>(<span class="ident">a</span>), <span class="prelude-val">Some</span>(<span class="ident">b</span>)) =&gt; (<span class="ident">a</span>.<span class="ident">clone</span>(), <span class="ident">b</span>.<span class="ident">clone</span>()),
+                <span class="kw">_</span> =&gt; {
                     <span class="macro">security_info!</span>(
                         <span class="string">&quot;Invalid oauth2 authentication - no basic auth or missing auth post data&quot;</span>
                     );
@@ -3080,11 +3084,11 @@
                 );
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
             }
-        } <span class="kw">else</span> {
-            <span class="kw">if</span> <span class="ident">o2rs</span>.<span class="ident">enable_pkce</span> {
-                <span class="macro">security_info!</span>(<span class="string">&quot;PKCE code verification failed - no code challenge present in PKCE enforced mode&quot;</span>);
-                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
-            }
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">o2rs</span>.<span class="ident">enable_pkce</span> {
+            <span class="macro">security_info!</span>(
+                <span class="string">&quot;PKCE code verification failed - no code challenge present in PKCE enforced mode&quot;</span>
+            );
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidRequest</span>);
         }
 
         <span class="comment">// Validate the redirect_uri is the same as the original.</span>
@@ -3216,7 +3220,7 @@
         <span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">intr_req</span>: <span class="kw-2">&amp;</span><span class="ident">AccessTokenIntrospectRequest</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> (<span class="ident">client_id</span>, <span class="ident">secret</span>) <span class="op">=</span> <span class="ident">parse_basic_authz</span>(<span class="ident">client_authz</span>)<span class="question-mark">?</span>;
 
         <span class="comment">// Get the o2rs for the handle.</span>
@@ -3247,7 +3251,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">token</span> {
-            <span class="ident">Oauth2TokenType::Access</span>(<span class="ident">at</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2TokenType::Access</span>(<span class="ident">at</span>) =&gt; {
                 <span class="comment">// Has this token expired?</span>
                 <span class="kw">let</span> <span class="ident">odt_ct</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
                 <span class="kw">if</span> <span class="ident">at</span>.<span class="ident">expiry</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">odt_ct</span> {
@@ -3262,8 +3266,8 @@
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">admin_error!</span>(<span class="string">&quot;Account is not valid&quot;</span>));
 
                 <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">valid</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">account</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">account</span>,
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">account</span>)) =&gt; <span class="ident">account</span>,
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">at</span>.<span class="ident">uuid</span>, <span class="string">&quot;access token has account not valid, returning inactive&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="ident">AccessTokenIntrospectResponse::inactive</span>());
                     }
@@ -3293,7 +3297,7 @@
                     <span class="ident">jti</span>: <span class="prelude-val">None</span>,
                 })
             }
-            <span class="ident">Oauth2TokenType::Refresh</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Ok</span>(<span class="ident">AccessTokenIntrospectResponse::inactive</span>()),
+            <span class="ident">Oauth2TokenType::Refresh</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">AccessTokenIntrospectResponse::inactive</span>()),
         }
     }
 
@@ -3303,7 +3307,7 @@
         <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">o2rs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">rs_set</span>.<span class="ident">get</span>(<span class="ident">client_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="macro">admin_warn!</span>(
                 <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;</span>
@@ -3313,7 +3317,7 @@
 
         <span class="kw">let</span> <span class="ident">token</span>: <span class="ident">Oauth2TokenType</span> <span class="op">=</span> <span class="ident">o2rs</span>
             .<span class="ident">token_fernet</span>
-            .<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">client_authz</span>)
+            .<span class="ident">decrypt</span>(<span class="ident">client_authz</span>)
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to decrypt token introspection request&quot;</span>);
                 <span class="ident">Oauth2Error::InvalidRequest</span>
@@ -3326,7 +3330,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="kw">match</span> <span class="ident">token</span> {
-            <span class="ident">Oauth2TokenType::Access</span>(<span class="ident">at</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="ident">Oauth2TokenType::Access</span>(<span class="ident">at</span>) =&gt; {
                 <span class="comment">// Has this token expired?</span>
                 <span class="kw">let</span> <span class="ident">odt_ct</span> <span class="op">=</span> <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span>;
                 <span class="kw">if</span> <span class="ident">at</span>.<span class="ident">expiry</span> <span class="op">&lt;</span><span class="op">=</span> <span class="ident">odt_ct</span> {
@@ -3341,8 +3345,8 @@
                     .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="macro">admin_error!</span>(<span class="string">&quot;Account is not valid&quot;</span>));
 
                 <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">valid</span> {
-                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">account</span>)) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">account</span>,
-                    <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">account</span>)) =&gt; <span class="ident">account</span>,
+                    <span class="kw">_</span> =&gt; {
                         <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">at</span>.<span class="ident">uuid</span>, <span class="string">&quot;access token has account not valid, returning inactive&quot;</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidToken</span>);
                     }
@@ -3370,22 +3374,22 @@
                         <span class="comment">// Map from displayname</span>
                         <span class="ident">name</span>: <span class="prelude-val">Some</span>(<span class="ident">account</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>()),
                         <span class="comment">// Map from spn</span>
-                        <span class="ident">preferred_username</span>: <span class="prelude-val">Some</span>(<span class="ident">account</span>.<span class="ident">spn</span>.<span class="ident">clone</span>()),
-                        <span class="ident">scopes</span>: <span class="ident">at</span>.<span class="ident">scopes</span>.<span class="ident">clone</span>(),
+                        <span class="ident">preferred_username</span>: <span class="prelude-val">Some</span>(<span class="ident">account</span>.<span class="ident">spn</span>),
+                        <span class="ident">scopes</span>: <span class="ident">at</span>.<span class="ident">scopes</span>,
                         ..<span class="ident">Default::default</span>()
                     },
                     <span class="ident">claims</span>: <span class="ident">Default::default</span>(),
                 })
             }
             <span class="comment">// https://openid.net/specs/openid-connect-basic-1_0.html#UserInfoErrorResponse</span>
-            <span class="ident">Oauth2TokenType::Refresh</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidToken</span>),
+            <span class="ident">Oauth2TokenType::Refresh</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">Oauth2Error::InvalidToken</span>),
         }
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_discovery</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">o2rs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">rs_set</span>.<span class="ident">get</span>(<span class="ident">client_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="macro">admin_warn!</span>(
                 <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;</span>
@@ -3406,8 +3410,8 @@
         <span class="kw">let</span> <span class="ident">subject_types_supported</span> <span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">SubjectType::Public</span>];
 
         <span class="kw">let</span> <span class="ident">id_token_signing_alg_values_supported</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">o2rs</span>.<span class="ident">jws_signer</span> {
-            <span class="ident">JwsSigner::ES256</span> { .. } <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::ES256</span>],
-            <span class="ident">JwsSigner::RS256</span> { .. } <span class="op">=</span><span class="op">&gt;</span> <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::RS256</span>],
+            <span class="ident">JwsSigner::ES256</span> { .. } =&gt; <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::ES256</span>],
+            <span class="ident">JwsSigner::RS256</span> { .. } =&gt; <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::RS256</span>],
         };
 
         <span class="kw">let</span> <span class="ident">userinfo_signing_alg_values_supported</span> <span class="op">=</span> <span class="prelude-val">None</span>;
@@ -3461,7 +3465,7 @@
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client_id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">o2rs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">rs_set</span>.<span class="ident">get</span>(<span class="ident">client_id</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="macro">admin_warn!</span>(
                 <span class="string">&quot;Invalid oauth2 client_id (have you configured the oauth2 resource server?)&quot;</span>
@@ -3479,7 +3483,7 @@
     }
 }
 
-<span class="kw">fn</span> <span class="ident">parse_basic_authz</span>(<span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">String</span>), <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+<span class="kw">fn</span> <span class="ident">parse_basic_authz</span>(<span class="ident">client_authz</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">String</span>), <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
     <span class="comment">// Check the client_authz</span>
     <span class="kw">let</span> <span class="ident">authz</span> <span class="op">=</span> <span class="ident">base64::decode</span>(<span class="kw-2">&amp;</span><span class="ident">client_authz</span>)
         .<span class="ident">map_err</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> {
@@ -3536,7 +3540,7 @@
     <span class="kw">const</span> <span class="ident">TOKEN_EXPIRE</span>: <span class="ident">u64</span> <span class="op">=</span> <span class="number">900</span>;
 
     <span class="macro">macro_rules!</span> <span class="ident">create_code_verifier</span> {
-        (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">key</span>:<span class="ident">expr</span>) <span class="op">=</span><span class="op">&gt;</span> {{
+        (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">key</span>:<span class="ident">expr</span>) =&gt; {{
             <span class="kw">let</span> <span class="ident">code_verifier</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">key</span>.<span class="ident">to_string</span>();
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">hasher</span> <span class="op">=</span> <span class="ident">sha::Sha256::new</span>();
             <span class="ident">hasher</span>.<span class="ident">update</span>(<span class="ident">code_verifier</span>.<span class="ident">as_bytes</span>());
@@ -3552,7 +3556,7 @@
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">uat</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">ct</span>:<span class="ident">expr</span>,
             <span class="macro-nonterminal">$</span><span class="macro-nonterminal">code_challenge</span>:<span class="ident">expr</span>
-        ) <span class="op">=</span><span class="op">&gt;</span> {{
+        ) =&gt; {{
             <span class="kw">let</span> <span class="ident">auth_req</span> <span class="op">=</span> <span class="ident">AuthorisationRequest</span> {
                 <span class="ident">response_type</span>: <span class="string">&quot;code&quot;</span>.<span class="ident">to_string</span>(),
                 <span class="ident">client_id</span>: <span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>(),
@@ -3580,7 +3584,7 @@
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">enable_pkce</span>: <span class="ident">bool</span>,
         <span class="ident">enable_legacy_crypto</span>: <span class="ident">bool</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">String</span>, <span class="ident">UserAuthToken</span>, <span class="ident">Identity</span>) {
+    ) -&gt; (<span class="ident">String</span>, <span class="ident">UserAuthToken</span>, <span class="ident">Identity</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
 
         <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
@@ -3596,11 +3600,15 @@
                 <span class="string">&quot;oauth2_rs_origin&quot;</span>,
                 <span class="ident">Value::new_url_s</span>(<span class="string">&quot;https://demo.example.com&quot;</span>).<span class="ident">unwrap</span>()
             ),
-            (<span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>, <span class="ident">Value::new_oauthscope</span>(<span class="string">&quot;openid&quot;</span>)),
+            (
+                <span class="string">&quot;oauth2_rs_implicit_scopes&quot;</span>,
+                <span class="ident">Value::new_oauthscope</span>(<span class="string">&quot;openid&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>)
+            ),
             <span class="comment">// System admins</span>
             (
                 <span class="string">&quot;oauth2_rs_scope_map&quot;</span>,
                 <span class="ident">Value::new_oauthscopemap</span>(<span class="ident">UUID_SYSTEM_ADMINS</span>, <span class="macro">btreeset!</span>[<span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()])
+                    .<span class="ident">expect</span>(<span class="string">&quot;invalid oauthscope&quot;</span>)
             ),
             (
                 <span class="string">&quot;oauth2_allow_insecure_client_disable_pkce&quot;</span>,
@@ -3644,7 +3652,7 @@
         <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
         <span class="ident">authtype</span>: <span class="ident">AuthType</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> (<span class="ident">UserAuthToken</span>, <span class="ident">Identity</span>) {
+    ) -&gt; (<span class="ident">UserAuthToken</span>, <span class="ident">Identity</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
             .<span class="ident">target_to_account</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_IDM_ADMIN</span>)
@@ -3686,7 +3694,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 permit&quot;</span>);
 
             <span class="comment">// Check we are reflecting the CSRF properly.</span>
-            <span class="macro">assert!</span>(<span class="ident">permit_success</span>.<span class="ident">state</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;123&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">permit_success</span>.<span class="ident">state</span> <span class="op">==</span> <span class="string">&quot;123&quot;</span>);
 
             <span class="comment">// == Submit the token exchange code.</span>
 
@@ -3705,7 +3713,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 token exchange&quot;</span>);
 
             <span class="comment">// 🎉 We got a token! In the future we can then check introspection from this point.</span>
-            <span class="macro">assert!</span>(<span class="ident">token_response</span>.<span class="ident">token_type</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;bearer&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">token_response</span>.<span class="ident">token_type</span> <span class="op">==</span> <span class="string">&quot;bearer&quot;</span>);
         })
     }
 
@@ -3748,7 +3756,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::UnsupportedResponseType</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::UnsupportedResponseType</span>
             );
 
             <span class="comment">// * No pkce in pkce enforced mode.</span>
@@ -3768,7 +3776,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidRequest</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidRequest</span>
             );
 
             <span class="comment">//  * invalid rs name</span>
@@ -3788,7 +3796,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidClientId</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidClientId</span>
             );
 
             <span class="comment">//  * mis match origin in the redirect.</span>
@@ -3808,7 +3816,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidOrigin</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidOrigin</span>
             );
 
             <span class="comment">// Requested scope is not available</span>
@@ -3828,7 +3836,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AccessDenied</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AccessDenied</span>
             );
 
             <span class="comment">// Not a member of the group.</span>
@@ -3848,7 +3856,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">idm_admin_ident</span>, <span class="kw-2">&amp;</span><span class="ident">idm_admin_uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AccessDenied</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AccessDenied</span>
             );
 
             <span class="comment">// Deny Anonymous auth methods</span>
@@ -3868,7 +3876,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorisation</span>(<span class="kw-2">&amp;</span><span class="ident">anon_ident</span>, <span class="kw-2">&amp;</span><span class="ident">anon_uat</span>, <span class="kw-2">&amp;</span><span class="ident">auth_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AccessDenied</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AccessDenied</span>
             );
         })
     }
@@ -3915,7 +3923,7 @@
                         <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TOKEN_EXPIRE</span>),
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::CryptographyError</span>
+                    <span class="op">==</span> <span class="ident">OperationError::CryptographyError</span>
             );
 
             <span class="comment">//  * incorrect ident</span>
@@ -3931,7 +3939,7 @@
                         <span class="ident">ct</span>,
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidSessionState</span>
+                    <span class="op">==</span> <span class="ident">OperationError::InvalidSessionState</span>
             );
 
             <span class="comment">//  * incorrect session id</span>
@@ -3944,7 +3952,7 @@
                         <span class="ident">ct</span>,
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidSessionState</span>
+                    <span class="op">==</span> <span class="ident">OperationError::InvalidSessionState</span>
             );
         })
     }
@@ -3999,7 +4007,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="prelude-val">Some</span>(<span class="string">&quot;not base64&quot;</span>), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
             );
 
             <span class="comment">//  * doesn&#39;t have :</span>
@@ -4008,7 +4016,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
             );
 
             <span class="comment">//  * invalid client_id</span>
@@ -4017,7 +4025,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
             );
 
             <span class="comment">//  * valid client_id, but invalid secret</span>
@@ -4026,7 +4034,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AuthenticationRequired</span>
             );
 
             <span class="comment">// ✅ Now the valid client_authz is in place.</span>
@@ -4040,7 +4048,7 @@
                         <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TOKEN_EXPIRE</span>)
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidRequest</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidRequest</span>
             );
 
             <span class="comment">//  * Uat has expired!</span>
@@ -4053,7 +4061,7 @@
                         <span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="ident">UAT_EXPIRE</span>)
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::AccessDenied</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::AccessDenied</span>
             );
 
             <span class="comment">//  * incorrect grant_type</span>
@@ -4069,7 +4077,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidRequest</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidRequest</span>
             );
 
             <span class="comment">//  * Incorrect redirect uri</span>
@@ -4085,7 +4093,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidRequest</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidRequest</span>
             );
 
             <span class="comment">//  * code verifier incorrect</span>
@@ -4101,7 +4109,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_token_exchange</span>(<span class="ident">client_authz</span>.<span class="ident">as_deref</span>(), <span class="kw-2">&amp;</span><span class="ident">token_req</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Oauth2Error::InvalidRequest</span>
+                    <span class="op">==</span> <span class="ident">Oauth2Error::InvalidRequest</span>
             );
         })
     }
@@ -4150,12 +4158,12 @@
 
             <span class="macro">eprintln!</span>(<span class="string">&quot;👉  {:?}&quot;</span>, <span class="ident">intr_response</span>);
             <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">active</span>);
-            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">scope</span>.<span class="ident">as_deref</span>() <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;openid&quot;</span>));
-            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">client_id</span>.<span class="ident">as_deref</span>() <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>));
-            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">username</span>.<span class="ident">as_deref</span>() <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;admin@example.com&quot;</span>));
-            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">token_type</span>.<span class="ident">as_deref</span>() <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;access_token&quot;</span>));
-            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">iat</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ct</span>.<span class="ident">as_secs</span>() <span class="kw">as</span> <span class="ident">i64</span>));
-            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">nbf</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">ct</span>.<span class="ident">as_secs</span>() <span class="kw">as</span> <span class="ident">i64</span>));
+            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">scope</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;openid&quot;</span>));
+            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">client_id</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>));
+            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">username</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;admin@example.com&quot;</span>));
+            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">token_type</span>.<span class="ident">as_deref</span>() <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;access_token&quot;</span>));
+            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">iat</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">ct</span>.<span class="ident">as_secs</span>() <span class="kw">as</span> <span class="ident">i64</span>));
+            <span class="macro">assert!</span>(<span class="ident">intr_response</span>.<span class="ident">nbf</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">ct</span>.<span class="ident">as_secs</span>() <span class="kw">as</span> <span class="ident">i64</span>));
 
             <span class="ident">drop</span>(<span class="ident">idms_prox_read</span>);
             <span class="comment">// start a write,</span>
@@ -4222,7 +4230,7 @@
                 .<span class="ident">check_oauth2_authorise_reject</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">consent_request</span>.<span class="ident">consent_token</span>, <span class="ident">ct</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 reject&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="ident">reject_success</span> <span class="op">=</span><span class="op">=</span> <span class="ident">redirect_uri</span>);
+            <span class="macro">assert!</span>(<span class="ident">reject_success</span> <span class="op">==</span> <span class="ident">redirect_uri</span>);
 
             <span class="comment">// Too much time past to reject</span>
             <span class="kw">let</span> <span class="ident">past_ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span> <span class="op">+</span> <span class="number">301</span>);
@@ -4235,7 +4243,7 @@
                         <span class="ident">past_ct</span>
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::CryptographyError</span>
+                    <span class="op">==</span> <span class="ident">OperationError::CryptographyError</span>
             );
 
             <span class="comment">// Invalid consent token</span>
@@ -4243,7 +4251,7 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">check_oauth2_authorise_reject</span>(<span class="kw-2">&amp;</span><span class="ident">ident</span>, <span class="kw-2">&amp;</span><span class="ident">uat</span>, <span class="string">&quot;not a token&quot;</span>, <span class="ident">ct</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::CryptographyError</span>
+                    <span class="op">==</span> <span class="ident">OperationError::CryptographyError</span>
             );
 
             <span class="comment">// Wrong UAT</span>
@@ -4256,7 +4264,7 @@
                         <span class="ident">ct</span>
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidSessionState</span>
+                    <span class="op">==</span> <span class="ident">OperationError::InvalidSessionState</span>
             );
             <span class="comment">// Wrong ident</span>
             <span class="macro">assert!</span>(
@@ -4268,7 +4276,7 @@
                         <span class="ident">ct</span>
                     )
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::InvalidSessionState</span>
+                    <span class="op">==</span> <span class="ident">OperationError::InvalidSessionState</span>
             );
         })
     }
@@ -4288,14 +4296,14 @@
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">oauth2_openid_discovery</span>(<span class="string">&quot;nosuchclient&quot;</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::NoMatchingEntries</span>
+                    <span class="op">==</span> <span class="ident">OperationError::NoMatchingEntries</span>
             );
 
             <span class="macro">assert!</span>(
                 <span class="ident">idms_prox_read</span>
                     .<span class="ident">oauth2_openid_publickey</span>(<span class="string">&quot;nosuchclient&quot;</span>)
                     .<span class="ident">unwrap_err</span>()
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">OperationError::NoMatchingEntries</span>
+                    <span class="op">==</span> <span class="ident">OperationError::NoMatchingEntries</span>
             );
 
             <span class="kw">let</span> <span class="ident">discovery</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>
@@ -4309,35 +4317,35 @@
             <span class="kw">let</span> <span class="ident">jwk</span> <span class="op">=</span> <span class="ident">jwkset</span>.<span class="ident">keys</span>.<span class="ident">pop</span>().<span class="ident">expect</span>(<span class="string">&quot;no such jwk&quot;</span>);
 
             <span class="kw">match</span> <span class="ident">jwk</span> {
-                <span class="ident">Jwk::EC</span> { <span class="ident">alg</span>, <span class="ident">use_</span>, <span class="ident">kid</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Jwk::EC</span> { <span class="ident">alg</span>, <span class="ident">use_</span>, <span class="ident">kid</span>, .. } =&gt; {
                     <span class="kw">match</span> (
                         <span class="ident">alg</span>.<span class="ident">unwrap</span>(),
                         <span class="kw-2">&amp;</span><span class="ident">discovery</span>.<span class="ident">id_token_signing_alg_values_supported</span>[<span class="number">0</span>],
                     ) {
-                        (<span class="ident">JwaAlg::ES256</span>, <span class="ident">IdTokenSignAlg::ES256</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                        (<span class="ident">JwaAlg::ES256</span>, <span class="ident">IdTokenSignAlg::ES256</span>) =&gt; {}
+                        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                     };
-                    <span class="macro">assert!</span>(<span class="ident">use_</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">JwkUse::Sig</span>);
-                    <span class="macro">assert!</span>(<span class="ident">kid</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;test_resource_server&quot;</span>)
+                    <span class="macro">assert!</span>(<span class="ident">use_</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="ident">JwkUse::Sig</span>);
+                    <span class="macro">assert!</span>(<span class="ident">kid</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;test_resource_server&quot;</span>)
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">issuer</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/&quot;</span>).<span class="ident">unwrap</span>());
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">issuer</span> <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/&quot;</span>).<span class="ident">unwrap</span>());
 
             <span class="macro">assert!</span>(
                 <span class="ident">discovery</span>.<span class="ident">authorization_endpoint</span>
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/ui/oauth2&quot;</span>).<span class="ident">unwrap</span>()
+                    <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/ui/oauth2&quot;</span>).<span class="ident">unwrap</span>()
             );
 
             <span class="macro">assert!</span>(
                 <span class="ident">discovery</span>.<span class="ident">token_endpoint</span>
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/oauth2/token&quot;</span>).<span class="ident">unwrap</span>()
+                    <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/oauth2/token&quot;</span>).<span class="ident">unwrap</span>()
             );
 
             <span class="macro">assert!</span>(
                 <span class="ident">discovery</span>.<span class="ident">userinfo_endpoint</span>
-                    <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(
+                    <span class="op">==</span> <span class="prelude-val">Some</span>(
                         <span class="ident">Url::parse</span>(
                             <span class="string">&quot;https://idm.example.com/oauth2/openid/test_resource_server/userinfo&quot;</span>
                         )
@@ -4347,7 +4355,7 @@
 
             <span class="macro">assert!</span>(
                 <span class="ident">discovery</span>.<span class="ident">jwks_uri</span>
-                    <span class="op">=</span><span class="op">=</span> <span class="ident">Url::parse</span>(
+                    <span class="op">==</span> <span class="ident">Url::parse</span>(
                         <span class="string">&quot;https://idm.example.com/oauth2/openid/test_resource_server/public_key.jwk&quot;</span>
                     )
                     .<span class="ident">unwrap</span>()
@@ -4355,24 +4363,24 @@
 
             <span class="macro">eprintln!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">discovery</span>.<span class="ident">scopes_supported</span>);
             <span class="macro">assert!</span>(
-                <span class="ident">discovery</span>.<span class="ident">scopes_supported</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()])
+                <span class="ident">discovery</span>.<span class="ident">scopes_supported</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>(), <span class="string">&quot;read&quot;</span>.<span class="ident">to_string</span>()])
             );
 
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">response_types_supported</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ResponseType::Code</span>]);
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">response_modes_supported</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ResponseMode::Query</span>]);
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">grant_types_supported</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">GrantType::AuthorisationCode</span>]);
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">subject_types_supported</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">SubjectType::Public</span>]);
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">id_token_signing_alg_values_supported</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::ES256</span>]);
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">response_types_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">ResponseType::Code</span>]);
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">response_modes_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">ResponseMode::Query</span>]);
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">grant_types_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">GrantType::AuthorisationCode</span>]);
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">subject_types_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">SubjectType::Public</span>]);
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">id_token_signing_alg_values_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::ES256</span>]);
             <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">userinfo_signing_alg_values_supported</span>.<span class="ident">is_none</span>());
             <span class="macro">assert!</span>(
                 <span class="ident">discovery</span>.<span class="ident">token_endpoint_auth_methods_supported</span>
-                    <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[
+                    <span class="op">==</span> <span class="macro">vec!</span>[
                         <span class="ident">TokenEndpointAuthMethod::ClientSecretBasic</span>,
                         <span class="ident">TokenEndpointAuthMethod::ClientSecretPost</span>
                     ]
             );
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">display_values_supported</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="ident">DisplayValue::Page</span>]));
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">claim_types_supported</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="ident">ClaimType::Normal</span>]);
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">display_values_supported</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="ident">DisplayValue::Page</span>]));
+            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">claim_types_supported</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="ident">ClaimType::Normal</span>]);
             <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">claims_supported</span>.<span class="ident">is_none</span>());
             <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">service_documentation</span>.<span class="ident">is_some</span>());
 
@@ -4442,7 +4450,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 token exchange&quot;</span>);
 
             <span class="comment">// 🎉 We got a token!</span>
-            <span class="macro">assert!</span>(<span class="ident">token_response</span>.<span class="ident">token_type</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;bearer&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">token_response</span>.<span class="ident">token_type</span> <span class="op">==</span> <span class="string">&quot;bearer&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">id_token</span> <span class="op">=</span> <span class="ident">token_response</span>.<span class="ident">id_token</span>.<span class="ident">expect</span>(<span class="string">&quot;No id_token in response!&quot;</span>);
             <span class="kw">let</span> <span class="ident">access_token</span> <span class="op">=</span> <span class="ident">token_response</span>.<span class="ident">access_token</span>;
@@ -4465,23 +4473,23 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to verify oidc&quot;</span>);
 
             <span class="comment">// Are the id_token values what we expect?</span>
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iss</span> <span class="op">=</span><span class="op">=</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/&quot;</span>).<span class="ident">unwrap</span>());
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">=</span><span class="op">=</span> <span class="ident">OidcSubject::U</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">aud</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;test_resource_server&quot;</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iat</span> <span class="op">=</span><span class="op">=</span> <span class="ident">iat</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">nbf</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="ident">iat</span>));
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">exp</span> <span class="op">=</span><span class="op">=</span> <span class="ident">iat</span> <span class="op">+</span> (<span class="ident">AUTH_SESSION_EXPIRY</span> <span class="kw">as</span> <span class="ident">i64</span>));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iss</span> <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/&quot;</span>).<span class="ident">unwrap</span>());
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">==</span> <span class="ident">OidcSubject::U</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">aud</span> <span class="op">==</span> <span class="string">&quot;test_resource_server&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iat</span> <span class="op">==</span> <span class="ident">iat</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">nbf</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="ident">iat</span>));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">exp</span> <span class="op">==</span> <span class="ident">iat</span> <span class="op">+</span> (<span class="ident">AUTH_SESSION_EXPIRY</span> <span class="kw">as</span> <span class="ident">i64</span>));
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">auth_time</span>.<span class="ident">is_none</span>());
             <span class="comment">// Is nonce correctly passed through?</span>
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">nonce</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;abcdef&quot;</span>.<span class="ident">to_string</span>()));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">nonce</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;abcdef&quot;</span>.<span class="ident">to_string</span>()));
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">at_hash</span>.<span class="ident">is_none</span>());
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">acr</span>.<span class="ident">is_none</span>());
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">amr</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="string">&quot;passwordmfa&quot;</span>.<span class="ident">to_string</span>()]));
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">azp</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>()));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">amr</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="string">&quot;passwordmfa&quot;</span>.<span class="ident">to_string</span>()]));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">azp</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;test_resource_server&quot;</span>.<span class="ident">to_string</span>()));
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">jti</span>.<span class="ident">is_none</span>());
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">name</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;System Administrator&quot;</span>.<span class="ident">to_string</span>()));
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">preferred_username</span> <span class="op">=</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;admin@example.com&quot;</span>.<span class="ident">to_string</span>()));
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">scopes</span> <span class="op">=</span><span class="op">=</span> <span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>()]);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">name</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;System Administrator&quot;</span>.<span class="ident">to_string</span>()));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">preferred_username</span> <span class="op">==</span> <span class="prelude-val">Some</span>(<span class="string">&quot;admin@example.com&quot;</span>.<span class="ident">to_string</span>()));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span>.<span class="ident">scopes</span> <span class="op">==</span> <span class="macro">vec!</span>[<span class="string">&quot;openid&quot;</span>.<span class="ident">to_string</span>()]);
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">claims</span>.<span class="ident">is_empty</span>());
             <span class="comment">// Does our access token work with the userinfo endpoint?</span>
             <span class="comment">// Do the id_token details line up to the userinfo?</span>
@@ -4489,20 +4497,20 @@
                 .<span class="ident">oauth2_openid_userinfo</span>(<span class="string">&quot;test_resource_server&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">access_token</span>, <span class="ident">ct</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;failed to get userinfo&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iss</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">iss</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">sub</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">aud</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">aud</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iat</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">iat</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">nbf</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">nbf</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">exp</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">exp</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iss</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">iss</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">sub</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">aud</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">aud</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iat</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">iat</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">nbf</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">nbf</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">exp</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">exp</span>);
             <span class="macro">assert!</span>(<span class="ident">userinfo</span>.<span class="ident">auth_time</span>.<span class="ident">is_none</span>());
             <span class="macro">assert!</span>(<span class="ident">userinfo</span>.<span class="ident">nonce</span>.<span class="ident">is_none</span>());
             <span class="macro">assert!</span>(<span class="ident">userinfo</span>.<span class="ident">at_hash</span>.<span class="ident">is_none</span>());
             <span class="macro">assert!</span>(<span class="ident">userinfo</span>.<span class="ident">acr</span>.<span class="ident">is_none</span>());
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">amr</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">amr</span>);
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">azp</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">azp</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">amr</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">amr</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">azp</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">azp</span>);
             <span class="macro">assert!</span>(<span class="ident">userinfo</span>.<span class="ident">jti</span>.<span class="ident">is_none</span>());
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span> <span class="op">=</span><span class="op">=</span> <span class="ident">userinfo</span>.<span class="ident">s_claims</span>);
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">s_claims</span> <span class="op">==</span> <span class="ident">userinfo</span>.<span class="ident">s_claims</span>);
             <span class="macro">assert!</span>(<span class="ident">userinfo</span>.<span class="ident">claims</span>.<span class="ident">is_empty</span>());
         })
     }
@@ -4566,18 +4574,18 @@
             <span class="kw">let</span> <span class="ident">public_jwk</span> <span class="op">=</span> <span class="ident">jwk</span>.<span class="ident">clone</span>();
 
             <span class="kw">match</span> <span class="ident">jwk</span> {
-                <span class="ident">Jwk::RSA</span> { <span class="ident">alg</span>, <span class="ident">use_</span>, <span class="ident">kid</span>, .. } <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="ident">Jwk::RSA</span> { <span class="ident">alg</span>, <span class="ident">use_</span>, <span class="ident">kid</span>, .. } =&gt; {
                     <span class="kw">match</span> (
                         <span class="ident">alg</span>.<span class="ident">unwrap</span>(),
                         <span class="kw-2">&amp;</span><span class="ident">discovery</span>.<span class="ident">id_token_signing_alg_values_supported</span>[<span class="number">0</span>],
                     ) {
-                        (<span class="ident">JwaAlg::RS256</span>, <span class="ident">IdTokenSignAlg::RS256</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                        <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                        (<span class="ident">JwaAlg::RS256</span>, <span class="ident">IdTokenSignAlg::RS256</span>) =&gt; {}
+                        <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
                     };
-                    <span class="macro">assert!</span>(<span class="ident">use_</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="ident">JwkUse::Sig</span>);
-                    <span class="macro">assert!</span>(<span class="ident">kid</span>.<span class="ident">unwrap</span>() <span class="op">=</span><span class="op">=</span> <span class="string">&quot;test_resource_server&quot;</span>)
+                    <span class="macro">assert!</span>(<span class="ident">use_</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="ident">JwkUse::Sig</span>);
+                    <span class="macro">assert!</span>(<span class="ident">kid</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;test_resource_server&quot;</span>)
                 }
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="macro">panic!</span>(),
+                <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
             <span class="comment">// Check that the id_token is signed with the correct key.</span>
@@ -4607,7 +4615,7 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to perform oauth2 token exchange&quot;</span>);
 
             <span class="comment">// 🎉 We got a token!</span>
-            <span class="macro">assert!</span>(<span class="ident">token_response</span>.<span class="ident">token_type</span> <span class="op">=</span><span class="op">=</span> <span class="string">&quot;bearer&quot;</span>);
+            <span class="macro">assert!</span>(<span class="ident">token_response</span>.<span class="ident">token_type</span> <span class="op">==</span> <span class="string">&quot;bearer&quot;</span>);
             <span class="kw">let</span> <span class="ident">id_token</span> <span class="op">=</span> <span class="ident">token_response</span>.<span class="ident">id_token</span>.<span class="ident">expect</span>(<span class="string">&quot;No id_token in response!&quot;</span>);
 
             <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span>
@@ -4622,7 +4630,7 @@
                 .<span class="ident">validate</span>(<span class="kw-2">&amp;</span><span class="ident">jws_validator</span>, <span class="ident">iat</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to verify oidc&quot;</span>);
 
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">=</span><span class="op">=</span> <span class="ident">OidcSubject::U</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
+            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">==</span> <span class="ident">OidcSubject::U</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
         })
     }
 }

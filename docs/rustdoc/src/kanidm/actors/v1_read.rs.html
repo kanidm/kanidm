@@ -1272,7 +1272,7 @@
 }
 
 <span class="kw">impl</span> <span class="ident">QueryServerReadV1</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">idms</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">IdmServer</span><span class="op">&gt;</span>, <span class="ident">ldap</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">LdapServer</span><span class="op">&gt;</span>) <span class="op">-</span><span class="op">&gt;</span> <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>, <span class="ident">idms</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">IdmServer</span><span class="op">&gt;</span>, <span class="ident">ldap</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">LdapServer</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="macro">info!</span>(<span class="string">&quot;Starting query server v1 worker ...&quot;</span>);
         <span class="ident">QueryServerReadV1</span> {
             <span class="ident">log_level</span>,
@@ -1285,7 +1285,7 @@
         <span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
         <span class="ident">idms</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">IdmServer</span><span class="op">&gt;</span>,
         <span class="ident">ldap</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">LdapServer</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
+    ) -&gt; <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="self">Self</span> {
         <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="ident">QueryServerReadV1::new</span>(<span class="ident">log_level</span>, <span class="ident">idms</span>, <span class="ident">ldap</span>));
 
         <span class="kw">let</span> <span class="ident">x_ref</span> <span class="op">=</span> <span class="ident">Box::leak</span>(<span class="ident">x</span>);
@@ -1312,7 +1312,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">req</span>: <span class="ident">SearchRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SearchResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">SearchResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Begin a read</span>
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
@@ -1359,7 +1359,7 @@
         <span class="ident">sessionid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
         <span class="ident">req</span>: <span class="ident">AuthRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResult</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResult</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// This is probably the first function that really implements logic</span>
         <span class="comment">// &quot;on top&quot; of the db server concept. In this case we check if</span>
         <span class="comment">// the credentials provided is sufficient to say if someone is</span>
@@ -1412,22 +1412,22 @@
         <span class="kw">let</span> <span class="ident">dest_file</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}/backup-{}.json&quot;</span>, <span class="ident">outpath</span>, <span class="ident">timestamp</span>);
 
         <span class="kw">match</span> <span class="ident">Path::new</span>(<span class="kw-2">&amp;</span><span class="ident">dest_file</span>).<span class="ident">exists</span>() {
-            <span class="bool-val">true</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="bool-val">true</span> =&gt; {
                 <span class="macro">error!</span>(
                     <span class="string">&quot;Online backup file {} already exists, will not owerwrite it.&quot;</span>,
                     <span class="ident">dest_file</span>
                 );
             }
-            <span class="bool-val">false</span> <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="bool-val">false</span> =&gt; {
                 <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
                 <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OnlineBackupEvent&gt;&quot;</span>, {
                     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">get_be_txn</span>().<span class="ident">backup</span>(<span class="kw-2">&amp;</span><span class="ident">dest_file</span>);
 
                     <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">res</span> {
-                        <span class="prelude-val">Ok</span>(()) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Ok</span>(()) =&gt; {
                             <span class="macro">info!</span>(<span class="string">&quot;Online backup created {} successfully&quot;</span>, <span class="ident">dest_file</span>);
                         }
-                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                        <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                             <span class="macro">error!</span>(<span class="string">&quot;Online backup failed to create {}: {:?}&quot;</span>, <span class="ident">dest_file</span>, <span class="ident">e</span>);
                         }
                     }
@@ -1441,8 +1441,8 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">backup_file_list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::new</span>();
         <span class="comment">// pattern to find automatically generated backup files</span>
         <span class="kw">let</span> <span class="ident">re</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">Regex::new</span>(<span class="string">r&quot;^backup-\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z\.json$&quot;</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">value</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">value</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">error</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
                 <span class="macro">eprintln!</span>(
                     <span class="string">&quot;Failed to parse regexp for online backup files: {:?}&quot;</span>,
                     <span class="ident">error</span>
@@ -1453,7 +1453,7 @@
 
         <span class="comment">// get a list of backup files</span>
         <span class="kw">match</span> <span class="ident">fs::read_dir</span>(<span class="ident">outpath</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">rd</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">rd</span>) =&gt; {
                 <span class="kw">for</span> <span class="ident">entry</span> <span class="kw">in</span> <span class="ident">rd</span> {
                     <span class="comment">// get PathBuf</span>
                     <span class="kw">let</span> <span class="ident">pb</span> <span class="op">=</span> <span class="ident">entry</span>.<span class="ident">unwrap</span>().<span class="ident">path</span>();
@@ -1471,7 +1471,7 @@
                     }
                 }
             }
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Online backup cleanup error read dir {}: {}&quot;</span>, <span class="ident">outpath</span>, <span class="ident">e</span>);
             }
         }
@@ -1498,8 +1498,8 @@
             <span class="kw">for</span> <span class="ident">file</span> <span class="kw">in</span> <span class="ident">backup_file_list</span> {
                 <span class="macro">debug!</span>(<span class="string">&quot;Online backup cleanup: removing {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">file</span>);
                 <span class="kw">match</span> <span class="ident">fs::remove_file</span>(<span class="kw-2">&amp;</span><span class="ident">file</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> {}
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; {}
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(
                             <span class="string">&quot;Online backup cleanup failed to remove file {:?}: {:?}&quot;</span>,
                             <span class="ident">file</span>, <span class="ident">e</span>
@@ -1522,7 +1522,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WhoamiResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">WhoamiResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// TODO #62: Move this to IdmServer!!!</span>
         <span class="comment">// Begin a read</span>
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
@@ -1565,11 +1565,11 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">entries</span> <span class="op">=</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>)<span class="question-mark">?</span>;
 
             <span class="kw">match</span> <span class="ident">entries</span>.<span class="ident">pop</span>() {
-                <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">entries</span>.<span class="ident">is_empty</span>() <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Some</span>(<span class="ident">e</span>) <span class="kw">if</span> <span class="ident">entries</span>.<span class="ident">is_empty</span>() =&gt; {
                     <span class="ident">WhoamiResult::new</span>(<span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">e</span>, <span class="ident">uat</span>).<span class="ident">map</span>(<span class="ident">WhoamiResult::response</span>)
                 }
-                <span class="prelude-val">Some</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>), <span class="comment">// Somehow matched multiple entries...</span>
-                <span class="kw">_</span> <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
+                <span class="prelude-val">Some</span>(<span class="kw">_</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>), <span class="comment">// Somehow matched multiple entries...</span>
+                <span class="kw">_</span> =&gt; <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>),
             }
         });
         <span class="ident">res</span>
@@ -1587,7 +1587,7 @@
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;InternalSearchMessage&gt;&quot;</span>, {
@@ -1605,8 +1605,8 @@
                 <span class="ident">attrs</span>.<span class="ident">as_deref</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin internal api search: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -1615,9 +1615,9 @@
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">srch</span>, <span class="string">&quot;Begin event&quot;</span>);
 
             <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SearchResult::new</span>(<span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">entries</span>)
+                <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) =&gt; <span class="ident">SearchResult::new</span>(<span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">entries</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ok_sr</span><span class="op">|</span> <span class="ident">ok_sr</span>.<span class="ident">into_proto_array</span>()),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             }
         });
         <span class="ident">res</span>
@@ -1635,7 +1635,7 @@
         <span class="ident">filter</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span>,
         <span class="ident">attrs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">ProtoEntry</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
@@ -1654,8 +1654,8 @@
                 <span class="ident">attrs</span>.<span class="ident">as_deref</span>(),
                 <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin recycled search: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -1664,9 +1664,9 @@
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">srch</span>, <span class="string">&quot;Begin event&quot;</span>);
 
             <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">SearchResult::new</span>(<span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">entries</span>)
+                <span class="prelude-val">Ok</span>(<span class="ident">entries</span>) =&gt; <span class="ident">SearchResult::new</span>(<span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>, <span class="kw-2">&amp;</span><span class="ident">entries</span>)
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ok_sr</span><span class="op">|</span> <span class="ident">ok_sr</span>.<span class="ident">into_proto_array</span>()),
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             }
         });
         <span class="ident">res</span>
@@ -1683,7 +1683,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;InternalRadiusReadMessage&gt;&quot;</span>, {
@@ -1709,8 +1709,8 @@
                 <span class="ident">target_uuid</span>,
                 <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin radius read: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -1720,7 +1720,7 @@
 
             <span class="comment">// We have to use search_ext to guarantee acs was applied.</span>
             <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">entries</span>
                         .<span class="ident">pop</span>()
                         <span class="comment">// From the entry, turn it into the value</span>
@@ -1731,7 +1731,7 @@
                         });
                     <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             }
         });
         <span class="ident">res</span>
@@ -1748,7 +1748,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">RadiusAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
@@ -1775,8 +1775,8 @@
                 <span class="ident">ident</span>,
                 <span class="ident">target_uuid</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin radius token read: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -1800,7 +1800,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
@@ -1829,8 +1829,8 @@
 
                 <span class="comment">// Make an event from the request</span>
                 <span class="kw">let</span> <span class="ident">rate</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">UnixUserTokenEvent::from_parts</span>(<span class="ident">ident</span>, <span class="ident">target_uuid</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin unix token read: {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                     }
@@ -1855,7 +1855,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UnixGroupToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(
@@ -1883,8 +1883,8 @@
                     <span class="ident">ident</span>,
                     <span class="ident">target_uuid</span>,
                 ) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                    <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin unix group token read: {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                     }
@@ -1909,7 +1909,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;InternalSshKeyReadMessage&gt;&quot;</span>, {
@@ -1934,8 +1934,8 @@
                 <span class="ident">target_uuid</span>,
                 <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin ssh key read: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -1944,7 +1944,7 @@
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">srch</span>, <span class="string">&quot;Begin event&quot;</span>);
 
             <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">entries</span>
                         .<span class="ident">pop</span>()
                         <span class="comment">// get the first entry</span>
@@ -1959,7 +1959,7 @@
                         });
                     <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             }
         });
         <span class="ident">res</span>
@@ -1977,7 +1977,7 @@
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">tag</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;InternalSshKeyTagReadMessage&gt;&quot;</span>, {
@@ -2002,8 +2002,8 @@
                 <span class="ident">target_uuid</span>,
                 <span class="kw-2">&amp;</span><span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin sshkey tag read: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -2012,7 +2012,7 @@
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">srch</span>, <span class="string">&quot;Begin event&quot;</span>);
 
             <span class="kw">match</span> <span class="ident">idms_prox_read</span>.<span class="ident">qs_read</span>.<span class="ident">search_ext</span>(<span class="kw-2">&amp;</span><span class="ident">srch</span>) {
-                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="kw-2">mut</span> <span class="ident">entries</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">entries</span>
                         .<span class="ident">pop</span>()
                         <span class="comment">// get the first entry</span>
@@ -2029,7 +2029,7 @@
                         });
                     <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
                 }
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>),
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="prelude-val">Err</span>(<span class="ident">e</span>),
             }
         });
         <span class="ident">res</span>
@@ -2047,7 +2047,7 @@
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">cred</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">UnixUserToken</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idm_auth</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">auth_async</span>().<span class="kw">await</span>;
         <span class="comment">// let res = spanned!(&quot;actors::v1_read::handle&lt;IdmAccountUnixAuthMessage&gt;&quot;, {</span>
@@ -2069,8 +2069,8 @@
             })<span class="question-mark">?</span>;
         <span class="comment">// Make an event from the request</span>
         <span class="kw">let</span> <span class="ident">uuae</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">UnixUserAuthEvent::from_parts</span>(<span class="ident">ident</span>, <span class="ident">target_uuid</span>, <span class="ident">cred</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-            <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                 <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to begin unix auth&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
             }
@@ -2100,7 +2100,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialStatus</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
@@ -2126,8 +2126,8 @@
                 <span class="ident">ident</span>,
                 <span class="ident">target_uuid</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to begin credential status read&quot;</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -2151,7 +2151,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">BackupCodesView</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
@@ -2177,8 +2177,8 @@
                 <span class="ident">ident</span>,
                 <span class="ident">target_uuid</span>,
             ) {
-                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">s</span>,
-                <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span><span class="op">&gt;</span> {
+                <span class="prelude-val">Ok</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>,
+                <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                     <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to begin backup code read: {:?}&quot;</span>, <span class="ident">e</span>);
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>);
                 }
@@ -2202,7 +2202,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">auth_req</span>: <span class="ident">AuthorisationRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2Authorise&gt;&quot;</span>, {
@@ -2235,7 +2235,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">consent_req</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthorisePermitSuccess</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2AuthorisePermit&gt;&quot;</span>, {
@@ -2267,7 +2267,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">consent_req</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Url</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2AuthoriseReject&gt;&quot;</span>, {
@@ -2299,7 +2299,7 @@
         <span class="ident">client_authz</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">token_req</span>: <span class="ident">AccessTokenRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2TokenExchange&gt;&quot;</span>, {
@@ -2320,7 +2320,7 @@
         <span class="ident">client_authz</span>: <span class="ident">String</span>,
         <span class="ident">intr_req</span>: <span class="ident">AccessTokenIntrospectRequest</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AccessTokenIntrospectResponse</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;Oauth2TokenIntrospect&gt;&quot;</span>, {
@@ -2341,7 +2341,7 @@
         <span class="ident">client_id</span>: <span class="ident">String</span>,
         <span class="ident">client_authz</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcToken</span>, <span class="ident">Oauth2Error</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OidcUserinfo&gt;&quot;</span>, {
@@ -2360,7 +2360,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client_id</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">OidcDiscoveryResponse</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OidcDiscovery&gt;&quot;</span>, {
             <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_discovery</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>)
@@ -2378,7 +2378,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">client_id</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">JwkKeySet</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;OidcPublickey&gt;&quot;</span>, {
             <span class="ident">idms_prox_read</span>.<span class="ident">oauth2_openid_publickey</span>(<span class="kw-2">&amp;</span><span class="ident">client_id</span>)
@@ -2396,7 +2396,7 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="ident">idms_prox_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_read_async</span>().<span class="kw">await</span>;
 
@@ -2423,10 +2423,10 @@
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
         <span class="ident">protomsg</span>: <span class="ident">LdapMsg</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapBoundToken</span><span class="op">&gt;</span>,
-    ) <span class="op">-</span><span class="op">&gt;</span> <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LdapResponseState</span><span class="op">&gt;</span> {
         <span class="comment">// let res = spanned!( &quot;actors::v1_read::handle&lt;LdapRequestMessage&gt;&quot;, {</span>
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ServerOps::try_from</span>(<span class="ident">protomsg</span>) {
-            <span class="prelude-val">Ok</span>(<span class="ident">server_op</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="self">self</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">server_op</span>) =&gt; <span class="self">self</span>
                 .<span class="ident">ldap</span>
                 .<span class="ident">do_op</span>(<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">idms</span>, <span class="ident">server_op</span>, <span class="ident">uat</span>, <span class="kw-2">&amp;</span><span class="ident">eventid</span>)
                 .<span class="kw">await</span>
@@ -2437,7 +2437,7 @@
                         <span class="macro">format!</span>(<span class="string">&quot;Internal Server Error {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">eventid</span>).<span class="ident">as_str</span>(),
                     ))
                 }),
-            <span class="prelude-val">Err</span>(<span class="kw">_</span>) <span class="op">=</span><span class="op">&gt;</span> <span class="ident">LdapResponseState::Disconnect</span>(<span class="ident">DisconnectionNotice::gen</span>(
+            <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="ident">LdapResponseState::Disconnect</span>(<span class="ident">DisconnectionNotice::gen</span>(
                 <span class="ident">LdapResultCode::ProtocolError</span>,
                 <span class="macro">format!</span>(<span class="string">&quot;Invalid Request {:?}&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">eventid</span>).<span class="ident">as_str</span>(),
             )),
