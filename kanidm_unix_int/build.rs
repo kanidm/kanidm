@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 #[macro_use]
 extern crate serde_derive;
 
@@ -25,8 +27,7 @@ fn main() {
 
     let comp_dir = PathBuf::from(outdir)
         .ancestors()
-        .skip(2)
-        .next()
+        .nth(2)
         .map(|p| p.join("completions"))
         .expect("Unable to process completions path");
 

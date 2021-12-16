@@ -18,13 +18,13 @@ pub struct AttrUnique;
 fn get_cand_attr_set<VALID, STATE>(
     cand: &[Entry<VALID, STATE>],
     attr: &str,
-) -> Result<BTreeMap<PartialValue, PartialValue>, OperationError> {
-    let mut cand_attr: BTreeMap<PartialValue, PartialValue> = BTreeMap::new();
+) -> Result<BTreeMap<PartialValue, Uuid>, OperationError> {
+    let mut cand_attr: BTreeMap<PartialValue, Uuid> = BTreeMap::new();
 
     cand.iter()
         .try_for_each(|e| {
-            let uuid = match e.get_ava_single("uuid") {
-                Some(v) => v.to_partialvalue(),
+            let uuid = match e.get_ava_single_uuid("uuid") {
+                Some(v) => *v,
                 None => {
                     return Err(OperationError::InvalidEntryState);
                 }
@@ -33,8 +33,8 @@ fn get_cand_attr_set<VALID, STATE>(
             //for each value in the ava.
             e.get_ava_set(attr)
                 .map(|vs| {
-                    vs.to_partialvalue_iter().try_for_each(|v| {
-                        match cand_attr.insert(v, uuid.clone()) {
+                    vs.to_partialvalue_iter()
+                        .try_for_each(|v| match cand_attr.insert(v, uuid) {
                             None => Ok(()),
                             Some(vr) => {
                                 admin_error!(
@@ -47,8 +47,7 @@ fn get_cand_attr_set<VALID, STATE>(
                                     "ava already exists".to_string(),
                                 )))
                             }
-                        }
-                    })
+                        })
                 })
                 .unwrap_or(Ok(()))
         })
@@ -86,7 +85,10 @@ fn enforce_unique<STATE>(
             .map(|(v, uuid)| {
                 // and[ attr eq k, andnot [ uuid eq v ]]
                 // Basically this says where name but also not self.
-                f_and(vec![FC::Eq(attr, v), f_andnot(FC::Eq("uuid", uuid))])
+                f_and(vec![
+                    FC::Eq(attr, v),
+                    f_andnot(FC::Eq("uuid", PartialValue::new_uuid(uuid))),
+                ])
             })
             .collect()
     ));

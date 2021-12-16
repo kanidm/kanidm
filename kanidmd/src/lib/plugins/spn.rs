@@ -9,6 +9,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::value::PartialValue;
 // use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::iter::once;
 use std::sync::Arc;
 
 pub struct Spn {}
@@ -70,7 +71,7 @@ impl Plugin for Spn {
                         e
                     })?;
                 trace!("plugin_spn: set spn to {:?}", spn);
-                e.set_ava("spn", btreeset![spn]);
+                e.set_ava("spn", once(spn));
             }
         }
         Ok(())
@@ -116,7 +117,7 @@ impl Plugin for Spn {
                         e
                     })?;
                 trace!("plugin_spn: set spn to {:?}", spn);
-                e.set_ava("spn", btreeset![spn]);
+                e.set_ava("spn", once(spn));
             }
         }
         Ok(())

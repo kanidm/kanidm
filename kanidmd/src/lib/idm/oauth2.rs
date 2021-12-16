@@ -10,7 +10,7 @@ use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
 pub use compact_jwt::{JwkKeySet, OidcToken};
-use compact_jwt::{JwsSigner, JwsValidator, OidcClaims, OidcSubject};
+use compact_jwt::{JwsSigner, OidcClaims, OidcSubject};
 use concread::cowcell::*;
 use fernet::Fernet;
 use hashbrown::HashMap;
@@ -172,7 +172,7 @@ pub struct Oauth2RS {
     // Our internal exchange encryption material for this rs.
     token_fernet: Fernet,
     jws_signer: JwsSigner,
-    jws_validator: JwsValidator,
+    // jws_validator: JwsValidator,
     // Some clients, especially openid ones don't do pkce. SIGH.
     // Can we enforce nonce in this case?
     enable_pkce: bool,
@@ -301,13 +301,13 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     let scope_maps = ent
                         .get_ava_as_oauthscopemaps("oauth2_rs_scope_map")
                         .cloned()
-                        .unwrap_or_else(|| BTreeMap::new());
+                        .unwrap_or_else(BTreeMap::new);
 
                     trace!("implicit_scopes");
                     let implicit_scopes = ent
                         .get_ava_as_oauthscopes("oauth2_rs_implicit_scopes")
                         .map(|iter| iter.map(str::to_string).collect())
-                        .unwrap_or_else(|| Vec::new());
+                        .unwrap_or_else(Vec::new);
 
                     trace!("oauth2_jwt_legacy_crypto_enable");
                     let jws_signer = if ent.get_ava_single_bool("oauth2_jwt_legacy_crypto_enable").unwrap_or(false) {
@@ -334,10 +334,12 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                             })?
                     };
 
+                    /*
                     let jws_validator = jws_signer.get_validator().map_err(|e| {
                         admin_error!(err = ?e, "Unable to load JwsValidator from JwsSigner");
                         OperationError::CryptographyError
                     })?;
+                    */
 
                     let enable_pkce = ent
                         .get_ava_single_bool("oauth2_allow_insecure_client_disable_pkce")
@@ -371,7 +373,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         authz_secret,
                         token_fernet,
                         jws_signer,
-                        jws_validator,
+                        // jws_validator,
                         enable_pkce,
                         iss: self.inner.origin.clone(),
                         authorization_endpoint,
@@ -453,14 +455,12 @@ impl Oauth2ResourceServersReadTransaction {
                 return Err(Oauth2Error::InvalidRequest);
             }
             Some(pkce_request.code_challenge.clone())
+        } else if o2rs.enable_pkce {
+            security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
+            return Err(Oauth2Error::InvalidRequest);
         } else {
-            if o2rs.enable_pkce {
-                security_error!(?o2rs.name, "No PKCE code challenge was provided with client in enforced PKCE mode.");
-                return Err(Oauth2Error::InvalidRequest);
-            } else {
-                security_info!(?o2rs.name, "Insecure client configuration - pkce is not enforced.");
-                None
-            }
+            security_info!(?o2rs.name, "Insecure client configuration - pkce is not enforced.");
+            None
         };
 
         // TODO: https://openid.net/specs/openid-connect-basic-1_0.html#RequestParameters
@@ -766,11 +766,11 @@ impl Oauth2ResourceServersReadTransaction {
                 );
                 return Err(Oauth2Error::InvalidRequest);
             }
-        } else {
-            if o2rs.enable_pkce {
-                security_info!("PKCE code verification failed - no code challenge present in PKCE enforced mode");
-                return Err(Oauth2Error::InvalidRequest);
-            }
+        } else if o2rs.enable_pkce {
+            security_info!(
+                "PKCE code verification failed - no code challenge present in PKCE enforced mode"
+            );
+            return Err(Oauth2Error::InvalidRequest);
         }
 
         // Validate the redirect_uri is the same as the original.
@@ -999,7 +999,7 @@ impl Oauth2ResourceServersReadTransaction {
 
         let token: Oauth2TokenType = o2rs
             .token_fernet
-            .decrypt(&client_authz)
+            .decrypt(client_authz)
             .map_err(|_| {
                 admin_error!("Failed to decrypt token introspection request");
                 Oauth2Error::InvalidRequest
@@ -1056,8 +1056,8 @@ impl Oauth2ResourceServersReadTransaction {
                         // Map from displayname
                         name: Some(account.displayname.clone()),
                         // Map from spn
-                        preferred_username: Some(account.spn.clone()),
-                        scopes: at.scopes.clone(),
+                        preferred_username: Some(account.spn),
+                        scopes: at.scopes,
                         ..Default::default()
                     },
                     claims: Default::default(),
@@ -1282,11 +1282,15 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("openid")),
+            (
+                "oauth2_rs_implicit_scopes",
+                Value::new_oauthscope("openid").expect("invalid oauthscope")
+            ),
             // System admins
             (
                 "oauth2_rs_scope_map",
                 Value::new_oauthscopemap(UUID_SYSTEM_ADMINS, btreeset!["read".to_string()])
+                    .expect("invalid oauthscope")
             ),
             (
                 "oauth2_allow_insecure_client_disable_pkce",

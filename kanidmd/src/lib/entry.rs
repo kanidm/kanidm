@@ -1278,12 +1278,11 @@ impl Entry<EntrySealed, EntryCommitted> {
                 // Skip anything empty as new VS can't deal with it.
                 .filter(|(_k, vs)| !vs.is_empty())
                 .map(|(k, vs)| {
-                    let vv: Result<Option<ValueSet>, ()> =
-                        vs.into_iter().map(Value::from_db_valuev1).collect();
+                    let vv: Result<ValueSet, _> = ValueSet::from_db_valuev1_iter(vs.into_iter());
                     match vv {
-                        Ok(Some(vv)) => Ok((k, vv)),
-                        _ => {
-                            admin_error!(value = ?k, "from_dbentry failed");
+                        Ok(vv) => Ok((k, vv)),
+                        Err(e) => {
+                            admin_error!(?e, value = ?k, "from_dbentry failed");
                             Err(())
                         }
                     }

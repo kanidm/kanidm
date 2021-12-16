@@ -1,6 +1,7 @@
 use crate::plugins::Plugin;
 use hashbrown::HashSet;
 use std::collections::BTreeSet;
+use std::iter::once;
 
 use crate::event::{CreateEvent, ModifyEvent};
 use crate::modify::Modify;
@@ -57,9 +58,9 @@ impl Plugin for Base {
             match entry.get_ava_set("uuid").map(|s| s.len()) {
                 None => {
                     // Generate
-                    let ava_uuid = btreeset![Value::new_uuid(Uuid::new_v4())];
+                    let ava_uuid = Value::new_uuid(Uuid::new_v4());
                     trace!("Setting temporary UUID {:?} to entry", ava_uuid);
-                    entry.set_ava("uuid", ava_uuid);
+                    entry.set_ava("uuid", once(ava_uuid));
                 }
                 Some(1) => {
                     // Do nothing

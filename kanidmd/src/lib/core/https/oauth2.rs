@@ -170,8 +170,9 @@ pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
 //  * Client Identifier  A)  oauth2_authorise_get
 //  * User authenticates B)  normal kanidm auth flow
 //  * Authorization Code C)  oauth2_authorise_permit_get
-//  * Authorization Code/
-//        Access Token D/E)  oauth2_token_post
+//                           oauth2_authorise_reject_get
+//  * Authorization Code / Access Token
+//                     D/E)  oauth2_token_post
 //
 //  These functions appear stateless, but the state is managed through encrypted
 //  tokens transmitted in the responses of this flow. This is because in a HA setup
@@ -208,7 +209,7 @@ async fn oauth2_authorise(
     let uat = req.get_current_uat();
     let (eventid, hvalue) = req.new_eventid();
 
-    let mut redir_url = auth_req.redirect_uri.clone();
+    // let mut redir_url = auth_req.redirect_uri.clone();
 
     let res = req
         .state()
@@ -227,38 +228,29 @@ async fn oauth2_authorise(
                 res
             })
         }
-        /*
-        If the request fails due to a missing, invalid, or mismatching
-        redirection URI, or if the client identifier is missing or invalid,
-        the authorization server SHOULD inform the resource owner of the
-        error and MUST NOT automatically redirect the user-agent to the
-        invalid redirection URI.
-        */
-        Err(Oauth2Error::InvalidClientId) => Ok(tide::Response::new(tide::StatusCode::BadRequest)),
-        Err(Oauth2Error::InvalidOrigin) => Ok(tide::Response::new(tide::StatusCode::BadRequest)),
         Err(Oauth2Error::AuthenticationRequired) => {
             // This will trigger our ui to auth and retry.
-            Ok(tide::Response::new(tide::StatusCode::Unauthorized))
+            let mut res = tide::Response::new(tide::StatusCode::Unauthorized);
+            res.insert_header("WWW-Authenticate", "Bearer");
+            Ok(res)
         }
+        /*
+        RFC - If the request fails due to a missing, invalid, or mismatching
+              redirection URI, or if the client identifier is missing or invalid,
+              the authorization server SHOULD inform the resource owner of the
+              error and MUST NOT automatically redirect the user-agent to the
+              invalid redirection URI.
+        */
+        // To further this, it appears that a malicious client configuration can set a phishing
+        // site as the redirect URL, and then use that to trigger certain types of attacks. Instead
+        // we do NOT redirect in an error condition, and just render the error ourselves.
         Err(e) => {
             admin_error!(
                 "Unable to authorise - Error ID: {} error: {}",
                 &hvalue,
                 &e.to_string()
             );
-            redir_url
-                .query_pairs_mut()
-                .clear()
-                .append_pair(
-                    "error_description",
-                    &format!("Unable to authorise - Error ID: {}", hvalue),
-                )
-                .append_pair("error", &e.to_string());
-            // https://datatracker.ietf.org/doc/html/rfc6749#section-4.1.2.1
-            // Return an error, explaining why it was denied.
-            let mut res = tide::Response::new(302);
-            res.insert_header("Location", redir_url.as_str());
-            Ok(res)
+            Ok(tide::Response::new(tide::StatusCode::BadRequest))
         }
     }
     .map(|mut res| {
@@ -321,7 +313,7 @@ async fn oauth2_authorise_permit(
             redirect_uri
                 .query_pairs_mut()
                 .clear()
-                .append_pair("state", &state.to_string())
+                .append_pair("state", &state)
                 .append_pair("code", &code);
             res.insert_header("Location", redirect_uri.as_str());
             // I think the client server needs this
@@ -333,6 +325,10 @@ async fn oauth2_authorise_permit(
             // that we should NOT redirect to the calling application
             // and we need to handle that locally somehow.
             // This needs to be better!
+            //
+            // Turns out this instinct was correct:
+            //  https://www.proofpoint.com/us/blog/cloud-security/microsoft-and-github-oauth-implementation-vulnerabilities-lead-redirection
+            // Possible to use this with a malicious client configuration to phish / spam.
             tide::Response::new(500)
         }
     };
@@ -449,7 +445,6 @@ pub async fn oauth2_token_post(mut req: tide::Request<AppState>) -> tide::Result
             })
         }
         Err(Oauth2Error::AuthenticationRequired) => {
-            // This will trigger our ui to auth and retry.
             Ok(tide::Response::new(tide::StatusCode::Unauthorized))
         }
         Err(e) => {

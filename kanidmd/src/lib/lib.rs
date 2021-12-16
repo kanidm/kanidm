@@ -4,9 +4,11 @@
 #![recursion_limit = "512"]
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
-// #![deny(clippy::panic)]
+#![deny(clippy::panic)]
 #![deny(clippy::unreachable)]
 #![deny(clippy::await_holding_lock)]
 #![deny(clippy::needless_pass_by_value)]
@@ -45,8 +47,8 @@ pub mod identity;
 mod interval;
 pub(crate) mod ldap;
 mod modify;
-pub mod value;
-pub mod valueset;
+pub(crate) mod value;
+pub(crate) mod valueset;
 #[macro_use]
 mod plugins;
 mod access;

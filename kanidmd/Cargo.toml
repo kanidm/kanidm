@@ -69,7 +69,6 @@ time = { version = "0.2", features = ["serde", "std"] }
 hashbrown = "0.11"
 concread = "^0.2.16"
 smolset = "1.3"
-# concread = { version = "^0.2.9", path = "../../concread" }
 # concread = { version = "^0.2.9", features = ["simd_support"] }
 
 sshkeys = "^0.3.1"
@@ -81,7 +80,6 @@ zxcvbn = "2.0"
 base64 = "0.13"
 
 idlset = { version = "^0.2" }
-# idlset = { version = "^0.2", path = "../../idlset" }
 
 ldap3_server = "0.1"
 webauthn-rs = "0.3"
@@ -91,7 +89,7 @@ users = "0.11"
 
 smartstring = { version = "0.2", features = ["serde"] }
 
-validator = { version = "0.14" }
+validator = { version = "0.14", features = ["phone"] }
 
 touch = "0.0.1"
 filetime = "0.2"

@@ -99,7 +99,10 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read"))
+            (
+                "oauth2_rs_implicit_scopes",
+                Value::new_oauthscope("read").expect("Invalid scope")
+            )
         );
 
         let create = vec![e];
@@ -134,7 +137,10 @@ mod tests {
                 "oauth2_rs_origin",
                 Value::new_url_s("https://demo.example.com").unwrap()
             ),
-            ("oauth2_rs_implicit_scopes", Value::new_oauthscope("read")),
+            (
+                "oauth2_rs_implicit_scopes",
+                Value::new_oauthscope("read").expect("Invalid scope")
+            ),
             ("oauth2_rs_basic_secret", Value::new_utf8s("12345")),
             ("oauth2_rs_token_key", Value::new_secret_str("12345"))
         );

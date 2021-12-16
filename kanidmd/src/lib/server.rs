@@ -463,7 +463,7 @@ pub trait QueryServerTransaction<'a> {
                                 // all subsequent filter tests because it ... well, doesn't exist.
                                 let un = self
                                     .name_to_uuid( value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
+                                    .unwrap_or(UUID_DOES_NOT_EXIST);
                                 Some(Value::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -475,7 +475,7 @@ pub trait QueryServerTransaction<'a> {
                             .or_else(|| {
                                 let un = self
                                     .name_to_uuid( value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
+                                    .unwrap_or(UUID_DOES_NOT_EXIST);
                                 Some(Value::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -490,13 +490,16 @@ pub trait QueryServerTransaction<'a> {
                     SyntaxType::UINT32 => Value::new_uint32_str(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid uint32 syntax".to_string())),
                     SyntaxType::Cid => Err(OperationError::InvalidAttribute("CIDs are generated and not able to be set.".to_string())),
-                    SyntaxType::NsUniqueId => Ok(Value::new_nsuniqueid_s(value)),
+                    SyntaxType::NsUniqueId => Value::new_nsuniqueid_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid NsUniqueId syntax".to_string())),
                     SyntaxType::DateTime => Value::new_datetime_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid DateTime (rfc3339) syntax".to_string())),
-                    SyntaxType::EmailAddress => Ok(Value::new_email_address_s(value)),
+                    SyntaxType::EmailAddress => Value::new_email_address_s(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Email Address syntax".to_string())),
                     SyntaxType::Url => Value::new_url_s(value)
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Url (whatwg/url) syntax".to_string())),
-                    SyntaxType::OauthScope => Ok(Value::new_oauthscope(value)),
+                    SyntaxType::OauthScope => Value::new_oauthscope(value)
+                        .ok_or_else(|| OperationError::InvalidAttribute("Invalid Oauth Scope syntax".to_string())),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
                 }
@@ -535,9 +538,7 @@ pub trait QueryServerTransaction<'a> {
                                 // if the value is NOT found, we map to "does not exist" to allow
                                 // the value to continue being evaluated, which of course, will fail
                                 // all subsequent filter tests because it ... well, doesn't exist.
-                                let un = self
-                                    .name_to_uuid(value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
+                                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_uuid(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -561,9 +562,7 @@ pub trait QueryServerTransaction<'a> {
                         // See comments above.
                         PartialValue::new_refer_s(value)
                             .or_else(|| {
-                                let un = self
-                                    .name_to_uuid(value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
+                                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_refer(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -578,9 +577,7 @@ pub trait QueryServerTransaction<'a> {
                         // See comments above.
                         PartialValue::new_oauthscopemap_s(value)
                             .or_else(|| {
-                                let un = self
-                                    .name_to_uuid(value)
-                                    .unwrap_or_else(|_| UUID_DOES_NOT_EXIST);
+                                let un = self.name_to_uuid(value).unwrap_or(UUID_DOES_NOT_EXIST);
                                 Some(PartialValue::new_oauthscopemap(un))
                             })
                             // I think this is unreachable due to how the .or_else works.
@@ -852,11 +849,6 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
                 >
         }
     }
-}
-
-#[derive(Clone, Debug)]
-struct QueryServerMeta {
-    pub max_cid: Cid,
 }
 
 impl QueryServer {

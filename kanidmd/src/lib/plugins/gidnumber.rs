@@ -5,6 +5,7 @@ use crate::event::{CreateEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::utils::uuid_to_gid_u32;
+use std::iter::once;
 
 /// Systemd dynamic units allocate between 61184–65519, most distros allocate
 /// system uids from 0 - 1000, and many others give user ids between 1000 to
@@ -45,7 +46,7 @@ fn apply_gidnumber<T: Clone>(e: &mut Entry<EntryInvalid, T>) -> Result<(), Opera
 
         let gid_v = Value::new_uint32(gid);
         admin_info!("Generated {} for {:?}", gid, u_ref);
-        e.set_ava("gidnumber", btreeset![gid_v]);
+        e.set_ava("gidnumber", once(gid_v));
         Ok(())
     } else if let Some(gid) = e.get_ava_single_uint32("gidnumber") {
         // If they provided us with a gid number, ensure it's in a safe range.

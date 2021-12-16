@@ -3,12 +3,11 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::be::dbvalue::{DbValueEmailAddressV1, DbValueV1};
+use crate::be::dbvalue::DbValueV1;
 use crate::credential::Credential;
 use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
 
-use std::borrow::Borrow;
 use std::collections::BTreeSet;
 use std::convert::TryFrom;
 use std::fmt;
@@ -19,16 +18,15 @@ use url::Url;
 use uuid::Uuid;
 
 use sshkeys::PublicKey as SshPublicKey;
-use std::cmp::Ordering;
 
 use regex::Regex;
 
 lazy_static! {
-    static ref SPN_RE: Regex = {
+    pub static ref SPN_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("(?P<name>[^@]+)@(?P<realm>[^@]+)").expect("Invalid SPN regex found")
     };
-    static ref INAME_RE: Regex = {
+    pub static ref INAME_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^((\\.|_).*|.*(\\s|:|;|@|,|/|\\\\|=).*|\\d+|root|nobody|nogroup|wheel|sshd|shadow|systemd.*)$").expect("Invalid Iname regex found")
         //            ^      ^                          ^   ^
@@ -38,7 +36,7 @@ lazy_static! {
         //            \- must not start with _ or .
         // Them's be the rules.
     };
-    static ref NSUNIQUEID_RE: Regex = {
+    pub static ref NSUNIQUEID_RE: Regex = {
         #[allow(clippy::expect_used)]
         Regex::new("^[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}-[0-9a-fA-F]{8}$").expect("Invalid Nsunique regex found")
     };
@@ -47,6 +45,18 @@ lazy_static! {
         Regex::new("^[0-9a-zA-Z_]+$").expect("Invalid oauthscope regex found")
         // Must not contain whitespace.
     };
+}
+
+#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq)]
+// https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
+pub struct Address {
+    pub formatted: String,
+    pub street_address: String,
+    pub locality: String,
+    pub region: String,
+    pub postal_code: String,
+    // Must be validated.
+    pub country: String,
 }
 
 #[allow(non_camel_case_types)]
@@ -269,27 +279,6 @@ impl fmt::Display for SyntaxType {
     }
 }
 
-#[derive(Clone)]
-pub enum DataValue {
-    Cred(Credential),
-    SshKey(String),
-    SecretValue(String),
-    OauthScopeMap(BTreeSet<String>),
-    PrivateBinary(Vec<u8>),
-}
-
-impl std::fmt::Debug for DataValue {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        match self {
-            DataValue::Cred(_) => write!(f, "DataValue::Cred(_)"),
-            DataValue::SshKey(_) => write!(f, "DataValue::SshKey(_)"),
-            DataValue::SecretValue(_) => write!(f, "DataValue::SecretValue(_)"),
-            DataValue::OauthScopeMap(_) => write!(f, "DataValue::OauthScopeMap(_)"),
-            DataValue::PrivateBinary(_) => write!(f, "DataValue::PrivateBinary(_)"),
-        }
-    }
-}
-
 /// A partial value is a key or key subset that can be used to match for equality or substring
 /// against a complete Value within a set in an Entry.
 ///
@@ -319,10 +308,17 @@ pub enum PartialValue {
     Nsuniqueid(String),
     DateTime(OffsetDateTime),
     EmailAddress(String),
+    PhoneNumber(String),
+    Address(String),
+    // Can add other selectors later.
     Url(Url),
     OauthScope(String),
     OauthScopeMap(Uuid),
     PrivateBinary,
+    PublicBinary(String),
+    // Enumeration(String),
+    // Float64(f64),
+    RestrictedString(String),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -412,10 +408,7 @@ impl PartialValue {
     }
 
     pub fn new_bools(s: &str) -> Option<Self> {
-        match bool::from_str(s) {
-            Ok(b) => Some(PartialValue::Bool(b)),
-            Err(_) => None,
-        }
+        bool::from_str(s).map(PartialValue::Bool).ok()
     }
 
     pub fn is_bool(&self) -> bool {
@@ -431,10 +424,7 @@ impl PartialValue {
     }
 
     pub fn new_uuids(us: &str) -> Option<Self> {
-        match Uuid::parse_str(us) {
-            Ok(u) => Some(PartialValue::Uuid(u)),
-            Err(_) => None,
-        }
+        Uuid::parse_str(us).map(PartialValue::Uuid).ok()
     }
 
     pub fn is_uuid(&self) -> bool {
@@ -461,11 +451,7 @@ impl PartialValue {
     }
 
     pub fn new_indexs(s: &str) -> Option<Self> {
-        let i = match IndexType::try_from(s) {
-            Ok(i) => i,
-            Err(_) => return None,
-        };
-        Some(PartialValue::Index(i))
+        IndexType::try_from(s).map(PartialValue::Index).ok()
     }
 
     pub fn is_index(&self) -> bool {
@@ -473,11 +459,7 @@ impl PartialValue {
     }
 
     pub fn new_syntaxs(s: &str) -> Option<Self> {
-        let i = match SyntaxType::try_from(s) {
-            Ok(i) => i,
-            Err(_) => return None,
-        };
-        Some(PartialValue::Syntax(i))
+        SyntaxType::try_from(s).map(PartialValue::Syntax).ok()
     }
 
     pub fn is_syntax(&self) -> bool {
@@ -485,11 +467,7 @@ impl PartialValue {
     }
 
     pub fn new_json_filter_s(s: &str) -> Option<Self> {
-        let pf: ProtoFilter = match serde_json::from_str(s) {
-            Ok(pf) => pf,
-            Err(_) => return None,
-        };
-        Some(PartialValue::JsonFilt(pf))
+        serde_json::from_str(s).map(PartialValue::JsonFilt).ok()
     }
 
     pub fn is_json_filter(&self) -> bool {
@@ -601,6 +579,14 @@ impl PartialValue {
         matches!(self, PartialValue::EmailAddress(_))
     }
 
+    pub fn new_phonenumber_s(s: &str) -> Self {
+        PartialValue::PhoneNumber(s.to_string())
+    }
+
+    pub fn new_address(s: &str) -> Self {
+        PartialValue::Address(s.to_string())
+    }
+
     pub fn new_url_s(s: &str) -> Option<Self> {
         Url::parse(s).ok().map(PartialValue::Url)
     }
@@ -636,6 +622,14 @@ impl PartialValue {
         matches!(self, PartialValue::PrivateBinary)
     }
 
+    pub fn new_publicbinary_tag_s(s: &str) -> Self {
+        PartialValue::PublicBinary(s.to_string())
+    }
+
+    pub fn new_restrictedstring_s(s: &str) -> Self {
+        PartialValue::RestrictedString(s.to_string())
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -652,30 +646,14 @@ impl PartialValue {
         }
     }
 
-    pub fn substring(&self, s: &PartialValue) -> bool {
-        match (self, s) {
-            (PartialValue::Utf8(s1), PartialValue::Utf8(s2)) => s1.contains(s2),
-            (PartialValue::Iutf8(s1), PartialValue::Iutf8(s2)) => s1.contains(s2),
-            (PartialValue::Iname(s1), PartialValue::Iname(s2)) => s1.contains(s2),
-            _ => false,
-        }
-    }
-
-    pub fn lessthan(&self, s: &PartialValue) -> bool {
-        match (self, s) {
-            (PartialValue::Cid(c1), PartialValue::Cid(c2)) => c1 < c2,
-            (PartialValue::Uint32(u1), PartialValue::Uint32(u2)) => u1 < u2,
-            _ => false,
-        }
-    }
-
     pub fn get_idx_eq_key(&self) -> String {
         match &self {
             PartialValue::Utf8(s)
             | PartialValue::Iutf8(s)
             | PartialValue::Iname(s)
             | PartialValue::Nsuniqueid(s)
-            | PartialValue::EmailAddress(s) => s.clone(),
+            | PartialValue::EmailAddress(s)
+            | PartialValue::RestrictedString(s) => s.clone(),
             PartialValue::Refer(u) | PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
@@ -685,10 +663,11 @@ impl PartialValue {
                 #[allow(clippy::expect_used)]
                 serde_json::to_string(s).expect("A json filter value was corrupted during run-time")
             }
-            PartialValue::Cred(tag) => tag.to_string(),
+            PartialValue::Cred(tag)
+            | PartialValue::PublicBinary(tag)
+            | PartialValue::SshKey(tag) => tag.to_string(),
             // This will never match as we never index radius creds! See generate_idx_eq_keys
             PartialValue::SecretValue | PartialValue::PrivateBinary => "_".to_string(),
-            PartialValue::SshKey(tag) => tag.to_string(),
             PartialValue::Spn(name, realm) => format!("{}@{}", name, realm),
             PartialValue::Uint32(u) => u.to_string(),
             // This will never work, we don't allow equality searching on Cid's
@@ -700,6 +679,8 @@ impl PartialValue {
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),
             PartialValue::OauthScopeMap(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::Address(a) => a.to_string(),
+            PartialValue::PhoneNumber(a) => a.to_string(),
         }
     }
 
@@ -715,109 +696,131 @@ impl PartialValue {
 /// This type is used when you need the "full data" of an attribute. Typically this is in a create
 /// or modification operation where you are applying a set of complete values into an entry.
 #[derive(Clone, Debug)]
-pub struct Value {
-    pub(crate) pv: PartialValue,
-    // Later we'll add extra data fields for different v types. They'll have to switch on
-    // pv somehow, so probably need optional or union?
-    pub(crate) data: Option<Box<DataValue>>,
+pub enum Value {
+    Utf8(String),
+    Iutf8(String),
+    Iname(String),
+    Uuid(Uuid),
+    Bool(bool),
+    Syntax(SyntaxType),
+    Index(IndexType),
+    Refer(Uuid),
+    JsonFilt(ProtoFilter),
+    Cred(String, Credential),
+    SshKey(String, String),
+    SecretValue(String),
+    Spn(String, String),
+    Uint32(u32),
+    Cid(Cid),
+    Nsuniqueid(String),
+    DateTime(OffsetDateTime),
+    EmailAddress(String, bool),
+    PhoneNumber(String, bool),
+    Address(Address),
+    Url(Url),
+    OauthScope(String),
+    OauthScopeMap(Uuid, BTreeSet<String>),
+    PrivateBinary(Vec<u8>),
+    PublicBinary(String, Vec<u8>),
+    // Enumeration(String),
+    // Float64(f64),
+    RestrictedString(String),
 }
-
-// TODO: Impl display
 
 impl PartialEq for Value {
     fn eq(&self, other: &Self) -> bool {
-        self.pv.eq(&other.pv)
+        match (self, other) {
+            (Value::Utf8(a), Value::Utf8(b))
+            | (Value::Iutf8(a), Value::Iutf8(b))
+            | (Value::Iname(a), Value::Iname(b))
+            | (Value::Cred(a, _), Value::Cred(b, _))
+            | (Value::SshKey(a, _), Value::SshKey(b, _))
+            | (Value::Spn(a, _), Value::Spn(b, _))
+            | (Value::Nsuniqueid(a), Value::Nsuniqueid(b))
+            | (Value::EmailAddress(a, _), Value::EmailAddress(b, _))
+            | (Value::PhoneNumber(a, _), Value::PhoneNumber(b, _))
+            | (Value::OauthScope(a), Value::OauthScope(b))
+            | (Value::PublicBinary(a, _), Value::PublicBinary(b, _))
+            | (Value::RestrictedString(a), Value::RestrictedString(b)) => a.eq(b),
+            // Uuid, Refer
+            (Value::Uuid(a), Value::Uuid(b)) | (Value::Refer(a), Value::Refer(b)) => a.eq(b),
+            // Bool
+            (Value::Bool(a), Value::Bool(b)) => a.eq(b),
+            // Syntax
+            (Value::Syntax(a), Value::Syntax(b)) => a.eq(b),
+            // Index
+            (Value::Index(a), Value::Index(b)) => a.eq(b),
+            // JsonFilt
+            (Value::JsonFilt(a), Value::JsonFilt(b)) => a.eq(b),
+            // Uint32
+            (Value::Uint32(a), Value::Uint32(b)) => a.eq(b),
+            // Cid
+            (Value::Cid(a), Value::Cid(b)) => a.eq(b),
+            // DateTime
+            (Value::DateTime(a), Value::DateTime(b)) => a.eq(b),
+            // Url
+            (Value::Url(a), Value::Url(b)) => a.eq(b),
+            // OauthScopeMap
+            (Value::OauthScopeMap(a, c), Value::OauthScopeMap(b, d)) => a.eq(b) && c.eq(d),
+
+            // Address
+            // PrivateBinary
+            // SecretValue
+            (Value::Address(_), Value::Address(_))
+            | (Value::PrivateBinary(_), Value::PrivateBinary(_))
+            | (Value::SecretValue(_), Value::SecretValue(_)) => false,
+            _ => false,
+        }
     }
 }
 
 impl Eq for Value {}
 
-impl PartialOrd for Value {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.pv.cmp(&other.pv))
-    }
-}
-
-impl Ord for Value {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.pv.cmp(&other.pv)
-    }
-}
-
-// Need new_<type> -> Result<_, _>
-// Need from_db_value
-// Need to_db_value
-// Need to_string for most types.
-
 impl From<bool> for Value {
     fn from(b: bool) -> Self {
-        Value {
-            pv: PartialValue::Bool(b),
-            data: None,
-        }
+        Value::Bool(b)
     }
 }
 
 impl From<&bool> for Value {
     fn from(b: &bool) -> Self {
-        Value {
-            pv: PartialValue::Bool(*b),
-            data: None,
-        }
+        Value::Bool(*b)
     }
 }
 
 impl From<SyntaxType> for Value {
     fn from(s: SyntaxType) -> Self {
-        Value {
-            pv: PartialValue::Syntax(s),
-            data: None,
-        }
+        Value::Syntax(s)
     }
 }
 
 impl From<IndexType> for Value {
     fn from(i: IndexType) -> Self {
-        Value {
-            pv: PartialValue::Index(i),
-            data: None,
-        }
+        Value::Index(i)
     }
 }
 
 impl From<ProtoFilter> for Value {
     fn from(i: ProtoFilter) -> Self {
-        Value {
-            pv: PartialValue::JsonFilt(i),
-            data: None,
-        }
+        Value::JsonFilt(i)
     }
 }
 
 impl From<OffsetDateTime> for Value {
     fn from(i: OffsetDateTime) -> Self {
-        Value {
-            pv: PartialValue::DateTime(i),
-            data: None,
-        }
+        Value::DateTime(i)
     }
 }
 
 impl From<u32> for Value {
     fn from(i: u32) -> Self {
-        Value {
-            pv: PartialValue::Uint32(i),
-            data: None,
-        }
+        Value::Uint32(i)
     }
 }
 
 impl From<Url> for Value {
     fn from(i: Url) -> Self {
-        Value {
-            pv: PartialValue::Url(i),
-            data: None,
-        }
+        Value::Url(i)
     }
 }
 
@@ -828,14 +831,8 @@ impl From<&str> for Value {
     fn from(s: &str) -> Self {
         // Fuzzy match for uuid's
         match Uuid::parse_str(s) {
-            Ok(u) => Value {
-                pv: PartialValue::Uuid(u),
-                data: None,
-            },
-            Err(_) => Value {
-                pv: PartialValue::Utf8(s.to_string()),
-                data: None,
-            },
+            Ok(u) => Value::Uuid(u),
+            Err(_) => Value::Utf8(s.to_string()),
         }
     }
 }
@@ -843,365 +840,269 @@ impl From<&str> for Value {
 #[cfg(test)]
 impl From<&Uuid> for Value {
     fn from(u: &Uuid) -> Self {
-        Value {
-            pv: PartialValue::Uuid(u.clone()),
-            data: None,
-        }
+        Value::Uuid(u.clone())
     }
 }
 
 #[cfg(test)]
 impl From<Uuid> for Value {
     fn from(u: Uuid) -> Self {
-        Value {
-            pv: PartialValue::Uuid(u),
-            data: None,
-        }
+        Value::Uuid(u)
     }
 }
 
 impl Value {
     // I get the feeling this will have a lot of matching ... sigh.
     pub fn new_utf8(s: String) -> Self {
-        Value {
-            pv: PartialValue::new_utf8(s),
-            data: None,
-        }
+        Value::Utf8(s)
     }
 
     pub fn new_utf8s(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_utf8s(s),
-            data: None,
-        }
+        Value::Utf8(s.to_string())
     }
 
     pub fn is_utf8(&self) -> bool {
-        matches!(self.pv, PartialValue::Utf8(_))
+        matches!(self, Value::Utf8(_))
     }
 
     pub fn new_iutf8(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_iutf8(s),
-            data: None,
-        }
+        Value::Iutf8(s.to_lowercase())
+    }
+
+    pub fn is_iutf8(&self) -> bool {
+        matches!(self, Value::Iutf8(_))
+    }
+
+    pub fn new_class(s: &str) -> Self {
+        Value::Iutf8(s.to_lowercase())
+    }
+
+    pub fn new_attr(s: &str) -> Self {
+        Value::Iutf8(s.to_lowercase())
     }
 
     pub fn is_insensitive_utf8(&self) -> bool {
-        matches!(self.pv, PartialValue::Iutf8(_))
+        matches!(self, Value::Iutf8(_))
     }
 
     pub fn new_iname(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_iname(s),
-            data: None,
-        }
+        Value::Iname(s.to_lowercase())
     }
 
     pub fn is_iname(&self) -> bool {
-        matches!(self.pv, PartialValue::Iname(_))
+        matches!(self, Value::Iname(_))
     }
 
     pub fn new_uuid(u: Uuid) -> Self {
-        Value {
-            pv: PartialValue::new_uuid(u),
-            data: None,
-        }
+        Value::Uuid(u)
     }
 
     pub fn new_uuids(s: &str) -> Option<Self> {
-        Some(Value {
-            pv: PartialValue::new_uuids(s)?,
-            data: None,
-        })
+        Uuid::parse_str(s).map(Value::Uuid).ok()
     }
 
     pub fn new_uuidr(u: &Uuid) -> Self {
-        Value {
-            pv: PartialValue::new_uuidr(u),
-            data: None,
-        }
+        Value::Uuid(*u)
     }
 
     // Is this correct? Should ref be seperate?
     pub fn is_uuid(&self) -> bool {
-        matches!(self.pv, PartialValue::Uuid(_))
-    }
-
-    pub fn new_class(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_iutf8(s),
-            data: None,
-        }
-    }
-
-    pub fn new_attr(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_iutf8(s),
-            data: None,
-        }
+        matches!(self, Value::Uuid(_))
     }
 
     pub fn new_bool(b: bool) -> Self {
-        Value {
-            pv: PartialValue::new_bool(b),
-            data: None,
-        }
+        Value::Bool(b)
     }
 
     pub fn new_bools(s: &str) -> Option<Self> {
-        Some(Value {
-            pv: PartialValue::new_bools(s)?,
-            data: None,
-        })
+        bool::from_str(s).map(Value::Bool).ok()
     }
 
     #[inline]
     pub fn is_bool(&self) -> bool {
-        matches!(self.pv, PartialValue::Bool(_))
+        matches!(self, Value::Bool(_))
     }
 
     pub fn new_syntaxs(s: &str) -> Option<Self> {
-        Some(Value {
-            pv: PartialValue::new_syntaxs(s)?,
-            data: None,
-        })
+        SyntaxType::try_from(s).map(Value::Syntax).ok()
     }
 
     pub fn new_syntax(s: SyntaxType) -> Self {
-        Value {
-            pv: PartialValue::Syntax(s),
-            data: None,
-        }
+        Value::Syntax(s)
     }
 
     pub fn is_syntax(&self) -> bool {
-        matches!(self.pv, PartialValue::Syntax(_))
+        matches!(self, Value::Syntax(_))
     }
 
     pub fn new_indexs(s: &str) -> Option<Self> {
-        Some(Value {
-            pv: PartialValue::new_indexs(s)?,
-            data: None,
-        })
+        IndexType::try_from(s).map(Value::Index).ok()
     }
 
     pub fn new_index(i: IndexType) -> Self {
-        Value {
-            pv: PartialValue::Index(i),
-            data: None,
-        }
+        Value::Index(i)
     }
 
     pub fn is_index(&self) -> bool {
-        matches!(self.pv, PartialValue::Index(_))
+        matches!(self, Value::Index(_))
     }
 
     pub fn new_refer(u: Uuid) -> Self {
-        Value {
-            pv: PartialValue::new_refer(u),
-            data: None,
-        }
+        Value::Refer(u)
     }
 
     pub fn new_refer_r(u: &Uuid) -> Self {
-        Value {
-            pv: PartialValue::new_refer_r(u),
-            data: None,
-        }
+        Value::Refer(*u)
     }
 
     pub fn new_refer_s(us: &str) -> Option<Self> {
-        Some(Value {
-            pv: PartialValue::new_refer_s(us)?,
-            data: None,
-        })
+        Uuid::parse_str(us).map(Value::Refer).ok()
     }
 
     pub fn is_refer(&self) -> bool {
-        matches!(self.pv, PartialValue::Refer(_))
+        matches!(self, Value::Refer(_))
     }
 
     pub fn new_json_filter_s(s: &str) -> Option<Self> {
-        Some(Value {
-            pv: PartialValue::new_json_filter_s(s)?,
-            data: None,
-        })
+        serde_json::from_str(s).map(Value::JsonFilt).ok()
     }
 
     pub fn new_json_filter(f: ProtoFilter) -> Self {
-        Value {
-            pv: PartialValue::JsonFilt(f),
-            data: None,
-        }
+        Value::JsonFilt(f)
     }
 
     pub fn is_json_filter(&self) -> bool {
-        matches!(self.pv, PartialValue::JsonFilt(_))
+        matches!(self, Value::JsonFilt(_))
     }
 
     pub fn as_json_filter(&self) -> Option<&ProtoFilter> {
-        match &self.pv {
-            PartialValue::JsonFilt(f) => Some(f),
+        match &self {
+            Value::JsonFilt(f) => Some(f),
             _ => None,
         }
     }
 
     pub fn new_credential(tag: &str, cred: Credential) -> Self {
-        Value {
-            pv: PartialValue::new_credential_tag(tag),
-            data: Some(Box::new(DataValue::Cred(cred))),
-        }
+        Value::Cred(tag.to_string(), cred)
     }
 
     pub fn is_credential(&self) -> bool {
-        matches!(&self.pv, PartialValue::Cred(_))
+        matches!(&self, Value::Cred(_, _))
     }
 
     pub fn to_credential(&self) -> Option<&Credential> {
-        match &self.pv {
-            PartialValue::Cred(_) => match &self.data {
-                Some(dv) => match dv.as_ref() {
-                    DataValue::Cred(c) => Some(c),
-                    _ => None,
-                },
-                None => None,
-            },
+        match &self {
+            Value::Cred(_, cred) => Some(cred),
             _ => None,
         }
     }
 
     pub fn new_secret_str(cleartext: &str) -> Self {
-        Value {
-            pv: PartialValue::new_secret_str(),
-            data: Some(Box::new(DataValue::SecretValue(cleartext.to_string()))),
-        }
+        Value::SecretValue(cleartext.to_string())
     }
 
     pub fn is_secret_string(&self) -> bool {
-        matches!(&self.pv, PartialValue::SecretValue)
+        matches!(&self, Value::SecretValue(_))
     }
 
     pub fn get_secret_str(&self) -> Option<&str> {
-        match &self.pv {
-            PartialValue::SecretValue => match &self.data {
-                Some(dv) => match dv.as_ref() {
-                    DataValue::SecretValue(c) => Some(c.as_str()),
-                    _ => None,
-                },
-                _ => None,
-            },
+        match &self {
+            Value::SecretValue(c) => Some(c.as_str()),
             _ => None,
         }
     }
 
     pub fn new_sshkey_str(tag: &str, key: &str) -> Self {
-        Value {
-            pv: PartialValue::new_sshkey_tag_s(tag),
-            data: Some(Box::new(DataValue::SshKey(key.to_string()))),
-        }
+        Value::SshKey(tag.to_string(), key.to_string())
     }
 
     pub fn new_sshkey(tag: String, key: String) -> Self {
-        Value {
-            pv: PartialValue::new_sshkey_tag(tag),
-            data: Some(Box::new(DataValue::SshKey(key))),
-        }
+        Value::SshKey(tag, key)
     }
 
     pub fn is_sshkey(&self) -> bool {
-        matches!(&self.pv, PartialValue::SshKey(_))
+        matches!(&self, Value::SshKey(_, _))
     }
 
     pub fn get_sshkey(&self) -> Option<&str> {
-        match &self.pv {
-            PartialValue::SshKey(_) => match &self.data {
-                Some(v) => match v.as_ref() {
-                    DataValue::SshKey(sc) => Some(sc.as_str()),
-                    _ => None,
-                },
-                None => None,
-            },
+        match &self {
+            Value::SshKey(_, key) => Some(key.as_str()),
             _ => None,
         }
     }
 
-    pub fn new_spn_parse(v: &str) -> Option<Self> {
-        PartialValue::new_spn_s(v).map(|spn| Value {
-            pv: spn,
-            data: None,
+    pub fn new_spn_parse(s: &str) -> Option<Self> {
+        SPN_RE.captures(s).and_then(|caps| {
+            let name = match caps.name("name") {
+                Some(v) => v.as_str().to_string(),
+                None => return None,
+            };
+            let realm = match caps.name("realm") {
+                Some(v) => v.as_str().to_string(),
+                None => return None,
+            };
+            Some(Value::Spn(name, realm))
         })
     }
 
     pub fn new_spn_str(n: &str, r: &str) -> Self {
-        Value {
-            pv: PartialValue::new_spn_nrs(n, r),
-            data: None,
-        }
+        Value::Spn(n.to_string(), r.to_string())
     }
 
     pub fn is_spn(&self) -> bool {
-        matches!(&self.pv, PartialValue::Spn(_, _))
+        matches!(&self, Value::Spn(_, _))
     }
 
     pub fn new_uint32(u: u32) -> Self {
-        Value {
-            pv: PartialValue::new_uint32(u),
-            data: None,
-        }
+        Value::Uint32(u)
     }
 
     pub fn new_uint32_str(u: &str) -> Option<Self> {
-        PartialValue::new_uint32_str(u).map(|ui| Value { pv: ui, data: None })
+        u.parse::<u32>().ok().map(Value::Uint32)
     }
 
     pub fn is_uint32(&self) -> bool {
-        matches!(&self.pv, PartialValue::Uint32(_))
+        matches!(&self, Value::Uint32(_))
     }
 
     pub fn new_cid(c: Cid) -> Self {
-        Value {
-            pv: PartialValue::new_cid(c),
-            data: None,
-        }
+        Value::Cid(c)
     }
 
     pub fn is_cid(&self) -> bool {
-        matches!(&self.pv, PartialValue::Cid(_))
+        matches!(&self, Value::Cid(_))
     }
 
-    pub fn new_nsuniqueid_s(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_nsuniqueid_s(s),
-            data: None,
+    pub fn new_nsuniqueid_s(s: &str) -> Option<Self> {
+        if NSUNIQUEID_RE.is_match(s) {
+            Some(Value::Nsuniqueid(s.to_lowercase()))
+        } else {
+            None
         }
     }
 
     pub fn is_nsuniqueid(&self) -> bool {
-        self.pv.is_nsuniqueid()
+        matches!(&self, Value::Nsuniqueid(_))
     }
 
     pub fn new_datetime_epoch(ts: Duration) -> Self {
-        Value {
-            pv: PartialValue::new_datetime_epoch(ts),
-            data: None,
-        }
+        Value::DateTime(OffsetDateTime::unix_epoch() + ts)
     }
 
     pub fn new_datetime_s(s: &str) -> Option<Self> {
-        PartialValue::new_datetime_s(s).map(|pv| Value { pv, data: None })
+        OffsetDateTime::parse(s, time::Format::Rfc3339)
+            .ok()
+            .map(|odt| odt.to_offset(time::UtcOffset::UTC))
+            .map(Value::DateTime)
     }
 
     pub fn new_datetime(dt: OffsetDateTime) -> Self {
-        Value {
-            pv: PartialValue::DateTime(dt),
-            data: None,
-        }
+        Value::DateTime(dt)
     }
 
     pub fn to_datetime(&self) -> Option<OffsetDateTime> {
-        match &self.pv {
-            PartialValue::DateTime(odt) => {
+        match &self {
+            Value::DateTime(odt) => {
                 debug_assert!(odt.offset() == time::UtcOffset::UTC);
                 Some(*odt)
             }
@@ -1210,229 +1111,131 @@ impl Value {
     }
 
     pub fn is_datetime(&self) -> bool {
-        self.pv.is_datetime()
+        matches!(&self, Value::DateTime(_))
     }
 
-    pub fn new_email_address_s(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_email_address_s(s),
-            data: None,
+    pub fn new_email_address_s(s: &str) -> Option<Self> {
+        if validator::validate_email(s) {
+            Some(Value::EmailAddress(s.to_string(), false))
+        } else {
+            None
+        }
+    }
+
+    pub fn new_email_address_primary_s(s: &str) -> Option<Self> {
+        if validator::validate_email(s) {
+            Some(Value::EmailAddress(s.to_string(), true))
+        } else {
+            None
         }
     }
 
     pub fn is_email_address(&self) -> bool {
-        self.pv.is_email_address()
+        matches!(&self, Value::EmailAddress(_, _))
+    }
+
+    pub fn new_phonenumber_s(s: &str) -> Self {
+        Value::PhoneNumber(s.to_string(), false)
+    }
+
+    pub fn new_address(a: Address) -> Self {
+        Value::Address(a)
     }
 
     pub fn new_url_s(s: &str) -> Option<Self> {
-        PartialValue::new_url_s(s).map(|pv| Value { pv, data: None })
+        Url::parse(s).ok().map(Value::Url)
     }
 
     pub fn new_url(u: Url) -> Self {
-        Value {
-            pv: PartialValue::Url(u),
-            data: None,
-        }
+        Value::Url(u)
     }
 
     pub fn is_url(&self) -> bool {
-        self.pv.is_url()
+        matches!(&self, Value::Url(_))
     }
 
-    pub fn new_oauthscope(s: &str) -> Self {
-        Value {
-            pv: PartialValue::new_oauthscope(s),
-            data: None,
+    pub fn new_oauthscope(s: &str) -> Option<Self> {
+        if OAUTHSCOPE_RE.is_match(s) {
+            Some(Value::OauthScope(s.to_string()))
+        } else {
+            None
         }
     }
 
     pub fn is_oauthscope(&self) -> bool {
-        self.pv.is_oauthscope()
+        matches!(&self, Value::OauthScope(_))
     }
 
-    pub fn new_oauthscopemap(u: Uuid, m: BTreeSet<String>) -> Self {
-        Value {
-            pv: PartialValue::new_oauthscopemap(u),
-            data: Some(Box::new(DataValue::OauthScopeMap(m))),
+    pub fn new_oauthscopemap(u: Uuid, m: BTreeSet<String>) -> Option<Self> {
+        if m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
+            Some(Value::OauthScopeMap(u, m))
+        } else {
+            None
         }
     }
 
     pub fn is_oauthscopemap(&self) -> bool {
-        self.pv.is_oauthscopemap()
+        matches!(&self, Value::OauthScopeMap(_, _))
     }
 
-    pub fn new_privatebinary(der: &Vec<u8>) -> Self {
-        Value {
-            pv: PartialValue::PrivateBinary,
-            data: Some(Box::new(DataValue::PrivateBinary(der.clone()))),
-        }
+    pub fn new_privatebinary(der: &[u8]) -> Self {
+        Value::PrivateBinary(der.to_owned())
     }
 
     pub fn to_privatebinary(&self) -> Option<&Vec<u8>> {
-        match &self.pv {
-            PartialValue::PrivateBinary => match &self.data {
-                Some(dv) => match dv.as_ref() {
-                    DataValue::PrivateBinary(c) => Some(&c),
-                    _ => None,
-                },
-                _ => None,
-            },
+        match &self {
+            Value::PrivateBinary(c) => Some(c),
             _ => None,
         }
     }
 
-    pub fn lessthan(&self, s: &PartialValue) -> bool {
-        self.pv.lessthan(s)
+    pub fn is_privatebinary(&self) -> bool {
+        matches!(&self, Value::PrivateBinary(_))
     }
 
-    pub fn substring(&self, s: &PartialValue) -> bool {
-        self.pv.substring(s)
+    pub fn new_publicbinary(tag: String, der: Vec<u8>) -> Self {
+        Value::PublicBinary(tag, der)
     }
 
-    // Keep this updated with DbValueV1 in be::dbvalue.
-    pub(crate) fn from_db_valuev1(v: DbValueV1) -> Result<Self, ()> {
-        match v {
-            DbValueV1::Utf8(s) => Ok(Value {
-                pv: PartialValue::Utf8(s),
-                data: None,
-            }),
-            DbValueV1::Iutf8(s) => {
-                Ok(Value {
-                    // TODO: Should we be lowercasing here? The dbv should be normalised
-                    // already, but is there a risk of corruption/tampering if we don't touch this?
-                    pv: PartialValue::Iutf8(s.to_lowercase()),
-                    data: None,
-                })
-            }
-            DbValueV1::Iname(s) => Ok(Value {
-                pv: PartialValue::Iname(s.to_lowercase()),
-                data: None,
-            }),
-            DbValueV1::Uuid(u) => Ok(Value {
-                pv: PartialValue::Uuid(u),
-                data: None,
-            }),
-            DbValueV1::Bool(b) => Ok(Value {
-                pv: PartialValue::Bool(b),
-                data: None,
-            }),
-            DbValueV1::SyntaxType(us) => Ok(Value {
-                pv: PartialValue::Syntax(SyntaxType::try_from(us)?),
-                data: None,
-            }),
-            DbValueV1::IndexType(us) => Ok(Value {
-                pv: PartialValue::Index(IndexType::try_from(us)?),
-                data: None,
-            }),
-            DbValueV1::Reference(u) => Ok(Value {
-                pv: PartialValue::Refer(u),
-                data: None,
-            }),
-            DbValueV1::JsonFilter(s) => Ok(Value {
-                pv: match PartialValue::new_json_filter_s(s.as_str()) {
-                    Some(pv) => pv,
-                    None => return Err(()),
-                },
-                data: None,
-            }),
-            DbValueV1::Credential(dvc) => {
-                // Deserialise the db cred here.
-                Ok(Value {
-                    pv: PartialValue::Cred(dvc.tag.to_lowercase()),
-                    data: Some(Box::new(DataValue::Cred(Credential::try_from(dvc.data)?))),
-                })
-            }
-            DbValueV1::SecretValue(d) => Ok(Value {
-                pv: PartialValue::SecretValue,
-                data: Some(Box::new(DataValue::SecretValue(d))),
-            }),
-            DbValueV1::SshKey(ts) => Ok(Value {
-                pv: PartialValue::SshKey(ts.tag),
-                data: Some(Box::new(DataValue::SshKey(ts.data))),
-            }),
-            DbValueV1::Spn(n, r) => Ok(Value {
-                pv: PartialValue::Spn(n, r),
-                data: None,
-            }),
-            DbValueV1::Uint32(u) => Ok(Value {
-                pv: PartialValue::Uint32(u),
-                data: None,
-            }),
-            DbValueV1::Cid(dc) => Ok(Value {
-                pv: PartialValue::Cid(Cid {
-                    ts: dc.timestamp,
-                    d_uuid: dc.domain_id,
-                    s_uuid: dc.server_id,
-                }),
-                data: None,
-            }),
-            DbValueV1::NsUniqueId(s) => Ok(Value {
-                pv: PartialValue::Nsuniqueid(s),
-                data: None,
-            }),
-            DbValueV1::DateTime(s) => PartialValue::new_datetime_s(&s)
-                .ok_or(())
-                .map(|pv| Value { pv, data: None }),
-            DbValueV1::EmailAddress(DbValueEmailAddressV1 { d: email_addr }) => Ok(Value {
-                pv: PartialValue::EmailAddress(email_addr),
-                data: None,
-            }),
-            DbValueV1::Url(u) => Ok(Value {
-                pv: PartialValue::Url(u),
-                data: None,
-            }),
-            DbValueV1::OauthScope(s) => Ok(Value {
-                pv: PartialValue::OauthScope(s),
-                data: None,
-            }),
-            DbValueV1::OauthScopeMap(osm) => Ok(Value {
-                pv: PartialValue::OauthScopeMap(osm.refer),
-                data: Some(Box::new(DataValue::OauthScopeMap(
-                    osm.data.into_iter().collect(),
-                ))),
-            }),
-            DbValueV1::PrivateBinary(d) => Ok(Value {
-                pv: PartialValue::PrivateBinary,
-                data: Some(Box::new(DataValue::PrivateBinary(d))),
-            }),
-        }
+    pub fn new_restrictedstring(s: String) -> Self {
+        Value::RestrictedString(s)
     }
 
     #[allow(clippy::unreachable)]
     pub(crate) fn to_supplementary_db_valuev1(&self) -> DbValueV1 {
         // This has to clone due to how the backend works.
-        match &self.pv {
-            PartialValue::Iname(s) => DbValueV1::Iname(s.clone()),
-            PartialValue::Utf8(s) => DbValueV1::Utf8(s.clone()),
-            PartialValue::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
-            PartialValue::Uuid(u) => DbValueV1::Uuid(*u),
-            PartialValue::Spn(n, r) => DbValueV1::Spn(n.clone(), r.clone()),
-            PartialValue::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
+        match &self {
+            Value::Iname(s) => DbValueV1::Iname(s.clone()),
+            Value::Utf8(s) => DbValueV1::Utf8(s.clone()),
+            Value::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
+            Value::Uuid(u) => DbValueV1::Uuid(*u),
+            Value::Spn(n, r) => DbValueV1::Spn(n.clone(), r.clone()),
+            Value::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
             v => unreachable!("-> {:?}", v),
         }
     }
 
     pub fn to_str(&self) -> Option<&str> {
-        match &self.pv {
-            PartialValue::Utf8(s) => Some(s.as_str()),
-            PartialValue::Iutf8(s) => Some(s.as_str()),
-            PartialValue::Iname(s) => Some(s.as_str()),
+        match &self {
+            Value::Utf8(s) => Some(s.as_str()),
+            Value::Iutf8(s) => Some(s.as_str()),
+            Value::Iname(s) => Some(s.as_str()),
             _ => None,
         }
     }
 
     pub fn to_url(&self) -> Option<&Url> {
-        match &self.pv {
-            PartialValue::Url(u) => Some(u),
+        match &self {
+            Value::Url(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn as_string(&self) -> Option<&String> {
-        match &self.pv {
-            PartialValue::Utf8(s) => Some(s),
-            PartialValue::Iutf8(s) => Some(s),
-            PartialValue::Iname(s) => Some(s),
+        match &self {
+            Value::Utf8(s) => Some(s),
+            Value::Iutf8(s) => Some(s),
+            Value::Iname(s) => Some(s),
             _ => None,
         }
     }
@@ -1440,144 +1243,170 @@ impl Value {
     // We need a seperate to-ref_uuid to distinguish from normal uuids
     // in refint plugin.
     pub fn to_ref_uuid(&self) -> Option<&Uuid> {
-        match &self.pv {
-            PartialValue::Refer(u) => Some(u),
-            PartialValue::OauthScopeMap(u) => Some(u),
+        match &self {
+            Value::Refer(u) => Some(u),
+            Value::OauthScopeMap(u, _) => Some(u),
             _ => None,
         }
     }
 
     pub fn to_uuid(&self) -> Option<&Uuid> {
-        match &self.pv {
-            PartialValue::Uuid(u) => Some(u),
+        match &self {
+            Value::Uuid(u) => Some(u),
             _ => None,
         }
     }
 
     pub fn to_indextype(&self) -> Option<&IndexType> {
-        match &self.pv {
-            PartialValue::Index(i) => Some(i),
+        match &self {
+            Value::Index(i) => Some(i),
             _ => None,
         }
     }
 
     pub fn to_syntaxtype(&self) -> Option<&SyntaxType> {
-        match &self.pv {
-            PartialValue::Syntax(s) => Some(s),
+        match &self {
+            Value::Syntax(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_bool(&self) -> Option<bool> {
-        match self.pv {
+        match self {
             // *v is to invoke a copy, but this is cheap af
-            PartialValue::Bool(v) => Some(v),
+            Value::Bool(v) => Some(*v),
             _ => None,
         }
     }
 
     pub fn to_uint32(&self) -> Option<u32> {
-        match &self.pv {
-            PartialValue::Uint32(v) => Some(*v),
+        match &self {
+            Value::Uint32(v) => Some(*v),
             _ => None,
         }
     }
 
     pub fn to_partialvalue(&self) -> PartialValue {
         // Match on self to become a partialvalue.
-        self.pv.clone()
+        // self.pv.clone()
+        unimplemented!();
     }
 
     pub fn to_utf8(self) -> Option<String> {
-        match self.pv {
-            PartialValue::Utf8(s) => Some(s),
+        match self {
+            Value::Utf8(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_iutf8(self) -> Option<String> {
-        match self.pv {
-            PartialValue::Iutf8(s) => Some(s),
+        match self {
+            Value::Iutf8(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_iname(self) -> Option<String> {
-        match self.pv {
-            PartialValue::Iname(s) => Some(s),
+        match self {
+            Value::Iname(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_jsonfilt(self) -> Option<ProtoFilter> {
-        match self.pv {
-            PartialValue::JsonFilt(f) => Some(f),
+        match self {
+            Value::JsonFilt(f) => Some(f),
             _ => None,
         }
     }
 
     pub fn to_cred(self) -> Option<(String, Credential)> {
-        match (self.pv, self.data.map(|b| (*b).clone())) {
-            (PartialValue::Cred(tag), Some(DataValue::Cred(c))) => Some((tag, c)),
+        match self {
+            Value::Cred(tag, c) => Some((tag, c)),
             _ => None,
         }
     }
 
     pub fn to_sshkey(self) -> Option<(String, String)> {
-        match (self.pv, self.data.map(|b| (*b).clone())) {
-            (PartialValue::SshKey(tag), Some(DataValue::SshKey(k))) => Some((tag, k)),
+        match self {
+            Value::SshKey(tag, k) => Some((tag, k)),
             _ => None,
         }
     }
 
     pub fn to_spn(self) -> Option<(String, String)> {
-        match self.pv {
-            PartialValue::Spn(n, d) => Some((n, d)),
+        match self {
+            Value::Spn(n, d) => Some((n, d)),
             _ => None,
         }
     }
 
     pub fn to_cid(self) -> Option<Cid> {
-        match self.pv {
-            PartialValue::Cid(s) => Some(s),
+        match self {
+            Value::Cid(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_nsuniqueid(self) -> Option<String> {
-        match self.pv {
-            PartialValue::Nsuniqueid(s) => Some(s),
+        match self {
+            Value::Nsuniqueid(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_emailaddress(self) -> Option<String> {
-        match self.pv {
-            PartialValue::EmailAddress(s) => Some(s),
+        match self {
+            Value::EmailAddress(s, _) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_oauthscope(self) -> Option<String> {
-        match self.pv {
-            PartialValue::OauthScope(s) => Some(s),
+        match self {
+            Value::OauthScope(s) => Some(s),
             _ => None,
         }
     }
 
     pub fn to_oauthscopemap(self) -> Option<(Uuid, BTreeSet<String>)> {
-        match (self.pv, self.data.map(|b| (*b).clone())) {
-            (PartialValue::OauthScopeMap(u), Some(DataValue::OauthScopeMap(m))) => Some((u, m)),
+        match self {
+            Value::OauthScopeMap(u, m) => Some((u, m)),
+            _ => None,
+        }
+    }
+
+    pub fn to_restrictedstring(self) -> Option<String> {
+        match self {
+            Value::RestrictedString(s) => Some(s),
+            _ => None,
+        }
+    }
+
+    pub fn to_phonenumber(self) -> Option<String> {
+        match self {
+            Value::PhoneNumber(p, _b) => Some(p),
+            _ => None,
+        }
+    }
+
+    pub fn to_publicbinary(self) -> Option<(String, Vec<u8>)> {
+        match self {
+            Value::PublicBinary(t, d) => Some((t, d)),
+            _ => None,
+        }
+    }
+
+    pub fn to_address(self) -> Option<Address> {
+        match self {
+            Value::Address(a) => Some(a),
             _ => None,
         }
     }
 
     pub fn migrate_iutf8_iname(self) -> Option<Self> {
-        match self.pv {
-            PartialValue::Iutf8(v) => Some(Value {
-                pv: PartialValue::Iname(v),
-                data: None,
-            }),
+        match self {
+            Value::Iutf8(v) => Some(Value::Iname(v)),
             _ => None,
         }
     }
@@ -1585,41 +1414,34 @@ impl Value {
     // !!!! This function is beind phased out !!!
     #[allow(clippy::unreachable)]
     pub(crate) fn to_proto_string_clone(&self) -> String {
-        match &self.pv {
-            PartialValue::Iname(s) => s.clone(),
-            PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
+        match &self {
+            Value::Iname(s) => s.clone(),
+            Value::Uuid(u) => u.to_hyphenated_ref().to_string(),
             // We display the tag and fingerprint.
-            PartialValue::SshKey(tag) => match &self.data {
-                Some(v) => match v.as_ref() {
-                    DataValue::SshKey(sk) => {
-                        // Check it's really an sshkey in the
-                        // supplemental data.
-                        match SshPublicKey::from_string(sk) {
-                            Ok(spk) => {
-                                let fp = spk.fingerprint();
-                                format!("{}: {}", tag, fp.hash)
-                            }
-                            Err(_) => format!("{}: corrupted ssh public key", tag),
-                        }
+            Value::SshKey(tag, key) =>
+            // Check it's really an sshkey in the
+            // supplemental data.
+            {
+                match SshPublicKey::from_string(key) {
+                    Ok(spk) => {
+                        let fp = spk.fingerprint();
+                        format!("{}: {}", tag, fp.hash)
                     }
-                    _ => format!("{}: corrupted value tag", tag),
-                },
-                None => format!("{}: corrupted value", tag),
-            },
-            // We don't disclose the secret value unless by special
-            // interfaces.
-            PartialValue::Spn(n, r) => format!("{}@{}", n, r),
+                    Err(_) => format!("{}: corrupted ssh public key", tag),
+                }
+            }
+            Value::Spn(n, r) => format!("{}@{}", n, r),
             _ => unreachable!(),
         }
     }
 
     // !!! relocate to value set !!!
-    pub fn validate(&self) -> bool {
+    pub(crate) fn validate(&self) -> bool {
         // Validate that extra-data constraints on the type exist and are
         // valid. IE json filter is really a filter, or cred types have supplemental
         // data.
-        match &self.pv {
-            PartialValue::Iname(s) => {
+        match &self {
+            Value::Iname(s) => {
                 match Uuid::parse_str(s) {
                     // It is a uuid, disallow.
                     Ok(_) => false,
@@ -1627,84 +1449,21 @@ impl Value {
                     Err(_) => !INAME_RE.is_match(s),
                 }
             }
-            PartialValue::Cred(_) => match &self.data {
+            /*
+            Value::Cred(_) => match &self.data {
                 Some(v) => matches!(v.as_ref(), DataValue::Cred(_)),
                 None => false,
             },
-            PartialValue::SshKey(_) => match &self.data {
-                Some(v) => match v.as_ref() {
-                    // Check it's really an sshkey in the supplemental
-                    // data.
-                    DataValue::SshKey(sk) => SshPublicKey::from_string(sk).is_ok(),
-                    _ => false,
-                },
-                None => false,
-            },
-            PartialValue::SecretValue => match &self.data {
-                Some(v) => matches!(v.as_ref(), DataValue::SecretValue(_)),
-                None => false,
-            },
-            PartialValue::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
-            PartialValue::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
-            PartialValue::EmailAddress(mail) => validator::validate_email(mail.as_str()),
+            */
+            Value::SshKey(_, key) => SshPublicKey::from_string(key).is_ok(),
+            Value::Nsuniqueid(s) => NSUNIQUEID_RE.is_match(s),
+            Value::DateTime(odt) => odt.offset() == time::UtcOffset::UTC,
+            Value::EmailAddress(mail, _) => validator::validate_email(mail.as_str()),
             // PartialValue::Url validated through parsing.
-            PartialValue::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
-            PartialValue::OauthScopeMap(_) => match &self.data {
-                Some(v) => match v.as_ref() {
-                    DataValue::OauthScopeMap(m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
-                    _ => false,
-                },
-                None => false,
-            },
+            Value::OauthScope(s) => OAUTHSCOPE_RE.is_match(s),
+            Value::OauthScopeMap(_, m) => m.iter().all(|s| OAUTHSCOPE_RE.is_match(s)),
             _ => true,
         }
-    }
-
-    pub fn generate_idx_eq_keys(&self) -> Vec<String> {
-        #[allow(clippy::expect_used)]
-        match &self.pv {
-            PartialValue::Utf8(s)
-            | PartialValue::Iutf8(s)
-            | PartialValue::Iname(s)
-            | PartialValue::Nsuniqueid(s)
-            | PartialValue::EmailAddress(s) => vec![s.clone()],
-            PartialValue::Refer(u) | PartialValue::Uuid(u) | PartialValue::OauthScopeMap(u) => {
-                vec![u.to_hyphenated_ref().to_string()]
-            }
-            PartialValue::Bool(b) => vec![b.to_string()],
-            PartialValue::Syntax(syn) => vec![syn.to_string()],
-            PartialValue::Index(it) => vec![it.to_string()],
-            PartialValue::JsonFilt(s) => vec![serde_json::to_string(s)
-                .expect("A json filter value was corrupted during run-time")],
-            PartialValue::Cred(tag) => vec![tag.to_string()],
-            PartialValue::SshKey(tag) => {
-                // Should this also extract the key data?
-                vec![tag.to_string()]
-            }
-            PartialValue::SecretValue | PartialValue::PrivateBinary => vec![],
-            PartialValue::Spn(n, r) => vec![format!("{}@{}", n, r)],
-            PartialValue::Uint32(u) => vec![u.to_string()],
-            PartialValue::Cid(_) => vec![],
-            PartialValue::DateTime(odt) => {
-                debug_assert!(odt.offset() == time::UtcOffset::UTC);
-                vec![odt.format(time::Format::Rfc3339)]
-            }
-            PartialValue::Url(u) => vec![u.to_string()],
-            PartialValue::OauthScope(_) => vec![],
-        }
-    }
-}
-
-impl Borrow<PartialValue> for Value {
-    fn borrow(&self) -> &PartialValue {
-        &self.pv
-    }
-}
-
-// Allows sets of value refs to be compared to PV's
-impl Borrow<PartialValue> for &Value {
-    fn borrow(&self) -> &PartialValue {
-        &self.pv
     }
 }
 
@@ -1790,6 +1549,7 @@ mod tests {
         assert!(!sk5.validate());
     }
 
+    /*
     #[test]
     fn test_value_spn() {
         // Create an spn vale
@@ -1806,7 +1566,9 @@ mod tests {
         // check it can produce name@realm as str from the pv.
         assert!("claire@example.net.au" == spnv.to_proto_string_clone());
     }
+    */
 
+    /*
     #[test]
     fn test_value_uint32() {
         assert!(Value::new_uint32_str("test").is_none());
@@ -1820,6 +1582,7 @@ mod tests {
 
         assert!(idx_key == vidx_key);
     }
+    */
 
     #[test]
     fn test_value_cid() {
@@ -1876,10 +1639,10 @@ mod tests {
         let inv1 = Value::new_nsuniqueid_s("d765e707-48e1-11e6-8c9e-bed8f7926cc3");
         let inv2 = Value::new_nsuniqueid_s("xxxx");
 
-        assert!(!inv1.validate());
-        assert!(!inv2.validate());
-        assert!(val1.validate());
-        assert!(val2.validate());
+        assert!(inv1.is_none());
+        assert!(inv2.is_none());
+        assert!(val1.unwrap().validate());
+        assert!(val2.unwrap().validate());
     }
 
     #[test]
@@ -1895,18 +1658,11 @@ mod tests {
         assert!(Value::new_datetime_s("2020-09-25 01:22:02+00:00").is_none());
 
         // Manually craft
-        let inv1 = Value {
-            pv: PartialValue::DateTime(
-                OffsetDateTime::now_utc().to_offset(time::UtcOffset::east_hours(10)),
-            ),
-            data: None,
-        };
+        let inv1 =
+            Value::DateTime(OffsetDateTime::now_utc().to_offset(time::UtcOffset::east_hours(10)));
         assert!(!inv1.validate());
 
-        let val3 = Value {
-            pv: PartialValue::DateTime(OffsetDateTime::now_utc()),
-            data: None,
-        };
+        let val3 = Value::DateTime(OffsetDateTime::now_utc());
         assert!(val3.validate());
     }
 
@@ -1919,11 +1675,11 @@ mod tests {
         let inv1 = Value::new_email_address_s("william");
         let inv2 = Value::new_email_address_s("test~uuid");
 
-        assert!(!inv1.validate());
-        assert!(!inv2.validate());
-        assert!(val1.validate());
-        assert!(val2.validate());
-        assert!(val3.validate());
+        assert!(inv1.is_none());
+        assert!(inv2.is_none());
+        assert!(val1.unwrap().validate());
+        assert!(val2.unwrap().validate());
+        assert!(val3.unwrap().validate());
     }
 
     #[test]

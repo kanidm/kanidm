@@ -117,7 +117,7 @@ pub trait IdlSqliteTransaction {
         spanned!("be::idl_sqlite::get_identry", {
             self.get_identry_raw(idl)?
                 .into_iter()
-                .map(|ide| ide.into_entry().map(|e| Arc::new(e)))
+                .map(|ide| ide.into_entry().map(Arc::new))
                 .collect()
         })
     }
@@ -288,9 +288,10 @@ pub trait IdlSqliteTransaction {
             let spn: Option<Value> = match spn_raw {
                 Some(d) => {
                     let dbv = serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?;
-                    let spn = Value::from_db_valuev1(dbv)
-                        .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))?;
-                    Some(spn)
+
+                    ValueSet::from_db_valuev1_iter(std::iter::once(dbv))
+                        .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))
+                        .map(|vs| vs.to_value_single())?
                 }
                 None => None,
             };

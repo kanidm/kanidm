@@ -907,6 +907,7 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_oauth2_rs_get(id))
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn idm_oauth2_rs_update(
         &self,
         id: &str,
