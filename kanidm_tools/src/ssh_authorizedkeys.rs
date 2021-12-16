@@ -12,8 +12,8 @@ use std::path::PathBuf;
 
 use kanidm_client::{ClientError, KanidmClientBuilder};
 
-use tracing::{debug, error};
 use structopt::StructOpt;
+use tracing::{debug, error};
 
 include!("opt/ssh_authorizedkeys.rs");
 

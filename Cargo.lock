@@ -1864,7 +1864,6 @@ dependencies = [
  "tracing",
  "tracing-serde",
  "tracing-subscriber",
- "tracing_tree",
  "url",
  "users",
  "uuid",
@@ -3848,24 +3847,6 @@ dependencies = [
  "tracing-core",
  "tracing-log",
  "tracing-serde",
-]
-
-[[package]]
-name = "tracing_tree"
-version = "1.1.0-alpha.6"
-dependencies = [
- "async-trait",
- "chrono",
- "futures",
- "num_enum",
- "serde",
- "serde_json",
- "tide",
- "tokio",
- "tracing",
- "tracing-serde",
- "tracing-subscriber",
- "uuid",
 ]
 
 [[package]]
