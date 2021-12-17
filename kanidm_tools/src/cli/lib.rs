@@ -9,7 +9,8 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
+
 use std::path::PathBuf;
 use structopt::StructOpt;
 

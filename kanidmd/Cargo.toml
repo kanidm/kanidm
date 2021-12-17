@@ -19,6 +19,9 @@ path = "src/server/main.rs"
 
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
+tracing = { version = "0.1", features = ["attributes"] }
+tracing-subscriber = "0.2"
+tracing-serde = "0.1"
 
 jemallocator = { version = "0.3.0", optional = true }
 either = "1.6"
@@ -34,8 +37,6 @@ compact_jwt = "^0.1.7"
 
 async-std = { version = "1.6", features = ["tokio1"] }
 
-log = "0.4"
-env_logger = "0.9"
 rand = "0.8"
 toml = "0.5"
 
@@ -94,10 +95,7 @@ validator = { version = "0.14", features = ["phone"] }
 touch = "0.0.1"
 filetime = "0.2"
 
-tracing = { version = "0.1", features = ["attributes", "release_max_level_info"] }
-tracing-subscriber = "0.2"
-tracing-serde = "0.1"
-num_enum = "0.5.4"
+num_enum = "0.5"
 
 
 [features]

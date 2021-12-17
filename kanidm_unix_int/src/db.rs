@@ -705,7 +705,7 @@ mod tests {
 
     #[test]
     fn test_cache_db_account_basic() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
@@ -789,7 +789,7 @@ mod tests {
 
     #[test]
     fn test_cache_db_group_basic() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
@@ -864,7 +864,7 @@ mod tests {
 
     #[test]
     fn test_cache_db_account_group_update() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
@@ -932,7 +932,7 @@ mod tests {
 
     #[test]
     fn test_cache_db_account_password() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
@@ -981,7 +981,7 @@ mod tests {
 
     #[test]
     fn test_cache_db_group_rename_duplicate() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());
@@ -1036,7 +1036,7 @@ mod tests {
 
     #[test]
     fn test_cache_db_account_rename_duplicate() {
-        let _ = env_logger::builder().is_test(true).try_init();
+        let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
         let dbtxn = task::block_on(db.write());
         assert!(dbtxn.migrate().is_ok());

@@ -9,9 +9,8 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
-extern crate log;
+extern crate tracing;
 
-use log::debug;
 use std::path::PathBuf;
 use structopt::StructOpt;
 
@@ -27,10 +26,8 @@ fn main() {
     let opt = UnixdStatusOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
-    } else {
-        ::std::env::set_var("RUST_LOG", "kanidm=info,kanidm_client=info");
     }
-    env_logger::init();
+    tracing_subscriber::fmt::init();
 
     debug!("Starting cache status tool ...");
 

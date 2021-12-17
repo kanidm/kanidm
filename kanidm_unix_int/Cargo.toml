@@ -45,6 +45,10 @@ path =  "src/test_auth.rs"
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
+
+tracing = "0.1"
+tracing-subscriber = "0.2"
+
 toml = "0.5"
 rpassword = "5.0"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
@@ -54,8 +58,6 @@ futures = "0.3"
 bytes = "1.0"
 
 libc = "0.2"
-log = "0.4"
-env_logger = "0.9"
 serde = "1.0"
 serde_derive = "1.0"
 serde_cbor = "0.11"

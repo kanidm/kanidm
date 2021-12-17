@@ -1,7 +1,7 @@
 #![deny(warnings)]
 use std::time::SystemTime;
 
-use log::debug;
+use tracing::debug;
 
 use kanidm::credential::totp::Totp;
 use kanidm_client::KanidmClient;

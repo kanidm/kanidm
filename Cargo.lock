@@ -1141,19 +1141,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "env_logger"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0b2cf0344971ee6c64c31be0d530793fba457d322dfec2810c453d0ef228f9c3"
-dependencies = [
- "atty",
- "humantime",
- "log",
- "regex",
- "termcolor",
-]
-
-[[package]]
 name = "event-listener"
 version = "2.5.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1654,12 +1641,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c4a1e36c821dbe04574f602848a19f742f4fb3c98d40449f11bcad18d6b17421"
 
 [[package]]
-name = "humantime"
-version = "2.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9a3a5bfb195931eeb336b2a7b4d761daec841b97f947d34394601737a7bba5e4"
-
-[[package]]
 name = "hyper"
 version = "0.14.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1842,7 +1823,6 @@ dependencies = [
  "concread",
  "criterion",
  "either",
- "env_logger",
  "fernet",
  "filetime",
  "futures",
@@ -1855,7 +1835,6 @@ dependencies = [
  "ldap3_server",
  "libc",
  "libsqlite3-sys",
- "log",
  "num_cpus",
  "num_enum",
  "openssl",
@@ -1901,11 +1880,9 @@ dependencies = [
  "async-std",
  "base64 0.13.0",
  "compact_jwt",
- "env_logger",
  "futures",
  "kanidm",
  "kanidm_proto",
- "log",
  "oauth2",
  "reqwest",
  "serde",
@@ -1913,6 +1890,8 @@ dependencies = [
  "serde_json",
  "tokio",
  "toml",
+ "tracing",
+ "tracing-subscriber",
  "url",
  "uuid",
  "webauthn-authenticator-rs",
@@ -1939,11 +1918,9 @@ version = "1.1.0-alpha.6"
 dependencies = [
  "bundy",
  "dialoguer",
- "env_logger",
  "kanidm_client",
  "kanidm_proto",
  "libc",
- "log",
  "qrcode",
  "rayon",
  "rpassword",
@@ -1952,6 +1929,8 @@ dependencies = [
  "shellexpand",
  "structopt",
  "time 0.2.27",
+ "tracing",
+ "tracing-subscriber",
  "webauthn-authenticator-rs",
  "zxcvbn",
 ]
@@ -1962,14 +1941,12 @@ version = "1.1.0-alpha.6"
 dependencies = [
  "async-std",
  "bytes",
- "env_logger",
  "futures",
  "kanidm",
  "kanidm_client",
  "kanidm_proto",
  "libc",
  "libsqlite3-sys",
- "log",
  "lru",
  "r2d2",
  "r2d2_sqlite",
@@ -1983,6 +1960,8 @@ dependencies = [
  "tokio",
  "tokio-util",
  "toml",
+ "tracing",
+ "tracing-subscriber",
  "users",
 ]
 
@@ -2465,13 +2444,11 @@ dependencies = [
  "async-std",
  "crossbeam",
  "csv",
- "env_logger",
  "futures-util",
  "jemallocator",
  "kanidm_client",
  "kanidm_proto",
  "ldap3_server",
- "log",
  "mathru",
  "openssl",
  "rand 0.8.4",
@@ -2483,6 +2460,8 @@ dependencies = [
  "tokio-openssl",
  "tokio-util",
  "toml",
+ "tracing",
+ "tracing-subscriber",
  "uuid",
 ]
 
@@ -3541,15 +3520,6 @@ dependencies = [
  "redox_syscall",
  "remove_dir_all",
  "winapi",
-]
-
-[[package]]
-name = "termcolor"
-version = "1.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2dfed899f0eb03f32ee8c6a0aabdb8a7949659e3466561fc0adf54e26d88c5f4"
-dependencies = [
- "winapi-util",
 ]
 
 [[package]]

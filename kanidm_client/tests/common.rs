@@ -26,13 +26,7 @@ fn is_free_port(port: u16) -> bool {
 // Test external behaviours of the service.
 
 pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
-    // ::std::env::set_var("RUST_LOG", "tide=debug,kanidm=debug");
     let _ = tracing_tree::test_init();
-    let _ = env_logger::builder()
-        .format_timestamp(None)
-        .format_level(false)
-        .is_test(true)
-        .try_init();
 
     let (ready_tx, mut ready_rx) = mpsc::channel(1);
     let (finish_tx, mut finish_rx) = mpsc::channel(1);

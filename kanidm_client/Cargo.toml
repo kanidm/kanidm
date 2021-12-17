@@ -10,7 +10,8 @@ homepage = "https://github.com/kanidm/kanidm/"
 repository = "https://github.com/kanidm/kanidm/"
 
 [dependencies]
-log = "0.4"
+tracing = "0.1"
+tracing-subscriber = "0.2"
 reqwest = { version = "0.11", features=["cookies", "json", "native-tls"] }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 serde = "1.0"
@@ -23,7 +24,6 @@ webauthn-rs = "0.3"
 tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 
 [dev-dependencies]
-env_logger = "0.9"
 tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 kanidm = { path = "../kanidmd" }
 futures = "0.3"
