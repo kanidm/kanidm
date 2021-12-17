@@ -143,8 +143,6 @@
 <span id="143">143</span>
 <span id="144">144</span>
 <span id="145">145</span>
-<span id="146">146</span>
-<span id="147">147</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -163,9 +161,9 @@
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Modify</span>;
 
-<span class="kw">use</span> <span class="ident">log</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>};
 <span class="kw">use</span> <span class="ident">rayon::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
+<span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>, <span class="ident">info</span>};
 
 <span class="macro">include!</span>(<span class="string">&quot;opt/badlist_preprocess.rs&quot;</span>);
 
@@ -173,10 +171,8 @@
     <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">BadlistProcOpt::from_args</span>();
     <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span> {
         <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
-    } <span class="kw">else</span> {
-        <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=info,kanidm_client=info&quot;</span>);
     }
-    <span class="ident">env_logger::init</span>();
+    <span class="ident">tracing_subscriber::fmt::init</span>();
 
     <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">modlist</span> {
         <span class="macro">debug!</span>(<span class="string">&quot;Running in modlist generation mode&quot;</span>);

@@ -1806,7 +1806,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_cache_db_account_basic</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">env_logger::builder</span>().<span class="ident">is_test</span>(<span class="bool-val">true</span>).<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::try_init</span>();
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="string">&quot;&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create.&quot;</span>);
         <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">db</span>.<span class="ident">write</span>());
         <span class="macro">assert!</span>(<span class="ident">dbtxn</span>.<span class="ident">migrate</span>().<span class="ident">is_ok</span>());
@@ -1890,7 +1890,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_cache_db_group_basic</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">env_logger::builder</span>().<span class="ident">is_test</span>(<span class="bool-val">true</span>).<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::try_init</span>();
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="string">&quot;&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create.&quot;</span>);
         <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">db</span>.<span class="ident">write</span>());
         <span class="macro">assert!</span>(<span class="ident">dbtxn</span>.<span class="ident">migrate</span>().<span class="ident">is_ok</span>());
@@ -1965,7 +1965,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_cache_db_account_group_update</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">env_logger::builder</span>().<span class="ident">is_test</span>(<span class="bool-val">true</span>).<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::try_init</span>();
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="string">&quot;&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create.&quot;</span>);
         <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">db</span>.<span class="ident">write</span>());
         <span class="macro">assert!</span>(<span class="ident">dbtxn</span>.<span class="ident">migrate</span>().<span class="ident">is_ok</span>());
@@ -2033,7 +2033,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_cache_db_account_password</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">env_logger::builder</span>().<span class="ident">is_test</span>(<span class="bool-val">true</span>).<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::try_init</span>();
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="string">&quot;&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create.&quot;</span>);
         <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">db</span>.<span class="ident">write</span>());
         <span class="macro">assert!</span>(<span class="ident">dbtxn</span>.<span class="ident">migrate</span>().<span class="ident">is_ok</span>());
@@ -2082,7 +2082,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_cache_db_group_rename_duplicate</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">env_logger::builder</span>().<span class="ident">is_test</span>(<span class="bool-val">true</span>).<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::try_init</span>();
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="string">&quot;&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create.&quot;</span>);
         <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">db</span>.<span class="ident">write</span>());
         <span class="macro">assert!</span>(<span class="ident">dbtxn</span>.<span class="ident">migrate</span>().<span class="ident">is_ok</span>());
@@ -2137,7 +2137,7 @@
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
     <span class="kw">fn</span> <span class="ident">test_cache_db_account_rename_duplicate</span>() {
-        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">env_logger::builder</span>().<span class="ident">is_test</span>(<span class="bool-val">true</span>).<span class="ident">try_init</span>();
+        <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="ident">tracing_subscriber::fmt::try_init</span>();
         <span class="kw">let</span> <span class="ident">db</span> <span class="op">=</span> <span class="ident">Db::new</span>(<span class="string">&quot;&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;failed to create.&quot;</span>);
         <span class="kw">let</span> <span class="ident">dbtxn</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">db</span>.<span class="ident">write</span>());
         <span class="macro">assert!</span>(<span class="ident">dbtxn</span>.<span class="ident">migrate</span>().<span class="ident">is_ok</span>());

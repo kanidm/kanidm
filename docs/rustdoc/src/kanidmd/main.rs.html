@@ -328,7 +328,6 @@
 <span id="328">328</span>
 <span id="329">329</span>
 <span id="330">330</span>
-<span id="331">331</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -544,11 +543,10 @@
     }
 
     <span class="comment">// ::std::env::set_var(&quot;RUST_LOG&quot;, &quot;tide=info,kanidm=info,webauthn=debug&quot;);</span>
-
-    <span class="ident">env_logger::builder</span>()
-        .<span class="ident">format_timestamp</span>(<span class="prelude-val">None</span>)
-        .<span class="ident">format_level</span>(<span class="bool-val">false</span>)
-        .<span class="ident">init</span>();
+    <span class="comment">// env_logger::builder()</span>
+    <span class="comment">//     .format_timestamp(None)</span>
+    <span class="comment">//     .format_level(false)</span>
+    <span class="comment">//     .init();</span>
 
     <span class="kw">match</span> <span class="ident">opt</span> {
         <span class="ident">KanidmdOpt::Server</span>(<span class="ident">_sopt</span>) =&gt; {

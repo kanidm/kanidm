@@ -676,7 +676,6 @@
 <span id="676">676</span>
 <span id="677">677</span>
 <span id="678">678</span>
-<span id="679">679</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -688,7 +687,7 @@
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
 
 <span class="kw">use</span> <span class="ident">users</span>::{<span class="ident">get_current_gid</span>, <span class="ident">get_current_uid</span>, <span class="ident">get_effective_gid</span>, <span class="ident">get_effective_uid</span>};
 
@@ -1056,8 +1055,7 @@
         <span class="ident">std::process::exit</span>(<span class="number">1</span>);
     }
 
-    <span class="comment">// ::std::env::set_var(&quot;RUST_LOG&quot;, &quot;kanidm=debug,kanidm_client=debug&quot;);</span>
-    <span class="ident">env_logger::init</span>();
+    <span class="ident">tracing_subscriber::fmt::init</span>();
 
     <span class="macro">debug!</span>(<span class="string">&quot;Profile -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_PROFILE_NAME&quot;</span>));
     <span class="macro">debug!</span>(<span class="string">&quot;CPU Flags -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_CPU_FLAGS&quot;</span>));

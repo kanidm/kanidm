@@ -206,8 +206,6 @@
 <span id="206">206</span>
 <span id="207">207</span>
 <span id="208">208</span>
-<span id="209">209</span>
-<span id="210">210</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -223,7 +221,7 @@
 <span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">jemallocator::Jemalloc</span> <span class="op">=</span> <span class="ident">jemallocator::Jemalloc</span>;
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">serde_derive</span>;
@@ -397,10 +395,8 @@
             <span class="string">&quot;RUST_LOG&quot;</span>,
             <span class="string">&quot;orca=debug,kanidm=debug,kanidm_client=debug,webauthn=debug&quot;</span>,
         );
-    } <span class="kw">else</span> {
-        <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;orca=info&quot;</span>);
     }
-    <span class="ident">env_logger::init</span>();
+    <span class="ident">tracing_subscriber::fmt::init</span>();
 
     <span class="macro">info!</span>(<span class="string">&quot;Orca - the Kanidm Load Testing Utility.&quot;</span>);
     <span class="macro">debug!</span>(<span class="string">&quot;cli -&gt; {:?}&quot;</span>, <span class="ident">opt</span>);

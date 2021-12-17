@@ -134,6 +134,7 @@
 <span id="134">134</span>
 <span id="135">135</span>
 <span id="136">136</span>
+<span id="137">137</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -145,7 +146,8 @@
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
 
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
-<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">log</span>;
+<span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
+
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 <span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
 
