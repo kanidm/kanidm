@@ -557,6 +557,12 @@
 <span id="557">557</span>
 <span id="558">558</span>
 <span id="559">559</span>
+<span id="560">560</span>
+<span id="561">561</span>
+<span id="562">562</span>
+<span id="563">563</span>
+<span id="564">564</span>
+<span id="565">565</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::any::TypeId</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
@@ -577,6 +583,7 @@
 <span class="kw">use</span> <span class="ident">tracing_subscriber::layer</span>::{<span class="ident">Context</span>, <span class="ident">Layered</span>, <span class="ident">SubscriberExt</span>};
 <span class="kw">use</span> <span class="ident">tracing_subscriber::registry</span>::{<span class="ident">LookupSpan</span>, <span class="ident">Registry</span>, <span class="ident">Scope</span>, <span class="ident">SpanRef</span>};
 <span class="kw">use</span> <span class="ident">tracing_subscriber::Layer</span>;
+<span class="kw">use</span> <span class="ident">tracing_subscriber::EnvFilter</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::tracing_tree::processor::TestProcessor</span>;
@@ -1097,6 +1104,11 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">main_init</span>() -&gt; <span class="ident">JoinHandle</span><span class="op">&lt;</span>()<span class="op">&gt;</span> {
     <span class="kw">let</span> (<span class="ident">subscriber</span>, <span class="ident">logger</span>) <span class="op">=</span> <span class="ident">TreeSubscriber::pretty</span>();
+    <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
+    <span class="kw">let</span> <span class="ident">subscriber</span> <span class="op">=</span> <span class="ident">EnvFilter::try_from_default_env</span>()
+        .<span class="ident">or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">EnvFilter::try_new</span>(<span class="string">&quot;info&quot;</span>))
+        .<span class="ident">expect</span>(<span class="string">&quot;Failed to init envfilter&quot;</span>)
+        .<span class="ident">with_subscriber</span>(<span class="ident">subscriber</span>);
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
     <span class="ident">tracing::subscriber::set_global_default</span>(<span class="ident">subscriber</span>)
         .<span class="ident">expect</span>(<span class="string">&quot;🚨🚨🚨 Global subscriber already set, this is a bug 🚨🚨🚨&quot;</span>);
