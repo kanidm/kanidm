@@ -837,6 +837,35 @@ pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
   }
 "#;
 
+pub const JSON_SCHEMA_CLASS_ORGPERSON: &str = r#"
+  {
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "classtype"
+      ],
+      "description": [
+        "Object representation of an org person"
+      ],
+      "classname": [
+        "orgperson"
+      ],
+      "systemmay": [
+        "legalname"
+      ],
+      "systemmust": [
+        "mail",
+        "displayname",
+        "name"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000094"
+      ]
+    }
+  }
+"#;
+
 pub const JSON_SCHEMA_CLASS_GROUP: &str = r#"
   {
     "attrs": {

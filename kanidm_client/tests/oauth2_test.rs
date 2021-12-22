@@ -52,6 +52,19 @@ fn test_oauth2_openid_basic_flow() {
             )
             .expect("Failed to create oauth2 config");
 
+        // Extend the admin account with extended details for openid claims.
+        rsclient
+            .idm_group_add_members("idm_hp_people_extend_priv", &["admin"])
+            .unwrap();
+
+        rsclient
+            .idm_account_person_extend(
+                "admin",
+                Some(&["admin@example.com".to_string()]),
+                Some("Admin Istrator"),
+            )
+            .expect("Failed to extend account details");
+
         rsclient
             .idm_oauth2_rs_update(
                 "test_integration",
@@ -78,6 +91,9 @@ fn test_oauth2_openid_basic_flow() {
             .expect("No basic secret present");
 
         // Get our admin's auth token for our new client.
+        // We have to re-auth to update the mail field.
+        let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
+        assert!(res.is_ok());
         let admin_uat = rsclient.get_token().expect("No user auth token found");
 
         let url = rsclient.get_url().to_string();
@@ -313,6 +329,8 @@ fn test_oauth2_openid_basic_flow() {
             // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
             // token and the userinfo endpoints.
             assert!(oidc.iss == Url::parse("https://idm.example.com/").unwrap());
+            assert!(oidc.s_claims.email.as_deref() == Some("admin@example.com"));
+            assert!(oidc.s_claims.email_verified == Some(true));
 
             let response = client
                 .get(format!("{}/oauth2/openid/test_integration/userinfo", url))

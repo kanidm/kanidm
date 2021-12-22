@@ -30,6 +30,7 @@ pub(crate) struct UnixUserAccount {
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
+    pub mail: Vec<String>,
 }
 
 lazy_static! {
@@ -94,6 +95,11 @@ macro_rules! try_from_entry {
             .get_ava_single_secret("radius_secret")
             .map(str::to_string);
 
+        let mail = $value
+            .get_ava_iter_mail("mail")
+            .map(|i| i.map(str::to_string).collect())
+            .unwrap_or_else(Vec::new);
+
         let valid_from = $value.get_ava_single_datetime("account_valid_from");
 
         let expire = $value.get_ava_single_datetime("account_expire");
@@ -111,6 +117,7 @@ macro_rules! try_from_entry {
             valid_from,
             expire,
             radius_secret,
+            mail,
         })
     }};
 }
@@ -200,6 +207,21 @@ impl UnixUserAccount {
         };
         // Mix the results
         vmin && vmax
+    }
+
+    // Get related inputs, such as account name, email, etc.
+    pub fn related_inputs(&self) -> Vec<&str> {
+        let mut inputs = Vec::with_capacity(4 + self.mail.len());
+        self.mail.iter().for_each(|m| {
+            inputs.push(m.as_str());
+        });
+        inputs.push(self.name.as_str());
+        inputs.push(self.spn.as_str());
+        inputs.push(self.displayname.as_str());
+        if let Some(s) = self.radius_secret.as_deref() {
+            inputs.push(s);
+        }
+        inputs
     }
 
     pub(crate) fn verify_unix_credential(

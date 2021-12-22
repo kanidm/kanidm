@@ -1,6 +1,7 @@
 use crate::password_prompt;
 use crate::{
-    AccountCredential, AccountOpt, AccountPosix, AccountRadius, AccountSsh, AccountValidity,
+    AccountCredential, AccountOpt, AccountPerson, AccountPosix, AccountRadius, AccountSsh,
+    AccountValidity,
 };
 use qrcode::render::unicode;
 use qrcode::QrCode;
@@ -36,6 +37,9 @@ impl AccountOpt {
                 AccountPosix::Show(apo) => apo.copt.debug,
                 AccountPosix::Set(apo) => apo.copt.debug,
                 AccountPosix::SetPassword(apo) => apo.copt.debug,
+            },
+            AccountOpt::Person(apopt) => match apopt {
+                AccountPerson::Set(apo) => apo.copt.debug,
             },
             AccountOpt::Ssh(asopt) => match asopt {
                 AccountSsh::List(ano) => ano.copt.debug,
@@ -391,6 +395,18 @@ impl AccountOpt {
                     }
                 }
             }, // end AccountOpt::Posix
+            AccountOpt::Person(apopt) => match apopt {
+                AccountPerson::Set(aopt) => {
+                    let client = aopt.copt.to_client();
+                    if let Err(e) = client.idm_account_person_extend(
+                        aopt.aopts.account_id.as_str(),
+                        aopt.mail.as_deref(),
+                        aopt.legalname.as_deref(),
+                    ) {
+                        eprintln!("Error -> {:?}", e);
+                    }
+                }
+            }, // end AccountOpt::Person
             AccountOpt::Ssh(asopt) => match asopt {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client();

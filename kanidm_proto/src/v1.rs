@@ -202,6 +202,7 @@ pub struct UserAuthToken {
     // pub name: String,
     pub displayname: String,
     pub spn: String,
+    pub mail_primary: Option<String>,
     // pub groups: Vec<Group>,
     // Should we just retrieve these inside the server instead of in the uat?
     // or do we want per-session limit capabilities?
@@ -318,6 +319,19 @@ pub struct AccountUnixExtend {
     pub gidnumber: Option<u32>,
     pub shell: Option<String>,
 }
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AccountPersonExtend {
+    pub mail: Option<Vec<String>>,
+    pub legalname: Option<String>,
+}
+
+/*
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct AccountOrgPersonExtend {
+    pub mail: String,
+}
+*/
 
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
 pub enum CredentialDetailType {

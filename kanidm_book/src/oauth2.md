@@ -125,12 +125,16 @@ You can create a scope map with:
 > scope map OR implicit scope named 'openid'. Without this, openid clients *WILL NOT WORK*
 
 > **HINT**
-> openid connect provides a number of scopes that affect the content of the resulting
-> authorisation token. Supported scopes and their associated claims are:
+> openid connect allows a number of scopes that affect the content of the resulting
+> authorisation token. If one of the following scopes are requested by the openid client,
+> then the associated claims may be added to the authorisation token. It is not guaranteed
+> that all of the associated claims will be added.
+>
 > * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
 > * email - (email, email\_verified)
 > * address - (address)
 > * phone - (phone\_number, phone\_number\_verified)
+>
 
 Once created you can view the details of the resource server.
 

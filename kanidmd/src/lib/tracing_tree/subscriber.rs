@@ -17,8 +17,8 @@ use tracing::span::{Attributes, Record};
 use tracing::{Event, Id, Level, Metadata, Subscriber};
 use tracing_subscriber::layer::{Context, Layered, SubscriberExt};
 use tracing_subscriber::registry::{LookupSpan, Registry, Scope, SpanRef};
-use tracing_subscriber::Layer;
 use tracing_subscriber::EnvFilter;
+use tracing_subscriber::Layer;
 use uuid::Uuid;
 
 use crate::tracing_tree::processor::TestProcessor;

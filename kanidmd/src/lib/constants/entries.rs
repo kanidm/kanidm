@@ -95,6 +95,38 @@ pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 
+pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_people_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000028"],
+        "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) read permissions."],
+        "member": ["00000000-0000-0000-0000-000000000029"]
+    }
+}"#;
+pub const JSON_IDM_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_people_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000029"],
+        "description": ["Builtin IDM Group for granting elevated high privilege people (personal data) write permissions."],
+        "member": [
+            "00000000-0000-0000-0000-000000000030"
+        ]
+    }
+}"#;
+pub const JSON_IDM_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_hp_people_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000030"],
+        "description": ["Builtin IDM Group for extending high privilege accounts to be people."],
+        "member": [
+            "00000000-0000-0000-0000-000000000000"
+        ]
+    }
+}"#;
+
 // * group write manager (no read, everyone has read via the anon, etc)
 // IDM_GROUP_CREATE_PRIV
 pub const JSON_IDM_GROUP_MANAGE_PRIV_V1: &str = r#"{

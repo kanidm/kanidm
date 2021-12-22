@@ -818,6 +818,16 @@ impl Oauth2ResourceServersReadTransaction {
             // TODO: Can the user consent to which claims are released? Today as we don't support most
             // of them anyway, no, but in the future, we can stash these to the consent req.
 
+            let (email, email_verified) = if scope_set.contains("email") {
+                if let Some(mp) = code_xchg.uat.mail_primary {
+                    (Some(mp.to_string()), Some(true))
+                } else {
+                    (None, None)
+                }
+            } else {
+                (None, None)
+            };
+
             // TODO: If max_age was requested in the request, we MUST provide auth_time.
 
             // amr == auth method
@@ -846,6 +856,8 @@ impl Oauth2ResourceServersReadTransaction {
                     // Map from spn
                     preferred_username: Some(code_xchg.uat.spn.clone()),
                     scopes: code_xchg.scopes.clone(),
+                    email,
+                    email_verified,
                     ..Default::default()
                 },
                 claims: Default::default(),
@@ -1034,6 +1046,16 @@ impl Oauth2ResourceServersReadTransaction {
                     }
                 };
 
+                let (email, email_verified) = if at.scopes.contains(&"email".to_string()) {
+                    if let Some(mp) = account.mail_primary {
+                        (Some(mp.to_string()), Some(true))
+                    } else {
+                        (None, None)
+                    }
+                } else {
+                    (None, None)
+                };
+
                 let amr = Some(vec![at.auth_type.to_string()]);
 
                 // ==== good to generate response ====
@@ -1058,6 +1080,8 @@ impl Oauth2ResourceServersReadTransaction {
                         // Map from spn
                         preferred_username: Some(account.spn),
                         scopes: at.scopes,
+                        email,
+                        email_verified,
                         ..Default::default()
                     },
                     claims: Default::default(),
