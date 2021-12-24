@@ -566,9 +566,26 @@
 <span id="566">566</span>
 <span id="567">567</span>
 <span id="568">568</span>
+<span id="569">569</span>
+<span id="570">570</span>
+<span id="571">571</span>
+<span id="572">572</span>
+<span id="573">573</span>
+<span id="574">574</span>
+<span id="575">575</span>
+<span id="576">576</span>
+<span id="577">577</span>
+<span id="578">578</span>
+<span id="579">579</span>
+<span id="580">580</span>
+<span id="581">581</span>
+<span id="582">582</span>
+<span id="583">583</span>
+<span id="584">584</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::password_prompt</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{
-    <span class="ident">AccountCredential</span>, <span class="ident">AccountOpt</span>, <span class="ident">AccountPosix</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>, <span class="ident">AccountValidity</span>,
+    <span class="ident">AccountCredential</span>, <span class="ident">AccountOpt</span>, <span class="ident">AccountPerson</span>, <span class="ident">AccountPosix</span>, <span class="ident">AccountRadius</span>, <span class="ident">AccountSsh</span>,
+    <span class="ident">AccountValidity</span>,
 };
 <span class="kw">use</span> <span class="ident">qrcode::render::unicode</span>;
 <span class="kw">use</span> <span class="ident">qrcode::QrCode</span>;
@@ -604,6 +621,9 @@
                 <span class="ident">AccountPosix::Show</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountPosix::Set</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountPosix::SetPassword</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            },
+            <span class="ident">AccountOpt::Person</span>(<span class="ident">apopt</span>) =&gt; <span class="kw">match</span> <span class="ident">apopt</span> {
+                <span class="ident">AccountPerson::Set</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             },
             <span class="ident">AccountOpt::Ssh</span>(<span class="ident">asopt</span>) =&gt; <span class="kw">match</span> <span class="ident">asopt</span> {
                 <span class="ident">AccountSsh::List</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -959,6 +979,18 @@
                     }
                 }
             }, <span class="comment">// end AccountOpt::Posix</span>
+            <span class="ident">AccountOpt::Person</span>(<span class="ident">apopt</span>) =&gt; <span class="kw">match</span> <span class="ident">apopt</span> {
+                <span class="ident">AccountPerson::Set</span>(<span class="ident">aopt</span>) =&gt; {
+                    <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">idm_account_person_extend</span>(
+                        <span class="ident">aopt</span>.<span class="ident">aopts</span>.<span class="ident">account_id</span>.<span class="ident">as_str</span>(),
+                        <span class="ident">aopt</span>.<span class="ident">mail</span>.<span class="ident">as_deref</span>(),
+                        <span class="ident">aopt</span>.<span class="ident">legalname</span>.<span class="ident">as_deref</span>(),
+                    ) {
+                        <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    }
+                }
+            }, <span class="comment">// end AccountOpt::Person</span>
             <span class="ident">AccountOpt::Ssh</span>(<span class="ident">asopt</span>) =&gt; <span class="kw">match</span> <span class="ident">asopt</span> {
                 <span class="ident">AccountSsh::List</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();

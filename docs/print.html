@@ -1199,8 +1199,10 @@ scope map OR implicit scope named 'openid'. Without this, openid clients <em>WIL
 </blockquote>
 <blockquote>
 <p><strong>HINT</strong>
-openid connect provides a number of scopes that affect the content of the resulting
-authorisation token. Supported scopes and their associated claims are:</p>
+openid connect allows a number of scopes that affect the content of the resulting
+authorisation token. If one of the following scopes are requested by the openid client,
+then the associated claims may be added to the authorisation token. It is not guaranteed
+that all of the associated claims will be added.</p>
 <ul>
 <li>profile - (name, family_name, given_name, middle_name, nickname, preferred_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated_at)</li>
 <li>email - (email, email_verified)</li>

@@ -1310,6 +1310,32 @@
 <span id="1310">1310</span>
 <span id="1311">1311</span>
 <span id="1312">1312</span>
+<span id="1313">1313</span>
+<span id="1314">1314</span>
+<span id="1315">1315</span>
+<span id="1316">1316</span>
+<span id="1317">1317</span>
+<span id="1318">1318</span>
+<span id="1319">1319</span>
+<span id="1320">1320</span>
+<span id="1321">1321</span>
+<span id="1322">1322</span>
+<span id="1323">1323</span>
+<span id="1324">1324</span>
+<span id="1325">1325</span>
+<span id="1326">1326</span>
+<span id="1327">1327</span>
+<span id="1328">1328</span>
+<span id="1329">1329</span>
+<span id="1330">1330</span>
+<span id="1331">1331</span>
+<span id="1332">1332</span>
+<span id="1333">1333</span>
+<span id="1334">1334</span>
+<span id="1335">1335</span>
+<span id="1336">1336</span>
+<span id="1337">1337</span>
+<span id="1338">1338</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::iter</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">info</span>, <span class="ident">instrument</span>, <span class="ident">span</span>, <span class="ident">trace</span>, <span class="ident">Level</span>};
@@ -1340,8 +1366,8 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Modify</span> <span class="kw">as</span> <span class="ident">ProtoModify</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::ModifyList</span> <span class="kw">as</span> <span class="ident">ProtoModifyList</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AccountUnixExtend</span>, <span class="ident">CreateRequest</span>, <span class="ident">DeleteRequest</span>, <span class="ident">GroupUnixExtend</span>, <span class="ident">ModifyRequest</span>,
-    <span class="ident">SetCredentialRequest</span>, <span class="ident">SetCredentialResponse</span>,
+    <span class="ident">AccountPersonExtend</span>, <span class="ident">AccountUnixExtend</span>, <span class="ident">CreateRequest</span>, <span class="ident">DeleteRequest</span>, <span class="ident">GroupUnixExtend</span>,
+    <span class="ident">ModifyRequest</span>, <span class="ident">SetCredentialRequest</span>, <span class="ident">SetCredentialResponse</span>,
 };
 
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
@@ -2275,17 +2301,43 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
+        <span class="ident">px</span>: <span class="ident">AccountPersonExtend</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">AccountPersonExtend</span> { <span class="ident">mail</span>, <span class="ident">legalname</span> } <span class="op">=</span> <span class="ident">px</span>;
+
         <span class="comment">// The filter_map here means we only create the mods if the gidnumber or shell are set</span>
         <span class="comment">// in the actual request.</span>
-        <span class="comment">// NOTE: This is an iter for future requirements to be added</span>
-        <span class="kw">let</span> <span class="ident">mods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">iter::once</span>(<span class="prelude-val">Some</span>(<span class="ident">Modify::Present</span>(
-            <span class="string">&quot;class&quot;</span>.<span class="ident">into</span>(),
-            <span class="ident">Value::new_class</span>(<span class="string">&quot;person&quot;</span>),
-        )))
-        .<span class="ident">flatten</span>()
-        .<span class="ident">collect</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">mods</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Vec::with_capacity</span>(<span class="number">4</span> <span class="op">+</span> <span class="ident">mail</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">len</span>()).<span class="ident">unwrap_or</span>(<span class="number">0</span>));
+        <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;class&quot;</span>.<span class="ident">into</span>(), <span class="ident">Value::new_class</span>(<span class="string">&quot;person&quot;</span>)));
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">legalname</span> {
+            <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Purged</span>(<span class="string">&quot;legalname&quot;</span>.<span class="ident">into</span>()));
+            <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;legalname&quot;</span>.<span class="ident">into</span>(), <span class="ident">Value::new_utf8</span>(<span class="ident">s</span>)));
+        }
+
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mail</span>) <span class="op">=</span> <span class="ident">mail</span> {
+            <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Purged</span>(<span class="string">&quot;mail&quot;</span>.<span class="ident">into</span>()));
+
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">miter</span> <span class="op">=</span> <span class="ident">mail</span>.<span class="ident">into_iter</span>();
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">m_primary</span>) <span class="op">=</span> <span class="ident">miter</span>.<span class="ident">next</span>() {
+                <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span>
+                    <span class="ident">Value::new_email_address_primary_s</span>(<span class="ident">m_primary</span>.<span class="ident">as_str</span>()).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                        <span class="ident">OperationError::InvalidAttribute</span>(<span class="macro">format!</span>(
+                            <span class="string">&quot;Invalid mail address {}&quot;</span>,
+                            <span class="ident">m_primary</span>
+                        ))
+                    })<span class="question-mark">?</span>;
+                <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;mail&quot;</span>.<span class="ident">into</span>(), <span class="ident">v</span>));
+            }
+
+            <span class="kw">for</span> <span class="ident">m</span> <span class="kw">in</span> <span class="ident">miter</span> {
+                <span class="kw">let</span> <span class="ident">v</span> <span class="op">=</span> <span class="ident">Value::new_email_address_s</span>(<span class="ident">m</span>.<span class="ident">as_str</span>()).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">OperationError::InvalidAttribute</span>(<span class="macro">format!</span>(<span class="string">&quot;Invalid mail address {}&quot;</span>, <span class="ident">m</span>))
+                })<span class="question-mark">?</span>;
+                <span class="ident">mods</span>.<span class="ident">push</span>(<span class="ident">Modify::Present</span>(<span class="string">&quot;mail&quot;</span>.<span class="ident">into</span>(), <span class="ident">v</span>));
+            }
+        }
 
         <span class="kw">let</span> <span class="ident">ml</span> <span class="op">=</span> <span class="ident">ModifyList::new_list</span>(<span class="ident">mods</span>);
 

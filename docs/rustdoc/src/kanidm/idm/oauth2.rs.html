@@ -2316,6 +2316,30 @@
 <span id="2316">2316</span>
 <span id="2317">2317</span>
 <span id="2318">2318</span>
+<span id="2319">2319</span>
+<span id="2320">2320</span>
+<span id="2321">2321</span>
+<span id="2322">2322</span>
+<span id="2323">2323</span>
+<span id="2324">2324</span>
+<span id="2325">2325</span>
+<span id="2326">2326</span>
+<span id="2327">2327</span>
+<span id="2328">2328</span>
+<span id="2329">2329</span>
+<span id="2330">2330</span>
+<span id="2331">2331</span>
+<span id="2332">2332</span>
+<span id="2333">2333</span>
+<span id="2334">2334</span>
+<span id="2335">2335</span>
+<span id="2336">2336</span>
+<span id="2337">2337</span>
+<span id="2338">2338</span>
+<span id="2339">2339</span>
+<span id="2340">2340</span>
+<span id="2341">2341</span>
+<span id="2342">2342</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -3136,6 +3160,16 @@
             <span class="comment">// TODO: Can the user consent to which claims are released? Today as we don&#39;t support most</span>
             <span class="comment">// of them anyway, no, but in the future, we can stash these to the consent req.</span>
 
+            <span class="kw">let</span> (<span class="ident">email</span>, <span class="ident">email_verified</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">scope_set</span>.<span class="ident">contains</span>(<span class="string">&quot;email&quot;</span>) {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">mail_primary</span> {
+                    (<span class="prelude-val">Some</span>(<span class="ident">mp</span>.<span class="ident">to_string</span>()), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
+                } <span class="kw">else</span> {
+                    (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+                }
+            } <span class="kw">else</span> {
+                (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+            };
+
             <span class="comment">// TODO: If max_age was requested in the request, we MUST provide auth_time.</span>
 
             <span class="comment">// amr == auth method</span>
@@ -3164,6 +3198,8 @@
                     <span class="comment">// Map from spn</span>
                     <span class="ident">preferred_username</span>: <span class="prelude-val">Some</span>(<span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">spn</span>.<span class="ident">clone</span>()),
                     <span class="ident">scopes</span>: <span class="ident">code_xchg</span>.<span class="ident">scopes</span>.<span class="ident">clone</span>(),
+                    <span class="ident">email</span>,
+                    <span class="ident">email_verified</span>,
                     ..<span class="ident">Default::default</span>()
                 },
                 <span class="ident">claims</span>: <span class="ident">Default::default</span>(),
@@ -3352,6 +3388,16 @@
                     }
                 };
 
+                <span class="kw">let</span> (<span class="ident">email</span>, <span class="ident">email_verified</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">at</span>.<span class="ident">scopes</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="string">&quot;email&quot;</span>.<span class="ident">to_string</span>()) {
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">account</span>.<span class="ident">mail_primary</span> {
+                        (<span class="prelude-val">Some</span>(<span class="ident">mp</span>.<span class="ident">to_string</span>()), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
+                    } <span class="kw">else</span> {
+                        (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+                    }
+                } <span class="kw">else</span> {
+                    (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
+                };
+
                 <span class="kw">let</span> <span class="ident">amr</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="ident">at</span>.<span class="ident">auth_type</span>.<span class="ident">to_string</span>()]);
 
                 <span class="comment">// ==== good to generate response ====</span>
@@ -3376,6 +3422,8 @@
                         <span class="comment">// Map from spn</span>
                         <span class="ident">preferred_username</span>: <span class="prelude-val">Some</span>(<span class="ident">account</span>.<span class="ident">spn</span>),
                         <span class="ident">scopes</span>: <span class="ident">at</span>.<span class="ident">scopes</span>,
+                        <span class="ident">email</span>,
+                        <span class="ident">email_verified</span>,
                         ..<span class="ident">Default::default</span>()
                     },
                     <span class="ident">claims</span>: <span class="ident">Default::default</span>(),
