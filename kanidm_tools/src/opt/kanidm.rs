@@ -220,6 +220,24 @@ pub enum AccountPosix {
 }
 
 #[derive(Debug, StructOpt)]
+pub struct AccountPersonOpt {
+    #[structopt(flatten)]
+    aopts: AccountCommonOpt,
+    #[structopt(long = "mail")]
+    mail: Option<Vec<String>>,
+    #[structopt(long = "legalname")]
+    legalname: Option<String>,
+    #[structopt(flatten)]
+    copt: CommonOpt,
+}
+
+#[derive(Debug, StructOpt)]
+pub enum AccountPerson {
+    #[structopt(name = "set")]
+    Set(AccountPersonOpt),
+}
+
+#[derive(Debug, StructOpt)]
 pub enum AccountSsh {
     #[structopt(name = "list_publickeys")]
     List(AccountNamedOpt),
@@ -247,6 +265,8 @@ pub enum AccountOpt {
     Radius(AccountRadius),
     #[structopt(name = "posix")]
     Posix(AccountPosix),
+    #[structopt(name = "person")]
+    Person(AccountPerson),
     #[structopt(name = "ssh")]
     Ssh(AccountSsh),
     #[structopt(name = "list")]

@@ -1714,6 +1714,16 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.get(attr).and_then(|vs| vs.to_refer_single())
     }
 
+    pub fn get_ava_mail_primary(&self, attr: &str) -> Option<&str> {
+        self.attrs
+            .get(attr)
+            .and_then(|vs| vs.to_email_address_primary_str())
+    }
+
+    pub fn get_ava_iter_mail(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava_set(attr).and_then(|vs| vs.as_email_str_iter())
+    }
+
     #[inline(always)]
     /// Return a single protocol filter, if valid to transform this value.
     pub fn get_ava_single_protofilter(&self, attr: &str) -> Option<&ProtoFilter> {

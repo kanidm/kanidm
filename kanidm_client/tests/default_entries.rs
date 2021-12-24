@@ -123,7 +123,7 @@ fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
     rsclient.idm_group_unix_extend(&group_name, None).unwrap();
 
     // Extend with person to allow legalname
-    rsclient.idm_account_person_extend(id).unwrap();
+    rsclient.idm_account_person_extend(id, None, None).unwrap();
 
     ["ssh_publickey", "legalname", "mail"]
         .iter()

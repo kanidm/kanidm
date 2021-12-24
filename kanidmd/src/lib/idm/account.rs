@@ -56,6 +56,13 @@ macro_rules! try_from_entry {
             OperationError::InvalidAccountState("Missing attribute: spn".to_string()),
         )?;
 
+        let mail_primary = $value.get_ava_mail_primary("mail").map(str::to_string);
+
+        let mail = $value
+            .get_ava_iter_mail("mail")
+            .map(|i| i.map(str::to_string).collect())
+            .unwrap_or_else(Vec::new);
+
         let valid_from = $value.get_ava_single_datetime("account_valid_from");
 
         let expire = $value.get_ava_single_datetime("account_expire");
@@ -79,6 +86,8 @@ macro_rules! try_from_entry {
             expire,
             radius_secret,
             spn,
+            mail_primary,
+            mail,
         })
     }};
 }
@@ -107,7 +116,8 @@ pub(crate) struct Account {
     pub spn: String,
     // TODO #256: When you add mail, you should update the check to zxcvbn
     // to include these.
-    // pub mail: Vec<String>
+    pub mail_primary: Option<String>,
+    pub mail: Vec<String>,
 }
 
 impl Account {
@@ -167,14 +177,15 @@ impl Account {
 
         Some(UserAuthToken {
             session_id,
+            auth_type,
             expiry,
-            // name: self.name.clone(),
-            spn: self.spn.clone(),
-            displayname: self.displayname.clone(),
             uuid: self.uuid,
+            // name: self.name.clone(),
+            displayname: self.displayname.clone(),
+            spn: self.spn.clone(),
+            mail_primary: self.mail_primary.clone(),
             // application: None,
             // groups: self.groups.iter().map(|g| g.to_proto()).collect(),
-            auth_type,
             // What's the best way to get access to these limits with regard to claims/other?
             lim_uidx: false,
             lim_rmax: 128,
@@ -210,6 +221,21 @@ impl Account {
 
     pub fn is_within_valid_time(&self, ct: Duration) -> bool {
         Self::check_within_valid_time(ct, self.valid_from.as_ref(), self.expire.as_ref())
+    }
+
+    // Get related inputs, such as account name, email, etc.
+    pub fn related_inputs(&self) -> Vec<&str> {
+        let mut inputs = Vec::with_capacity(4 + self.mail.len());
+        self.mail.iter().for_each(|m| {
+            inputs.push(m.as_str());
+        });
+        inputs.push(self.name.as_str());
+        inputs.push(self.spn.as_str());
+        inputs.push(self.displayname.as_str());
+        if let Some(s) = self.radius_secret.as_deref() {
+            inputs.push(s);
+        }
+        inputs
     }
 
     pub fn primary_cred_uuid(&self) -> Uuid {

@@ -810,6 +810,16 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_unix_cred_verify(id, cred))
     }
 
+    /*
+    pub fn idm_account_orgperson_extend(
+        &self,
+        id: &str,
+        mail: &str,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_account_orgperson_extend(id, mail))
+    }
+    */
+
     pub fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
         tokio_block_on(self.asclient.idm_account_get_ssh_pubkeys(id))
     }
@@ -823,8 +833,13 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_post_ssh_pubkey(id, tag, pubkey))
     }
 
-    pub fn idm_account_person_extend(&self, id: &str) -> Result<(), ClientError> {
-        tokio_block_on(self.asclient.idm_account_person_extend(id))
+    pub fn idm_account_person_extend(
+        &self,
+        id: &str,
+        mail: Option<&[String]>,
+        legalname: Option<&str>,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_account_person_extend(id, mail, legalname))
     }
 
     /*

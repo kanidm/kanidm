@@ -1283,18 +1283,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Check the password quality.
         // Ask if tis all good - this step checks pwpolicy and such
-        // Get related inputs, such as account name, email, etc.
-        let mut related_inputs: Vec<&str> = vec![
-            account.name.as_str(),
-            account.displayname.as_str(),
-            account.spn.as_str(),
-        ];
 
-        if let Some(s) = account.radius_secret.as_ref() {
-            related_inputs.push(s.as_str())
-        };
-
-        self.check_password_quality(pce.cleartext.as_str(), related_inputs.as_slice())
+        self.check_password_quality(pce.cleartext.as_str(), account.related_inputs().as_slice())
             .map_err(|e| {
                 request_error!(err = ?e, "check_password_quality");
                 e
@@ -1370,18 +1360,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // If we got here, then pre-apply succedded, and that means access control
         // passed. Now we can do the extra checks.
 
-        // Get related inputs, such as account name, email, etc.
-        let mut related_inputs: Vec<&str> = vec![
-            account.name.as_str(),
-            account.displayname.as_str(),
-            account.spn.as_str(),
-        ];
-
-        if let Some(s) = account.radius_secret.as_ref() {
-            related_inputs.push(s.as_str())
-        };
-
-        self.check_password_quality(pce.cleartext.as_str(), related_inputs.as_slice())
+        self.check_password_quality(pce.cleartext.as_str(), account.related_inputs().as_slice())
             .map_err(|e| {
                 admin_error!(?e, "Failed to checked password quality");
                 e

@@ -168,7 +168,7 @@ pub const JSON_IDM_ACP_PEOPLE_READ_PRIV_V1: &str = r#"{
             "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000002\"]}"
         ],
         "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
         "acp_search_attr": [
             "name", "displayname", "legalname", "mail"
@@ -278,8 +278,85 @@ pub const JSON_IDM_ACP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
         ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "legalname", "mail"
+        ],
         "acp_modify_presentattr": [
-            "class"
+            "class", "name", "displayname", "legalname", "mail"
+        ],
+        "acp_modify_class": ["person"]
+    }
+}"#;
+
+// -- hp people
+pub const JSON_IDM_ACP_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_hp_people_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000036"],
+        "description": ["Builtin IDM Control for reading high privilege personal sensitive data."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000028\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "name", "displayname", "legalname", "mail"
+        ]
+    }
+}"#;
+
+pub const JSON_IDM_ACP_HP_PEOPLE_WRITE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_hp_people_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000037"],
+        "description": ["Builtin IDM Control for managing privilege personal and sensitive data."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000029\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "legalname", "mail"
+        ],
+        "acp_modify_presentattr": [
+            "name", "displayname", "legalname", "mail"
+        ]
+    }
+}"#;
+
+pub const JSON_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_hp_people_extend_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000038"],
+        "description": ["Builtin IDM Control for allowing privilege person class extension"],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000030\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_removedattr": [
+            "name", "displayname", "legalname", "mail"
+        ],
+        "acp_modify_presentattr": [
+            "class", "name", "displayname", "legalname", "mail"
         ],
         "acp_modify_class": ["person"]
     }
@@ -891,7 +968,7 @@ pub const JSON_IDM_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
             "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
         ],
         "acp_modify_removedattr": [
-            "class", "loginshell", "gidnumber", "unix_password"
+            "loginshell", "gidnumber", "unix_password"
         ],
         "acp_modify_presentattr": [
             "class", "loginshell", "gidnumber", "unix_password"
@@ -921,7 +998,7 @@ pub const JSON_IDM_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
             "class", "name", "spn", "uuid", "description", "member", "gidnumber"
         ],
         "acp_modify_removedattr": [
-            "class", "gidnumber"
+            "gidnumber"
         ],
         "acp_modify_presentattr": [
             "class", "gidnumber"
@@ -952,7 +1029,7 @@ pub const JSON_IDM_HP_ACP_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
             "class", "name", "spn", "uuid", "description", "gidnumber", "loginshell", "unix_password"
         ],
         "acp_modify_removedattr": [
-            "class", "loginshell", "gidnumber", "unix_password"
+            "loginshell", "gidnumber", "unix_password"
         ],
         "acp_modify_presentattr": [
             "class", "loginshell", "gidnumber", "unix_password"
@@ -982,7 +1059,7 @@ pub const JSON_IDM_HP_ACP_GROUP_UNIX_EXTEND_PRIV_V1: &str = r#"{
             "class", "name", "spn", "uuid", "description", "member", "gidnumber"
         ],
         "acp_modify_removedattr": [
-            "class", "gidnumber"
+            "gidnumber"
         ],
         "acp_modify_presentattr": [
             "class", "gidnumber"

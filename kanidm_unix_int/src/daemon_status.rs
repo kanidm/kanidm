@@ -29,7 +29,7 @@ fn main() {
     }
     tracing_subscriber::fmt::init();
 
-    debug!("Starting cache status tool ...");
+    trace!("Starting cache status tool ...");
 
     let cfg = match KanidmUnixdConfig::new().read_options_from_optional_config("/etc/kanidm/unixd")
     {
@@ -51,7 +51,7 @@ fn main() {
     } else {
         match call_daemon_blocking(cfg.sock_path.as_str(), &req) {
             Ok(r) => match r {
-                ClientResponse::Ok => info!("working!"),
+                ClientResponse::Ok => println!("working!"),
                 _ => {
                     error!("Error: unexpected response -> {:?}", r);
                 }

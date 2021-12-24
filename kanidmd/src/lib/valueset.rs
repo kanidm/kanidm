@@ -110,7 +110,9 @@ impl From<Value> for ValueSet {
                 Value::Nsuniqueid(s) => I::Nsuniqueid(btreeset![s]),
                 Value::DateTime(dt) => I::DateTime(smolset![dt]),
                 Value::EmailAddress(e, _) => I::EmailAddress {
-                    primary: None,
+                    // We have to disregard the primary here
+                    // as we only have one!
+                    primary: Some(e.clone()),
                     set: btreeset![e],
                 },
                 Value::Url(u) => I::Url(smolset![u]),
@@ -179,13 +181,10 @@ impl TryFrom<DbValueV1> for ValueSet {
                 }
                 DbValueV1::EmailAddress(DbValueEmailAddressV1 {
                     d: email_addr,
-                    p: is_primary,
+                    p: _,
                 }) => {
-                    let primary = if is_primary {
-                        Some(email_addr.clone())
-                    } else {
-                        None
-                    };
+                    // Since this is the first, we need to disregard the primary.
+                    let primary = Some(email_addr.clone());
                     I::EmailAddress {
                         primary,
                         set: btreeset![email_addr],
@@ -377,7 +376,6 @@ impl ValueSet {
                 }),
             ) => {
                 if is_primary {
-                    debug_assert!(primary.is_none());
                     *primary = Some(email_addr.clone());
                 };
 
@@ -391,7 +389,6 @@ impl ValueSet {
                 }),
             ) => {
                 if is_primary {
-                    debug_assert!(primary.is_none());
                     *primary = Some(phone_number.clone());
                 };
                 Ok(set.insert(phone_number))
@@ -711,10 +708,12 @@ impl ValueSet {
             I::DateTime(set) => {
                 set.clear();
             }
-            I::EmailAddress { primary: _, set } => {
+            I::EmailAddress { primary, set } => {
+                *primary = None;
                 set.clear();
             }
-            I::PhoneNumber { primary: _, set } => {
+            I::PhoneNumber { primary, set } => {
+                *primary = None;
                 set.clear();
             }
             I::Address { set } => {
@@ -797,10 +796,11 @@ impl ValueSet {
                 set.remove(dt);
             }
             (I::EmailAddress { primary, set }, PartialValue::EmailAddress(e)) => {
-                if Some(e) == primary.as_ref() {
-                    *primary = None;
-                };
                 set.remove(e);
+                if Some(e) == primary.as_ref() {
+                    *primary = set.iter().cloned().next();
+                    // *primary = None;
+                };
             }
             (I::PhoneNumber { primary, set }, PartialValue::PhoneNumber(e)) => {
                 if Some(e) == primary.as_ref() {
@@ -1291,6 +1291,13 @@ impl ValueSet {
         }
     }
 
+    pub fn as_email_set(&self) -> Option<&BTreeSet<String>> {
+        match &self.inner {
+            I::EmailAddress { primary: _, set } => Some(set),
+            _ => None,
+        }
+    }
+
     pub fn as_sshkey_map(&self) -> Option<&BTreeMap<String, String>> {
         match &self.inner {
             I::SshKey(map) => Some(map),
@@ -1518,6 +1525,13 @@ impl ValueSet {
     pub fn as_sshpubkey_str_iter(&self) -> Option<impl Iterator<Item = &str>> {
         match &self.inner {
             I::SshKey(set) => Some(set.values().map(|s| s.as_str())),
+            _ => None,
+        }
+    }
+
+    pub fn as_email_str_iter(&self) -> Option<impl Iterator<Item = &str>> {
+        match &self.inner {
+            I::EmailAddress { primary: _, set } => Some(set.iter().map(|s| s.as_str())),
             _ => None,
         }
     }
@@ -2368,7 +2382,7 @@ mod tests {
             ValueSet::new(Value::new_email_address_s("claire@example.com").expect("Invalid Email"));
 
         assert!(vs.len() == 1);
-        assert!(vs.to_email_address_primary_str().is_none());
+        assert!(vs.to_email_address_primary_str() == Some("claire@example.com"));
 
         // Add another, still not primary.
         assert!(
@@ -2378,7 +2392,7 @@ mod tests {
         );
 
         assert!(vs.len() == 2);
-        assert!(vs.to_email_address_primary_str().is_none());
+        assert!(vs.to_email_address_primary_str() == Some("claire@example.com"));
 
         // Update primary
         assert!(
@@ -2396,17 +2410,22 @@ mod tests {
         assert!(vs == vs2);
         assert!(vs.to_email_address_primary_str() == vs2.to_email_address_primary_str());
 
-        // Remove primary, assert it's gone.
+        // Remove primary, assert it's gone and that the "first" address is assigned.
         assert!(vs.remove(&PartialValue::new_email_address_s("primary@example.com")));
         assert!(vs.len() == 2);
-        assert!(vs.to_email_address_primary_str().is_none());
+        assert!(vs.to_email_address_primary_str() == Some("alice@example.com"));
 
-        // Restore form dbv1, no primary.
-
+        // Restore from dbv1, alice persisted.
         let vs3 = ValueSet::from_db_valuev1_iter(vs.to_db_valuev1_iter())
             .expect("Failed to construct vs2 from dbvalue");
         assert!(vs == vs3);
-        assert!(vs.to_email_address_primary_str() != vs2.to_email_address_primary_str());
-        assert!(vs.to_email_address_primary_str() == vs3.to_email_address_primary_str());
+        assert!(vs3.len() == 2);
+        assert!(vs3.as_email_set().unwrap().contains("alice@example.com"));
+        assert!(vs3.as_email_set().unwrap().contains("claire@example.com"));
+
+        // If we clear, no primary.
+        vs.clear();
+        assert!(vs.len() == 0);
+        assert!(vs.to_email_address_primary_str().is_none());
     }
 }

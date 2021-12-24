@@ -709,7 +709,9 @@ fn test_server_rest_account_import_password() {
             .unwrap();
 
         // Make them a person, so we can import the password
-        rsclient.idm_account_person_extend("demo_account").unwrap();
+        rsclient
+            .idm_account_person_extend("demo_account", None, None)
+            .unwrap();
 
         // Attempt to import a bad password
         let r = rsclient.idm_account_primary_credential_import_password("demo_account", "password");

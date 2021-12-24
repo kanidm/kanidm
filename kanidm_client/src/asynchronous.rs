@@ -1278,6 +1278,20 @@ impl KanidmAsyncClient {
             .await
     }
 
+    /*
+    pub async fn idm_account_orgperson_extend(
+        &self,
+        id: &str,
+        mail: &str,
+    ) -> Result<(), ClientError> {
+        let x = AccountOrgPersonExtend {
+            mail: mail.to_string(),
+        };
+        self.perform_post_request(format!("/v1/account/{}/_orgperson", id).as_str(), x)
+            .await
+    }
+    */
+
     pub async fn idm_account_get_ssh_pubkeys(&self, id: &str) -> Result<Vec<String>, ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_ssh_pubkeys", id).as_str())
             .await
@@ -1294,8 +1308,17 @@ impl KanidmAsyncClient {
             .await
     }
 
-    pub async fn idm_account_person_extend(&self, id: &str) -> Result<(), ClientError> {
-        self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), ())
+    pub async fn idm_account_person_extend(
+        &self,
+        id: &str,
+        mail: Option<&[String]>,
+        legalname: Option<&str>,
+    ) -> Result<(), ClientError> {
+        let px = AccountPersonExtend {
+            mail: mail.map(|s| s.to_vec()),
+            legalname: legalname.map(str::to_string),
+        };
+        self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), px)
             .await
     }
 
