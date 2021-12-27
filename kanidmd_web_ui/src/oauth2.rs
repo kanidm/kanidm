@@ -321,6 +321,7 @@ impl Component for Oauth2App {
     }
 
     fn rendered(&mut self, _first_render: bool) {
+        crate::utils::autofocus();
         ConsoleService::log("oauth2::rendered");
     }
 
@@ -330,9 +331,12 @@ impl Component for Oauth2App {
                 html! {
                     <body class="html-body form-body">
                     <main class="form-signin">
-                      <form>
+                      <form
+                        onsubmit=self.link.callback(|_| Oauth2Msg::LoginProceed)
+                        action="javascript:void(0);"
+                      >
                         <h1 class="h3 mb-3 fw-normal">{" Sign in to proceed" }</h1>
-                        <button class="w-100 btn btn-lg btn-primary" type="submit" onclick=self.link.callback(|_| Oauth2Msg::LoginProceed)>{ "Sign in" }</button>
+                        <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Sign in" }</button>
                       </form>
                     </main>
                     </body>
@@ -344,9 +348,12 @@ impl Component for Oauth2App {
                 html! {
                     <body class="html-body form-body">
                     <main class="form-signin">
-                      <form>
+                      <form
+                        onsubmit=self.link.callback(|_| Oauth2Msg::ConsentGranted)
+                        action="javascript:void(0);"
+                      >
                         <h1 class="h3 mb-3 fw-normal">{"Consent to Proceed to " }{ client_name }</h1>
-                        <button class="w-100 btn btn-lg btn-primary" type="submit" onclick=self.link.callback(|_| Oauth2Msg::ConsentGranted)>{ "Proceed" }</button>
+                        <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
                       </form>
                     </main>
                     </body>

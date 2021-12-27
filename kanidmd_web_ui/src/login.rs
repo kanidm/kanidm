@@ -614,16 +614,7 @@ impl Component for LoginApp {
     }
 
     fn rendered(&mut self, _first_render: bool) {
-        // Once rendered if an element with id autofocus exists, focus it.
-        let doc = yew::utils::document();
-        if let Some(element) = doc.get_element_by_id("autofocus") {
-            if let Ok(htmlelement) = element.dyn_into::<web_sys::HtmlElement>() {
-                if htmlelement.focus().is_err() {
-                    ConsoleService::log("unable to autofocus.");
-                }
-            }
-        }
-
+        crate::utils::autofocus();
         ConsoleService::log("login::rendered");
     }
 }

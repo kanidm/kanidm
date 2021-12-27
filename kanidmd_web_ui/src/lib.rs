@@ -6,6 +6,7 @@ use wasm_bindgen::prelude::*;
 #[macro_use]
 extern crate serde_derive;
 
+mod utils;
 mod login;
 mod manager;
 mod models;
