@@ -1,46 +1,28 @@
-use yew::format::Json;
-use yew_services::storage;
-use yew_services::{ConsoleService, StorageService};
-
 use kanidm_proto::oauth2::AuthorisationRequest;
 
-use crate::manager::Route;
+use gloo::console;
+use gloo::storage::LocalStorage as PersistentStorage;
+use gloo::storage::SessionStorage as TemporaryStorage;
+use gloo::storage::Storage;
+use wasm_bindgen::UnwrapThrowExt;
 
-fn get_persistent_storage() -> StorageService {
-    StorageService::new(storage::Area::Local)
-        .map_err(|e| {
-            let e_msg = format!("lstorage error -> {:?}", e);
-            ConsoleService::log(e_msg.as_str());
-        })
-        .unwrap()
-}
+use crate::manager::Route;
+use serde::{Deserialize, Serialize};
 
 pub fn get_bearer_token() -> Option<String> {
-    let lstorage = get_persistent_storage();
-
-    let prev_session: Result<String, _> = lstorage.restore("kanidm_bearer_token");
-    ConsoleService::log(format!("prev_session -> {:?}", prev_session).as_str());
+    let prev_session: Result<String, _> = PersistentStorage::get("kanidm_bearer_token");
+    console::log!(format!("prev_session -> {:?}", prev_session).as_str());
 
     prev_session.ok()
 }
 
 pub fn set_bearer_token(bearer_token: String) {
-    let mut lstorage = get_persistent_storage();
-    lstorage.store("kanidm_bearer_token", Ok(bearer_token));
+    PersistentStorage::set("kanidm_bearer_token", bearer_token)
+        .expect_throw("failed to set header");
 }
 
 pub fn clear_bearer_token() {
-    let mut lstorage = get_persistent_storage();
-    lstorage.remove("kanidm_bearer_token");
-}
-
-fn get_temporary_storage() -> StorageService {
-    StorageService::new(storage::Area::Session)
-        .map_err(|e| {
-            let e_msg = format!("tstorage error -> {:?}", e);
-            ConsoleService::log(e_msg.as_str());
-        })
-        .unwrap()
+    PersistentStorage::delete("kanidm_bearer_token");
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -59,46 +41,34 @@ impl From<Location> for Route {
 }
 
 pub fn push_return_location(l: Location) {
-    let mut tstorage = get_temporary_storage();
-    tstorage.store("return_location", Json(&l));
+    TemporaryStorage::set("return_location", l).expect_throw("failed to set header");
 }
 
 pub fn pop_return_location() -> Location {
-    let mut tstorage = get_temporary_storage();
-
-    let l: Json<Result<Location, _>> = tstorage.restore("return_location");
-    ConsoleService::log(format!("return_location -> {:?}", l).as_str());
-    tstorage.remove("return_location");
-
-    l.into_inner().ok().unwrap_or(Location::Views)
+    let l: Result<Location, _> = TemporaryStorage::get("return_location");
+    console::log!(format!("return_location -> {:?}", l).as_str());
+    TemporaryStorage::delete("return_location");
+    l.unwrap_or(Location::Views)
 }
 
 pub fn push_oauth2_authorisation_request(r: AuthorisationRequest) {
-    let mut tstorage = get_temporary_storage();
-    tstorage.store("oauth2_authorisation_request", Json(&r));
+    TemporaryStorage::set("oauth2_authorisation_request", r).expect_throw("failed to set header");
 }
 
 pub fn pop_oauth2_authorisation_request() -> Option<AuthorisationRequest> {
-    let mut tstorage = get_temporary_storage();
-
-    let l: Json<Result<AuthorisationRequest, _>> = tstorage.restore("oauth2_authorisation_request");
-    ConsoleService::log(format!("oauth2_authorisation_request -> {:?}", l).as_str());
-    tstorage.remove("oauth2_authorisation_request");
-
-    l.into_inner().ok()
+    let l: Result<AuthorisationRequest, _> = TemporaryStorage::get("oauth2_authorisation_request");
+    console::log!(format!("oauth2_authorisation_request -> {:?}", l).as_str());
+    TemporaryStorage::delete("oauth2_authorisation_request");
+    l.ok()
 }
 
 pub fn push_login_hint(r: String) {
-    let mut tstorage = get_temporary_storage();
-    tstorage.store("login_hint", Ok(r));
+    TemporaryStorage::set("login_hint", r).expect_throw("failed to set header");
 }
 
 pub fn pop_login_hint() -> Option<String> {
-    let mut tstorage = get_temporary_storage();
-
-    let l: Result<String, _> = tstorage.restore("login_hint");
-    ConsoleService::log(format!("login_hint -> {:?}", l).as_str());
-    tstorage.remove("login_hint");
-
+    let l: Result<String, _> = TemporaryStorage::get("login_hint");
+    console::log!(format!("login_hint -> {:?}", l).as_str());
+    TemporaryStorage::delete("login_hint");
     l.ok()
 }

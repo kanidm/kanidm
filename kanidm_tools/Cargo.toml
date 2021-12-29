@@ -31,11 +31,11 @@ path = "src/badlist_preprocess.rs"
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.4" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.4" }
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 rpassword = "5.0"
 structopt = { version = "0.3", default-features = false }
 libc = "0.2"
-serde = "1.0"
+serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
 shellexpand = "2.0"
 rayon = "1.2"
@@ -45,7 +45,7 @@ bundy = "0.1"
 
 zxcvbn = "2.0"
 
-dialoguer =  "0.8"
+dialoguer =  "0.9"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.12"
 

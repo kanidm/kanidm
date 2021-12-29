@@ -1,9 +1,10 @@
-use yew::prelude::*;
-use yew_services::ConsoleService;
-
 use crate::models;
+use gloo::console;
+use wasm_bindgen::UnwrapThrowExt;
+use yew::prelude::*;
 
 use crate::manager::Route;
+use yew_router::prelude::*;
 
 enum State {
     LoginRequired,
@@ -11,7 +12,6 @@ enum State {
 }
 
 pub struct ViewsApp {
-    link: ComponentLink<Self>,
     state: State,
 }
 
@@ -23,23 +23,23 @@ impl Component for ViewsApp {
     type Message = ViewsMsg;
     type Properties = ();
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        ConsoleService::log("views::create");
+    fn create(_ctx: &Context<Self>) -> Self {
+        console::log!("views::create");
 
         let state = models::get_bearer_token()
             .map(State::Authenticated)
             .unwrap_or(State::LoginRequired);
 
-        ViewsApp { link, state }
+        ViewsApp { state }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        ConsoleService::log("views::change");
+    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        console::log!("views::changed");
         false
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        ConsoleService::log("views::update");
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        console::log!("views::update");
         match msg {
             ViewsMsg::Logout => {
                 models::clear_bearer_token();
@@ -49,24 +49,27 @@ impl Component for ViewsApp {
         }
     }
 
-    fn rendered(&mut self, _first_render: bool) {
-        ConsoleService::log("views::rendered");
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
+        console::log!("views::rendered");
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, ctx: &Context<Self>) -> Html {
         match self.state {
             State::LoginRequired => {
                 models::push_return_location(models::Location::Views);
-                yew_router::push_route(Route::Login);
+                ctx.link()
+                    .history()
+                    .expect_throw("failed to read history")
+                    .push(Route::Login);
                 html! { <div></div> }
             }
-            State::Authenticated(_) => self.view_authenticated(),
+            State::Authenticated(_) => self.view_authenticated(ctx),
         }
     }
 }
 
 impl ViewsApp {
-    fn view_authenticated(&self) -> Html {
+    fn view_authenticated(&self, ctx: &Context<Self>) -> Html {
         html! {
         <body class="dash-body">
           <header class="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow">
@@ -76,7 +79,7 @@ impl ViewsApp {
             </button>
             <div class="navbar-nav">
               <div class="nav-item text-nowrap">
-                <a class="nav-link px-3" href="#" onclick=self.link.callback(|_| ViewsMsg::Logout) >{ "Sign out" }</a>
+                <a class="nav-link px-3" href="#" onclick={ ctx.link().callback(|_| ViewsMsg::Logout) } >{ "Sign out" }</a>
               </div>
             </div>
           </header>

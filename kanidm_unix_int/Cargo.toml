@@ -47,7 +47,7 @@ kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
 kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
 
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 
 toml = "0.5"
 rpassword = "5.0"
@@ -58,15 +58,14 @@ futures = "0.3"
 bytes = "1.0"
 
 libc = "0.2"
-serde = "1.0"
-serde_derive = "1.0"
+serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"
 structopt = { version = "0.3", default-features = false }
 
-libsqlite3-sys = { version = "0.22" }
-rusqlite = { version = "0.25", features = ["backup"] }
+libsqlite3-sys = { version = "0.23" }
+rusqlite = { version = "0.26", features = ["backup"] }
 r2d2 = "0.8"
-r2d2_sqlite = "0.18"
+r2d2_sqlite = "0.19"
 
 reqwest = { version = "0.11" }
 
@@ -74,7 +73,7 @@ users = "0.11"
 async-std = { version = "1.6", features = ["tokio1"] }
 
 
-lru = "0.6"
+lru = "0.7"
 
 [features]
 # default = [ "libsqlite3-sys/bundled" ]

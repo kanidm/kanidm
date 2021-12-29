@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 use rand::distributions::Alphanumeric;
 use rand::{thread_rng, Rng};
+use serde::{Deserialize, Serialize};
 
 pub fn readable_password_from_random() -> String {
     let mut trng = thread_rng();

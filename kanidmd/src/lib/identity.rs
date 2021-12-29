@@ -5,6 +5,7 @@
 
 use crate::prelude::*;
 use kanidm_proto::v1::UserAuthToken;
+use serde::{Deserialize, Serialize};
 use std::hash::Hash;
 use std::sync::Arc;
 

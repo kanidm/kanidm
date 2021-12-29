@@ -11,7 +11,7 @@
 #[macro_use]
 extern crate tracing;
 
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use serde_json::error::Error as SerdeJsonError;
 use std::collections::BTreeSet as Set;
 use std::fs::{metadata, File, Metadata};

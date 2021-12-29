@@ -16,6 +16,7 @@ use fernet::Fernet;
 use hashbrown::HashMap;
 use kanidm_proto::v1::{AuthType, UserAuthToken};
 use openssl::sha;
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::sync::Arc;

@@ -15,7 +15,7 @@
 //!
 
 // use concread::collections::bptree::*;
-use concread::arcache::{ARCache, ARCacheReadTxn};
+use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use concread::cowcell::*;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::OperationError;
@@ -1325,10 +1325,10 @@ impl AccessControls {
                 ACP_RELATED_SEARCH_CACHE_LOCAL,
             ),
             */
-            acp_resolve_filter_cache: ARCache::new_size(
-                ACP_RESOLVE_FILTER_CACHE_MAX,
-                ACP_RESOLVE_FILTER_CACHE_LOCAL,
-            ),
+            acp_resolve_filter_cache: ARCacheBuilder::new()
+                .set_size(ACP_RESOLVE_FILTER_CACHE_MAX, ACP_RESOLVE_FILTER_CACHE_LOCAL)
+                .build()
+                .expect("Failed to construct acp_resolve_filter_cache"),
         }
     }
 

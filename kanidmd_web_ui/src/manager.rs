@@ -4,11 +4,10 @@
 //! not atuhenticated, this will determine that and send you to authentication first, then
 //! will allow you to proceed with the oauth flow.
 
+use gloo::console;
+use yew::functional::*;
 use yew::prelude::*;
-use yew_services::ConsoleService;
-
 use yew_router::prelude::*;
-use yew_router::router::Router;
 
 use crate::login::LoginApp;
 use crate::oauth2::Oauth2App;
@@ -34,13 +33,17 @@ pub enum Route {
     NotFound,
 }
 
+#[function_component(Landing)]
+fn landing() -> Html {
+    // Do this to allow use_history to work because lol.
+    use_history().unwrap().push(Route::Index);
+    html! { <body></body> }
+}
+
 fn switch(routes: &Route) -> Html {
-    ConsoleService::log("manager::switch");
+    console::log!("manager::switch");
     match routes {
-        Route::Landing => {
-            yew_router::push_route(Route::Index);
-            html! { <body></body> }
-        }
+        Route::Landing => html! { <Landing /> },
         Route::Index => html! { <ViewsApp /> },
         Route::Login => html! { <LoginApp /> },
         Route::Oauth2 => html! { <Oauth2App /> },
@@ -48,7 +51,7 @@ fn switch(routes: &Route) -> Html {
             html! {
                 <body>
                     <h1>{ "404" }</h1>
-                    <Link<Route> route=Route::Index>
+                    <Link<Route> to={ Route::Index }>
                     { "Home" }
                     </Link<Route>>
                 </body>
@@ -58,7 +61,6 @@ fn switch(routes: &Route) -> Html {
 }
 
 pub struct ManagerApp {
-    link: ComponentLink<Self>,
     is_ready: bool,
 }
 
@@ -66,35 +68,32 @@ impl Component for ManagerApp {
     type Message = bool;
     type Properties = ();
 
-    fn create(_: Self::Properties, link: ComponentLink<Self>) -> Self {
-        ConsoleService::log("manager::create");
-        ManagerApp {
-            link,
-            is_ready: false,
-        }
+    fn create(_ctx: &Context<Self>) -> Self {
+        console::log!("manager::create");
+        ManagerApp { is_ready: false }
     }
 
-    fn change(&mut self, _: Self::Properties) -> ShouldRender {
-        ConsoleService::log("manager::change");
+    fn changed(&mut self, _ctx: &Context<Self>) -> bool {
+        console::log!("manager::change");
         false
     }
 
-    fn update(&mut self, msg: Self::Message) -> ShouldRender {
-        ConsoleService::log("manager::update");
+    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+        console::log!("manager::update");
         self.is_ready = msg;
         true
     }
 
-    fn rendered(&mut self, first_render: bool) {
-        ConsoleService::log("manager::rendered");
+    fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
+        console::log!("manager::rendered");
         if first_render {
             // Can only access the current_route AFTER it renders.
-            // ConsoleService::log(format!("{:?}", yew_router::current_route::<Route>()).as_str())
-            self.link.send_message(first_render)
+            // console::log!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
+            ctx.link().send_message(first_render)
         }
     }
 
-    fn view(&self) -> Html {
+    fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
         <>
             <head>
@@ -110,7 +109,11 @@ impl Component for ManagerApp {
 
             {
                 if self.is_ready {
-                    html! {<Router<Route> render=Router::render(switch) /> }
+                    html! {
+                        <BrowserRouter>
+                            <Switch<Route> render={ Switch::render(switch) } />
+                        </BrowserRouter>
+                    }
                 } else {
                     html! { <body></body> }
                 }

@@ -14,7 +14,7 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 
 use users::{get_current_gid, get_current_uid, get_effective_gid, get_effective_uid};
 
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use std::fs::{metadata, File, Metadata};
 
 #[cfg(target_family = "unix")]

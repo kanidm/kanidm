@@ -1,3 +1,4 @@
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use url::Url;
 use webauthn_rs::base64_data::Base64UrlSafeData;
@@ -16,7 +17,7 @@ pub struct PkceRequest {
     pub code_challenge_method: CodeChallengeMethod,
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct AuthorisationRequest {
     // Must be "code". (or token, see 4.2.1)
     pub response_type: String,
@@ -36,7 +37,7 @@ pub struct AuthorisationRequest {
     pub unknown_keys: BTreeMap<String, serde_json::value::Value>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Default)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default)]
 pub struct AuthorisationRequestOidc {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub display: Option<String>,
@@ -58,7 +59,7 @@ pub struct AuthorisationRequestOidc {
 
 /// We ask our user to consent to this Authorisation Request with the
 /// following data.
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConsentRequest {
     // A pretty-name of the client
     pub client_name: String,
