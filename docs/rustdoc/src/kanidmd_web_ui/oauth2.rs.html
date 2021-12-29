@@ -365,6 +365,13 @@
 <span id="365">365</span>
 <span id="366">366</span>
 <span id="367">367</span>
+<span id="368">368</span>
+<span id="369">369</span>
+<span id="370">370</span>
+<span id="371">371</span>
+<span id="372">372</span>
+<span id="373">373</span>
+<span id="374">374</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">anyhow::Error</span>;
 <span class="kw">use</span> <span class="ident">yew::format</span>::{<span class="ident">Json</span>, <span class="ident">Nothing</span>};
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
@@ -688,6 +695,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
+        <span class="ident"><span class="kw">crate</span>::utils::autofocus</span>();
         <span class="ident">ConsoleService::log</span>(<span class="string">&quot;oauth2::rendered&quot;</span>);
     }
 
@@ -697,9 +705,12 @@
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="ident">body</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;html-body form-body&quot;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">form</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">form</span>
+                        <span class="ident">onsubmit</span><span class="op">=</span><span class="self">self</span>.<span class="ident">link</span>.<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::LoginProceed</span>)
+                        <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
+                      <span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">h1</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;h3 mb-3 fw-normal&quot;</span><span class="op">&gt;</span>{<span class="string">&quot; Sign in to proceed&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;w-100 btn btn-lg btn-primary&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">onclick</span><span class="op">=</span><span class="self">self</span>.<span class="ident">link</span>.<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::LoginProceed</span>)<span class="op">&gt;</span>{ <span class="string">&quot;Sign in&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">id</span><span class="op">=</span><span class="string">&quot;autofocus&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;w-100 btn btn-lg btn-primary&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Sign in&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">body</span><span class="op">&gt;</span>
@@ -711,9 +722,12 @@
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="ident">body</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;html-body form-body&quot;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">form</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">form</span>
+                        <span class="ident">onsubmit</span><span class="op">=</span><span class="self">self</span>.<span class="ident">link</span>.<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::ConsentGranted</span>)
+                        <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
+                      <span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">h1</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;h3 mb-3 fw-normal&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Consent to Proceed to &quot;</span> }{ <span class="ident">client_name</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;w-100 btn btn-lg btn-primary&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span> <span class="ident">onclick</span><span class="op">=</span><span class="self">self</span>.<span class="ident">link</span>.<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::ConsentGranted</span>)<span class="op">&gt;</span>{ <span class="string">&quot;Proceed&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">id</span><span class="op">=</span><span class="string">&quot;autofocus&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;w-100 btn btn-lg btn-primary&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;submit&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Proceed&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">button</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="op">/</span><span class="ident">form</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">body</span><span class="op">&gt;</span>

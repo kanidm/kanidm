@@ -618,15 +618,6 @@
 <span id="618">618</span>
 <span id="619">619</span>
 <span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">anyhow::Error</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
@@ -1243,16 +1234,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
-        <span class="comment">// Once rendered if an element with id autofocus exists, focus it.</span>
-        <span class="kw">let</span> <span class="ident">doc</span> <span class="op">=</span> <span class="ident">yew::utils::document</span>();
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">element</span>) <span class="op">=</span> <span class="ident">doc</span>.<span class="ident">get_element_by_id</span>(<span class="string">&quot;autofocus&quot;</span>) {
-            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Ok</span>(<span class="ident">htmlelement</span>) <span class="op">=</span> <span class="ident">element</span>.<span class="ident">dyn_into</span>::<span class="op">&lt;</span><span class="ident">web_sys::HtmlElement</span><span class="op">&gt;</span>() {
-                <span class="kw">if</span> <span class="ident">htmlelement</span>.<span class="ident">focus</span>().<span class="ident">is_err</span>() {
-                    <span class="ident">ConsoleService::log</span>(<span class="string">&quot;unable to autofocus.&quot;</span>);
-                }
-            }
-        }
-
+        <span class="ident"><span class="kw">crate</span>::utils::autofocus</span>();
         <span class="ident">ConsoleService::log</span>(<span class="string">&quot;login::rendered&quot;</span>);
     }
 }
