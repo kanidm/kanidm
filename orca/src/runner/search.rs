@@ -6,6 +6,7 @@ use mathru::statistics::distrib::Continuous;
 use mathru::statistics::distrib::Normal;
 use rand::seq::IteratorRandom;
 use rand::seq::SliceRandom;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;

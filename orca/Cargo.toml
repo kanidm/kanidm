@@ -16,7 +16,7 @@ path = "src/main.rs"
 [dependencies]
 jemallocator = { version = "0.3.0", optional = true }
 tracing = "0.1"
-tracing-subscriber = "0.2"
+tracing-subscriber = "0.3"
 
 structopt = { version = "0.3", default-features = false }
 
@@ -24,7 +24,6 @@ uuid = { version = "0.8", features = ["serde", "v4" ] }
 csv = "1.1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1.0"
-serde_derive = "1.0"
 
 rand = "0.8"
 toml = "0.5"
@@ -44,5 +43,5 @@ ldap3_server = "^0.1.7"
 crossbeam = "0.8"
 async-std = { version = "1.6", features = ["tokio1"] }
 
-mathru = "0.10"
+mathru = "0.11"
 

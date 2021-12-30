@@ -5,6 +5,7 @@
 //! or domain entries that are able to be replicated.
 
 use rand::prelude::*;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 use std::str::FromStr;
 

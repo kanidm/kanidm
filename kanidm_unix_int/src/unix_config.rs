@@ -3,7 +3,7 @@ use crate::constants::{
     DEFAULT_HOME_ALIAS, DEFAULT_HOME_ATTR, DEFAULT_HOME_PREFIX, DEFAULT_SHELL, DEFAULT_SOCK_PATH,
     DEFAULT_TASK_SOCK_PATH, DEFAULT_UID_ATTR_MAP,
 };
-use serde_derive::Deserialize;
+use serde::Deserialize;
 use std::fs::File;
 use std::io::{ErrorKind, Read};
 use std::path::Path;

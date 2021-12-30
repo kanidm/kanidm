@@ -19,6 +19,7 @@ use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use ldap3_server::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String as AttrString;
+use serde::Deserialize;
 use std::cmp::{Ordering, PartialOrd};
 use std::collections::BTreeSet;
 use std::hash::Hash;

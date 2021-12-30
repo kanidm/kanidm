@@ -6,6 +6,7 @@ use crate::idm::oauth2::{
 };
 use crate::prelude::*;
 use kanidm_proto::v1::Entry as ProtoEntry;
+use serde::{Deserialize, Serialize};
 
 // == Oauth2 Configuration Endpoints ==
 

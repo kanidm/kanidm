@@ -9,8 +9,6 @@
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
 #[macro_use]
-extern crate serde_derive;
-#[macro_use]
 extern crate tracing;
 #[macro_use]
 extern crate rusqlite;

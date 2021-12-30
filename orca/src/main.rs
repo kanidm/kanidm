@@ -15,9 +15,6 @@ static ALLOC: jemallocator::Jemalloc = jemallocator::Jemalloc;
 #[macro_use]
 extern crate tracing;
 
-#[macro_use]
-extern crate serde_derive;
-
 use crate::ds::DirectoryServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
 use std::collections::{HashMap, HashSet};

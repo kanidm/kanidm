@@ -12,6 +12,7 @@ use crate::value::{PartialValue, Value};
 use kanidm_proto::v1::{OperationError, SchemaError};
 
 // Should this be std?
+use serde::{Deserialize, Serialize};
 use smartstring::alias::String as AttrString;
 use std::slice;
 

@@ -4,7 +4,7 @@
 // This is really only used for long lived, high level types that need clone
 // that otherwise can't be cloned. Think Mutex.
 use async_std::task;
-use concread::arcache::{ARCache, ARCacheReadTxn};
+use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
 use hashbrown::{HashMap, HashSet};
 use std::cell::Cell;
 use std::sync::Arc;
@@ -875,10 +875,12 @@ impl QueryServer {
             accesscontrols: Arc::new(AccessControls::new()),
             db_tickets: Arc::new(Semaphore::new(pool_size as usize)),
             write_ticket: Arc::new(Semaphore::new(1)),
-            resolve_filter_cache: Arc::new(ARCache::new_size(
-                RESOLVE_FILTER_CACHE_MAX,
-                RESOLVE_FILTER_CACHE_LOCAL,
-            )),
+            resolve_filter_cache: Arc::new(
+                ARCacheBuilder::new()
+                    .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
+                    .build()
+                    .expect("Failer to build resolve_filter_cache"),
+            ),
         }
     }
 

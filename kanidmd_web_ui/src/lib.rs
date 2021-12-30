@@ -3,14 +3,12 @@
 
 use wasm_bindgen::prelude::*;
 
-#[macro_use]
-extern crate serde_derive;
-
-mod utils;
+mod error;
 mod login;
 mod manager;
 mod models;
 mod oauth2;
+mod utils;
 mod views;
 
 #[wasm_bindgen]

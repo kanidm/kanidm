@@ -9,7 +9,7 @@ use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::value::IndexType;
 use crate::value::Value;
 
-use concread::arcache::{ARCache, ARCacheReadTxn, ARCacheWriteTxn};
+use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn, ARCacheWriteTxn};
 use concread::cowcell::*;
 use idlset::{v2::IDLBitRange, AndNot};
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -1098,30 +1098,48 @@ impl IdlArcSqlite {
             cache_size = DEFAULT_CACHE_TARGET; // this being above the log was an uncaught bug
         }
 
-        let entry_cache = ARCache::new(
-            cache_size,
-            cfg.pool_size as usize,
-            DEFAULT_CACHE_RMISS,
-            DEFAULT_CACHE_WMISS,
-            false,
-        );
+        let entry_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                cache_size,
+                cfg.pool_size as usize,
+                DEFAULT_CACHE_RMISS,
+                DEFAULT_CACHE_WMISS,
+                false,
+            )
+            .build()
+            .ok_or_else(|| {
+                admin_error!("Failed to construct entry_cache");
+                OperationError::InvalidState
+            })?;
         // The idl cache should have smaller items, and is critical for fast searches
         // so we allow it to have a higher ratio of items relative to the entries.
-        let idl_cache = ARCache::new(
-            cache_size * DEFAULT_IDL_CACHE_RATIO,
-            cfg.pool_size as usize,
-            DEFAULT_CACHE_RMISS,
-            DEFAULT_CACHE_WMISS,
-            false,
-        );
+        let idl_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                cache_size * DEFAULT_IDL_CACHE_RATIO,
+                cfg.pool_size as usize,
+                DEFAULT_CACHE_RMISS,
+                DEFAULT_CACHE_WMISS,
+                false,
+            )
+            .build()
+            .ok_or_else(|| {
+                admin_error!("Failed to construct idl_cache");
+                OperationError::InvalidState
+            })?;
 
-        let name_cache = ARCache::new(
-            cache_size * DEFAULT_NAME_CACHE_RATIO,
-            cfg.pool_size as usize,
-            DEFAULT_CACHE_RMISS,
-            DEFAULT_CACHE_WMISS,
-            true,
-        );
+        let name_cache = ARCacheBuilder::new()
+            .set_expected_workload(
+                cache_size * DEFAULT_NAME_CACHE_RATIO,
+                cfg.pool_size as usize,
+                DEFAULT_CACHE_RMISS,
+                DEFAULT_CACHE_WMISS,
+                true,
+            )
+            .build()
+            .ok_or_else(|| {
+                admin_error!("Failed to construct name_cache");
+                OperationError::InvalidState
+            })?;
 
         let allids = CowCell::new(IDLBitRange::new());
 
