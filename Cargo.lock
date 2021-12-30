@@ -1879,7 +1879,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "async-h1",
  "async-std",
@@ -1944,7 +1944,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_client"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "async-std",
  "base64 0.13.0",
@@ -1968,7 +1968,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_proto"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "base32",
  "serde",
@@ -1981,7 +1981,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_tools"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "bundy",
  "dialoguer",
@@ -2004,7 +2004,7 @@ dependencies = [
 
 [[package]]
 name = "kanidm_unix_int"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "async-std",
  "bytes",
@@ -2034,7 +2034,7 @@ dependencies = [
 
 [[package]]
 name = "kanidmd_web_ui"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "gloo 0.5.0",
  "js-sys",
@@ -2323,7 +2323,7 @@ dependencies = [
 
 [[package]]
 name = "nss_kanidm"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "kanidm_unix_int",
  "lazy_static",
@@ -2476,7 +2476,7 @@ dependencies = [
 
 [[package]]
 name = "orca"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "async-std",
  "crossbeam",
@@ -2503,7 +2503,7 @@ dependencies = [
 
 [[package]]
 name = "pam_kanidm"
-version = "1.1.0-alpha.6"
+version = "1.1.0-alpha.7"
 dependencies = [
  "kanidm_unix_int",
  "libc",

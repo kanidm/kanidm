@@ -1,6 +1,6 @@
 
 <p align="center">
-  <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-xmas-small.png" width="20%" height="auto" />
+  <img src="https://raw.githubusercontent.com/kanidm/kanidm/master/artwork/logo-small.png" width="20%" height="auto" />
 </p>
 
 # Kanidm

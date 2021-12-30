@@ -16,6 +16,23 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 # Release Notes
 
+## 2022-01-01 - Kanidm 1.1.0-alpha7
+
+This is the seventh alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+### Release Highlights
+
+* Oauth2 scope to group mappings
+* Webauthn subdomain support
+* Oauth2 rfc7662 token introspection
+* Basic OpenID Connect support
+* Improve performance of domain rename
+* Refactor of entry value internals to improve performance
+* Addition of email address attributes
+* Web UI improvements for Oauth2
+
 ## 2021-10-01 - Kanidm 1.1.0-alpha6
 
 This is the sixth alpha series release of the Kanidm Identity Management
