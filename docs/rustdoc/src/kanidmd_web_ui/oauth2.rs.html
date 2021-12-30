@@ -372,14 +372,49 @@
 <span id="372">372</span>
 <span id="373">373</span>
 <span id="374">374</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">anyhow::Error</span>;
-<span class="kw">use</span> <span class="ident">yew::format</span>::{<span class="ident">Json</span>, <span class="ident">Nothing</span>};
+<span id="375">375</span>
+<span id="376">376</span>
+<span id="377">377</span>
+<span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
+<span id="383">383</span>
+<span id="384">384</span>
+<span id="385">385</span>
+<span id="386">386</span>
+<span id="387">387</span>
+<span id="388">388</span>
+<span id="389">389</span>
+<span id="390">390</span>
+<span id="391">391</span>
+<span id="392">392</span>
+<span id="393">393</span>
+<span id="394">394</span>
+<span id="395">395</span>
+<span id="396">396</span>
+<span id="397">397</span>
+<span id="398">398</span>
+<span id="399">399</span>
+<span id="400">400</span>
+<span id="401">401</span>
+<span id="402">402</span>
+<span id="403">403</span>
+</pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
+<span class="kw">use</span> <span class="ident">gloo::console</span>;
+<span class="kw">use</span> <span class="ident">wasm_bindgen::JsCast</span>;
+<span class="kw">use</span> <span class="ident">wasm_bindgen::JsValue</span>;
+<span class="kw">use</span> <span class="ident">wasm_bindgen::UnwrapThrowExt</span>;
+<span class="kw">use</span> <span class="ident">wasm_bindgen_futures::JsFuture</span>;
+<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">RequestRedirect</span>, <span class="ident">Response</span>};
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">yew_services::fetch</span>::{<span class="ident">FetchOptions</span>, <span class="ident">FetchService</span>, <span class="ident">FetchTask</span>, <span class="ident">Redirect</span>, <span class="ident">Request</span>, <span class="ident">Response</span>};
-<span class="kw">use</span> <span class="ident">yew_services::ConsoleService</span>;
+<span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::manager::Route</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
 
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">kanidm_proto::oauth2</span>::{
     <span class="ident">AccessTokenRequest</span>, <span class="ident">AccessTokenResponse</span>, <span class="ident">AuthorisationRequest</span>, <span class="ident">CodeChallengeMethod</span>,
@@ -390,16 +425,15 @@
     <span class="comment">// We don&#39;t have a token, or something is invalid.</span>
     <span class="ident">LoginRequired</span>,
     <span class="comment">// We are in the process of check the auth token to be sure we can proceed.</span>
-    <span class="ident">TokenCheck</span>(<span class="ident">String</span>, <span class="ident">FetchTask</span>),
+    <span class="ident">TokenCheck</span>(<span class="ident">String</span>),
     <span class="comment">// Token check done, lets do it.</span>
-    <span class="ident">SubmitAuthReq</span>(<span class="ident">String</span>, <span class="ident">FetchTask</span>),
+    <span class="ident">SubmitAuthReq</span>(<span class="ident">String</span>),
     <span class="ident">Consent</span>(<span class="ident">String</span>, <span class="ident">ConsentRequest</span>),
-    <span class="ident">ConsentGranted</span>(<span class="ident">FetchTask</span>),
+    <span class="ident">ConsentGranted</span>,
     <span class="ident">ErrInvalidRequest</span>,
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2App</span> {
-    <span class="ident">link</span>: <span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
     <span class="ident">state</span>: <span class="ident">State</span>,
 }
 
@@ -412,121 +446,138 @@
     <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
 }
 
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">FetchError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">Oauth2Msg</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">fe</span>: <span class="ident">FetchError</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">Oauth2Msg::Error</span> {
+            <span class="ident">emsg</span>: <span class="ident">fe</span>.<span class="ident">as_string</span>(),
+            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+        }
+    }
+}
+
 <span class="kw">impl</span> <span class="ident">Oauth2App</span> {
-    <span class="kw">fn</span> <span class="ident">fetch_token_valid</span>(<span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">link</span>: <span class="kw-2">&amp;</span><span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FetchTask</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">link</span>.<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">response</span>: <span class="ident">Response</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">parts</span>, <span class="ident">body</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">into_parts</span>();
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_token_valid</span>(<span class="ident">token</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Oauth2Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
+        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
+        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
+        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">if</span> <span class="ident">parts</span>.<span class="ident">status</span>.<span class="ident">is_success</span>() {
-                <span class="ident">Oauth2Msg::TokenValid</span>
-            } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">parts</span>.<span class="ident">status</span> <span class="op">==</span> <span class="number">401</span> {
-                <span class="ident">Oauth2Msg::LoginProceed</span>
-            } <span class="kw">else</span> {
-                <span class="ident">Oauth2Msg::Error</span> {
-                    <span class="ident">emsg</span>: <span class="ident">body</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>()),
-                    <span class="ident">kopid</span>: <span class="ident">parts</span>
-                        .<span class="ident">headers</span>
-                        .<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">id</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>().<span class="ident">to_string</span>()),
-                }
-            }
-        });
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>).<span class="ident">as_str</span>())
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
 
-        <span class="ident">Request::get</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>))
-            .<span class="ident">body</span>(<span class="ident">Nothing</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">request</span><span class="op">|</span> {
-                <span class="ident">FetchService::fetch</span>(<span class="ident">request</span>, <span class="ident">callback</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
-            })
+        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
+        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+
+        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::TokenValid</span>)
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">401</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::LoginProceed</span>)
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
+            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
+            <span class="comment">// let jsval_json = JsFuture::from(resp.json()?).await?;</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        }
     }
 
-    <span class="kw">fn</span> <span class="ident">fetch_authreq</span>(
-        <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">authreq</span>: <span class="kw-2">&amp;</span><span class="ident">AuthorisationRequest</span>,
-        <span class="ident">link</span>: <span class="kw-2">&amp;</span><span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FetchTask</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">link</span>.<span class="ident">callback</span>(
-            <span class="kw">move</span> <span class="op">|</span><span class="ident">response</span>: <span class="ident">Response</span><span class="op">&lt;</span><span class="ident">Json</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ConsentRequest</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">|</span> {
-                <span class="kw">let</span> (<span class="ident">parts</span>, <span class="ident">body</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">into_parts</span>();
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_authreq</span>(
+        <span class="ident">token</span>: <span class="ident">String</span>,
+        <span class="ident">authreq</span>: <span class="ident">AuthorisationRequest</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Oauth2Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">authreq_jsvalue</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">authreq</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">JsValue::from</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>))
+            .<span class="ident">expect</span>(<span class="string">&quot;Failed to serialise authreq&quot;</span>);
 
-                <span class="kw">match</span> <span class="ident">body</span> {
-                    <span class="ident">Json</span>(<span class="prelude-val">Ok</span>(<span class="ident">state</span>)) =&gt; <span class="ident">Oauth2Msg::Consent</span>(<span class="ident">state</span>),
-                    <span class="ident">Json</span>(<span class="prelude-val">Err</span>(<span class="ident">e</span>)) =&gt; <span class="ident">Oauth2Msg::Error</span> {
-                        <span class="ident">emsg</span>: <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>),
-                        <span class="ident">kopid</span>: <span class="ident">parts</span>
-                            .<span class="ident">headers</span>
-                            .<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>)
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">id</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>().<span class="ident">to_string</span>()),
-                    },
-                }
-            },
-        );
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
+        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;POST&quot;</span>);
+        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
 
-        <span class="ident">Request::post</span>(<span class="string">&quot;/oauth2/authorise&quot;</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>))
-            .<span class="ident">body</span>(<span class="ident">Json</span>(<span class="ident">authreq</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">request</span><span class="op">|</span> {
-                <span class="ident">FetchService::fetch_binary</span>(<span class="ident">request</span>, <span class="ident">callback</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
-            })
+        <span class="ident">opts</span>.<span class="ident">body</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">authreq_jsvalue</span>));
+
+        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/oauth2/authorise&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>).<span class="ident">as_str</span>())
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
+        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+        <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+
+        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
+            <span class="kw">let</span> <span class="ident">jsval</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">json</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">state</span>: <span class="ident">ConsentRequest</span> <span class="op">=</span> <span class="ident">jsval</span>.<span class="ident">into_serde</span>().<span class="ident">unwrap</span>();
+            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Consent</span>(<span class="ident">state</span>))
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
+            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
+            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        }
     }
 
-    <span class="kw">fn</span> <span class="ident">fetch_consent_token</span>(
-        <span class="ident">token</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-        <span class="ident">consent_token</span>: <span class="ident">String</span>,
-        <span class="ident">link</span>: <span class="kw-2">&amp;</span><span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">FetchTask</span>, <span class="ident">String</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">callback</span> <span class="op">=</span> <span class="ident">link</span>.<span class="ident">callback</span>(<span class="kw">move</span> <span class="op">|</span><span class="ident">response</span>: <span class="ident">Response</span><span class="op">&lt;</span><span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">Error</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">|</span> {
-            <span class="kw">let</span> (<span class="ident">parts</span>, <span class="ident">_body</span>) <span class="op">=</span> <span class="ident">response</span>.<span class="ident">into_parts</span>();
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">fetch_consent_token</span>(
+        <span class="ident">token</span>: <span class="ident">String</span>,
+        <span class="ident">consent_req</span>: <span class="ident">ConsentRequest</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Oauth2Msg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">consentreq_jsvalue</span> <span class="op">=</span> <span class="ident">serde_json::to_string</span>(<span class="kw-2">&amp;</span><span class="ident">consent_req</span>.<span class="ident">consent_token</span>)
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">JsValue::from</span>(<span class="kw-2">&amp;</span><span class="ident">s</span>))
+            .<span class="ident">expect</span>(<span class="string">&quot;Failed to serialise consent_req&quot;</span>);
 
-            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">parts</span>
-                .<span class="ident">headers</span>
-                .<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">id</span><span class="op">|</span> <span class="ident">id</span>.<span class="ident">to_str</span>().<span class="ident">unwrap</span>().<span class="ident">to_string</span>());
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
+        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;POST&quot;</span>);
+        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
+        <span class="ident">opts</span>.<span class="ident">redirect</span>(<span class="ident">RequestRedirect::Manual</span>);
 
-            <span class="kw">if</span> <span class="ident">parts</span>.<span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">loc</span>) <span class="op">=</span> <span class="ident">parts</span>
-                    .<span class="ident">headers</span>
-                    .<span class="ident">get</span>(<span class="string">&quot;location&quot;</span>)
-                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">hv</span><span class="op">|</span> <span class="ident">hv</span>.<span class="ident">to_str</span>().<span class="ident">ok</span>().<span class="ident">map</span>(<span class="ident">str::to_string</span>))
-                {
-                    <span class="ident">Oauth2Msg::Redirect</span>(<span class="ident">loc</span>)
-                } <span class="kw">else</span> {
-                    <span class="ident">Oauth2Msg::Error</span> {
-                        <span class="ident">emsg</span>: <span class="string">&quot;no location header&quot;</span>.<span class="ident">to_string</span>(),
-                        <span class="ident">kopid</span>,
-                    }
-                }
+        <span class="ident">opts</span>.<span class="ident">body</span>(<span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">consentreq_jsvalue</span>));
+
+        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/oauth2/authorise/permit&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>).<span class="ident">as_str</span>())
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
+        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">unwrap</span>();
+        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+        <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+
+        <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
+
+        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
+            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">loc</span>) <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;location&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>() {
+                <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Redirect</span>(<span class="ident">loc</span>))
             } <span class="kw">else</span> {
-                <span class="ident">Oauth2Msg::Error</span> {
-                    <span class="ident">emsg</span>: <span class="string">&quot;Redirect error&quot;</span>.<span class="ident">to_string</span>(),
+                <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Error</span> {
+                    <span class="ident">emsg</span>: <span class="string">&quot;no location header&quot;</span>.<span class="ident">to_string</span>(),
                     <span class="ident">kopid</span>,
-                }
+                })
             }
-        });
-
-        <span class="kw">let</span> <span class="ident">options</span> <span class="op">=</span> <span class="ident">FetchOptions</span> {
-            <span class="ident">cache</span>: <span class="prelude-val">None</span>,
-            <span class="ident">credentials</span>: <span class="prelude-val">None</span>,
-            <span class="ident">redirect</span>: <span class="prelude-val">Some</span>(<span class="ident">Redirect::Manual</span>),
-            <span class="ident">mode</span>: <span class="prelude-val">None</span>,
-            <span class="ident">referrer</span>: <span class="prelude-val">None</span>,
-            <span class="ident">referrer_policy</span>: <span class="prelude-val">None</span>,
-            <span class="ident">integrity</span>: <span class="prelude-val">None</span>,
-        };
-
-        <span class="ident">Request::post</span>(<span class="string">&quot;/oauth2/authorise/permit&quot;</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
-            .<span class="ident">header</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>))
-            .<span class="ident">body</span>(<span class="ident">Json</span>(<span class="kw-2">&amp;</span><span class="ident">consent_token</span>))
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">request</span><span class="op">|</span> {
-                <span class="ident">FetchService::fetch_binary_with_options</span>(<span class="ident">request</span>, <span class="ident">options</span>, <span class="ident">callback</span>)
-                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>))
-            })
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="string">&quot;Redirect error&quot;</span>.<span class="ident">to_string</span>();
+            <span class="prelude-val">Ok</span>(<span class="ident">Oauth2Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        }
     }
 }
 
@@ -534,19 +585,25 @@
     <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">Oauth2Msg</span>;
     <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::Properties</span>, <span class="ident">link</span>: <span class="ident">ComponentLink</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
-        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;oauth2::create&quot;</span>);
+    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+        <span class="macro">console::log!</span>(<span class="string">&quot;oauth2::create&quot;</span>);
 
         <span class="comment">// Do we have a query here?</span>
         <span class="comment">// Did we get sent a valid Oauth2 request?</span>
-        <span class="kw">let</span> <span class="ident">query</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">AuthorisationRequest</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">yew_router::parse_query</span>()
+        <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">ctx</span>
+            .<span class="ident">link</span>()
+            .<span class="ident">location</span>()
+            .<span class="ident">expect</span>(<span class="string">&quot;Can&#39;t access current location&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">query</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">AuthorisationRequest</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">location</span>
+            .<span class="ident">query</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">e_msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;lstorage error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-                <span class="ident">ConsoleService::log</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
+                <span class="macro">console::log!</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
             })
             .<span class="ident">ok</span>()
             .<span class="ident">or_else</span>(<span class="op">|</span><span class="op">|</span> {
-                <span class="ident">ConsoleService::log</span>(<span class="string">&quot;pop_oauth2_authorisation_request&quot;</span>);
+                <span class="macro">console::log!</span>(<span class="string">&quot;pop_oauth2_authorisation_request&quot;</span>);
                 <span class="ident">models::pop_oauth2_authorisation_request</span>()
             });
 
@@ -555,14 +612,13 @@
             <span class="prelude-val">Some</span>(<span class="ident">q</span>) =&gt; <span class="ident">q</span>,
             <span class="prelude-val">None</span> =&gt; {
                 <span class="kw">return</span> <span class="ident">Oauth2App</span> {
-                    <span class="ident">link</span>,
                     <span class="ident">state</span>: <span class="ident">State::ErrInvalidRequest</span>,
                 };
             }
         };
 
         <span class="kw">let</span> <span class="ident">e_msg</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">query</span>);
-        <span class="ident">ConsoleService::log</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
+        <span class="macro">console::log!</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
 
         <span class="comment">// In the query, if this is openid there MAY be a hint</span>
         <span class="comment">// as to the users name.</span>
@@ -578,39 +634,39 @@
             <span class="prelude-val">Some</span>(<span class="ident">token</span>) =&gt; {
                 <span class="comment">// Start the fetch req.</span>
                 <span class="comment">// Put the fetch handle into the consent type.</span>
-                <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_token_valid</span>(<span class="ident">token</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="ident">link</span>) {
-                    <span class="prelude-val">Ok</span>(<span class="ident">ft</span>) =&gt; <span class="ident">Oauth2App</span> {
-                        <span class="ident">link</span>,
-                        <span class="ident">state</span>: <span class="ident">State::TokenCheck</span>(<span class="ident">token</span>, <span class="ident">ft</span>),
-                    },
-                    <span class="prelude-val">Err</span>(<span class="ident">e_msg</span>) =&gt; {
-                        <span class="ident">ConsoleService::log</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
-                        <span class="ident">Oauth2App</span> {
-                            <span class="ident">link</span>,
-                            <span class="ident">state</span>: <span class="ident">State::ErrInvalidRequest</span>,
-                        }
+                <span class="kw">let</span> <span class="ident">token_c</span> <span class="op">=</span> <span class="ident">token</span>.<span class="ident">clone</span>();
+                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
+                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_token_valid</span>(<span class="ident">token_c</span>).<span class="kw">await</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
                     }
+                });
+
+                <span class="ident">Oauth2App</span> {
+                    <span class="ident">state</span>: <span class="ident">State::TokenCheck</span>(<span class="ident">token</span>),
                 }
             }
             <span class="prelude-val">None</span> =&gt; <span class="ident">Oauth2App</span> {
-                <span class="ident">link</span>,
                 <span class="ident">state</span>: <span class="ident">State::LoginRequired</span>,
             },
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">change</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="kw">_</span>: <span class="ident"><span class="self">Self</span>::Properties</span>) -&gt; <span class="ident">ShouldRender</span> {
-        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;oauth2::change&quot;</span>);
+    <span class="kw">fn</span> <span class="ident">changed</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">bool</span> {
+        <span class="macro">console::log!</span>(<span class="string">&quot;oauth2::change&quot;</span>);
         <span class="bool-val">false</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">ShouldRender</span> {
-        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;oauth2::update&quot;</span>);
+    <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
+        <span class="macro">console::log!</span>(<span class="string">&quot;oauth2::update&quot;</span>);
 
         <span class="kw">match</span> <span class="ident">msg</span> {
             <span class="ident">Oauth2Msg::LoginProceed</span> =&gt; {
                 <span class="ident">models::push_return_location</span>(<span class="ident">models::Location::Oauth2</span>);
-                <span class="ident">yew_router::push_route</span>(<span class="ident">Route::Login</span>);
+                <span class="ident">ctx</span>.<span class="ident">link</span>()
+                    .<span class="ident">history</span>()
+                    .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to read history&quot;</span>)
+                    .<span class="ident">push</span>(<span class="ident">Route::Login</span>);
                 <span class="comment">// Don&#39;t need to redraw as we are yolo-ing out.</span>
                 <span class="bool-val">false</span>
             }
@@ -619,17 +675,19 @@
                 <span class="kw">let</span> <span class="ident">ar</span> <span class="op">=</span> <span class="ident">models::pop_oauth2_authorisation_request</span>();
 
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> (<span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>, <span class="ident">ar</span>) {
-                    (<span class="ident">State::TokenCheck</span>(<span class="ident">token</span>, <span class="kw">_</span>), <span class="prelude-val">Some</span>(<span class="ident">ar</span>)) =&gt; {
-                        <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_authreq</span>(<span class="ident">token</span>, <span class="kw-2">&amp;</span><span class="ident">ar</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">link</span>) {
-                            <span class="prelude-val">Ok</span>(<span class="ident">ft</span>) =&gt; <span class="ident">State::SubmitAuthReq</span>(<span class="ident">token</span>.<span class="ident">clone</span>(), <span class="ident">ft</span>),
-                            <span class="prelude-val">Err</span>(<span class="ident">e_msg</span>) =&gt; {
-                                <span class="ident">ConsoleService::log</span>(<span class="ident">e_msg</span>.<span class="ident">as_str</span>());
-                                <span class="ident">State::ErrInvalidRequest</span>
+                    (<span class="ident">State::TokenCheck</span>(<span class="ident">token</span>), <span class="prelude-val">Some</span>(<span class="ident">ar</span>)) =&gt; {
+                        <span class="kw">let</span> <span class="ident">token_c</span> <span class="op">=</span> <span class="ident">token</span>.<span class="ident">clone</span>();
+                        <span class="kw">let</span> <span class="ident">ar_c</span> <span class="op">=</span> <span class="ident">ar</span>.<span class="ident">clone</span>();
+                        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
+                            <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_authreq</span>(<span class="ident">token_c</span>, <span class="ident">ar_c</span>).<span class="kw">await</span> {
+                                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
                             }
-                        }
+                        });
+                        <span class="ident">State::SubmitAuthReq</span>(<span class="ident">token</span>.<span class="ident">clone</span>())
                     }
                     <span class="kw">_</span> =&gt; {
-                        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
+                        <span class="macro">console::log!</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
                         <span class="ident">State::ErrInvalidRequest</span>
                     }
                 };
@@ -637,9 +695,9 @@
             }
             <span class="ident">Oauth2Msg::Consent</span>(<span class="ident">consent_req</span>) =&gt; {
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
-                    <span class="ident">State::SubmitAuthReq</span>(<span class="ident">token</span>, <span class="kw">_</span>) =&gt; <span class="ident">State::Consent</span>(<span class="ident">token</span>.<span class="ident">clone</span>(), <span class="ident">consent_req</span>),
+                    <span class="ident">State::SubmitAuthReq</span>(<span class="ident">token</span>) =&gt; <span class="ident">State::Consent</span>(<span class="ident">token</span>.<span class="ident">clone</span>(), <span class="ident">consent_req</span>),
                     <span class="kw">_</span> =&gt; {
-                        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
+                        <span class="macro">console::log!</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
                         <span class="ident">State::ErrInvalidRequest</span>
                     }
                 };
@@ -648,20 +706,18 @@
             <span class="ident">Oauth2Msg::ConsentGranted</span> =&gt; {
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
                     <span class="ident">State::Consent</span>(<span class="ident">token</span>, <span class="ident">consent_req</span>) =&gt; {
-                        <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_consent_token</span>(
-                            <span class="ident">token</span>,
-                            <span class="ident">consent_req</span>.<span class="ident">consent_token</span>.<span class="ident">clone</span>(),
-                            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">link</span>,
-                        ) {
-                            <span class="prelude-val">Ok</span>(<span class="ident">ft</span>) =&gt; <span class="ident">State::ConsentGranted</span>(<span class="ident">ft</span>),
-                            <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                                <span class="ident">ConsoleService::log</span>(<span class="ident">e</span>.<span class="ident">as_str</span>());
-                                <span class="ident">State::ErrInvalidRequest</span>
+                        <span class="kw">let</span> <span class="ident">token_c</span> <span class="op">=</span> <span class="ident">token</span>.<span class="ident">clone</span>();
+                        <span class="kw">let</span> <span class="ident">cr_c</span> <span class="op">=</span> (<span class="kw-2">*</span><span class="ident">consent_req</span>).<span class="ident">clone</span>();
+                        <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
+                            <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::fetch_consent_token</span>(<span class="ident">token_c</span>, <span class="ident">cr_c</span>).<span class="kw">await</span> {
+                                <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                                <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
                             }
-                        }
+                        });
+                        <span class="ident">State::ConsentGranted</span>
                     }
                     <span class="kw">_</span> =&gt; {
-                        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
+                        <span class="macro">console::log!</span>(<span class="string">&quot;Invalid state transition&quot;</span>);
                         <span class="ident">State::ErrInvalidRequest</span>
                     }
                 };
@@ -670,22 +726,24 @@
             }
             <span class="ident">Oauth2Msg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::ErrInvalidRequest</span>;
-                <span class="ident">ConsoleService::log</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">kopid</span>).<span class="ident">as_str</span>());
-                <span class="ident">ConsoleService::log</span>(<span class="ident">emsg</span>.<span class="ident">as_str</span>());
+                <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">kopid</span>).<span class="ident">as_str</span>());
+                <span class="macro">console::log!</span>(<span class="ident">emsg</span>.<span class="ident">as_str</span>());
                 <span class="bool-val">true</span>
             }
             <span class="ident">Oauth2Msg::Redirect</span>(<span class="ident">loc</span>) =&gt; {
-                <span class="ident">ConsoleService::log</span>(<span class="macro">format!</span>(<span class="string">&quot;Redirecting to {}&quot;</span>, <span class="ident">loc</span>).<span class="ident">as_str</span>());
+                <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;Redirecting to {}&quot;</span>, <span class="ident">loc</span>).<span class="ident">as_str</span>());
                 <span class="comment">// Send the location here, and then update will trigger the redir via</span>
                 <span class="comment">// https://docs.rs/web-sys/0.3.51/web_sys/struct.Location.html#method.replace</span>
                 <span class="comment">// see https://developer.mozilla.org/en-US/docs/Web/API/Location/replace</span>
-                <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">yew::utils::window</span>().<span class="ident">location</span>();
+
+                <span class="kw">let</span> <span class="ident">location</span> <span class="op">=</span> <span class="ident">utils::window</span>().<span class="ident">location</span>();
+
                 <span class="kw">match</span> <span class="ident">location</span>.<span class="ident">replace</span>(<span class="ident">loc</span>.<span class="ident">as_str</span>()) {
                     <span class="comment">// No need to redraw, we are leaving.</span>
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="bool-val">false</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="comment">// Something went bang, opps.</span>
-                        <span class="ident">ConsoleService::log</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>).<span class="ident">as_str</span>());
+                        <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">e</span>).<span class="ident">as_str</span>());
                         <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::ErrInvalidRequest</span>;
                         <span class="bool-val">true</span>
                     }
@@ -694,19 +752,19 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
+    <span class="kw">fn</span> <span class="ident">rendered</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">_first_render</span>: <span class="ident">bool</span>) {
         <span class="ident"><span class="kw">crate</span>::utils::autofocus</span>();
-        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;oauth2::rendered&quot;</span>);
+        <span class="macro">console::log!</span>(<span class="string">&quot;oauth2::rendered&quot;</span>);
     }
 
-    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Html</span> {
+    <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
             <span class="ident">State::LoginRequired</span> =&gt; {
                 <span class="macro">html!</span> {
                     <span class="op">&lt;</span><span class="ident">body</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;html-body form-body&quot;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="ident">form</span>
-                        <span class="ident">onsubmit</span><span class="op">=</span><span class="self">self</span>.<span class="ident">link</span>.<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::LoginProceed</span>)
+                        <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::LoginProceed</span>) }
                         <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
                       <span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">h1</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;h3 mb-3 fw-normal&quot;</span><span class="op">&gt;</span>{<span class="string">&quot; Sign in to proceed&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
@@ -723,7 +781,7 @@
                     <span class="op">&lt;</span><span class="ident">body</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;html-body form-body&quot;</span><span class="op">&gt;</span>
                     <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
                       <span class="op">&lt;</span><span class="ident">form</span>
-                        <span class="ident">onsubmit</span><span class="op">=</span><span class="self">self</span>.<span class="ident">link</span>.<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::ConsentGranted</span>)
+                        <span class="ident">onsubmit</span><span class="op">=</span>{ <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">callback</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">Oauth2Msg::ConsentGranted</span>) }
                         <span class="ident">action</span><span class="op">=</span><span class="string">&quot;javascript:void(0);&quot;</span>
                       <span class="op">&gt;</span>
                         <span class="op">&lt;</span><span class="ident">h1</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;h3 mb-3 fw-normal&quot;</span><span class="op">&gt;</span>{<span class="string">&quot;Consent to Proceed to &quot;</span> }{ <span class="ident">client_name</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>
@@ -733,7 +791,7 @@
                     <span class="op">&lt;</span><span class="op">/</span><span class="ident">body</span><span class="op">&gt;</span>
                 }
             }
-            <span class="ident">State::ConsentGranted</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">State::SubmitAuthReq</span>(<span class="kw">_</span>, <span class="kw">_</span>) <span class="op">|</span> <span class="ident">State::TokenCheck</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; {
+            <span class="ident">State::ConsentGranted</span> <span class="op">|</span> <span class="ident">State::SubmitAuthReq</span>(<span class="kw">_</span>) <span class="op">|</span> <span class="ident">State::TokenCheck</span>(<span class="kw">_</span>) =&gt; {
                 <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">body</span><span class="op">&gt;</span> <span class="op">&lt;</span><span class="ident">h1</span><span class="op">&gt;</span>{ <span class="string">&quot; ... &quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h1</span><span class="op">&gt;</span>  <span class="op">&lt;</span><span class="op">/</span><span class="ident">body</span><span class="op">&gt;</span> }
             }
             <span class="ident">State::ErrInvalidRequest</span> =&gt; {
@@ -742,8 +800,8 @@
         }
     }
 
-    <span class="kw">fn</span> <span class="ident">destroy</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>) {
-        <span class="ident">ConsoleService::log</span>(<span class="string">&quot;oauth2::destroy&quot;</span>);
+    <span class="kw">fn</span> <span class="ident">destroy</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) {
+        <span class="macro">console::log!</span>(<span class="string">&quot;oauth2::destroy&quot;</span>);
     }
 }
 </code></pre></div>

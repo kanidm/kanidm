@@ -1929,6 +1929,7 @@
 <span id="1929">1929</span>
 <span id="1930">1930</span>
 <span id="1931">1931</span>
+<span id="1932">1932</span>
 </pre><pre class="rust"><code><span class="doccomment">//! [`Filter`]s are one of the three foundational concepts of the design in kanidm.</span>
 <span class="doccomment">//! They are used in nearly every aspect of the server to provide searching of</span>
 <span class="doccomment">//! datasets and assertion of entry properties.</span>
@@ -1950,6 +1951,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">SchemaError</span>};
 <span class="kw">use</span> <span class="ident">ldap3_server::proto</span>::{<span class="ident">LdapFilter</span>, <span class="ident">LdapSubstringFilter</span>};
 <span class="comment">// use smartstring::alias::String as AttrString;</span>
+<span class="kw">use</span> <span class="ident">serde::Deserialize</span>;
 <span class="kw">use</span> <span class="ident">std::cmp</span>::{<span class="ident">Ordering</span>, <span class="ident">PartialOrd</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
 <span class="kw">use</span> <span class="ident">std::hash::Hash</span>;

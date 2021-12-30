@@ -580,9 +580,9 @@
 <span class="kw">use</span> <span class="ident">tracing::field</span>::{<span class="ident">Field</span>, <span class="ident">Visit</span>};
 <span class="kw">use</span> <span class="ident">tracing::span</span>::{<span class="ident">Attributes</span>, <span class="ident">Record</span>};
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">Event</span>, <span class="ident">Id</span>, <span class="ident">Level</span>, <span class="ident">Metadata</span>, <span class="ident">Subscriber</span>};
+<span class="kw">use</span> <span class="ident">tracing_subscriber::filter::EnvFilter</span>;
 <span class="kw">use</span> <span class="ident">tracing_subscriber::layer</span>::{<span class="ident">Context</span>, <span class="ident">Layered</span>, <span class="ident">SubscriberExt</span>};
 <span class="kw">use</span> <span class="ident">tracing_subscriber::registry</span>::{<span class="ident">LookupSpan</span>, <span class="ident">Registry</span>, <span class="ident">Scope</span>, <span class="ident">SpanRef</span>};
-<span class="kw">use</span> <span class="ident">tracing_subscriber::EnvFilter</span>;
 <span class="kw">use</span> <span class="ident">tracing_subscriber::Layer</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -790,7 +790,7 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">P</span>: <span class="ident">Processor</span><span class="op">&gt;</span> <span class="ident">Layer</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">TreeLayer</span><span class="op">&lt;</span><span class="ident">P</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">new_span</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attrs</span>: <span class="kw-2">&amp;</span><span class="ident">Attributes</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span>) {
+    <span class="kw">fn</span> <span class="ident">on_new_span</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">attrs</span>: <span class="kw-2">&amp;</span><span class="ident">Attributes</span>, <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">Id</span>, <span class="ident">ctx</span>: <span class="ident">Context</span><span class="op">&lt;</span><span class="ident">Registry</span><span class="op">&gt;</span>) {
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">span</span> <span class="op">=</span> <span class="ident">ctx</span>.<span class="ident">span</span>(<span class="ident">id</span>).<span class="ident">expect</span>(<span class="string">&quot;Span not found, this is a bug&quot;</span>);
 

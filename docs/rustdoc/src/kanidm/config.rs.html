@@ -221,6 +221,7 @@
 <span id="221">221</span>
 <span id="222">222</span>
 <span id="223">223</span>
+<span id="224">224</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of</span>
 <span class="doccomment">//! variables that determine how our backends, query server, and frontends are configured.</span>
 <span class="doccomment">//!</span>
@@ -228,6 +229,7 @@
 <span class="doccomment">//! or domain entries that are able to be replicated.</span>
 
 <span class="kw">use</span> <span class="ident">rand::prelude</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::fmt</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 

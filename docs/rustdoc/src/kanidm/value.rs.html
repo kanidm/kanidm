@@ -1752,6 +1752,7 @@
 <span id="1752">1752</span>
 <span id="1753">1753</span>
 <span id="1754">1754</span>
+<span id="1755">1755</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of</span>
 <span class="doccomment">//! the [`Value`] module allow storage and transformation of various types of input into strongly</span>
 <span class="doccomment">//! typed values, allows their comparison, filtering and more. It also has the code for serialising</span>
@@ -1762,6 +1763,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::repl::cid::Cid</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>;
 
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std::fmt</span>;

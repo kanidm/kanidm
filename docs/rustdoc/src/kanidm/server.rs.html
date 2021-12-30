@@ -4071,13 +4071,15 @@
 <span id="4071">4071</span>
 <span id="4072">4072</span>
 <span id="4073">4073</span>
+<span id="4074">4074</span>
+<span id="4075">4075</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
 <span class="comment">// This is really only used for long lived, high level types that need clone</span>
 <span class="comment">// that otherwise can&#39;t be cloned. Think Mutex.</span>
 <span class="kw">use</span> <span class="ident">async_std::task</span>;
-<span class="kw">use</span> <span class="ident">concread::arcache</span>::{<span class="ident">ARCache</span>, <span class="ident">ARCacheReadTxn</span>};
+<span class="kw">use</span> <span class="ident">concread::arcache</span>::{<span class="ident">ARCache</span>, <span class="ident">ARCacheBuilder</span>, <span class="ident">ARCacheReadTxn</span>};
 <span class="kw">use</span> <span class="ident">hashbrown</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::cell::Cell</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -4948,10 +4950,12 @@
             <span class="ident">accesscontrols</span>: <span class="ident">Arc::new</span>(<span class="ident">AccessControls::new</span>()),
             <span class="ident">db_tickets</span>: <span class="ident">Arc::new</span>(<span class="ident">Semaphore::new</span>(<span class="ident">pool_size</span> <span class="kw">as</span> <span class="ident">usize</span>)),
             <span class="ident">write_ticket</span>: <span class="ident">Arc::new</span>(<span class="ident">Semaphore::new</span>(<span class="number">1</span>)),
-            <span class="ident">resolve_filter_cache</span>: <span class="ident">Arc::new</span>(<span class="ident">ARCache::new_size</span>(
-                <span class="ident">RESOLVE_FILTER_CACHE_MAX</span>,
-                <span class="ident">RESOLVE_FILTER_CACHE_LOCAL</span>,
-            )),
+            <span class="ident">resolve_filter_cache</span>: <span class="ident">Arc::new</span>(
+                <span class="ident">ARCacheBuilder::new</span>()
+                    .<span class="ident">set_size</span>(<span class="ident">RESOLVE_FILTER_CACHE_MAX</span>, <span class="ident">RESOLVE_FILTER_CACHE_LOCAL</span>)
+                    .<span class="ident">build</span>()
+                    .<span class="ident">expect</span>(<span class="string">&quot;Failer to build resolve_filter_cache&quot;</span>),
+            ),
         }
     }
 

@@ -234,6 +234,7 @@
 <span id="234">234</span>
 <span id="235">235</span>
 <span id="236">236</span>
+<span id="237">237</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Modification expressions and validation. This is how `ModifyEvents` store and</span>
 <span class="doccomment">//! express the series of Modifications that should be applied. These are expressed</span>
 <span class="doccomment">//! as &quot;states&quot; on what attribute-values should appear as within the `Entry`</span>
@@ -248,6 +249,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">SchemaError</span>};
 
 <span class="comment">// Should this be std?</span>
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
 <span class="kw">use</span> <span class="ident">std::slice</span>;
 

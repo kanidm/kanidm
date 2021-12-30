@@ -161,6 +161,7 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
+<span id="164">164</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Contains structures related to the Identity that initiated an `Event` in the</span>
 <span class="doccomment">//! server. Generally this Identity is what will have access controls applied to</span>
 <span class="doccomment">//! and this provides the set of `Limits` to confine how many resources that the</span>
@@ -168,6 +169,7 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::UserAuthToken</span>;
+<span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::hash::Hash</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 

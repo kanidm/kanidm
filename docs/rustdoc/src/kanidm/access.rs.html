@@ -2345,7 +2345,7 @@
 <span class="doccomment">//!</span>
 
 <span class="comment">// use concread::collections::bptree::*;</span>
-<span class="kw">use</span> <span class="ident">concread::arcache</span>::{<span class="ident">ARCache</span>, <span class="ident">ARCacheReadTxn</span>};
+<span class="kw">use</span> <span class="ident">concread::arcache</span>::{<span class="ident">ARCache</span>, <span class="ident">ARCacheBuilder</span>, <span class="ident">ARCacheReadTxn</span>};
 <span class="kw">use</span> <span class="ident">concread::cowcell</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Filter</span> <span class="kw">as</span> <span class="ident">ProtoFilter</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
@@ -3655,10 +3655,10 @@
                 ACP_RELATED_SEARCH_CACHE_LOCAL,
             ),
             */</span>
-            <span class="ident">acp_resolve_filter_cache</span>: <span class="ident">ARCache::new_size</span>(
-                <span class="ident">ACP_RESOLVE_FILTER_CACHE_MAX</span>,
-                <span class="ident">ACP_RESOLVE_FILTER_CACHE_LOCAL</span>,
-            ),
+            <span class="ident">acp_resolve_filter_cache</span>: <span class="ident">ARCacheBuilder::new</span>()
+                .<span class="ident">set_size</span>(<span class="ident">ACP_RESOLVE_FILTER_CACHE_MAX</span>, <span class="ident">ACP_RESOLVE_FILTER_CACHE_LOCAL</span>)
+                .<span class="ident">build</span>()
+                .<span class="ident">expect</span>(<span class="string">&quot;Failed to construct acp_resolve_filter_cache&quot;</span>),
         }
     }
 
