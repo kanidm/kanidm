@@ -12,11 +12,9 @@
   },
   "files": [
     "kanidmd_web_ui_bg.wasm",
-    "kanidmd_web_ui.js",
-    "kanidmd_web_ui.d.ts"
+    "kanidmd_web_ui.js"
   ],
   "module": "kanidmd_web_ui.js",
   "homepage": "https://github.com/kanidm/kanidm/",
-  "types": "kanidmd_web_ui.d.ts",
   "sideEffects": false
 }

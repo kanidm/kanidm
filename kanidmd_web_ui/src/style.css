@@ -1,8 +1,9 @@
-.html-body {
+html,
+body {
   height: 100%;
 }
 
-.form-body {
+.form-signin-body {
   display: flex;
   align-items: center;
   padding-top: 40px;

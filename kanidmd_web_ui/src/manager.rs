@@ -37,7 +37,7 @@ pub enum Route {
 fn landing() -> Html {
     // Do this to allow use_history to work because lol.
     use_history().unwrap().push(Route::Index);
-    html! { <body></body> }
+    html! { <main></main> }
 }
 
 fn switch(routes: &Route) -> Html {
@@ -49,28 +49,26 @@ fn switch(routes: &Route) -> Html {
         Route::Oauth2 => html! { <Oauth2App /> },
         Route::NotFound => {
             html! {
-                <body>
+                <main>
                     <h1>{ "404" }</h1>
                     <Link<Route> to={ Route::Index }>
                     { "Home" }
                     </Link<Route>>
-                </body>
+                </main>
             }
         }
     }
 }
 
-pub struct ManagerApp {
-    is_ready: bool,
-}
+pub struct ManagerApp {}
 
 impl Component for ManagerApp {
-    type Message = bool;
+    type Message = ();
     type Properties = ();
 
     fn create(_ctx: &Context<Self>) -> Self {
         console::log!("manager::create");
-        ManagerApp { is_ready: false }
+        ManagerApp {}
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -78,47 +76,22 @@ impl Component for ManagerApp {
         false
     }
 
-    fn update(&mut self, _ctx: &Context<Self>, msg: Self::Message) -> bool {
+    fn update(&mut self, _ctx: &Context<Self>, _msg: Self::Message) -> bool {
         console::log!("manager::update");
-        self.is_ready = msg;
         true
     }
 
-    fn rendered(&mut self, ctx: &Context<Self>, first_render: bool) {
+    fn rendered(&mut self, _ctx: &Context<Self>, _first_render: bool) {
         console::log!("manager::rendered");
-        if first_render {
-            // Can only access the current_route AFTER it renders.
-            // console::log!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
-            ctx.link().send_message(first_render)
-        }
+        // Can only access the current_route AFTER it renders.
+        // console::log!(format!("{:?}", yew_router::current_route::<Route>()).as_str())
     }
 
     fn view(&self, _ctx: &Context<Self>) -> Html {
         html! {
-        <>
-            <head>
-                <meta charset="utf-8"/>
-                <title>{ "Kanidm" }</title>
-                <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
-                <link rel="stylesheet" href="/pkg/style.css"/>
-                <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-                <script src="/pkg/external/confetti.js"></script>
-                <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>" />
-
-            </head>
-
-            {
-                if self.is_ready {
-                    html! {
-                        <BrowserRouter>
-                            <Switch<Route> render={ Switch::render(switch) } />
-                        </BrowserRouter>
-                    }
-                } else {
-                    html! { <body></body> }
-                }
-            }
-        </>
+            <BrowserRouter>
+                <Switch<Route> render={ Switch::render(switch) } />
+            </BrowserRouter>
         }
     }
 }

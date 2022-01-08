@@ -1,7 +1,7 @@
 use gloo::console;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{Document, Event, HtmlInputElement, Window};
+use web_sys::{Document, Event, HtmlElement, HtmlInputElement, Window};
 
 pub fn window() -> Window {
     web_sys::window().expect("Unable to retrieve window")
@@ -9,6 +9,10 @@ pub fn window() -> Window {
 
 pub fn document() -> Document {
     window().document().expect("Unable to retrieve document")
+}
+
+pub fn body() -> HtmlElement {
+    document().body().expect("Unable to retrieve body")
 }
 
 pub fn autofocus() {
