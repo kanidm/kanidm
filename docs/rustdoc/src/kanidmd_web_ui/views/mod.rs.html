@@ -137,6 +137,7 @@
 <span id="137">137</span>
 <span id="138">138</span>
 <span id="139">139</span>
+<span id="140">140</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::UnwrapThrowExt</span>;
@@ -209,8 +210,9 @@
 
 <span class="kw">impl</span> <span class="ident">ViewsApp</span> {
     <span class="kw">fn</span> <span class="ident">view_authenticated</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
+        <span class="comment">// WARN set dash-body against body here?</span>
         <span class="macro">html!</span> {
-        <span class="op">&lt;</span><span class="ident">body</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;dash-body&quot;</span><span class="op">&gt;</span>
+        <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;dash-body&quot;</span><span class="op">&gt;</span>
           <span class="op">&lt;</span><span class="ident">header</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow&quot;</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="ident">a</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-brand col-md-3 col-lg-2 me-0 px-3&quot;</span> <span class="ident">href</span><span class="op">=</span><span class="string">&quot;#&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Kanidm&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">a</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="ident">button</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;navbar-toggler position-absolute d-md-none collapsed&quot;</span> <span class="kw">type</span><span class="op">=</span><span class="string">&quot;button&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">toggle</span><span class="op">=</span><span class="string">&quot;collapse&quot;</span> <span class="ident">data</span><span class="op">-</span><span class="ident">bs</span><span class="op">-</span><span class="ident">target</span><span class="op">=</span><span class="string">&quot;#sidebarMenu&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">controls</span><span class="op">=</span><span class="string">&quot;sidebarMenu&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">expanded</span><span class="op">=</span><span class="string">&quot;false&quot;</span> <span class="ident">aria</span><span class="op">-</span><span class="ident">label</span><span class="op">=</span><span class="string">&quot;Toggle navigation&quot;</span><span class="op">&gt;</span>
@@ -272,7 +274,7 @@
               <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
           <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-        <span class="op">&lt;</span><span class="op">/</span><span class="ident">body</span><span class="op">&gt;</span>
+        <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
           }
     }
 }

@@ -85,7 +85,7 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_bearer_token</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">prev_session</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">PersistentStorage::get</span>(<span class="string">&quot;kanidm_bearer_token&quot;</span>);
-    <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;prev_session -&gt; {:?}&quot;</span>, <span class="ident">prev_session</span>).<span class="ident">as_str</span>());
+    <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;kanidm_bearer_token -&gt; {:?}&quot;</span>, <span class="ident">prev_session</span>).<span class="ident">as_str</span>());
 
     <span class="ident">prev_session</span>.<span class="ident">ok</span>()
 }

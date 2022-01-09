@@ -29,10 +29,14 @@
 <span id="29">29</span>
 <span id="30">30</span>
 <span id="31">31</span>
+<span id="32">32</span>
+<span id="33">33</span>
+<span id="34">34</span>
+<span id="35">35</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen</span>::{<span class="ident">JsCast</span>, <span class="ident">UnwrapThrowExt</span>};
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">web_sys::InputEvent</span>;
-<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Document</span>, <span class="ident">Event</span>, <span class="ident">HtmlInputElement</span>, <span class="ident">Window</span>};
+<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Document</span>, <span class="ident">Event</span>, <span class="ident">HtmlElement</span>, <span class="ident">HtmlInputElement</span>, <span class="ident">Window</span>};
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">window</span>() -&gt; <span class="ident">Window</span> {
     <span class="ident">web_sys::window</span>().<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve window&quot;</span>)
@@ -40,6 +44,10 @@
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">document</span>() -&gt; <span class="ident">Document</span> {
     <span class="ident">window</span>().<span class="ident">document</span>().<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve document&quot;</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">body</span>() -&gt; <span class="ident">HtmlElement</span> {
+    <span class="ident">document</span>().<span class="ident">body</span>().<span class="ident">expect</span>(<span class="string">&quot;Unable to retrieve body&quot;</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">autofocus</span>() {
