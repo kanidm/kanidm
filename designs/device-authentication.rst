@@ -6,7 +6,7 @@ It is common for people to have multiple devices that they wish to access their 
 devices vary from desktops, laptops, tablets, mobile phones and more. Each of these devices have
 different security and trust levels, as well as a variety of input methods.
 
-Historically authentication providers have *not* factored in multiple device classes to human
+Historically authentication providers have *not* factored in multiple device classes to
 authentication leading to processes that are inconvinent to insecure for humans to handle when they
 want to use their account between devices.
 
@@ -52,8 +52,9 @@ Roaming vs Platform Authenticators
 
 In our example our laptop and phone both have platform authenticators, which are security devices
 bound to the platform (they are inseperable). Rather than using a platform authenticator we *may*
-allow a roaming authenticator to be used to bootstrap the phone's platform authenticator. This changes
-the steps of the process to be.
+allow a roaming authenticator to be used to bootstrap the phone's platform authenticator. An example
+of a roaming authenticator is a yubikey, which can be plugged into the laptop, and then disconnected
+and connected to the phone. This changes the steps of the process to be.
 
 * (laptop) Create account with password
 * (laptop) Enroll webauthn for laptop SE to account
@@ -64,7 +65,7 @@ the steps of the process to be.
 * OPTIONAL - deconfigure roaming authenticator used to bootstrap the phone.
 
 OR, if we do not wish to use the platform authenticator of the laptop, relying on the roaming
-authenticator:
+authenticator for the laptops webauthn:
 
 * (laptop) Create account with password
 * (laptop) Enroll webauthn for roaming authenticator to account
@@ -78,19 +79,19 @@ While this process does not invole as much fiddling with TOTP, it still has weak
 * The user is expected to understand different classes of MFA and how they are device bound or not
 * The password still needs to be sent between devices
 
-The major issue here is most people do *not own a roaming authenticator* and likely would not
-purchase one just for this process.
+The major issue here is most people do *not own a roaming authenticator* and likely would not (and should
+not need to) purchase one just for this process.
 
 Shared Secure Enclave Content
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Given the number of websites that have a poor workflow as above, and that the general population
-does not own roaming authenticator, Apple as a vendor with their "close knit" ecosystem has begun
+does not own roaming authenticator, Apple as a vendor with their tight knit ecosystem has begun
 to provide a system of sharing platform based credentials between devices signed into the same
-account. Let's assume in our example the user owns a macbook pro and an iphone which are authenticated
-to the same apple id allowing platform credentials to be shared. The process now would look like:
+Apple id account. Let's assume in our example the user owns a macbook pro and an iphone which are authenticated
+to the same Apple id allowing platform credentials to be shared. The process now would look like:
 
-* PREVIOUS - apple id configured allowing platform credentials to be shared.
+* PRECONFIGURED - Apple id configured allowing platform credentials to be shared.
 * (laptop) Create account with password
 * (laptop) Enroll webauthn for shared authenticator to account
 * (laptop) Retrieve and send the password to the phone (if machine generated/long/random)
@@ -99,14 +100,18 @@ to the same apple id allowing platform credentials to be shared. The process now
 This actually is pretty good! There are still some weaknesses but our work flow is significantly
 improved.
 
-* The user needs to be completely on the apple ecosystem
-* The user needs to understand their apple id features and how platform credential sharing works
+* The user needs to be completely on the Apple ecosystem
+* The user needs to understand their Apple id features and how platform credential sharing works
 * The user MUST use safari as their MacOS device web browser
 * The password still needs to be sent between devices (in this case, it could be achieved with keychain via iCloud securely)
 
-The major issue here is the user must be completely on the apple ecosystem, use only safari as
+The major issue here is the user must be completely on the Apple ecosystem, use only safari as
 a browser, and must have enabled keychain sharing. Without these, this functionality does not
 work and we are back to requiring a roaming authenticator or TOTP.
+
+It's worth noting in this scenario that if the user is using keychain as a password manager, then
+the trust root is *only* in the secure enclave, since the touchid/faceid/pin is used to access the
+password manager, and the same touchid/faceid/pin is used to authenticate the webauthn operations.
 
 Summary
 ^^^^^^^
@@ -125,6 +130,8 @@ In Kanidm we want to solve this in a manner that:
 * Does not require the user to purchase additional hardware
 * Does not required external applications to be configured
 * Does not required passwords to be shared between devices
+* Does provide MFA on the enrolled device
+* Does allow the enrolled device to be paused or removed without affecting other credentials
 
 The workflow that we want to achieve is:
 
@@ -187,14 +194,38 @@ to the session without needing the password, meaning that the device security is
 A password defends against none of these attacks, and only adds extra steps for a user, and so it is not considered
 a required element for a secure authentication from a trusted device.
 
+Binding Credentials to Sessions
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+As this enables sessions to be from different devices and initiated by different credentials, if
+a user on the laptop disableds the credentials of an enrolled device, then any session that used
+that credential should also be considered invalidated.
+
 Future Ideas
 ============
+
+Require Acknowledgement of the New Credential
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 After the device is enrolled, we *may* enroll the credential initially disabled, and the user on
 the laptop must then interact to allow the device to be "usable" for future authentications. This
 would assist to mitigate risk of token URI disclosure, and helps to involve the user in asserting
 consent and knowledge of which devices are trusted to their account for platform authenticator
 authentication.
+
+A risk of this is replication delay, where if the laptop and phone are interacting with disjoint
+Kanidm servers, then a delay may be experienced between the enrollment of the phone and the laptop
+from being able to see that credential to enable it. This may lead to user confusion or frustration.
+
+As the user must have authenticated to the laptop to generate the URI to sign in a new device, the
+URI generated may be considered trusted and so access to that URI implies that the device enrolled
+is highly likely be in the possession of the account owner. Since this is a timed limited link, this
+further mitigates risk of misuse of this.
+
+A example of this in the wild is the QR codes generated by fastmail for device email access - these
+can only be created by an authenticated account, and they do not require post-enrollment interaction
+to enable as the model assumes that access to the link or QR code implies that you are the account
+owner who generated that content.
 
 References
 ==========
