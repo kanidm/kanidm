@@ -183,7 +183,11 @@ impl LoginApp {
                     </div>
                     <div class="container">
                         <form
-                            onsubmit={ ctx.link().callback(|_| LoginAppMsg::Begin) }
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                console::log!("login::view_state -> Init - prevent_default()");
+                                e.prevent_default();
+                                LoginAppMsg::Begin
+                            } ) }
                             action="javascript:void(0);"
                         >
                             <input id="autofocus"
@@ -231,7 +235,11 @@ impl LoginApp {
                     </div>
                     <div class="container">
                         <form
-                            onsubmit={ ctx.link().callback(|_| LoginAppMsg::PasswordSubmit) }
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                console::log!("login::view_state -> Password - prevent_default()");
+                                e.prevent_default();
+                                LoginAppMsg::PasswordSubmit
+                            } ) }
                             action="javascript:void(0);"
                         >
                             <input
@@ -258,7 +266,11 @@ impl LoginApp {
                     </div>
                     <div class="container">
                         <form
-                            onsubmit={ ctx.link().callback(|_| LoginAppMsg::BackupCodeSubmit) }
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                console::log!("login::view_state -> BackupCode - prevent_default()");
+                                e.prevent_default();
+                                LoginAppMsg::BackupCodeSubmit
+                            } ) }
                             action="javascript:void(0);"
                         >
                             <input
@@ -286,7 +298,11 @@ impl LoginApp {
                     </div>
                     <div class="container">
                         <form
-                            onsubmit={ ctx.link().callback(|_| LoginAppMsg::TotpSubmit) }
+                            onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                                console::log!("login::view_state -> Totp - prevent_default()");
+                                e.prevent_default();
+                                LoginAppMsg::TotpSubmit
+                            } ) }
                             action="javascript:void(0);"
                         >
                             <input
@@ -418,6 +434,10 @@ impl Component for LoginApp {
 
         let state = LoginState::Init(true);
         // startConfetti();
+
+        if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
+            console::log!(format!("class_list add error -> {:?}", e).as_str());
+        };
 
         LoginApp {
             inputvalue,
@@ -688,6 +708,7 @@ impl Component for LoginApp {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        console::log!("login::view");
         // How do we add a top level theme?
         /*
         let (width, height): (u32, u32) = if let Some(win) = web_sys::window() {
@@ -704,15 +725,26 @@ impl Component for LoginApp {
         */
 
         // <canvas id="confetti-canvas" style="position:absolute" width=width height=height></canvas>
+
+        // May need to set these classes?
+        // <body class="html-body form-body">
         html! {
-            <body class="html-body form-body">
-                <main class="form-signin">
-                    <div class="container">
-                        <h2>{ "Kanidm Alpha 🦀 " }</h2>
-                    </div>
-                    { self.view_state(ctx) }
-                </main>
-            </body>
+            <main class="form-signin">
+                <div class="container">
+                    <h2>{ "Kanidm Alpha 🦀 " }</h2>
+                </div>
+                { self.view_state(ctx) }
+            </main>
+        }
+    }
+
+    fn destroy(&mut self, _ctx: &Context<Self>) {
+        console::log!("login::destroy");
+        if let Err(e) = crate::utils::body()
+            .class_list()
+            .remove_1("form-signin-body")
+        {
+            console::log!(format!("class_list remove error -> {:?}", e).as_str());
         }
     }
 

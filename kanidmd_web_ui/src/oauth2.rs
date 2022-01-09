@@ -204,6 +204,10 @@ impl Component for Oauth2App {
                 models::pop_oauth2_authorisation_request()
             });
 
+        if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
+            console::log!(format!("class_list add error -> {:?}", e).as_str());
+        };
+
         // If we have neither we need to say that we can not proceed at all.
         let query = match query {
             Some(q) => q,
@@ -355,49 +359,62 @@ impl Component for Oauth2App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
+        console::log!("login::view");
         match &self.state {
             State::LoginRequired => {
+                // <body class="html-body form-body">
+
                 html! {
-                    <body class="html-body form-body">
-                    <main class="form-signin">
-                      <form
-                        onsubmit={ ctx.link().callback(|_| Oauth2Msg::LoginProceed) }
-                        action="javascript:void(0);"
-                      >
-                        <h1 class="h3 mb-3 fw-normal">{" Sign in to proceed" }</h1>
-                        <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Sign in" }</button>
-                      </form>
-                    </main>
-                    </body>
+                  <main class="form-signin">
+                    <form
+                      onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                          console::log!("oauth2::view -> LoginRequired - prevent_default()");
+                          e.prevent_default();
+                          Oauth2Msg::LoginProceed
+                      } ) }
+                      action="javascript:void(0);"
+                    >
+                      <h1 class="h3 mb-3 fw-normal">{" Sign in to proceed" }</h1>
+                      <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Sign in" }</button>
+                    </form>
+                  </main>
                 }
             }
             State::Consent(_, query) => {
                 let client_name = query.client_name.clone();
-
+                // <body class="html-body form-body">
                 html! {
-                    <body class="html-body form-body">
                     <main class="form-signin">
                       <form
-                        onsubmit={ ctx.link().callback(|_| Oauth2Msg::ConsentGranted) }
+                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            console::log!("oauth2::view -> Consent - prevent_default()");
+                            e.prevent_default();
+                            Oauth2Msg::ConsentGranted
+                        } ) }
                         action="javascript:void(0);"
                       >
                         <h1 class="h3 mb-3 fw-normal">{"Consent to Proceed to " }{ client_name }</h1>
                         <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
                       </form>
                     </main>
-                    </body>
                 }
             }
             State::ConsentGranted | State::SubmitAuthReq(_) | State::TokenCheck(_) => {
-                html! { <body> <h1>{ " ... " }</h1>  </body> }
+                html! { <div> <h1>{ " ... " }</h1>  </div> }
             }
             State::ErrInvalidRequest => {
-                html! { <body> <h1>{ " ❌ " }</h1>  </body> }
+                html! { <div> <h1>{ " ❌ " }</h1>  </div> }
             }
         }
     }
 
     fn destroy(&mut self, _ctx: &Context<Self>) {
         console::log!("oauth2::destroy");
+        if let Err(e) = crate::utils::body()
+            .class_list()
+            .remove_1("form-signin-body")
+        {
+            console::log!(format!("class_list remove error -> {:?}", e).as_str());
+        }
     }
 }

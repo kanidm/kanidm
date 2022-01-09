@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 pub fn get_bearer_token() -> Option<String> {
     let prev_session: Result<String, _> = PersistentStorage::get("kanidm_bearer_token");
-    console::log!(format!("prev_session -> {:?}", prev_session).as_str());
+    console::log!(format!("kanidm_bearer_token -> {:?}", prev_session).as_str());
 
     prev_session.ok()
 }
