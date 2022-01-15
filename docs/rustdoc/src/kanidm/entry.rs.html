@@ -1,4 +1,5 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd&#x2F;src&#x2F;lib&#x2F;entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" disabled autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd&#x2F;src&#x2F;lib&#x2F;entry.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>entry.rs - source</title><link rel="stylesheet" type="text/css" href="../../normalize.css"><link rel="stylesheet" type="text/css" href="../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../storage.js"></script><script src="../../crates.js"></script><script defer src="../../main.js"></script><script defer src="../../source-script.js"></script><script defer src="../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -2812,7 +2813,7 @@
     <span class="ident">STATE</span>: <span class="ident">std::fmt::Debug</span>,
     <span class="ident">VALID</span>: <span class="ident">std::fmt::Debug</span>,
 {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="ident">f</span>.<span class="ident">debug_struct</span>(<span class="string">&quot;Entry&lt;EntrySealed, _&gt;&quot;</span>)
             .<span class="ident">field</span>(<span class="string">&quot;state&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span>)
             .<span class="ident">field</span>(<span class="string">&quot;valid&quot;</span>, <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">valid</span>)
@@ -2821,13 +2822,13 @@
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">STATE</span><span class="op">&gt;</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntrySealed</span>, <span class="ident">STATE</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="self">self</span>.<span class="ident">get_uuid</span>())
     }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">STATE</span><span class="op">&gt;</span> <span class="ident">std::fmt::Display</span> <span class="kw">for</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">STATE</span><span class="op">&gt;</span> {
-    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">std::fmt::Formatter</span>) -&gt; <span class="ident">std::fmt::Result</span> {
         <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;Entry in initial state&quot;</span>)
     }
 }
@@ -3121,20 +3122,20 @@
     }
 
     <span class="doccomment">/// Add an attribute-value-assertion to this Entry.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
         <span class="self">self</span>.<span class="ident">add_ava_int</span>(<span class="ident">attr</span>, <span class="ident">value</span>)
     }
 
     <span class="doccomment">/// Replace the existing content of an attribute set of this Entry, with a new set of Values.</span>
     <span class="comment">// pub fn set_ava(&amp;mut self, attr: &amp;str, values: Set&lt;Value&gt;) {</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">iter</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ValueSet</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">ValueSet</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>)
     }
 }
@@ -3506,7 +3507,7 @@
 
     <span class="doccomment">/// Insert a claim to this entry. This claim can NOT be persisted to disk, this is only</span>
     <span class="doccomment">/// used during a single Event session.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_claim</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">insert_claim</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
         <span class="self">self</span>.<span class="ident">add_ava_int</span>(<span class="string">&quot;claim&quot;</span>, <span class="ident">Value::new_iutf8</span>(<span class="ident">value</span>));
     }
 
@@ -4137,7 +4138,7 @@
 <span class="comment">// impl&lt;STATE&gt; Entry&lt;EntryValid, STATE&gt; {</span>
 <span class="kw">impl</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span> <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">VALID</span>, <span class="ident">STATE</span><span class="op">&gt;</span> {
     <span class="doccomment">/// This internally adds an AVA to the entry.</span>
-    <span class="kw">fn</span> <span class="ident">add_ava_int</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
+    <span class="kw">fn</span> <span class="ident">add_ava_int</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
         <span class="comment">// How do we make this turn into an ok / err?</span>
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
@@ -4152,7 +4153,7 @@
 
     <span class="doccomment">/// Overwrite the current set of values for an attribute, with this new set.</span>
     <span class="comment">// pub fn set_ava_int(&amp;mut self, attr: &amp;str, values: Set&lt;Value&gt;) {</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava_int</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava_int</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
     {
@@ -4166,7 +4167,7 @@
     }
 
     <span class="doccomment">/// Update the last_changed flag of this entry to the given change identifier.</span>
-    <span class="kw">fn</span> <span class="ident">set_last_changed</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="ident">Cid</span>) {
+    <span class="kw">fn</span> <span class="ident">set_last_changed</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">cid</span>: <span class="ident">Cid</span>) {
         <span class="kw">let</span> <span class="ident">cv</span> <span class="op">=</span> <span class="macro">valueset!</span>[<span class="ident">Value::new_cid</span>(<span class="ident">cid</span>)];
         <span class="kw">let</span> <span class="kw">_</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">insert</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;last_modified_cid&quot;</span>), <span class="ident">cv</span>);
     }
@@ -4530,14 +4531,14 @@
     <span class="comment">//</span>
     <span class="comment">// TODO: This should take Value not &amp;Value, would save a lot of clones</span>
     <span class="comment">// around the codebase.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">add_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="ident">Value</span>) {
         <span class="self">self</span>.<span class="ident">add_ava_int</span>(<span class="ident">attr</span>, <span class="ident">value</span>)
     }
 
     <span class="doccomment">/// Merge an existing value set into this attributes value set. If they are not</span>
     <span class="doccomment">/// the same type, an error is returned. If no attribute exists, then this valueset is</span>
     <span class="doccomment">/// cloned &quot;as is&quot;.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">valueset</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">merge_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">valueset</span>: <span class="kw-2">&amp;</span><span class="ident">ValueSet</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
             <span class="ident">vs</span>.<span class="ident">merge</span>(<span class="ident">valueset</span>)
         } <span class="kw">else</span> {
@@ -4547,7 +4548,7 @@
     }
 
     <span class="doccomment">/// Remove an attribute-value pair from this entry.</span>
-    <span class="kw">fn</span> <span class="ident">remove_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) {
+    <span class="kw">fn</span> <span class="ident">remove_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">value</span>: <span class="kw-2">&amp;</span><span class="ident">PartialValue</span>) {
         <span class="kw">let</span> <span class="ident">rm</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
             <span class="ident">vs</span>.<span class="ident">remove</span>(<span class="ident">value</span>);
             <span class="ident">vs</span>.<span class="ident">is_empty</span>()
@@ -4560,7 +4561,7 @@
         };
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">remove_avas</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">values</span>: <span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">remove_avas</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">values</span>: <span class="kw-2">&amp;</span><span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">PartialValue</span><span class="op">&gt;</span>) {
         <span class="kw">let</span> <span class="ident">rm</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>) {
             <span class="ident">values</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">k</span><span class="op">|</span> {
                 <span class="ident">vs</span>.<span class="ident">remove</span>(<span class="ident">k</span>);
@@ -4575,25 +4576,25 @@
     }
 
     <span class="doccomment">/// Remove all values of this attribute from the entry.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">purge_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>);
     }
 
     <span class="doccomment">/// Remove all values of this attribute from the entry, and return their content.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_ava</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_ava</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">remove</span>(<span class="ident">attr</span>)
     }
 
     <span class="doccomment">/// Replace the content of this attribute with a new value set.</span>
     <span class="comment">// pub fn set_ava(&amp;mut self, attr: &amp;str, values: Set&lt;Value&gt;) {</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">set_ava</span><span class="op">&lt;</span><span class="ident">T</span><span class="op">&gt;</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">iter</span>: <span class="ident">T</span>)
     <span class="kw">where</span>
         <span class="ident">T</span>: <span class="ident">IntoIterator</span><span class="op">&lt;</span><span class="ident">Item</span> <span class="op">=</span> <span class="ident">Value</span><span class="op">&gt;</span>,
     {
         <span class="self">self</span>.<span class="ident">set_ava_int</span>(<span class="ident">attr</span>, <span class="ident">iter</span>)
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_mut</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="ident">ValueSet</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_mut</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;mut</span> <span class="ident">ValueSet</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get_mut</span>(<span class="ident">attr</span>)
     }
 
@@ -4606,7 +4607,7 @@
     */</span>
 
     <span class="doccomment">/// Apply the content of this modlist to this entry, enforcing the expressed state.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_modlist</span>(<span class="kw-2">&amp;</span><span class="kw-2">mut</span> <span class="self">self</span>, <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span>) {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">apply_modlist</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">modlist</span>: <span class="kw-2">&amp;</span><span class="ident">ModifyList</span><span class="op">&lt;</span><span class="ident">ModifyValid</span><span class="op">&gt;</span>) {
         <span class="comment">// -&gt; Result&lt;Entry&lt;EntryInvalid, STATE&gt;, OperationError&gt; {</span>
         <span class="comment">// Apply a modlist, generating a new entry that conforms to the changes.</span>
         <span class="comment">// This is effectively clone-and-transform</span>
@@ -5206,5 +5207,4 @@
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidm" data-search-index-js="../../search-index.js" data-search-js="../../search.js"></div>
-    <script src="../../main.js"></script><script src="../../source-script.js"></script><script src="../../source-files.js"></script>
 </body></html>
