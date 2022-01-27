@@ -2342,6 +2342,24 @@
 <span id="2341">2341</span>
 <span id="2342">2342</span>
 <span id="2343">2343</span>
+<span id="2344">2344</span>
+<span id="2345">2345</span>
+<span id="2346">2346</span>
+<span id="2347">2347</span>
+<span id="2348">2348</span>
+<span id="2349">2349</span>
+<span id="2350">2350</span>
+<span id="2351">2351</span>
+<span id="2352">2352</span>
+<span id="2353">2353</span>
+<span id="2354">2354</span>
+<span id="2355">2355</span>
+<span id="2356">2356</span>
+<span id="2357">2357</span>
+<span id="2358">2358</span>
+<span id="2359">2359</span>
+<span id="2360">2360</span>
+<span id="2361">2361</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -2693,12 +2711,18 @@
 
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">authorization_endpoint</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>();
                     <span class="ident">authorization_endpoint</span>.<span class="ident">set_path</span>(<span class="string">&quot;/ui/oauth2&quot;</span>);
+
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">token_endpoint</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>();
                     <span class="ident">token_endpoint</span>.<span class="ident">set_path</span>(<span class="string">&quot;/oauth2/token&quot;</span>);
+
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">userinfo_endpoint</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>();
                     <span class="ident">userinfo_endpoint</span>.<span class="ident">set_path</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}/userinfo&quot;</span>, <span class="ident">name</span>));
+
                     <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">jwks_uri</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>();
                     <span class="ident">jwks_uri</span>.<span class="ident">set_path</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}/public_key.jwk&quot;</span>, <span class="ident">name</span>));
+
+                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">iss</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>();
+                    <span class="ident">iss</span>.<span class="ident">set_path</span>(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">&quot;/oauth2/openid/{}&quot;</span>, <span class="ident">name</span>));
 
                     <span class="kw">let</span> <span class="ident">scopes_supported</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">implicit_scopes</span>
                         .<span class="ident">iter</span>()
@@ -2720,7 +2744,7 @@
                         <span class="ident">jws_signer</span>,
                         <span class="comment">// jws_validator,</span>
                         <span class="ident">enable_pkce</span>,
-                        <span class="ident">iss</span>: <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>(),
+                        <span class="ident">iss</span>,
                         <span class="ident">authorization_endpoint</span>,
                         <span class="ident">token_endpoint</span>,
                         <span class="ident">userinfo_endpoint</span>,
@@ -3181,8 +3205,10 @@
             <span class="comment">// TODO: Make configurable from auth policy!</span>
             <span class="kw">let</span> <span class="ident">exp</span> <span class="op">=</span> <span class="ident">iat</span> <span class="op">+</span> (<span class="ident">expires_in</span> <span class="kw">as</span> <span class="ident">i64</span>);
 
+            <span class="kw">let</span> <span class="ident">iss</span> <span class="op">=</span> <span class="ident">o2rs</span>.<span class="ident">iss</span>.<span class="ident">clone</span>();
+
             <span class="kw">let</span> <span class="ident">oidc</span> <span class="op">=</span> <span class="ident">OidcToken</span> {
-                <span class="ident">iss</span>: <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>(),
+                <span class="ident">iss</span>,
                 <span class="ident">sub</span>: <span class="ident">OidcSubject::U</span>(<span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">uuid</span>),
                 <span class="ident">aud</span>: <span class="ident">client_id</span>.<span class="ident">clone</span>(),
                 <span class="ident">iat</span>,
@@ -3403,10 +3429,12 @@
 
                 <span class="kw">let</span> <span class="ident">amr</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="macro">vec!</span>[<span class="ident">at</span>.<span class="ident">auth_type</span>.<span class="ident">to_string</span>()]);
 
+                <span class="kw">let</span> <span class="ident">iss</span> <span class="op">=</span> <span class="ident">o2rs</span>.<span class="ident">iss</span>.<span class="ident">clone</span>();
+
                 <span class="comment">// ==== good to generate response ====</span>
 
                 <span class="prelude-val">Ok</span>(<span class="ident">OidcToken</span> {
-                    <span class="ident">iss</span>: <span class="self">self</span>.<span class="ident">inner</span>.<span class="ident">origin</span>.<span class="ident">clone</span>(),
+                    <span class="ident">iss</span>,
                     <span class="ident">sub</span>: <span class="ident">OidcSubject::U</span>(<span class="ident">at</span>.<span class="ident">uuid</span>),
                     <span class="ident">aud</span>: <span class="ident">client_id</span>.<span class="ident">to_string</span>(),
                     <span class="ident">iat</span>: <span class="ident">at</span>.<span class="ident">iat</span>,
@@ -4382,7 +4410,11 @@
                 <span class="kw">_</span> =&gt; <span class="macro">panic!</span>(),
             };
 
-            <span class="macro">assert!</span>(<span class="ident">discovery</span>.<span class="ident">issuer</span> <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/&quot;</span>).<span class="ident">unwrap</span>());
+            <span class="macro">assert!</span>(
+                <span class="ident">discovery</span>.<span class="ident">issuer</span>
+                    <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/oauth2/openid/test_resource_server&quot;</span>)
+                        .<span class="ident">unwrap</span>()
+            );
 
             <span class="macro">assert!</span>(
                 <span class="ident">discovery</span>.<span class="ident">authorization_endpoint</span>
@@ -4524,7 +4556,11 @@
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to verify oidc&quot;</span>);
 
             <span class="comment">// Are the id_token values what we expect?</span>
-            <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iss</span> <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/&quot;</span>).<span class="ident">unwrap</span>());
+            <span class="macro">assert!</span>(
+                <span class="ident">oidc</span>.<span class="ident">iss</span>
+                    <span class="op">==</span> <span class="ident">Url::parse</span>(<span class="string">&quot;https://idm.example.com/oauth2/openid/test_resource_server&quot;</span>)
+                        .<span class="ident">unwrap</span>()
+            );
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">sub</span> <span class="op">==</span> <span class="ident">OidcSubject::U</span>(<span class="kw-2">*</span><span class="ident">UUID_ADMIN</span>));
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">aud</span> <span class="op">==</span> <span class="string">&quot;test_resource_server&quot;</span>);
             <span class="macro">assert!</span>(<span class="ident">oidc</span>.<span class="ident">iat</span> <span class="op">==</span> <span class="ident">iat</span>);

@@ -331,6 +331,30 @@ kanidm system oauth2 warning_enable_legacy_crypto &lt;resource server name&gt;
 </code></pre>
 <p>You can login directly by appending <code>?direct=1</code> to your login page still. You can re-enable
 other backends by setting the value to <code>1</code></p>
+<h3 id="velociraptor"><a class="header" href="#velociraptor">Velociraptor</a></h3>
+<p>Velociraptor supports OIDC. To configure it select &quot;Authenticate with SSO&quot; then &quot;OIDC&quot; during
+the interactive configuration generator. Alternately, you can set the following keys in server.config.yaml:</p>
+<pre><code>GUI:
+  authenticator:
+    type: OIDC
+    oidc_issuer: https://idm.example.com/oauth2/openid/:client\_id:/
+    oauth_client_id: &lt;resource server name/&gt;
+    oauth_client_secret: &lt;resource server secret&gt;
+</code></pre>
+<p>Velociraptor does not support PKCE. You will need to run the following:</p>
+<pre><code>kanidm system oauth2 warning_insecure_client_disable_pkce &lt;resource server name&gt;
+</code></pre>
+<p>Initial users are mapped via their email in the Velociraptor server.config.yaml config:</p>
+<pre><code>GUI:
+  initial_users:
+  - name: &lt;email address&gt;
+</code></pre>
+<p>Accounts require the <code>openid</code> and <code>email</code> scopes to be authenticated. It is recommended you limit
+these to a group with a scope map due to Velociraptors high impact.</p>
+<pre><code># kanidm group create velociraptor_users
+# kanidm group add_members velociraptor_users ...
+kanidm system oauth2 create_scope_map &lt;resource server name&gt; velociraptor_users openid email
+</code></pre>
 
                     </main>
 
