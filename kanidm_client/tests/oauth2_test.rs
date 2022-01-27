@@ -132,7 +132,11 @@ fn test_oauth2_openid_basic_flow() {
 
             // Most values are checked in idm/oauth2.rs, but we want to sanity check
             // the urls here as an extended function smoke test.
-            assert!(discovery.issuer == Url::parse("https://idm.example.com/").unwrap());
+            assert!(
+                discovery.issuer
+                    == Url::parse("https://idm.example.com/oauth2/openid/test_integration")
+                        .unwrap()
+            );
 
             assert!(
                 discovery.authorization_endpoint
@@ -328,7 +332,11 @@ fn test_oauth2_openid_basic_flow() {
 
             // This is mostly checked inside of idm/oauth2.rs. This is more to check the oidc
             // token and the userinfo endpoints.
-            assert!(oidc.iss == Url::parse("https://idm.example.com/").unwrap());
+            assert!(
+                oidc.iss
+                    == Url::parse("https://idm.example.com/oauth2/openid/test_integration")
+                        .unwrap()
+            );
             assert!(oidc.s_claims.email.as_deref() == Some("admin@example.com"));
             assert!(oidc.s_claims.email_verified == Some(true));
 

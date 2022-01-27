@@ -243,5 +243,32 @@ You can choose to disable other login methods with:
 You can login directly by appending `?direct=1` to your login page still. You can re-enable
 other backends by setting the value to `1`
 
+### Velociraptor
 
+Velociraptor supports OIDC. To configure it select "Authenticate with SSO" then "OIDC" during
+the interactive configuration generator. Alternately, you can set the following keys in server.config.yaml:
+
+    GUI:
+      authenticator:
+        type: OIDC
+        oidc_issuer: https://idm.example.com/oauth2/openid/:client\_id:/
+        oauth_client_id: <resource server name/>
+        oauth_client_secret: <resource server secret>
+
+Velociraptor does not support PKCE. You will need to run the following:
+
+    kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
+
+Initial users are mapped via their email in the Velociraptor server.config.yaml config:
+
+    GUI:
+      initial_users:
+      - name: <email address>
+
+Accounts require the `openid` and `email` scopes to be authenticated. It is recommended you limit
+these to a group with a scope map due to Velociraptors high impact.
+
+    # kanidm group create velociraptor_users
+    # kanidm group add_members velociraptor_users ...
+    kanidm system oauth2 create_scope_map <resource server name> velociraptor_users openid email
 

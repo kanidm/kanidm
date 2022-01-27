@@ -349,12 +349,18 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
 
                     let mut authorization_endpoint = self.inner.origin.clone();
                     authorization_endpoint.set_path("/ui/oauth2");
+
                     let mut token_endpoint = self.inner.origin.clone();
                     token_endpoint.set_path("/oauth2/token");
+
                     let mut userinfo_endpoint = self.inner.origin.clone();
                     userinfo_endpoint.set_path(&format!("/oauth2/openid/{}/userinfo", name));
+
                     let mut jwks_uri = self.inner.origin.clone();
                     jwks_uri.set_path(&format!("/oauth2/openid/{}/public_key.jwk", name));
+
+                    let mut iss = self.inner.origin.clone();
+                    iss.set_path(&format!("/oauth2/openid/{}", name));
 
                     let scopes_supported: BTreeSet<String> = implicit_scopes
                         .iter()
@@ -376,7 +382,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         jws_signer,
                         // jws_validator,
                         enable_pkce,
-                        iss: self.inner.origin.clone(),
+                        iss,
                         authorization_endpoint,
                         token_endpoint,
                         userinfo_endpoint,
@@ -837,8 +843,10 @@ impl Oauth2ResourceServersReadTransaction {
             // TODO: Make configurable from auth policy!
             let exp = iat + (expires_in as i64);
 
+            let iss = o2rs.iss.clone();
+
             let oidc = OidcToken {
-                iss: self.inner.origin.clone(),
+                iss,
                 sub: OidcSubject::U(code_xchg.uat.uuid),
                 aud: client_id.clone(),
                 iat,
@@ -1059,10 +1067,12 @@ impl Oauth2ResourceServersReadTransaction {
 
                 let amr = Some(vec![at.auth_type.to_string()]);
 
+                let iss = o2rs.iss.clone();
+
                 // ==== good to generate response ====
 
                 Ok(OidcToken {
-                    iss: self.inner.origin.clone(),
+                    iss,
                     sub: OidcSubject::U(at.uuid),
                     aud: client_id.to_string(),
                     iat: at.iat,
@@ -2038,7 +2048,11 @@ mod tests {
                 _ => panic!(),
             };
 
-            assert!(discovery.issuer == Url::parse("https://idm.example.com/").unwrap());
+            assert!(
+                discovery.issuer
+                    == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                        .unwrap()
+            );
 
             assert!(
                 discovery.authorization_endpoint
@@ -2180,7 +2194,11 @@ mod tests {
                 .expect("Failed to verify oidc");
 
             // Are the id_token values what we expect?
-            assert!(oidc.iss == Url::parse("https://idm.example.com/").unwrap());
+            assert!(
+                oidc.iss
+                    == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                        .unwrap()
+            );
             assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
             assert!(oidc.aud == "test_resource_server");
             assert!(oidc.iat == iat);
