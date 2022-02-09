@@ -206,6 +206,27 @@ pub const JSON_IDM_ACCOUNT_UNIX_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 // * RADIUS servers
+
+pub const JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_radius_secret_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000031"],
+        "description": ["Builtin IDM Group for RADIUS secret write for all non-hp accounts."],
+        "member": ["00000000-0000-0000-0000-000000000001"]
+    }
+}"#;
+
+pub const JSON_IDM_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_radius_secret_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000032"],
+        "description": ["Builtin IDM Group for RADIUS secret reading for all non-hp accounts."],
+        "member": ["00000000-0000-0000-0000-000000000031"]
+    }
+}"#;
+
 pub const JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],
@@ -214,6 +235,7 @@ pub const JSON_IDM_RADIUS_SERVERS_V1: &str = r#"{
         "description": ["Builtin IDM Group for RADIUS server access delegation."]
     }
 }"#;
+
 // * high priv account read manager
 pub const JSON_IDM_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
@@ -368,6 +390,8 @@ pub const JSON_IDM_HIGH_PRIVILEGE_V1: &str = r#"{
             "00000000-0000-0000-0000-000000000025",
             "00000000-0000-0000-0000-000000000026",
             "00000000-0000-0000-0000-000000000027",
+            "00000000-0000-0000-0000-000000000031",
+            "00000000-0000-0000-0000-000000000032",
             "00000000-0000-0000-0000-000000001000"
         ]
     }

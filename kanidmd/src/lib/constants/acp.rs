@@ -474,9 +474,58 @@ pub const JSON_IDM_ACP_ACCOUNT_MANAGE_PRIV_V1: &str = r#"{
         ]
     }
 }"#;
+
 // 14 radius read acp JSON_IDM_RADIUS_SERVERS_V1
 // The targetscope of this could change later to a "radius access" group or similar so we can add/remove
 //  users from having radius access easier.
+
+pub const JSON_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_search"
+        ],
+        "name": ["idm_acp_radius_secret_read_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000039"],
+        "description": ["Builtin IDM Control for reading radius secrets of accounts."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000032\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_search_attr": [
+            "radius_secret"
+        ]
+    }
+}"#;
+
+pub const JSON_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": [
+            "object",
+            "access_control_profile",
+            "access_control_modify"
+        ],
+        "name": ["idm_acp_radius_secret_write_priv"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000040"],
+        "description": ["Builtin IDM Control allowing writes to user radius secrets."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000031\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"memberof\",\"00000000-0000-0000-0000-000000001000\"]}, {\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}"
+        ],
+        "acp_modify_removedattr": [
+            "radius_secret"
+        ],
+        "acp_modify_presentattr": [
+            "radius_secret"
+        ]
+    }
+}"#;
+
 pub const JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
     "attrs": {
         "class": [
@@ -498,6 +547,7 @@ pub const JSON_IDM_ACP_RADIUS_SERVERS_V1: &str = r#"{
         ]
     }
 }"#;
+
 // 15 high priv account read JSON_IDM_HP_ACCOUNT_READ_PRIV_V1
 pub const JSON_IDM_ACP_HP_ACCOUNT_READ_PRIV_V1: &str = r#"{
     "attrs": {
