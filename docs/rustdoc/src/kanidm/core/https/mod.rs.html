@@ -630,6 +630,14 @@
 <span id="629">629</span>
 <span id="630">630</span>
 <span id="631">631</span>
+<span id="632">632</span>
+<span id="633">633</span>
+<span id="634">634</span>
+<span id="635">635</span>
+<span id="636">636</span>
+<span id="637">637</span>
+<span id="638">638</span>
+<span id="639">639</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -788,7 +796,15 @@
         &lt;link rel=&quot;stylesheet&quot; href=&quot;/pkg/style.css&quot;/&gt;
         &lt;script src=&quot;/pkg/external/bootstrap.bundle.min.js&quot; integrity=&quot;sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM&quot;&gt;&lt;/script&gt;
         &lt;script src=&quot;/pkg/external/confetti.js&quot;&gt;&lt;/script&gt;
-        &lt;script src=&quot;/pkg/bundle.js&quot; defer&gt;&lt;/script&gt;
+        &lt;script type=&quot;module&quot; defer&gt;
+            import init, { run_app } from &#39;./pkg/kanidmd_web_ui.js&#39;;
+            async function main() {
+               await init(&#39;/pkg/kanidmd_web_ui_bg.wasm&#39;);
+               run_app();
+            }
+            main()
+        &lt;/script&gt;
+
         &lt;link rel=&quot;icon&quot; href=&quot;data:image/svg+xml,&lt;svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22&gt;&lt;text y=%22.9em%22 font-size=%2290%22&gt;🦀&lt;/text&gt;&lt;/svg&gt;&quot; /&gt;
     &lt;/head&gt;
     &lt;body&gt;

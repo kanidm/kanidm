@@ -421,6 +421,30 @@
 <span id="420">420</span>
 <span id="421">421</span>
 <span id="422">422</span>
+<span id="423">423</span>
+<span id="424">424</span>
+<span id="425">425</span>
+<span id="426">426</span>
+<span id="427">427</span>
+<span id="428">428</span>
+<span id="429">429</span>
+<span id="430">430</span>
+<span id="431">431</span>
+<span id="432">432</span>
+<span id="433">433</span>
+<span id="434">434</span>
+<span id="435">435</span>
+<span id="436">436</span>
+<span id="437">437</span>
+<span id="438">438</span>
+<span id="439">439</span>
+<span id="440">440</span>
+<span id="441">441</span>
+<span id="442">442</span>
+<span id="443">443</span>
+<span id="444">444</span>
+<span id="445">445</span>
+<span id="446">446</span>
 </pre><pre class="rust"><code><span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_ADMIN_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;account&quot;, &quot;memberof&quot;, &quot;object&quot;],
@@ -629,6 +653,27 @@
     }
 }&quot;#</span>;
 <span class="comment">// * RADIUS servers</span>
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    &quot;attrs&quot;: {
+        &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
+        &quot;name&quot;: [&quot;idm_radius_secret_write_priv&quot;],
+        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-000000000031&quot;],
+        &quot;description&quot;: [&quot;Builtin IDM Group for RADIUS secret write for all non-hp accounts.&quot;],
+        &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000001&quot;]
+    }
+}&quot;#</span>;
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
+    &quot;attrs&quot;: {
+        &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
+        &quot;name&quot;: [&quot;idm_radius_secret_read_priv&quot;],
+        &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-000000000032&quot;],
+        &quot;description&quot;: [&quot;Builtin IDM Group for RADIUS secret reading for all non-hp accounts.&quot;],
+        &quot;member&quot;: [&quot;00000000-0000-0000-0000-000000000031&quot;]
+    }
+}&quot;#</span>;
+
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_RADIUS_SERVERS_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
         &quot;class&quot;: [&quot;group&quot;, &quot;object&quot;],
@@ -637,6 +682,7 @@
         &quot;description&quot;: [&quot;Builtin IDM Group for RADIUS server access delegation.&quot;]
     }
 }&quot;#</span>;
+
 <span class="comment">// * high priv account read manager</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">JSON_IDM_HP_ACCOUNT_READ_PRIV_V1</span>: <span class="kw-2">&amp;</span><span class="ident">str</span> <span class="op">=</span> <span class="string">r#&quot;{
     &quot;attrs&quot;: {
@@ -791,6 +837,8 @@
             &quot;00000000-0000-0000-0000-000000000025&quot;,
             &quot;00000000-0000-0000-0000-000000000026&quot;,
             &quot;00000000-0000-0000-0000-000000000027&quot;,
+            &quot;00000000-0000-0000-0000-000000000031&quot;,
+            &quot;00000000-0000-0000-0000-000000000032&quot;,
             &quot;00000000-0000-0000-0000-000000001000&quot;
         ]
     }

@@ -229,6 +229,15 @@
 <span id="228">228</span>
 <span id="229">229</span>
 <span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
 
 <span class="kw">use</span> <span class="ident">compiled_uuid::uuid</span>;
@@ -268,6 +277,11 @@
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_PEOPLE_READ_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000028&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_PEOPLE_WRITE_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000029&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HP_PEOPLE_EXTEND_PRIV</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000030&quot;</span>);
+
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000032&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000000031&quot;</span>);
 
 <span class="comment">//</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_HIGH_PRIVILEGE</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-000000001000&quot;</span>);
@@ -450,6 +464,10 @@
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000037&quot;</span>);
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_HP_PEOPLE_EXTEND_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
     <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000038&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_RADIUS_SECRET_READ_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000039&quot;</span>);
+<span class="kw">pub</span> <span class="kw">const</span> <span class="ident">_UUID_IDM_ACP_RADIUS_SECRET_WRITE_PRIV_V1</span>: <span class="ident">Uuid</span> <span class="op">=</span>
+    <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-ffffff000040&quot;</span>);
 
 <span class="comment">// End of system ranges</span>
 <span class="kw">pub</span> <span class="kw">const</span> <span class="ident">UUID_DOES_NOT_EXIST</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="macro">uuid!</span>(<span class="string">&quot;00000000-0000-0000-0000-fffffffffffe&quot;</span>);
