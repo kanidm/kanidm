@@ -157,7 +157,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
         <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
         <script src="/pkg/external/confetti.js"></script>
         <script type="module" defer>
-            import init, { run_app } from './pkg/kanidmd_web_ui.js';
+            import init, { run_app } from '/pkg/kanidmd_web_ui.js';
             async function main() {
                await init('/pkg/kanidmd_web_ui_bg.wasm');
                run_app();
