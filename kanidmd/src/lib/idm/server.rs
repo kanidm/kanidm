@@ -147,6 +147,7 @@ impl IdmServer {
         qs: QueryServer,
         origin: &str,
         // ct: Duration,
+        // do_domain_check: bool
     ) -> Result<(IdmServer, IdmServerDelayed), OperationError> {
         // This is calculated back from:
         //  500 auths / thread -> 0.002 sec per op

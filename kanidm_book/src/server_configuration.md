@@ -37,9 +37,21 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   Defaults to "default"
     # log_level = "default"
     #
+    #   The DNS domain name of the server. This is used in a number of security-critical contexts
+    #   such as webauthn, so it *must* match your DNS hostname. It is what is used to create
+    #   security principal names such as `william@idm.example.com` so that in a (future)
+    #   trust configuration it is possible to have unique spn's throughout the topology.
+    #   ⚠️  WARNING ⚠️
+    #   Changing this value WILL break many types of registered credentials for accounts
+    #   including but not limited to webauthn, oauth tokens, and more.
+    #   If you change this value you *must* run `kanidmd domain_name_change` immediately
+    #   after.
+    domain = "idm.example.com"
+    #
     #   The origin for webauthn. This is the url to the server, with the port included if
     #   it is non-standard (any port except 443). This must match or be a descendent of the
-    #   domain name you configure with `kanidmd domain_name_change`
+    #   domain name you configure above. If these two items are not consistent, the server
+    #   WILL refuse to start!
     # origin = "https://idm.example.com"
     origin = "https://idm.example.com:8443"
     #

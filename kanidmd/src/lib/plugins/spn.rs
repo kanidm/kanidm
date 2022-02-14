@@ -364,9 +364,11 @@ mod tests {
             // trigger the domain_name change (this will be a cli option to the server
             // in the final version), but it will still call the same qs function to perform the
             // change.
-            server_txn
-                .domain_rename("new.example.com")
-                .expect("should not fail!");
+            unsafe {
+                server_txn
+                    .domain_rename_inner("new.example.com")
+                    .expect("should not fail!");
+            }
 
             // check the spn on admin is admin@<new domain>
             let e_post = server_txn

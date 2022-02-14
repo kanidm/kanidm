@@ -534,7 +534,7 @@ pub trait BackendTransaction {
                 })
             })?;
 
-            filter_info!(?fplan, "filter executed plan");
+            filter_trace!(?fplan, "filter executed plan");
 
             match &idl {
                 IdList::AllIds => {
@@ -638,7 +638,7 @@ pub trait BackendTransaction {
                 })
             })?;
 
-            filter_info!(?fplan, "filter executed plan");
+            filter_trace!(?fplan, "filter executed plan");
 
             // Apply limits to the IdList.
             match &idl {

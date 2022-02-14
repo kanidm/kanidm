@@ -77,7 +77,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
             .build()
             .expect("failed to start tokio");
         rt.block_on(async {
-            create_server_core(config)
+            create_server_core(config, false)
                 .await
                 .expect("failed to start server core");
             // We have to yield now to guarantee that the tide elements are setup.

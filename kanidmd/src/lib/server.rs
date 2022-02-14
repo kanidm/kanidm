@@ -56,6 +56,7 @@ lazy_static! {
 pub struct QueryServer {
     s_uuid: Uuid,
     d_uuid: Uuid,
+    d_name: String,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -79,6 +80,7 @@ pub struct QueryServerReadTransaction<'a> {
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     d_uuid: Uuid,
+    pub d_name: String,
     cid: Cid,
     be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
@@ -852,7 +854,7 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema) -> Self {
+    pub fn new(be: Backend, schema: Schema, d_name: String) -> Self {
         let (s_uuid, d_uuid) = {
             let wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
@@ -864,12 +866,14 @@ impl QueryServer {
 
         let pool_size = be.get_pool_size();
 
-        info!("Server ID -> {:?}", s_uuid);
-        info!("Domain ID -> {:?}", d_uuid);
+        info!("Server UUID -> {:?}", s_uuid);
+        info!("Domain UUID -> {:?}", d_uuid);
+        info!("Domain Name -> {:?}", d_name);
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,
             d_uuid,
+            d_name,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
@@ -946,6 +950,7 @@ impl QueryServer {
             // which today I don't think we have ... yet.
             committed: false,
             d_uuid: self.d_uuid,
+            d_name: self.d_name.clone(),
             cid,
             be_txn,
             schema: schema_write,
@@ -1049,7 +1054,7 @@ impl QueryServer {
             .initialise_idm()
             .and_then(|_| ts_write_3.commit())?;
 
-        admin_info!("ready to rock! 🪨  ");
+        admin_info!("migrations success! ☀️  ");
         Ok(())
     }
 
@@ -2078,7 +2083,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // NOTE: gen modlist IS schema aware and will handle multivalue
         // correctly!
-        admin_info!("internal_migrate_or_create operating on {:?}", e.get_uuid());
+        trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
         let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
             Some(f) => f,
@@ -2270,6 +2275,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if res.is_err() {
             return res;
         }
+
+        // Is the configured domain name matching what's in the domain_info?
+
+        //
 
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
@@ -2583,7 +2592,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
-    pub fn domain_rename(&self, new_domain_name: &str) -> Result<(), OperationError> {
+    pub fn domain_rename(&self) -> Result<(), OperationError> {
+        unsafe { self.domain_rename_inner(self.d_name.as_str()) }
+    }
+
+    /// # Safety
+    /// This is UNSAFE because while it may change the domain name, it doesn't update
+    /// the running configured version of the domain name that is resident to the
+    /// query server.
+    ///
+    /// Currently it's only used to test what happens if we rename the domain and how
+    /// that impacts spns, but in the future we may need to reconsider how this is
+    /// approached, especially if we have a domain re-name replicated to us. It could
+    /// be that we end up needing to have this as a cow cell or similar?
+    pub(crate) unsafe fn domain_rename_inner(
+        &self,
+        new_domain_name: &str,
+    ) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
         let udi = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
         let filt = filter_all!(f_eq("uuid", udi));
