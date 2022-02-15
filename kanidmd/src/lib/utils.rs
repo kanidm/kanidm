@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use hashbrown::HashSet;
 use std::io::ErrorKind;
 use std::path::PathBuf;
 use std::time::{Duration, SystemTime};

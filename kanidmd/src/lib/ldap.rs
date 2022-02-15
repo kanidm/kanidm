@@ -531,9 +531,9 @@ mod tests {
     use crate::ldap::LdapServer;
     use crate::modify::{Modify, ModifyList};
     use async_std::task;
+    use hashbrown::HashSet;
     use ldap3_server::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_server::simple::*;
-    use std::collections::HashSet;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 

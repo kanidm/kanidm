@@ -1078,11 +1078,11 @@ impl IdlArcSqlite {
 
         // Autotune heuristic.
         let mut cache_size = cfg.arcsize.unwrap_or_else(|| {
-            // For now I've noticed about 20% of the number of entries
-            // works well, but it may not be perfect ...
+            // Due to changes in concread, we can now scale this up! We now aim for 120%
+            // of entries.
             db.get_allids_count()
                 .map(|c| {
-                    let tmpsize = (c / 5) as usize;
+                    let tmpsize = ((c / 5) as usize) * 6;
                     // if our calculation's too small anyway, just set it to the minimum target
                     std::cmp::max(tmpsize, DEFAULT_CACHE_TARGET)
                 })
@@ -1106,6 +1106,7 @@ impl IdlArcSqlite {
                 DEFAULT_CACHE_WMISS,
                 false,
             )
+            .set_reader_quiesce(true)
             .build()
             .ok_or_else(|| {
                 admin_error!("Failed to construct entry_cache");
@@ -1121,6 +1122,7 @@ impl IdlArcSqlite {
                 DEFAULT_CACHE_WMISS,
                 false,
             )
+            .set_reader_quiesce(true)
             .build()
             .ok_or_else(|| {
                 admin_error!("Failed to construct idl_cache");
@@ -1135,6 +1137,7 @@ impl IdlArcSqlite {
                 DEFAULT_CACHE_WMISS,
                 true,
             )
+            .set_reader_quiesce(true)
             .build()
             .ok_or_else(|| {
                 admin_error!("Failed to construct name_cache");
@@ -1156,6 +1159,12 @@ impl IdlArcSqlite {
             allids,
             maxid,
         })
+    }
+
+    pub fn try_quiesce(&self) {
+        self.entry_cache.try_quiesce();
+        self.idl_cache.try_quiesce();
+        self.name_cache.try_quiesce();
     }
 
     pub fn read(&self) -> IdlArcSqliteReadTransaction {

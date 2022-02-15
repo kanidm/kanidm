@@ -908,6 +908,7 @@ impl QueryServer {
             resolve_filter_cache: Arc::new(
                 ARCacheBuilder::new()
                     .set_size(RESOLVE_FILTER_CACHE_MAX, RESOLVE_FILTER_CACHE_LOCAL)
+                    .set_reader_quiesce(true)
                     .build()
                     .expect("Failer to build resolve_filter_cache"),
             ),
@@ -917,6 +918,12 @@ impl QueryServer {
     #[cfg(test)]
     pub fn read(&self) -> QueryServerReadTransaction {
         task::block_on(self.read_async())
+    }
+
+    pub fn try_quiesce(&self) {
+        self.be.try_quiesce();
+        self.accesscontrols.try_quiesce();
+        self.resolve_filter_cache.try_quiesce();
     }
 
     pub async fn read_async(&self) -> QueryServerReadTransaction<'_> {

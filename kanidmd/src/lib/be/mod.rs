@@ -1519,6 +1519,10 @@ impl Backend {
         self.cfg.pool_size
     }
 
+    pub fn try_quiesce(&self) {
+        self.idlayer.try_quiesce();
+    }
+
     pub fn read(&self) -> BackendReadTransaction {
         BackendReadTransaction {
             idlayer: UnsafeCell::new(self.idlayer.read()),

@@ -396,8 +396,8 @@ impl TreeEvent {
             .map(EventTag::emoji)
             .unwrap_or_else(|| match self.level {
                 Level::ERROR => "🚨",
-                Level::WARN => "🚧",
-                Level::INFO => "💬",
+                Level::WARN => "⚠️ ",
+                Level::INFO => "  ",
                 Level::DEBUG => "🐛",
                 Level::TRACE => "📍",
             })

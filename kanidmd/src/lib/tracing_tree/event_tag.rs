@@ -47,8 +47,8 @@ impl EventTag {
         use EventTag::*;
         match self {
             AdminError | FilterError | RequestError | SecurityError => "🚨",
-            AdminWarn | FilterWarn | RequestWarn => "🚧",
-            AdminInfo | FilterInfo | RequestInfo | SecurityInfo => "💬",
+            AdminWarn | FilterWarn | RequestWarn => "⚠️ ",
+            AdminInfo | FilterInfo | RequestInfo | SecurityInfo => "  ",
             RequestTrace | FilterTrace | PerfTrace => "📍",
             SecurityCritical => "🔐",
             SecurityAccess => "🔓",
