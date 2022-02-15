@@ -3884,7 +3884,7 @@
         <span class="kw">let</span> <span class="ident">backup_code_good</span> <span class="op">=</span> <span class="ident">readable_password_from_random</span>();
         <span class="kw">let</span> <span class="ident">backup_code_bad</span> <span class="op">=</span> <span class="ident">readable_password_from_random</span>();
         <span class="macro">assert!</span>(<span class="ident">backup_code_bad</span> <span class="op">!</span><span class="op">=</span> <span class="ident">backup_code_good</span>);
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">code_set</span> <span class="op">=</span> <span class="ident">std::collections::HashSet::new</span>();
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">code_set</span> <span class="op">=</span> <span class="ident">HashSet::new</span>();
         <span class="ident">code_set</span>.<span class="ident">insert</span>(<span class="ident">backup_code_good</span>.<span class="ident">clone</span>());
 
         <span class="kw">let</span> <span class="ident">backup_codes</span> <span class="op">=</span> <span class="ident">BackupCodes::new</span>(<span class="ident">code_set</span>);

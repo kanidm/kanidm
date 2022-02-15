@@ -1205,6 +1205,15 @@
 <span id="1204">1204</span>
 <span id="1205">1205</span>
 <span id="1206">1206</span>
+<span id="1207">1207</span>
+<span id="1208">1208</span>
+<span id="1209">1209</span>
+<span id="1210">1210</span>
+<span id="1211">1211</span>
+<span id="1212">1212</span>
+<span id="1213">1213</span>
+<span id="1214">1214</span>
+<span id="1215">1215</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::idl_sqlite</span>::{
     <span class="ident">IdlSqlite</span>, <span class="ident">IdlSqliteReadTransaction</span>, <span class="ident">IdlSqliteTransaction</span>, <span class="ident">IdlSqliteWriteTransaction</span>,
 };
@@ -2285,11 +2294,11 @@
 
         <span class="comment">// Autotune heuristic.</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">cache_size</span> <span class="op">=</span> <span class="ident">cfg</span>.<span class="ident">arcsize</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> {
-            <span class="comment">// For now I&#39;ve noticed about 20% of the number of entries</span>
-            <span class="comment">// works well, but it may not be perfect ...</span>
+            <span class="comment">// Due to changes in concread, we can now scale this up! We now aim for 120%</span>
+            <span class="comment">// of entries.</span>
             <span class="ident">db</span>.<span class="ident">get_allids_count</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">tmpsize</span> <span class="op">=</span> (<span class="ident">c</span> <span class="op">/</span> <span class="number">5</span>) <span class="kw">as</span> <span class="ident">usize</span>;
+                    <span class="kw">let</span> <span class="ident">tmpsize</span> <span class="op">=</span> ((<span class="ident">c</span> <span class="op">/</span> <span class="number">5</span>) <span class="kw">as</span> <span class="ident">usize</span>) <span class="op">*</span> <span class="number">6</span>;
                     <span class="comment">// if our calculation&#39;s too small anyway, just set it to the minimum target</span>
                     <span class="ident">std::cmp::max</span>(<span class="ident">tmpsize</span>, <span class="ident">DEFAULT_CACHE_TARGET</span>)
                 })
@@ -2313,6 +2322,7 @@
                 <span class="ident">DEFAULT_CACHE_WMISS</span>,
                 <span class="bool-val">false</span>,
             )
+            .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
             .<span class="ident">build</span>()
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to construct entry_cache&quot;</span>);
@@ -2328,6 +2338,7 @@
                 <span class="ident">DEFAULT_CACHE_WMISS</span>,
                 <span class="bool-val">false</span>,
             )
+            .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
             .<span class="ident">build</span>()
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to construct idl_cache&quot;</span>);
@@ -2342,6 +2353,7 @@
                 <span class="ident">DEFAULT_CACHE_WMISS</span>,
                 <span class="bool-val">true</span>,
             )
+            .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
             .<span class="ident">build</span>()
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to construct name_cache&quot;</span>);
@@ -2363,6 +2375,12 @@
             <span class="ident">allids</span>,
             <span class="ident">maxid</span>,
         })
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_quiesce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">entry_cache</span>.<span class="ident">try_quiesce</span>();
+        <span class="self">self</span>.<span class="ident">idl_cache</span>.<span class="ident">try_quiesce</span>();
+        <span class="self">self</span>.<span class="ident">name_cache</span>.<span class="ident">try_quiesce</span>();
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdlArcSqliteReadTransaction</span> {

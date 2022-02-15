@@ -1,1 +1,1 @@
-initSidebarItems({"fn":[["__wasm_bindgen_generated_run_app",""],["run_app",""]]});
+initSidebarItems({"fn":[["run_app",""]]});

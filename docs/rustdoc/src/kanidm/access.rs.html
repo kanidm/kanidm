@@ -2329,6 +2329,11 @@
 <span id="2328">2328</span>
 <span id="2329">2329</span>
 <span id="2330">2330</span>
+<span id="2331">2331</span>
+<span id="2332">2332</span>
+<span id="2333">2333</span>
+<span id="2334">2334</span>
+<span id="2335">2335</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Access Control Profiles</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This is a pretty important and security sensitive part of the code - it&#39;s</span>
@@ -3658,9 +3663,14 @@
             */</span>
             <span class="ident">acp_resolve_filter_cache</span>: <span class="ident">ARCacheBuilder::new</span>()
                 .<span class="ident">set_size</span>(<span class="ident">ACP_RESOLVE_FILTER_CACHE_MAX</span>, <span class="ident">ACP_RESOLVE_FILTER_CACHE_LOCAL</span>)
+                .<span class="ident">set_reader_quiesce</span>(<span class="bool-val">true</span>)
                 .<span class="ident">build</span>()
                 .<span class="ident">expect</span>(<span class="string">&quot;Failed to construct acp_resolve_filter_cache&quot;</span>),
         }
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_quiesce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">acp_resolve_filter_cache</span>.<span class="ident">try_quiesce</span>();
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">AccessControlsReadTransaction</span> {

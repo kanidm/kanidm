@@ -105,8 +105,8 @@
         <span class="kw">use</span> <span class="ident">EventTag</span>::<span class="kw-2">*</span>;
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">AdminError</span> <span class="op">|</span> <span class="ident">FilterError</span> <span class="op">|</span> <span class="ident">RequestError</span> <span class="op">|</span> <span class="ident">SecurityError</span> =&gt; <span class="string">&quot;🚨&quot;</span>,
-            <span class="ident">AdminWarn</span> <span class="op">|</span> <span class="ident">FilterWarn</span> <span class="op">|</span> <span class="ident">RequestWarn</span> =&gt; <span class="string">&quot;🚧&quot;</span>,
-            <span class="ident">AdminInfo</span> <span class="op">|</span> <span class="ident">FilterInfo</span> <span class="op">|</span> <span class="ident">RequestInfo</span> <span class="op">|</span> <span class="ident">SecurityInfo</span> =&gt; <span class="string">&quot;💬&quot;</span>,
+            <span class="ident">AdminWarn</span> <span class="op">|</span> <span class="ident">FilterWarn</span> <span class="op">|</span> <span class="ident">RequestWarn</span> =&gt; <span class="string">&quot;⚠️ &quot;</span>,
+            <span class="ident">AdminInfo</span> <span class="op">|</span> <span class="ident">FilterInfo</span> <span class="op">|</span> <span class="ident">RequestInfo</span> <span class="op">|</span> <span class="ident">SecurityInfo</span> =&gt; <span class="string">&quot;  &quot;</span>,
             <span class="ident">RequestTrace</span> <span class="op">|</span> <span class="ident">FilterTrace</span> <span class="op">|</span> <span class="ident">PerfTrace</span> =&gt; <span class="string">&quot;📍&quot;</span>,
             <span class="ident">SecurityCritical</span> =&gt; <span class="string">&quot;🔐&quot;</span>,
             <span class="ident">SecurityAccess</span> =&gt; <span class="string">&quot;🔓&quot;</span>,

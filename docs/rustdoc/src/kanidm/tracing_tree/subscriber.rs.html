@@ -962,8 +962,8 @@
             .<span class="ident">map</span>(<span class="ident">EventTag::emoji</span>)
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="kw">match</span> <span class="self">self</span>.<span class="ident">level</span> {
                 <span class="ident">Level::ERROR</span> =&gt; <span class="string">&quot;🚨&quot;</span>,
-                <span class="ident">Level::WARN</span> =&gt; <span class="string">&quot;🚧&quot;</span>,
-                <span class="ident">Level::INFO</span> =&gt; <span class="string">&quot;💬&quot;</span>,
+                <span class="ident">Level::WARN</span> =&gt; <span class="string">&quot;⚠️ &quot;</span>,
+                <span class="ident">Level::INFO</span> =&gt; <span class="string">&quot;  &quot;</span>,
                 <span class="ident">Level::DEBUG</span> =&gt; <span class="string">&quot;🐛&quot;</span>,
                 <span class="ident">Level::TRACE</span> =&gt; <span class="string">&quot;📍&quot;</span>,
             })

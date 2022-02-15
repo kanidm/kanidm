@@ -2601,7 +2601,6 @@
 <span id="2600">2600</span>
 <span id="2601">2601</span>
 <span id="2602">2602</span>
-<span id="2603">2603</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
 <span class="doccomment">//!</span>
@@ -2646,13 +2645,12 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbentry</span>::{<span class="ident">DbEntry</span>, <span class="ident">DbEntryV1</span>, <span class="ident">DbEntryVers</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be</span>::{<span class="ident">IdxKey</span>, <span class="ident">IdxSlope</span>};
 
+<span class="kw">use</span> <span class="ident">hashbrown::HashMap</span>;
 <span class="kw">use</span> <span class="ident">ldap3_server::simple</span>::{<span class="ident">LdapPartialAttribute</span>, <span class="ident">LdapSearchResultEntry</span>};
+<span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span> <span class="kw">as</span> <span class="ident">Map</span>;
 <span class="kw">pub</span> <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span> <span class="kw">as</span> <span class="ident">Set</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
-<span class="comment">// use hashbrown::HashMap as Map;</span>
-<span class="kw">use</span> <span class="ident">hashbrown::HashMap</span>;
-<span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">time::OffsetDateTime</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;

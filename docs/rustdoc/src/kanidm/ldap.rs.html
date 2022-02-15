@@ -1384,9 +1384,9 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap::LdapServer</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">Modify</span>, <span class="ident">ModifyList</span>};
     <span class="kw">use</span> <span class="ident">async_std::task</span>;
+    <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
     <span class="kw">use</span> <span class="ident">ldap3_server::proto</span>::{<span class="ident">LdapFilter</span>, <span class="ident">LdapOp</span>, <span class="ident">LdapSearchScope</span>};
     <span class="kw">use</span> <span class="ident">ldap3_server::simple</span>::<span class="kw-2">*</span>;
-    <span class="kw">use</span> <span class="ident">std::collections::HashSet</span>;
 
     <span class="kw">const</span> <span class="ident">TEST_PASSWORD</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">str</span> <span class="op">=</span> <span class="string">&quot;ntaoeuntnaoeuhraohuercahu😍&quot;</span>;
 

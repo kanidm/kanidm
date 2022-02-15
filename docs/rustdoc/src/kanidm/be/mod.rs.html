@@ -2870,6 +2870,10 @@
 <span id="2869">2869</span>
 <span id="2870">2870</span>
 <span id="2871">2871</span>
+<span id="2872">2872</span>
+<span id="2873">2873</span>
+<span id="2874">2874</span>
+<span id="2875">2875</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
 <span class="doccomment">//! of the server, which are all enforced at higher levels. The role of the backend</span>
@@ -4389,6 +4393,10 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_pool_size</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">u32</span> {
         <span class="macro">debug_assert!</span>(<span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">pool_size</span> <span class="op">&gt;</span> <span class="number">0</span>);
         <span class="self">self</span>.<span class="ident">cfg</span>.<span class="ident">pool_size</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">try_quiesce</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+        <span class="self">self</span>.<span class="ident">idlayer</span>.<span class="ident">try_quiesce</span>();
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">read</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">BackendReadTransaction</span> {
