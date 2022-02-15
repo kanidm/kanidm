@@ -1,6 +1,6 @@
+use hashbrown::HashSet;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
-use hashbrown::HashSet;
 use url::Url;
 use uuid::Uuid;
 use webauthn_rs::proto::{COSEKey, UserVerificationPolicy};

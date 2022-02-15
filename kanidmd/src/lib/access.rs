@@ -1337,7 +1337,6 @@ impl AccessControls {
         self.acp_resolve_filter_cache.try_quiesce();
     }
 
-
     pub fn read(&self) -> AccessControlsReadTransaction {
         AccessControlsReadTransaction {
             inner: self.inner.read(),
