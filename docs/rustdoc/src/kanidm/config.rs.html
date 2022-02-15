@@ -223,6 +223,12 @@
 <span id="222">222</span>
 <span id="223">223</span>
 <span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The server configuration as processed from the startup wrapper. This controls a number of</span>
 <span class="doccomment">//! variables that determine how our backends, query server, and frontends are configured.</span>
 <span class="doccomment">//!</span>
@@ -315,6 +321,7 @@
     <span class="kw">pub</span> <span class="ident">integration_test_config</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Box</span><span class="op">&lt;</span><span class="ident">IntegrationTestConfig</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">log_level</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">online_backup</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">OnlineBackup</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">domain</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">origin</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">role</span>: <span class="ident">ServerRole</span>,
 }
@@ -373,6 +380,7 @@
             <span class="ident">integration_test_config</span>: <span class="prelude-val">None</span>,
             <span class="ident">log_level</span>: <span class="prelude-val">None</span>,
             <span class="ident">online_backup</span>: <span class="prelude-val">None</span>,
+            <span class="ident">domain</span>: <span class="string">&quot;idm.example.com&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">origin</span>: <span class="string">&quot;https://idm.example.com&quot;</span>.<span class="ident">to_string</span>(),
             <span class="ident">role</span>: <span class="ident">ServerRole::WriteReplica</span>,
         };
@@ -426,6 +434,10 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_origin</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">o</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
         <span class="self">self</span>.<span class="ident">origin</span> <span class="op">=</span> <span class="ident">o</span>.<span class="ident">to_string</span>();
+    }
+
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_domain</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">d</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) {
+        <span class="self">self</span>.<span class="ident">domain</span> <span class="op">=</span> <span class="ident">d</span>.<span class="ident">to_string</span>();
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">update_role</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">r</span>: <span class="ident">ServerRole</span>) {

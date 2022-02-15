@@ -4036,7 +4036,7 @@
         <span class="kw">let</span> (<span class="ident">rp_id</span>, <span class="ident">token_key</span>, <span class="ident">pw_badlist_set</span>, <span class="ident">oauth2rs_set</span>) <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">qs_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">qs</span>.<span class="ident">read_async</span>());
             (
-                <span class="ident">qs_read</span>.<span class="ident">get_domain_name</span>()<span class="question-mark">?</span>,
+                <span class="ident">qs_read</span>.<span class="ident">get_domain_name</span>().<span class="ident">to_string</span>(),
                 <span class="ident">qs_read</span>.<span class="ident">get_domain_token_key</span>()<span class="question-mark">?</span>,
                 <span class="ident">qs_read</span>.<span class="ident">get_password_badlist</span>()<span class="question-mark">?</span>,
                 <span class="comment">// Add a read/reload of all oauth2 configurations.</span>

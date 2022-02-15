@@ -4078,6 +4078,79 @@
 <span id="4077">4077</span>
 <span id="4078">4078</span>
 <span id="4079">4079</span>
+<span id="4080">4080</span>
+<span id="4081">4081</span>
+<span id="4082">4082</span>
+<span id="4083">4083</span>
+<span id="4084">4084</span>
+<span id="4085">4085</span>
+<span id="4086">4086</span>
+<span id="4087">4087</span>
+<span id="4088">4088</span>
+<span id="4089">4089</span>
+<span id="4090">4090</span>
+<span id="4091">4091</span>
+<span id="4092">4092</span>
+<span id="4093">4093</span>
+<span id="4094">4094</span>
+<span id="4095">4095</span>
+<span id="4096">4096</span>
+<span id="4097">4097</span>
+<span id="4098">4098</span>
+<span id="4099">4099</span>
+<span id="4100">4100</span>
+<span id="4101">4101</span>
+<span id="4102">4102</span>
+<span id="4103">4103</span>
+<span id="4104">4104</span>
+<span id="4105">4105</span>
+<span id="4106">4106</span>
+<span id="4107">4107</span>
+<span id="4108">4108</span>
+<span id="4109">4109</span>
+<span id="4110">4110</span>
+<span id="4111">4111</span>
+<span id="4112">4112</span>
+<span id="4113">4113</span>
+<span id="4114">4114</span>
+<span id="4115">4115</span>
+<span id="4116">4116</span>
+<span id="4117">4117</span>
+<span id="4118">4118</span>
+<span id="4119">4119</span>
+<span id="4120">4120</span>
+<span id="4121">4121</span>
+<span id="4122">4122</span>
+<span id="4123">4123</span>
+<span id="4124">4124</span>
+<span id="4125">4125</span>
+<span id="4126">4126</span>
+<span id="4127">4127</span>
+<span id="4128">4128</span>
+<span id="4129">4129</span>
+<span id="4130">4130</span>
+<span id="4131">4131</span>
+<span id="4132">4132</span>
+<span id="4133">4133</span>
+<span id="4134">4134</span>
+<span id="4135">4135</span>
+<span id="4136">4136</span>
+<span id="4137">4137</span>
+<span id="4138">4138</span>
+<span id="4139">4139</span>
+<span id="4140">4140</span>
+<span id="4141">4141</span>
+<span id="4142">4142</span>
+<span id="4143">4143</span>
+<span id="4144">4144</span>
+<span id="4145">4145</span>
+<span id="4146">4146</span>
+<span id="4147">4147</span>
+<span id="4148">4148</span>
+<span id="4149">4149</span>
+<span id="4150">4150</span>
+<span id="4151">4151</span>
+<span id="4152">4152</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4085,6 +4158,7 @@
 <span class="comment">// that otherwise can&#39;t be cloned. Think Mutex.</span>
 <span class="kw">use</span> <span class="ident">async_std::task</span>;
 <span class="kw">use</span> <span class="ident">concread::arcache</span>::{<span class="ident">ARCache</span>, <span class="ident">ARCacheBuilder</span>, <span class="ident">ARCacheReadTxn</span>};
+<span class="kw">use</span> <span class="ident">concread::cowcell</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">hashbrown</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::cell::Cell</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
@@ -4132,10 +4206,16 @@
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVACP_ENABLE_FALSE</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_bool</span>(<span class="bool-val">false</span>);
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>)]</span>
+<span class="kw">struct</span> <span class="ident">DomainInfo</span> {
+    <span class="ident">d_uuid</span>: <span class="ident">Uuid</span>,
+    <span class="ident">d_name</span>: <span class="ident">String</span>,
+}
+
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueryServer</span> {
     <span class="ident">s_uuid</span>: <span class="ident">Uuid</span>,
-    <span class="ident">d_uuid</span>: <span class="ident">Uuid</span>,
+    <span class="ident">d_info</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">DomainInfo</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">be</span>: <span class="ident">Backend</span>,
     <span class="ident">schema</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Schema</span><span class="op">&gt;</span>,
     <span class="ident">accesscontrols</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">AccessControls</span><span class="op">&gt;</span>,
@@ -4149,6 +4229,7 @@
     <span class="ident">be_txn</span>: <span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="comment">// Anything else? In the future, we&#39;ll need to have a schema transaction</span>
     <span class="comment">// type, maybe others?</span>
+    <span class="ident">d_info</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">DomainInfo</span><span class="op">&gt;</span>,
     <span class="ident">schema</span>: <span class="ident">SchemaReadTransaction</span>,
     <span class="ident">accesscontrols</span>: <span class="ident">AccessControlsReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">_db_ticket</span>: <span class="ident">SemaphorePermit</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
@@ -4158,7 +4239,7 @@
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">committed</span>: <span class="ident">bool</span>,
-    <span class="ident">d_uuid</span>: <span class="ident">Uuid</span>,
+    <span class="ident">d_info</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">DomainInfo</span><span class="op">&gt;</span>,
     <span class="ident">cid</span>: <span class="ident">Cid</span>,
     <span class="ident">be_txn</span>: <span class="ident">BackendWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="ident">schema</span>: <span class="ident">SchemaWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
@@ -4205,6 +4286,10 @@
 
     <span class="kw">type</span> <span class="ident">AccessControlsTransactionType</span>: <span class="ident">AccessControlsTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>;
     <span class="kw">fn</span> <span class="ident">get_accesscontrols</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::AccessControlsTransactionType</span>;
+
+    <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span>;
+
+    <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span>;
 
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::mut_from_ref</span>)]</span>
     <span class="kw">fn</span> <span class="ident">get_resolve_filter_cache</span>(
@@ -4768,9 +4853,7 @@
         }
     }
 
-    <span class="comment">// This is a prebaked helper to get the domain name for related modules.</span>
-    <span class="comment">// in the future we could make this cache the value to avoid entry lookups.</span>
-    <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_db_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="ident">e</span>.<span class="ident">get_ava_single_str</span>(<span class="string">&quot;domain_name&quot;</span>)
@@ -4856,6 +4939,14 @@
                 <span class="op">&gt;</span>
         }
     }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
+        <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_uuid</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_name</span>
+    }
 }
 
 <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
@@ -4929,10 +5020,18 @@
                 <span class="op">&gt;</span>
         }
     }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
+        <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_uuid</span>
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">str</span> {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_name</span>
+    }
 }
 
 <span class="kw">impl</span> <span class="ident">QueryServer</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">be</span>: <span class="ident">Backend</span>, <span class="ident">schema</span>: <span class="ident">Schema</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">be</span>: <span class="ident">Backend</span>, <span class="ident">schema</span>: <span class="ident">Schema</span>, <span class="ident">d_name</span>: <span class="ident">String</span>) -&gt; <span class="self">Self</span> {
         <span class="kw">let</span> (<span class="ident">s_uuid</span>, <span class="ident">d_uuid</span>) <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">wr</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">write</span>();
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> (<span class="ident">wr</span>.<span class="ident">get_db_s_uuid</span>(), <span class="ident">wr</span>.<span class="ident">get_db_d_uuid</span>());
@@ -4944,12 +5043,16 @@
 
         <span class="kw">let</span> <span class="ident">pool_size</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">get_pool_size</span>();
 
-        <span class="macro">info!</span>(<span class="string">&quot;Server ID -&gt; {:?}&quot;</span>, <span class="ident">s_uuid</span>);
-        <span class="macro">info!</span>(<span class="string">&quot;Domain ID -&gt; {:?}&quot;</span>, <span class="ident">d_uuid</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;Server UUID -&gt; {:?}&quot;</span>, <span class="ident">s_uuid</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;Domain UUID -&gt; {:?}&quot;</span>, <span class="ident">d_uuid</span>);
+        <span class="macro">info!</span>(<span class="string">&quot;Domain Name -&gt; {:?}&quot;</span>, <span class="ident">d_name</span>);
+
+        <span class="kw">let</span> <span class="ident">d_info</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">DomainInfo</span> { <span class="ident">d_uuid</span>, <span class="ident">d_name</span> }));
+
         <span class="comment">// log_event!(log, &quot;Starting query worker ...&quot;);</span>
         <span class="ident">QueryServer</span> {
             <span class="ident">s_uuid</span>,
-            <span class="ident">d_uuid</span>,
+            <span class="ident">d_info</span>,
             <span class="ident">be</span>,
             <span class="ident">schema</span>: <span class="ident">Arc::new</span>(<span class="ident">schema</span>),
             <span class="ident">accesscontrols</span>: <span class="ident">Arc::new</span>(<span class="ident">AccessControls::new</span>()),
@@ -4981,6 +5084,7 @@
         <span class="ident">QueryServerReadTransaction</span> {
             <span class="ident">be_txn</span>: <span class="self">self</span>.<span class="ident">be</span>.<span class="ident">read</span>(),
             <span class="ident">schema</span>: <span class="self">self</span>.<span class="ident">schema</span>.<span class="ident">read</span>(),
+            <span class="ident">d_info</span>: <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">read</span>(),
             <span class="ident">accesscontrols</span>: <span class="self">self</span>.<span class="ident">accesscontrols</span>.<span class="ident">read</span>(),
             <span class="ident">_db_ticket</span>: <span class="ident">db_ticket</span>,
             <span class="ident">resolve_filter_cache</span>: <span class="ident">Cell::new</span>(<span class="self">self</span>.<span class="ident">resolve_filter_cache</span>.<span class="ident">read</span>()),
@@ -5012,10 +5116,11 @@
         <span class="comment">// let schema_write = self.schema.write().await;</span>
         <span class="kw">let</span> <span class="ident">schema_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">schema</span>.<span class="ident">write</span>();
         <span class="kw">let</span> <span class="ident">be_txn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">be</span>.<span class="ident">write</span>();
+        <span class="kw">let</span> <span class="ident">d_info</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">write</span>();
 
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
         <span class="kw">let</span> <span class="ident">ts_max</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="ident">ts</span>).<span class="ident">expect</span>(<span class="string">&quot;Unable to get db_ts_max&quot;</span>);
-        <span class="kw">let</span> <span class="ident">cid</span> <span class="op">=</span> <span class="ident">Cid::new_lamport</span>(<span class="self">self</span>.<span class="ident">s_uuid</span>, <span class="self">self</span>.<span class="ident">d_uuid</span>, <span class="ident">ts</span>, <span class="kw-2">&amp;</span><span class="ident">ts_max</span>);
+        <span class="kw">let</span> <span class="ident">cid</span> <span class="op">=</span> <span class="ident">Cid::new_lamport</span>(<span class="self">self</span>.<span class="ident">s_uuid</span>, <span class="ident">d_info</span>.<span class="ident">d_uuid</span>, <span class="ident">ts</span>, <span class="kw-2">&amp;</span><span class="ident">ts_max</span>);
 
         <span class="ident">QueryServerWriteTransaction</span> {
             <span class="comment">// I think this is *not* needed, because commit is mut self which should</span>
@@ -5025,7 +5130,7 @@
             <span class="comment">// The commited flag is however used for abort-specific code in drop</span>
             <span class="comment">// which today I don&#39;t think we have ... yet.</span>
             <span class="ident">committed</span>: <span class="bool-val">false</span>,
-            <span class="ident">d_uuid</span>: <span class="self">self</span>.<span class="ident">d_uuid</span>,
+            <span class="ident">d_info</span>,
             <span class="ident">cid</span>,
             <span class="ident">be_txn</span>,
             <span class="ident">schema</span>: <span class="ident">schema_write</span>,
@@ -5129,7 +5234,7 @@
             .<span class="ident">initialise_idm</span>()
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">ts_write_3</span>.<span class="ident">commit</span>())<span class="question-mark">?</span>;
 
-        <span class="macro">admin_info!</span>(<span class="string">&quot;ready to rock! 🪨  &quot;</span>);
+        <span class="macro">admin_info!</span>(<span class="string">&quot;migrations success! ☀️  &quot;</span>);
         <span class="prelude-val">Ok</span>(())
     }
 
@@ -6158,7 +6263,7 @@
         <span class="comment">//</span>
         <span class="comment">// NOTE: gen modlist IS schema aware and will handle multivalue</span>
         <span class="comment">// correctly!</span>
-        <span class="macro">admin_info!</span>(<span class="string">&quot;internal_migrate_or_create operating on {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>());
+        <span class="macro">trace!</span>(<span class="string">&quot;internal_migrate_or_create operating on {:?}&quot;</span>, <span class="ident">e</span>.<span class="ident">get_uuid</span>());
 
         <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">filter_from_attrs</span>(<span class="kw-2">&amp;</span>[<span class="ident">AttrString::from</span>(<span class="string">&quot;uuid&quot;</span>)]) {
             <span class="prelude-val">Some</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
@@ -6350,6 +6455,10 @@
         <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_err</span>() {
             <span class="kw">return</span> <span class="ident">res</span>;
         }
+
+        <span class="comment">// Is the configured domain name matching what&#39;s in the domain_info?</span>
+
+        <span class="comment">//</span>
 
         <span class="comment">// The domain info now exists, we should be able to do these migrations as they will</span>
         <span class="comment">// cause SPN regenerations to occur</span>
@@ -6657,13 +6766,43 @@
         })
     }
 
-    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">get_domain_uuid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">Uuid</span> {
-        <span class="self">self</span>.<span class="ident">d_uuid</span>
+    <span class="kw">fn</span> <span class="ident">reload_domain_info</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_domain_name</span>()<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">mut_d_info</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">get_mut</span>();
+        <span class="kw">if</span> <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">domain_name</span> {
+            <span class="macro">admin_warn!</span>(
+                <span class="string">&quot;Using database configured domain name {} - was {}&quot;</span>,
+                <span class="ident">domain_name</span>,
+                <span class="ident">mut_d_info</span>.<span class="ident">d_name</span>,
+            );
+            <span class="macro">admin_warn!</span>(
+                <span class="string">&quot;If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain&quot;</span>
+            );
+            <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">=</span> <span class="ident">domain_name</span>;
+        }
+        <span class="prelude-val">Ok</span>(())
     }
 
     <span class="doccomment">/// Initiate a domain rename process. This is generally an internal function but it&#39;s</span>
     <span class="doccomment">/// exposed to the cli for admins to be able to initiate the process.</span>
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_rename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">domain_rename</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="kw">unsafe</span> { <span class="self">self</span>.<span class="ident">domain_rename_inner</span>(<span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">d_name</span>.<span class="ident">as_str</span>()) }
+    }
+
+    <span class="doccomment">/// # Safety</span>
+    <span class="doccomment">/// This is UNSAFE because while it may change the domain name, it doesn&#39;t update</span>
+    <span class="doccomment">/// the running configured version of the domain name that is resident to the</span>
+    <span class="doccomment">/// query server.</span>
+    <span class="doccomment">///</span>
+    <span class="doccomment">/// Currently it&#39;s only used to test what happens if we rename the domain and how</span>
+    <span class="doccomment">/// that impacts spns, but in the future we may need to reconsider how this is</span>
+    <span class="doccomment">/// approached, especially if we have a domain re-name replicated to us. It could</span>
+    <span class="doccomment">/// be that we end up needing to have this as a cow cell or similar?</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">unsafe</span> <span class="kw">fn</span> <span class="ident">domain_rename_inner</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">modl</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;domain_name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="ident">new_domain_name</span>));
         <span class="kw">let</span> <span class="ident">udi</span> <span class="op">=</span> <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>);
         <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">udi</span>));
@@ -6718,11 +6857,16 @@
             <span class="comment">//    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())</span>
         }
 
+        <span class="kw">if</span> <span class="self">self</span>.<span class="ident">changed_domain</span>.<span class="ident">get</span>() {
+            <span class="self">self</span>.<span class="ident">reload_domain_info</span>()<span class="question-mark">?</span>;
+        }
+
         <span class="comment">// Now destructure the transaction ready to reset it.</span>
         <span class="kw">let</span> <span class="ident">QueryServerWriteTransaction</span> {
             <span class="ident">committed</span>,
             <span class="ident">be_txn</span>,
             <span class="ident">schema</span>,
+            <span class="ident">d_info</span>,
             <span class="ident">accesscontrols</span>,
             <span class="ident">cid</span>,
             ..
@@ -6740,7 +6884,9 @@
             <span class="comment">// because both are consistent.</span>
             <span class="ident">schema</span>
                 .<span class="ident">commit</span>()
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">accesscontrols</span>.<span class="ident">commit</span>().<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">be_txn</span>.<span class="ident">commit</span>()))
+                .<span class="ident">map</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">d_info</span>.<span class="ident">commit</span>())
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">accesscontrols</span>.<span class="ident">commit</span>())
+                .<span class="ident">and_then</span>(<span class="op">|</span><span class="kw">_</span><span class="op">|</span> <span class="ident">be_txn</span>.<span class="ident">commit</span>())
         } <span class="kw">else</span> {
             <span class="prelude-val">Err</span>(<span class="ident">OperationError::ConsistencyError</span>(<span class="ident">r</span>))
         }

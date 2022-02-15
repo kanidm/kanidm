@@ -152,7 +152,7 @@
                 <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying uuid transform&quot;</span>);
                 <span class="comment">// We only apply this if one isn&#39;t provided.</span>
                 <span class="kw">if</span> <span class="op">!</span><span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;domain_name&quot;</span>) {
-                    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Value::new_iname</span>(<span class="string">&quot;example.com&quot;</span>);
+                    <span class="kw">let</span> <span class="ident">n</span> <span class="op">=</span> <span class="ident">Value::new_iname</span>(<span class="ident">qs</span>.<span class="ident">get_domain_name</span>());
                     <span class="ident">e</span>.<span class="ident">set_ava</span>(<span class="string">&quot;domain_name&quot;</span>, <span class="ident">once</span>(<span class="ident">n</span>));
                     <span class="macro">trace!</span>(<span class="string">&quot;plugin_domain: Applying domain_name transform&quot;</span>);
                 }
