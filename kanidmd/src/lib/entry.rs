@@ -46,7 +46,6 @@ use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use std::collections::BTreeMap as Map;
 pub use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
-// use hashbrown::HashMap as Map;
 use hashbrown::HashMap;
 use smartstring::alias::String as AttrString;
 use std::sync::Arc;

@@ -6,7 +6,7 @@ use openssl::hash::MessageDigest;
 use openssl::pkcs5::pbkdf2_hmac;
 use openssl::sha::Sha512;
 use rand::prelude::*;
-use std::collections::HashSet;
+use hashbrown::HashSet;
 use std::convert::TryFrom;
 use std::time::{Duration, Instant};
 use uuid::Uuid;

@@ -1861,7 +1861,7 @@ mod tests {
         let backup_code_good = readable_password_from_random();
         let backup_code_bad = readable_password_from_random();
         assert!(backup_code_bad != backup_code_good);
-        let mut code_set = std::collections::HashSet::new();
+        let mut code_set = HashSet::new();
         code_set.insert(backup_code_good.clone());
 
         let backup_codes = BackupCodes::new(code_set);

@@ -533,7 +533,7 @@ mod tests {
     use async_std::task;
     use ldap3_server::proto::{LdapFilter, LdapOp, LdapSearchScope};
     use ldap3_server::simple::*;
-    use std::collections::HashSet;
+    use hashbrown::HashSet;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 
