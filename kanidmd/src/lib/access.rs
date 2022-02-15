@@ -1327,10 +1327,16 @@ impl AccessControls {
             */
             acp_resolve_filter_cache: ARCacheBuilder::new()
                 .set_size(ACP_RESOLVE_FILTER_CACHE_MAX, ACP_RESOLVE_FILTER_CACHE_LOCAL)
+                .set_reader_quiesce(true)
                 .build()
                 .expect("Failed to construct acp_resolve_filter_cache"),
         }
     }
+
+    pub fn try_quiesce(&self) {
+        self.acp_resolve_filter_cache.try_quiesce();
+    }
+
 
     pub fn read(&self) -> AccessControlsReadTransaction {
         AccessControlsReadTransaction {

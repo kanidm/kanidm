@@ -67,7 +67,7 @@ structopt = { version = "0.3", default-features = false }
 time = { version = "0.2", features = ["serde", "std"] }
 
 hashbrown = "0.11"
-concread = "^0.2.21"
+concread = "^0.3"
 smolset = "1.3"
 # concread = { version = "^0.2.9", features = ["simd_support"] }
 
