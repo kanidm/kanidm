@@ -7,4 +7,6 @@ tls_key = "../insecure/key.pem"
 # log_level = "perfbasic"
 # log_level = "quiet"
 log_level = "verbose"
+domain = "idm.example.com"
 origin = "https://idm.example.com:8443"
+

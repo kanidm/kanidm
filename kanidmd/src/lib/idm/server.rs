@@ -162,7 +162,7 @@ impl IdmServer {
         let (rp_id, token_key, pw_badlist_set, oauth2rs_set) = {
             let qs_read = task::block_on(qs.read_async());
             (
-                qs_read.get_domain_name()?,
+                qs_read.get_domain_name().to_string(),
                 qs_read.get_domain_token_key()?,
                 qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.

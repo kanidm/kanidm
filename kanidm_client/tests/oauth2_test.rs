@@ -60,7 +60,7 @@ fn test_oauth2_openid_basic_flow() {
         rsclient
             .idm_account_person_extend(
                 "admin",
-                Some(&["admin@example.com".to_string()]),
+                Some(&["admin@idm.example.com".to_string()]),
                 Some("Admin Istrator"),
             )
             .expect("Failed to extend account details");
@@ -312,7 +312,7 @@ fn test_oauth2_openid_basic_flow() {
             assert!(tir.active);
             assert!(tir.scope.is_some());
             assert!(tir.client_id.as_deref() == Some("test_integration"));
-            assert!(tir.username.as_deref() == Some("admin@example.com"));
+            assert!(tir.username.as_deref() == Some("admin@idm.example.com"));
             assert!(tir.token_type.as_deref() == Some("access_token"));
             assert!(tir.exp.is_some());
             assert!(tir.iat.is_some());
@@ -337,7 +337,7 @@ fn test_oauth2_openid_basic_flow() {
                     == Url::parse("https://idm.example.com/oauth2/openid/test_integration")
                         .unwrap()
             );
-            assert!(oidc.s_claims.email.as_deref() == Some("admin@example.com"));
+            assert!(oidc.s_claims.email.as_deref() == Some("admin@idm.example.com"));
             assert!(oidc.s_claims.email_verified == Some(true));
 
             let response = client

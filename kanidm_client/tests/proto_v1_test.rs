@@ -83,7 +83,7 @@ fn test_server_whoami_anonymous() {
             None => panic!(),
         };
         debug!("{}", uat);
-        assert!(uat.spn == "anonymous@example.com");
+        assert!(uat.spn == "anonymous@idm.example.com");
 
         // Do a check of the auth/valid endpoint, tells us if our token
         // is okay.
@@ -109,7 +109,7 @@ fn test_server_whoami_admin_simple_password() {
             None => panic!(),
         };
         debug!("{}", uat);
-        assert!(uat.spn == "admin@example.com");
+        assert!(uat.spn == "admin@idm.example.com");
     });
 }
 
@@ -275,7 +275,7 @@ fn test_server_rest_group_lifecycle() {
             .idm_group_add_members("demo_group", &["admin"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
-        assert!(members == Some(vec!["admin@example.com".to_string()]));
+        assert!(members == Some(vec!["admin@idm.example.com".to_string()]));
 
         // Set the list of members
         rsclient
@@ -285,8 +285,8 @@ fn test_server_rest_group_lifecycle() {
         assert!(
             members
                 == Some(vec![
-                    "admin@example.com".to_string(),
-                    "demo_group@example.com".to_string()
+                    "admin@idm.example.com".to_string(),
+                    "demo_group@idm.example.com".to_string()
                 ])
         );
 
@@ -295,7 +295,7 @@ fn test_server_rest_group_lifecycle() {
             .idm_group_remove_members("demo_group", &["demo_group"])
             .unwrap();
         let members = rsclient.idm_group_get_members("demo_group").unwrap();
-        assert!(members == Some(vec!["admin@example.com".to_string()]));
+        assert!(members == Some(vec!["admin@idm.example.com".to_string()]));
 
         // purge members
         rsclient.idm_group_purge_members("demo_group").unwrap();
@@ -315,7 +315,7 @@ fn test_server_rest_group_lifecycle() {
         // They should have members
         let members = rsclient.idm_group_get_members("idm_admins").unwrap();
         println!("{:?}", members);
-        assert!(members == Some(vec!["idm_admin@example.com".to_string()]));
+        assert!(members == Some(vec!["idm_admin@idm.example.com".to_string()]));
     });
 }
 
@@ -432,14 +432,14 @@ fn test_server_rest_account_lifecycle() {
 
         // Test adding some mail addrs
         rsclient
-            .idm_account_add_attr("demo_account", "mail", &["demo@example.com"])
+            .idm_account_add_attr("demo_account", "mail", &["demo@idm.example.com"])
             .unwrap();
 
         let r = rsclient
             .idm_account_get_attr("demo_account", "mail")
             .unwrap();
 
-        assert!(r == Some(vec!["demo@example.com".to_string()]));
+        assert!(r == Some(vec!["demo@idm.example.com".to_string()]));
 
         // Delete the account
         rsclient.idm_account_delete("demo_account").unwrap();

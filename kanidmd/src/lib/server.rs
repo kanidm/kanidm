@@ -5,6 +5,7 @@
 // that otherwise can't be cloned. Think Mutex.
 use async_std::task;
 use concread::arcache::{ARCache, ARCacheBuilder, ARCacheReadTxn};
+use concread::cowcell::*;
 use hashbrown::{HashMap, HashSet};
 use std::cell::Cell;
 use std::sync::Arc;
@@ -52,10 +53,16 @@ lazy_static! {
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
+#[derive(Debug, Clone)]
+struct DomainInfo {
+    d_uuid: Uuid,
+    d_name: String,
+}
+
 #[derive(Clone)]
 pub struct QueryServer {
     s_uuid: Uuid,
-    d_uuid: Uuid,
+    d_info: Arc<CowCell<DomainInfo>>,
     be: Backend,
     schema: Arc<Schema>,
     accesscontrols: Arc<AccessControls>,
@@ -69,6 +76,7 @@ pub struct QueryServerReadTransaction<'a> {
     be_txn: BackendReadTransaction<'a>,
     // Anything else? In the future, we'll need to have a schema transaction
     // type, maybe others?
+    d_info: CowCellReadTxn<DomainInfo>,
     schema: SchemaReadTransaction,
     accesscontrols: AccessControlsReadTransaction<'a>,
     _db_ticket: SemaphorePermit<'a>,
@@ -78,7 +86,7 @@ pub struct QueryServerReadTransaction<'a> {
 
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
-    d_uuid: Uuid,
+    d_info: CowCellWriteTxn<'a, DomainInfo>,
     cid: Cid,
     be_txn: BackendWriteTransaction<'a>,
     schema: SchemaWriteTransaction<'a>,
@@ -125,6 +133,10 @@ pub trait QueryServerTransaction<'a> {
 
     type AccessControlsTransactionType: AccessControlsTransaction<'a>;
     fn get_accesscontrols(&self) -> &Self::AccessControlsTransactionType;
+
+    fn get_domain_uuid(&self) -> Uuid;
+
+    fn get_domain_name(&self) -> &str;
 
     #[allow(clippy::mut_from_ref)]
     fn get_resolve_filter_cache(
@@ -688,9 +700,7 @@ pub trait QueryServerTransaction<'a> {
         }
     }
 
-    // This is a prebaked helper to get the domain name for related modules.
-    // in the future we could make this cache the value to avoid entry lookups.
-    fn get_domain_name(&self) -> Result<String, OperationError> {
+    fn get_db_domain_name(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
                 e.get_ava_single_str("domain_name")
@@ -776,6 +786,14 @@ impl<'a> QueryServerTransaction<'a> for QueryServerReadTransaction<'a> {
                 >
         }
     }
+
+    fn get_domain_uuid(&self) -> Uuid {
+        self.d_info.d_uuid
+    }
+
+    fn get_domain_name(&self) -> &str {
+        &self.d_info.d_name
+    }
 }
 
 impl<'a> QueryServerReadTransaction<'a> {
@@ -849,10 +867,18 @@ impl<'a> QueryServerTransaction<'a> for QueryServerWriteTransaction<'a> {
                 >
         }
     }
+
+    fn get_domain_uuid(&self) -> Uuid {
+        self.d_info.d_uuid
+    }
+
+    fn get_domain_name(&self) -> &str {
+        &self.d_info.d_name
+    }
 }
 
 impl QueryServer {
-    pub fn new(be: Backend, schema: Schema) -> Self {
+    pub fn new(be: Backend, schema: Schema, d_name: String) -> Self {
         let (s_uuid, d_uuid) = {
             let wr = be.write();
             let res = (wr.get_db_s_uuid(), wr.get_db_d_uuid());
@@ -864,12 +890,16 @@ impl QueryServer {
 
         let pool_size = be.get_pool_size();
 
-        info!("Server ID -> {:?}", s_uuid);
-        info!("Domain ID -> {:?}", d_uuid);
+        info!("Server UUID -> {:?}", s_uuid);
+        info!("Domain UUID -> {:?}", d_uuid);
+        info!("Domain Name -> {:?}", d_name);
+
+        let d_info = Arc::new(CowCell::new(DomainInfo { d_uuid, d_name }));
+
         // log_event!(log, "Starting query worker ...");
         QueryServer {
             s_uuid,
-            d_uuid,
+            d_info,
             be,
             schema: Arc::new(schema),
             accesscontrols: Arc::new(AccessControls::new()),
@@ -901,6 +931,7 @@ impl QueryServer {
         QueryServerReadTransaction {
             be_txn: self.be.read(),
             schema: self.schema.read(),
+            d_info: self.d_info.read(),
             accesscontrols: self.accesscontrols.read(),
             _db_ticket: db_ticket,
             resolve_filter_cache: Cell::new(self.resolve_filter_cache.read()),
@@ -932,10 +963,11 @@ impl QueryServer {
         // let schema_write = self.schema.write().await;
         let schema_write = self.schema.write();
         let be_txn = self.be.write();
+        let d_info = self.d_info.write();
 
         #[allow(clippy::expect_used)]
         let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
-        let cid = Cid::new_lamport(self.s_uuid, self.d_uuid, ts, &ts_max);
+        let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, ts, &ts_max);
 
         QueryServerWriteTransaction {
             // I think this is *not* needed, because commit is mut self which should
@@ -945,7 +977,7 @@ impl QueryServer {
             // The commited flag is however used for abort-specific code in drop
             // which today I don't think we have ... yet.
             committed: false,
-            d_uuid: self.d_uuid,
+            d_info,
             cid,
             be_txn,
             schema: schema_write,
@@ -1049,7 +1081,7 @@ impl QueryServer {
             .initialise_idm()
             .and_then(|_| ts_write_3.commit())?;
 
-        admin_info!("ready to rock! 🪨  ");
+        admin_info!("migrations success! ☀️  ");
         Ok(())
     }
 
@@ -2078,7 +2110,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         //
         // NOTE: gen modlist IS schema aware and will handle multivalue
         // correctly!
-        admin_info!("internal_migrate_or_create operating on {:?}", e.get_uuid());
+        trace!("internal_migrate_or_create operating on {:?}", e.get_uuid());
 
         let filt = match e.filter_from_attrs(&[AttrString::from("uuid")]) {
             Some(f) => f,
@@ -2270,6 +2302,10 @@ impl<'a> QueryServerWriteTransaction<'a> {
         if res.is_err() {
             return res;
         }
+
+        // Is the configured domain name matching what's in the domain_info?
+
+        //
 
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
@@ -2577,13 +2613,43 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
-    pub(crate) fn get_domain_uuid(&self) -> Uuid {
-        self.d_uuid
+    fn reload_domain_info(&mut self) -> Result<(), OperationError> {
+        let domain_name = self.get_db_domain_name()?;
+
+        let mut_d_info = self.d_info.get_mut();
+        if mut_d_info.d_name != domain_name {
+            admin_warn!(
+                "Using database configured domain name {} - was {}",
+                domain_name,
+                mut_d_info.d_name,
+            );
+            admin_warn!(
+                "If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain"
+            );
+            mut_d_info.d_name = domain_name;
+        }
+        Ok(())
     }
 
     /// Initiate a domain rename process. This is generally an internal function but it's
     /// exposed to the cli for admins to be able to initiate the process.
-    pub fn domain_rename(&self, new_domain_name: &str) -> Result<(), OperationError> {
+    pub fn domain_rename(&self) -> Result<(), OperationError> {
+        unsafe { self.domain_rename_inner(self.d_info.d_name.as_str()) }
+    }
+
+    /// # Safety
+    /// This is UNSAFE because while it may change the domain name, it doesn't update
+    /// the running configured version of the domain name that is resident to the
+    /// query server.
+    ///
+    /// Currently it's only used to test what happens if we rename the domain and how
+    /// that impacts spns, but in the future we may need to reconsider how this is
+    /// approached, especially if we have a domain re-name replicated to us. It could
+    /// be that we end up needing to have this as a cow cell or similar?
+    pub(crate) unsafe fn domain_rename_inner(
+        &self,
+        new_domain_name: &str,
+    ) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
         let udi = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
         let filt = filter_all!(f_eq("uuid", udi));
@@ -2638,11 +2704,16 @@ impl<'a> QueryServerWriteTransaction<'a> {
             //    .invalidate_related_cache(self.changed_uuid.into_inner().as_slice())
         }
 
+        if self.changed_domain.get() {
+            self.reload_domain_info()?;
+        }
+
         // Now destructure the transaction ready to reset it.
         let QueryServerWriteTransaction {
             committed,
             be_txn,
             schema,
+            d_info,
             accesscontrols,
             cid,
             ..
@@ -2660,7 +2731,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
             // because both are consistent.
             schema
                 .commit()
-                .and_then(|_| accesscontrols.commit().and_then(|_| be_txn.commit()))
+                .map(|_| d_info.commit())
+                .and_then(|_| accesscontrols.commit())
+                .and_then(|_| be_txn.commit())
         } else {
             Err(OperationError::ConsistencyError(r))
         }
