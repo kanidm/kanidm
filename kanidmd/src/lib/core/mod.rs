@@ -405,7 +405,7 @@ pub fn domain_rename_core(config: &Configuration) {
     let new_domain_name = config.domain.as_str();
 
     // make sure we're actually changing the domain name...
-    match task::block_on(qs.read_async()).get_domain_name() {
+    match task::block_on(qs.read_async()).get_db_domain_name() {
         Ok(old_domain_name) => {
             admin_info!(?old_domain_name, ?new_domain_name);
             if &old_domain_name == &new_domain_name {

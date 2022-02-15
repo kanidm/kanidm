@@ -37,31 +37,14 @@ impl Plugin for Spn {
 
         // Should we work out what classes dynamically from schema into a filter?
         // No - types that are trust replicated are fixed.
-        let mut domain_name: Option<String> = None;
+        let domain_name = qs.get_domain_name();
 
         for e in cand.iter_mut() {
             if e.attribute_equality("class", &CLASS_GROUP)
                 || e.attribute_equality("class", &CLASS_ACCOUNT)
             {
-                // We do this in the loop so that we don't get it unless required.
-                if domain_name.is_none() {
-                    domain_name = Some(qs.get_domain_name()?);
-                }
-
-                // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
-                let some_domain_name = domain_name
-                    .as_ref()
-                    .ok_or(OperationError::InvalidEntryState)
-                    .map_err(|e| {
-                        admin_error!(
-                            "Domain name option memory corruption may have occured. {:?}",
-                            e
-                        );
-                        e
-                    })?;
-
                 let spn = e
-                    .generate_spn(some_domain_name.as_str())
+                    .generate_spn(domain_name)
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
                         admin_error!(
@@ -84,30 +67,14 @@ impl Plugin for Spn {
     ) -> Result<(), OperationError> {
         // Always generate and set *if* spn was an attribute on any of the mod
         // list events.
-        let mut domain_name: Option<String> = None;
+        let domain_name = qs.get_domain_name();
 
         for e in cand.iter_mut() {
             if e.attribute_equality("class", &CLASS_GROUP)
                 || e.attribute_equality("class", &CLASS_ACCOUNT)
             {
-                if domain_name.is_none() {
-                    domain_name = Some(qs.get_domain_name()?);
-                }
-
-                // It should be impossible to hit this expect as the is_none case should cause it to be replaced above.
-                let some_domain_name = domain_name
-                    .as_ref()
-                    .ok_or(OperationError::InvalidEntryState)
-                    .map_err(|e| {
-                        admin_error!(
-                            "Domain name option memory corruption may have occured. {:?}",
-                            e
-                        );
-                        e
-                    })?;
-
                 let spn = e
-                    .generate_spn(some_domain_name.as_str())
+                    .generate_spn(domain_name)
                     .ok_or(OperationError::InvalidEntryState)
                     .map_err(|e| {
                         admin_error!(
@@ -172,13 +139,7 @@ impl Plugin for Spn {
         // so we should be able to verify that *those* spns validate to the trusted domain info
         // we have been sent also. It's not up to use to generate those though ...
 
-        let domain_name = match qs
-            .get_domain_name()
-            .map_err(|_| Err(ConsistencyError::QueryServerSearchFailure))
-        {
-            Ok(dn) => dn,
-            Err(e) => return vec![e],
-        };
+        let domain_name = qs.get_domain_name();
 
         let filt_in = filter!(f_or!([
             f_eq("class", PartialValue::new_class("group")),
@@ -196,7 +157,7 @@ impl Plugin for Spn {
         let mut r = Vec::new();
 
         for e in all_cand {
-            let g_spn = match e.generate_spn(domain_name.as_str()) {
+            let g_spn = match e.generate_spn(domain_name) {
                 Some(s) => s,
                 None => {
                     admin_error!(
