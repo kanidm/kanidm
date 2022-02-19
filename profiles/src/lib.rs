@@ -38,7 +38,7 @@ pub fn apply_profile() {
     let required_rust_ver = Version::parse(&rust_minver.replace("\n", "")).unwrap();
     println!("Rust version:     {}", version().unwrap());
     println!("Required version: {}", required_rust_ver);
-    if version().unwrap() <= required_rust_ver {
+    if version().unwrap() < required_rust_ver {
         panic!("This crate requires rustc >= {}, quitting.", rust_minver);
     }
 

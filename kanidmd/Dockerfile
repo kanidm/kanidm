@@ -18,7 +18,7 @@ RUN zypper ar obs://devel:languages:rust devel:languages:rust && \
     zypper clean -a
 
 COPY . /usr/src/kanidm
-WORKDIR /usr/src/kanidm/kanidmd
+WORKDIR /usr/src/kanidm/kanidmd/daemon
 
 ARG SCCACHE_REDIS
 ARG KANIDM_FEATURES

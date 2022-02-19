@@ -2,7 +2,7 @@
 name = "kanidm_unix_int"
 version = "1.1.0-alpha.7"
 authors = ["William Brown <william@blackhats.net.au>"]
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Unix Integration Clients"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"

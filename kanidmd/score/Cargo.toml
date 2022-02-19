@@ -2,7 +2,7 @@
 name = "score"
 version = "0.1.0"
 authors = ["William Brown <william@blackhats.net.au>"]
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Server Library and Binary"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
