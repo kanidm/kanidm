@@ -11,16 +11,17 @@ use yew_router::prelude::*;
 
 use crate::login::LoginApp;
 use crate::oauth2::Oauth2App;
-use crate::views::ViewsApp;
+use crate::views::{ViewRoute, ViewsApp};
+use serde::{Deserialize, Serialize};
 
 // router to decide on state.
-#[derive(Routable, PartialEq, Clone, Debug)]
+#[derive(Routable, PartialEq, Clone, Debug, Serialize, Deserialize)]
 pub enum Route {
     #[at("/")]
     Landing,
 
-    #[at("/ui/view")]
-    Index,
+    #[at("/ui/view/:s")]
+    Views,
 
     #[at("/ui/login")]
     Login,
@@ -36,24 +37,24 @@ pub enum Route {
 #[function_component(Landing)]
 fn landing() -> Html {
     // Do this to allow use_history to work because lol.
-    use_history().unwrap().push(Route::Index);
+    use_history().unwrap().push(ViewRoute::Apps);
     html! { <main></main> }
 }
 
-fn switch(routes: &Route) -> Html {
+fn switch(route: &Route) -> Html {
     console::log!("manager::switch");
-    match routes {
+    match route {
         Route::Landing => html! { <Landing /> },
-        Route::Index => html! { <ViewsApp /> },
         Route::Login => html! { <LoginApp /> },
         Route::Oauth2 => html! { <Oauth2App /> },
+        Route::Views => html! { <ViewsApp /> },
         Route::NotFound => {
             html! {
                 <main>
                     <h1>{ "404" }</h1>
-                    <Link<Route> to={ Route::Index }>
+                    <Link<ViewRoute> to={ ViewRoute::Apps }>
                     { "Home" }
-                    </Link<Route>>
+                    </Link<ViewRoute>>
                 </main>
             }
         }

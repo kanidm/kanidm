@@ -5,8 +5,10 @@ use gloo::storage::LocalStorage as PersistentStorage;
 use gloo::storage::SessionStorage as TemporaryStorage;
 use gloo::storage::Storage;
 use wasm_bindgen::UnwrapThrowExt;
+use yew_router::prelude::{AnyHistory, History};
 
 use crate::manager::Route;
+use crate::views::ViewRoute;
 use serde::{Deserialize, Serialize};
 
 pub fn get_bearer_token() -> Option<String> {
@@ -27,15 +29,15 @@ pub fn clear_bearer_token() {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum Location {
-    Oauth2,
-    Views,
+    Manager(Route),
+    Views(ViewRoute),
 }
 
-impl From<Location> for Route {
-    fn from(l: Location) -> Self {
-        match l {
-            Location::Views => Route::Index,
-            Location::Oauth2 => Route::Oauth2,
+impl Location {
+    pub(crate) fn goto(self, history: &AnyHistory) {
+        match self {
+            Location::Manager(r) => history.push(r),
+            Location::Views(r) => history.push(r),
         }
     }
 }
@@ -48,7 +50,7 @@ pub fn pop_return_location() -> Location {
     let l: Result<Location, _> = TemporaryStorage::get("return_location");
     console::log!(format!("return_location -> {:?}", l).as_str());
     TemporaryStorage::delete("return_location");
-    l.unwrap_or(Location::Views)
+    l.unwrap_or(Location::Manager(Route::Landing))
 }
 
 pub fn push_oauth2_authorisation_request(r: AuthorisationRequest) {

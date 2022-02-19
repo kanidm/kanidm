@@ -263,7 +263,8 @@ impl Component for Oauth2App {
 
         match msg {
             Oauth2Msg::LoginProceed => {
-                models::push_return_location(models::Location::Oauth2);
+                models::push_return_location(models::Location::Manager(Route::Oauth2));
+
                 ctx.link()
                     .history()
                     .expect_throw("failed to read history")

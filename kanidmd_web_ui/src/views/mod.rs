@@ -6,6 +6,28 @@ use yew::prelude::*;
 use crate::manager::Route;
 use yew_router::prelude::*;
 
+use serde::{Deserialize, Serialize};
+
+mod apps;
+mod components;
+mod security;
+
+use apps::AppsApp;
+use security::SecurityApp;
+
+#[derive(Routable, PartialEq, Clone, Debug, Serialize, Deserialize)]
+pub enum ViewRoute {
+    #[at("/ui/view/apps")]
+    Apps,
+
+    #[at("/ui/view/security")]
+    Security,
+
+    #[not_found]
+    #[at("/ui/view/404")]
+    NotFound,
+}
+
 enum State {
     LoginRequired,
     Authenticated(String),
@@ -17,6 +39,17 @@ pub struct ViewsApp {
 
 pub enum ViewsMsg {
     Logout,
+}
+
+fn switch(route: &ViewRoute) -> Html {
+    console::log!("views::switch");
+    match route {
+        ViewRoute::Apps => html! { <AppsApp /> },
+        ViewRoute::Security => html! { <SecurityApp /> },
+        ViewRoute::NotFound => html! {
+            <Redirect<Route> to={Route::NotFound}/>
+        },
+    }
 }
 
 impl Component for ViewsApp {
@@ -56,7 +89,17 @@ impl Component for ViewsApp {
     fn view(&self, ctx: &Context<Self>) -> Html {
         match self.state {
             State::LoginRequired => {
-                models::push_return_location(models::Location::Views);
+                // Where are we?
+                let loc = ctx
+                    .link()
+                    .history()
+                    .expect_throw("failed to read history")
+                    .location()
+                    .route()
+                    .expect_throw("invalid route");
+
+                models::push_return_location(models::Location::Views(loc));
+
                 ctx.link()
                     .history()
                     .expect_throw("failed to read history")
@@ -90,47 +133,27 @@ impl ViewsApp {
               <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
                 <div class="position-sticky pt-3">
                   <ul class="nav flex-column">
+
                     <li class="nav-item">
-                      <a class="nav-link active" aria-current="page" href="#">
-                        <span data-feather="home"></span>
-                        { "Account" }
-                      </a>
+                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Apps}>
+                        <span data-feather="file"></span>
+                        { "Apps" }
+                      </Link<ViewRoute>>
                     </li>
+
+                    <li class="nav-item">
+                      <Link<ViewRoute> classes="nav-link" to={ViewRoute::Security}>
+                        <span data-feather="file"></span>
+                        { "Security" }
+                      </Link<ViewRoute>>
+                    </li>
+
                   </ul>
                 </div>
               </nav>
 
               <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
-                <h2>{ "Section title" }</h2>
-                <div class="table-responsive">
-                  <table class="table table-striped table-sm">
-                    <thead>
-                      <tr>
-                        <th scope="col">{ "#" }</th>
-                        <th scope="col">{ "Header" }</th>
-                        <th scope="col">{ "Header" }</th>
-                        <th scope="col">{ "Header" }</th>
-                        <th scope="col">{ "Header" }</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td>{ "1,001" }</td>
-                        <td>{ "random" }</td>
-                        <td>{ "data" }</td>
-                        <td>{ "placeholder" }</td>
-                        <td>{ "text" }</td>
-                      </tr>
-                      <tr>
-                        <td>{ "1,015" }</td>
-                        <td>{ "random" }</td>
-                        <td>{ "tabular" }</td>
-                        <td>{ "information" }</td>
-                        <td>{ "text" }</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
+                <Switch<ViewRoute> render={ Switch::render(switch) } />
               </main>
             </div>
           </div>

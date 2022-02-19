@@ -8,7 +8,6 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use crate::error::FetchError;
-use crate::manager::Route;
 use crate::models;
 use crate::utils;
 
@@ -362,13 +361,10 @@ impl LoginApp {
                 }
             }
             LoginState::Authenticated => {
-                let loc: Route = models::pop_return_location().into();
+                let loc = models::pop_return_location();
                 // redirect
                 console::log!(format!("authenticated, try going to -> {:?}", loc));
-                ctx.link()
-                    .history()
-                    .expect_throw("failed to read history")
-                    .push(loc);
+                loc.goto(&ctx.link().history().expect_throw("failed to read history"));
                 html! {
                     <div class="container">
                         <p>
