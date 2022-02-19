@@ -92,7 +92,8 @@ impl RequestExtensions for tide::Request<AppState> {
     }
 
     fn new_eventid(&self) -> (Uuid, String) {
-        let eventid = Uuid::new_v4();
+        let eventid = kanidm::tracing_tree::operation_id()
+            .unwrap();
         let hv = eventid.to_hyphenated().to_string();
         (eventid, hv)
     }
