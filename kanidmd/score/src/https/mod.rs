@@ -4,11 +4,11 @@ mod v1;
 use self::oauth2::*;
 use self::v1::*;
 
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_write::QueryServerWriteV1;
-use crate::config::{ServerRole, TlsConfiguration};
-use crate::prelude::*;
-use crate::status::StatusActor;
+use kanidm::actors::v1_read::QueryServerReadV1;
+use kanidm::actors::v1_write::QueryServerWriteV1;
+use kanidm::config::{ServerRole, TlsConfiguration};
+use kanidm::prelude::*;
+use kanidm::status::StatusActor;
 
 use serde::Serialize;
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ use uuid::Uuid;
 
 use tide_openssl::TlsListener;
 
-use crate::tracing_tree::TreeMiddleware;
+use kanidm::tracing_tree::TreeMiddleware;
 use tracing::{error, info};
 
 #[derive(Clone)]

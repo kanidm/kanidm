@@ -334,7 +334,7 @@ impl IdmServerDelayed {
         }
     }
 
-    pub(crate) async fn process_all(&mut self, server: &'static QueryServerWriteV1) {
+    pub async fn process_all(&mut self, server: &'static QueryServerWriteV1) {
         loop {
             match self.async_rx.recv().await {
                 // process it.

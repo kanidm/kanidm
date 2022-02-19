@@ -395,7 +395,6 @@ impl Plugin for MemberOf {
 
 #[cfg(test)]
 mod tests {
-    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
 
     const UUID_A: &'static str = "aaaaaaaa-f82e-4484-a407-181aa03bda5c";

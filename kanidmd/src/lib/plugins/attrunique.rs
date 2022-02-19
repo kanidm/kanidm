@@ -188,7 +188,6 @@ impl Plugin for AttrUnique {
 
 #[cfg(test)]
 mod tests {
-    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use kanidm_proto::v1::PluginError;
 

@@ -1,7 +1,7 @@
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::ldap::{LdapBoundToken, LdapResponseState};
-use crate::prelude::*;
-use core::pin::Pin;
+use kanidm::actors::v1_read::QueryServerReadV1;
+use kanidm::ldap::{LdapBoundToken, LdapResponseState};
+use kanidm::prelude::*;
+use std::pin::Pin;
 use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
 use tokio_openssl::SslStream;
 

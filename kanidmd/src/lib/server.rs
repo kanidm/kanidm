@@ -1000,7 +1000,7 @@ impl QueryServer {
         }
     }
 
-    pub(crate) fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
+    pub fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
         // First, check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
@@ -2755,7 +2755,6 @@ mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::Credential;
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
-    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use kanidm_proto::v1::SchemaError;
     use std::sync::Arc;

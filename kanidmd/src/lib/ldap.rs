@@ -529,7 +529,6 @@ mod tests {
     use crate::event::{CreateEvent, ModifyEvent};
     use crate::idm::event::UnixPasswordChangeEvent;
     use crate::ldap::LdapServer;
-    use crate::modify::{Modify, ModifyList};
     use async_std::task;
     use hashbrown::HashSet;
     use ldap3_server::proto::{LdapFilter, LdapOp, LdapSearchScope};

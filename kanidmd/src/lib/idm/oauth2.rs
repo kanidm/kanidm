@@ -1238,7 +1238,6 @@ mod tests {
     use crate::prelude::*;
 
     use crate::event::ModifyEvent;
-    use crate::modify::{Modify, ModifyList};
 
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::{AuthType, UserAuthToken};

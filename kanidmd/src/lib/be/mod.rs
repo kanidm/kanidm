@@ -1575,8 +1575,8 @@ mod tests {
     };
     use super::{DbEntry, IdxKey};
     use crate::identity::Limits;
+    use crate::prelude::*;
     use crate::value::{IndexType, PartialValue, Value};
-    use smartstring::alias::String as AttrString;
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -2348,10 +2348,9 @@ mod tests {
             }
 
             // Test that a fully indexed search works
-            let f_eq =
-                unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
+            let feq = unsafe { filter_resolved!(f_eq("name", PartialValue::new_utf8s("william"))) };
 
-            let (r, _plan) = be.filter2idl(f_eq.to_inner(), 0).unwrap();
+            let (r, _plan) = be.filter2idl(feq.to_inner(), 0).unwrap();
             match r {
                 IdList::Indexed(idl) => {
                     assert!(idl == IDLBitRange::from_iter(vec![1]));
