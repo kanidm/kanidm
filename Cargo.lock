@@ -950,9 +950,9 @@ name = "daemon"
 version = "0.1.0"
 dependencies = [
  "kanidm",
+ "profiles",
  "score",
  "serde",
- "serde_derive",
  "structopt",
  "tokio",
  "toml",
@@ -1909,26 +1909,22 @@ dependencies = [
  "num_cpus",
  "num_enum",
  "openssl",
+ "profiles",
  "r2d2",
  "r2d2_sqlite",
  "rand 0.8.5",
  "regex",
  "rusqlite",
- "rustc_version 0.4.0",
  "saffron",
  "serde",
  "serde_cbor",
- "serde_derive",
  "serde_json",
  "smartstring",
  "smolset",
  "sshkeys",
- "structopt",
  "tide",
- "tide-openssl",
  "time 0.2.27",
  "tokio",
- "tokio-openssl",
  "tokio-util",
  "toml",
  "touch",
@@ -2018,6 +2014,7 @@ dependencies = [
  "libc",
  "libsqlite3-sys",
  "lru",
+ "profiles",
  "r2d2",
  "r2d2_sqlite",
  "reqwest",
@@ -2026,7 +2023,6 @@ dependencies = [
  "score",
  "serde",
  "serde_cbor",
- "serde_derive",
  "structopt",
  "tokio",
  "tokio-util",
@@ -2491,6 +2487,7 @@ dependencies = [
  "ldap3_server",
  "mathru",
  "openssl",
+ "profiles",
  "rand 0.8.5",
  "serde",
  "serde_json",
@@ -2766,6 +2763,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c7342d5883fbccae1cc37a2353b09c87c9b0f3afd73f5fb9bba687a1f733b029"
 dependencies = [
  "unicode-xid",
+]
+
+[[package]]
+name = "profiles"
+version = "1.1.0"
+dependencies = [
+ "rustc_version 0.4.0",
+ "serde",
+ "toml",
 ]
 
 [[package]]
@@ -3171,14 +3177,13 @@ dependencies = [
  "ldap3_server",
  "libc",
  "openssl",
+ "profiles",
  "serde",
- "serde_derive",
  "tide",
  "tide-openssl",
  "tokio",
  "tokio-openssl",
  "tokio-util",
- "toml",
  "tracing",
  "uuid",
 ]

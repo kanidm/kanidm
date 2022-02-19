@@ -36,6 +36,4 @@ async-trait = "0.1"
 async-std = { version = "1.6", features = ["tokio1"] }
 
 [build-dependencies]
-serde = "1.0"
-serde_derive = "1.0"
-toml = "0.5"
+profiles = { path = "../../profiles" }

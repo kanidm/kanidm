@@ -45,3 +45,5 @@ async-std = { version = "1.6", features = ["tokio1"] }
 
 mathru = "0.11"
 
+[build-dependencies]
+profiles = { path = "../profiles" }
