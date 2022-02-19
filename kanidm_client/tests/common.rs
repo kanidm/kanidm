@@ -4,9 +4,9 @@ use std::thread;
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
-use score::create_server_core;
 use kanidm::tracing_tree;
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use score::create_server_core;
 
 use async_std::task;
 use tokio::sync::mpsc;

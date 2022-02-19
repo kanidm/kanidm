@@ -1,20 +1,19 @@
 use kanidm::actors::v1_read::QueryServerReadV1;
 use kanidm::ldap::{LdapBoundToken, LdapResponseState};
 use kanidm::prelude::*;
-use std::pin::Pin;
 use openssl::ssl::{Ssl, SslAcceptor, SslAcceptorBuilder};
+use std::pin::Pin;
 use tokio_openssl::SslStream;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use ldap3_server::{LdapCodec, proto::LdapMsg};
+use ldap3_server::{proto::LdapMsg, LdapCodec};
 use std::marker::Unpin;
 use std::net;
 use std::str::FromStr;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio_util::codec::{FramedRead, FramedWrite};
-
 
 struct LdapSession {
     uat: Option<LdapBoundToken>,
@@ -29,7 +28,6 @@ impl LdapSession {
     }
 }
 
-
 #[instrument(name = "ldap-request", skip(client_address, qe_r_ref))]
 async fn client_process_msg(
     uat: Option<LdapBoundToken>,
@@ -37,15 +35,13 @@ async fn client_process_msg(
     protomsg: LdapMsg,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Option<LdapResponseState> {
-        let eventid = kanidm::tracing_tree::operation_id()
-            .unwrap();
-        security_info!(
-            client_ip = %client_address.ip(),
-            client_port = %client_address.port(),
-            "LDAP client"
-        );
-        qe_r_ref.handle_ldaprequest(eventid, protomsg, uat)
-            .await
+    let eventid = kanidm::tracing_tree::operation_id().unwrap();
+    security_info!(
+        client_ip = %client_address.ip(),
+        client_port = %client_address.port(),
+        "LDAP client"
+    );
+    qe_r_ref.handle_ldaprequest(eventid, protomsg, uat).await
 }
 
 async fn client_process<W: AsyncWrite + Unpin, R: AsyncRead + Unpin>(
