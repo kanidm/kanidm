@@ -29,8 +29,12 @@ struct ProfileConfig {
 }
 
 pub fn apply_profile() {
+    println!("cargo:rerun-if-env-changed=KANIDM_RUST_MSRV");
+    println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
+    println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE_TOML");
+
     // check to see if the rust version matches the rust minimum version we require for this build
-    let rust_minver = include_str!("../RUST_MSRV");
+    let rust_minver = env!("KANIDM_RUST_MSRV");
     let required_rust_ver = Version::parse(&rust_minver.replace("\n", "")).unwrap();
     println!("Rust version:     {}", version().unwrap());
     println!("Required version: {}", required_rust_ver);
@@ -40,23 +44,14 @@ pub fn apply_profile() {
 
     // transform any requested paths for our server. We do this by reading
     // our profile that we have been provided.
-    println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
-    let profile = env::var("KANIDM_BUILD_PROFILE")
-        .ok()
-        .unwrap_or("developer".to_string());
+    let profile = env!("KANIDM_BUILD_PROFILE");
+    let contents = env!("KANIDM_BUILD_PROFILE_TOML");
 
-    let contents = match profile.as_str() {
-        "container_generic" => include_str!("../container_generic.toml"),
-        "container_x86_64_v3" => include_str!("../container_x86_64_v3.toml"),
-        "release_suse_generic" => include_str!("../release_suse_generic.toml"),
-        "release_suse_x86_64" => include_str!("../release_suse_x86_64.toml"),
-        _ => {
-            include_str!("../developer.toml")
-        }
-    };
+    let data = base64::decode(contents)
+        .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
-    let profile_cfg: ProfileConfig =
-        toml::from_str(contents).unwrap_or_else(|_| panic!("Failed to parse {}", profile));
+    let profile_cfg: ProfileConfig = toml::from_slice(&data)
+        .unwrap_or_else(|_| panic!("Failed to parse profile - {} - {}", profile, contents));
 
     /*
      *  x86-64: CMOV, CMPXCHG8B, FPU, FXSR, MMX, FXSR, SCE, SSE, SSE2

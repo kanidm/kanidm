@@ -198,9 +198,9 @@ dependencies = [
 
 [[package]]
 name = "async-lock"
-version = "2.4.0"
+version = "2.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e6a8ea61bf9947a1007c5cada31e647dbc77b103c679858150003ba697ea798b"
+checksum = "e97a171d191782fba31bb902b14ad94e24a68145032b7eedf871ab0bc0d077b6"
 dependencies = [
  "event-listener",
 ]
@@ -2769,6 +2769,7 @@ dependencies = [
 name = "profiles"
 version = "1.1.0"
 dependencies = [
+ "base64 0.13.0",
  "rustc_version 0.4.0",
  "serde",
  "toml",

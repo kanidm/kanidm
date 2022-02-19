@@ -16,4 +16,8 @@ path = "src/lib.rs"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 toml = "0.5"
+base64 = "0.13"
 rustc_version = "0.4.0"
+
+[build-dependencies]
+base64 = "0.13"
