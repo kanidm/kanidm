@@ -1,3 +1,3 @@
-web_ui_pkg_path = "../kanidmd_web_ui/pkg"
+web_ui_pkg_path = "../../kanidmd_web_ui/pkg"
 # Valid options are none, native, x86_64, x86_64_v3
 cpu_flags = "native"
