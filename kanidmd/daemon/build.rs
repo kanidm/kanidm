@@ -9,25 +9,33 @@ use std::fs::{read_to_string, File};
 use std::io::Read;
 
 use std::path::PathBuf;
+use structopt::clap::Shell;
+use structopt::StructOpt;
 
-use rustc_version::{version, Version};
-
-include!("src/lib/audit_loglevel.rs");
-
-include!("../profiles/syntax.rs");
+include!("../src/lib/audit_loglevel.rs");
+include!("src/opt.rs");
+include!("../../profiles/syntax.rs");
 
 fn main() {
-    // check to see if the rust version matches the rust minimum version we require for this build
-    let rust_minver = match read_to_string("../RUST_MSRV") {
-        Ok(value) => value,
-        Err(error) => panic!("Couldn't load RUST_MSRV: {:?}", error),
+    let outdir = match env::var_os("OUT_DIR") {
+        None => return,
+        Some(outdir) => outdir,
     };
-    let required_rust_ver = Version::parse(&rust_minver.replace("\n", "")).unwrap();
-    println!("Rust version:     {}", version().unwrap());
-    println!("Required version: {}", required_rust_ver);
-    if version().unwrap() <= required_rust_ver {
-        panic!("This crate requires rustc >= {}, quitting.", rust_minver);
+
+    // Will be the form /Volumes/ramdisk/rs/debug/build/kanidm-8aadc4b0821e9fe7/out
+    // We want to get to /Volumes/ramdisk/rs/debug/completions
+    let comp_dir = PathBuf::from(outdir)
+        .ancestors()
+        .nth(2)
+        .map(|p| p.join("completions"))
+        .expect("Unable to process completions path");
+
+    if !comp_dir.exists() {
+        std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
     }
+
+    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Bash, comp_dir.clone());
+    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, comp_dir);
 
     // transform any requested paths for our server. We do this by reading
     // our profile that we have been provided.
@@ -35,7 +43,7 @@ fn main() {
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
     let profile = env::var("KANIDM_BUILD_PROFILE").unwrap_or_else(|_| "developer".to_string());
 
-    let profile_path: PathBuf = ["../profiles", format!("{}.toml", profile).as_str()]
+    let profile_path: PathBuf = ["../../profiles", format!("{}.toml", profile).as_str()]
         .iter()
         .collect();
 
