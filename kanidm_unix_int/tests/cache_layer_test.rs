@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig};
-use kanidm::core::create_server_core;
+use score::create_server_core;
 
 use kanidm::tracing_tree;
 use kanidm_unix_common::cache::{CacheLayer, Id};

@@ -80,6 +80,7 @@ lru = "0.7"
 
 [dev-dependencies]
 kanidm = { path = "../kanidmd" }
+score = { path = "../kanidmd/score" }
 
 [build-dependencies]
 structopt = { version = "0.3", default-features = false }

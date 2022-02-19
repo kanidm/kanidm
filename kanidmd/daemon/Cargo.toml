@@ -16,7 +16,7 @@ name = "kanidmd"
 path = "src/main.rs"
 
 [dependencies]
-# kanidm = { path = "../" }
+kanidm = { path = "../" }
 score = { path = "../score" }
 structopt = { version = "0.3", default-features = false }
 users = "0.11"

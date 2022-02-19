@@ -949,6 +949,7 @@ dependencies = [
 name = "daemon"
 version = "0.1.0"
 dependencies = [
+ "kanidm",
  "score",
  "serde",
  "serde_derive",
@@ -1955,6 +1956,7 @@ dependencies = [
  "kanidm_proto",
  "oauth2",
  "reqwest",
+ "score",
  "serde",
  "serde_json",
  "tokio",
@@ -2021,6 +2023,7 @@ dependencies = [
  "reqwest",
  "rpassword",
  "rusqlite",
+ "score",
  "serde",
  "serde_cbor",
  "serde_derive",

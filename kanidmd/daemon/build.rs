@@ -5,7 +5,7 @@ extern crate serde_derive;
 
 use std::env;
 
-use std::fs::{read_to_string, File};
+use std::fs::File;
 use std::io::Read;
 
 use std::path::PathBuf;
