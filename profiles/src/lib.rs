@@ -40,7 +40,6 @@ pub fn apply_profile() {
 
     // transform any requested paths for our server. We do this by reading
     // our profile that we have been provided.
-
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
     let profile = env::var("KANIDM_BUILD_PROFILE")
         .ok()
