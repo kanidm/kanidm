@@ -1214,6 +1214,9 @@
 <span id="1213">1213</span>
 <span id="1214">1214</span>
 <span id="1215">1215</span>
+<span id="1216">1216</span>
+<span id="1217">1217</span>
+<span id="1218">1218</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::idl_sqlite</span>::{
     <span class="ident">IdlSqlite</span>, <span class="ident">IdlSqliteReadTransaction</span>, <span class="ident">IdlSqliteTransaction</span>, <span class="ident">IdlSqliteWriteTransaction</span>,
 };
@@ -1247,8 +1250,8 @@
 <span class="kw">const</span> <span class="ident">DEFAULT_CACHE_TARGET</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">2048</span>;
 <span class="kw">const</span> <span class="ident">DEFAULT_IDL_CACHE_RATIO</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">32</span>;
 <span class="kw">const</span> <span class="ident">DEFAULT_NAME_CACHE_RATIO</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_RMISS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
-<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_WMISS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">8</span>;
+<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_RMISS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">0</span>;
+<span class="kw">const</span> <span class="ident">DEFAULT_CACHE_WMISS</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Ord</span>, <span class="ident">PartialOrd</span>, <span class="ident">Eq</span>, <span class="ident">PartialEq</span>, <span class="ident">Hash</span>)]</span>
 <span class="kw">enum</span> <span class="ident">NameCacheKey</span> {
@@ -1435,8 +1438,9 @@
             <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Name2Uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>.<span class="ident">to_string</span>());
             <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::U</span>(<span class="ident">uuid</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">trace!</span>(<span class="string">&quot;Got cached uuid for name2uuid&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">uuid</span>.<span class="ident">clone</span>()));
+            } <span class="kw">else</span> {
+                <span class="macro">trace!</span>(<span class="string">&quot;Cache miss uuid for name2uuid&quot;</span>);
             }
 
             <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">name2uuid</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">name</span>)<span class="question-mark">?</span>;
@@ -1459,8 +1463,9 @@
             <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Spn</span>(<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
             <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::S</span>(<span class="kw-2">ref</span> <span class="ident">spn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">trace!</span>(<span class="string">&quot;Got cached spn for uuid2spn&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">spn</span>.<span class="ident">as_ref</span>().<span class="ident">clone</span>()));
+            } <span class="kw">else</span> {
+                <span class="macro">trace!</span>(<span class="string">&quot;Cache miss spn for uuid2spn&quot;</span>);
             }
 
             <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">uuid2spn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
@@ -1483,8 +1488,9 @@
             <span class="kw">let</span> <span class="ident">cache_key</span> <span class="op">=</span> <span class="ident">NameCacheKey::Uuid2Rdn</span>(<span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>);
             <span class="kw">let</span> <span class="ident">cache_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">name_cache</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cache_key</span>);
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">NameCacheValue::R</span>(<span class="kw-2">ref</span> <span class="ident">rdn</span>)) <span class="op">=</span> <span class="ident">cache_r</span> {
-                <span class="macro">trace!</span>(<span class="string">&quot;Got cached rdn for uuid2rdn&quot;</span>);
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">rdn</span>.<span class="ident">clone</span>()));
+            } <span class="kw">else</span> {
+                <span class="macro">trace!</span>(<span class="string">&quot;Cache miss rdn for uuid2rdn&quot;</span>);
             }
 
             <span class="kw">let</span> <span class="ident">db_r</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">self</span>.<span class="ident">db</span>.<span class="ident">uuid2rdn</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">uuid</span>)<span class="question-mark">?</span>;
@@ -1979,7 +1985,7 @@
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">lens</span>) <span class="op">=</span> <span class="ident">data</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">kref</span> <span class="kw">as</span> <span class="kw-2">&amp;</span><span class="kw">dyn</span> <span class="ident">IdxKeyToRef</span>) {
                         <span class="ident">lens</span>.<span class="ident">push</span>(<span class="ident">idl_len</span>)
                     } <span class="kw">else</span> {
-                        <span class="ident">data</span>.<span class="ident">insert</span>(<span class="ident">kref</span>.<span class="ident">to_key</span>(), <span class="macro">vec!</span>[<span class="ident">idl_len</span>]);
+                        <span class="ident">data</span>.<span class="ident">insert</span>(<span class="ident">kref</span>.<span class="ident">as_key</span>(), <span class="macro">vec!</span>[<span class="ident">idl_len</span>]);
                     }
                 }
             }

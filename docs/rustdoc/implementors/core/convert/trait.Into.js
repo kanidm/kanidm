@@ -1,3 +1,0 @@
-(function() {var implementors = {};
-implementors["kanidm"] = [{"text":"impl <a class=\"trait\" href=\"https://doc.rust-lang.org/1.58.1/core/convert/trait.Into.html\" title=\"trait core::convert::Into\">Into</a>&lt;<a class=\"struct\" href=\"kanidm_proto/v1/struct.CredentialDetail.html\" title=\"struct kanidm_proto::v1::CredentialDetail\">CredentialDetail</a>&gt; for &amp;<a class=\"struct\" href=\"kanidm/credential/struct.Credential.html\" title=\"struct kanidm::credential::Credential\">Credential</a>","synthetic":false,"types":["kanidm::credential::Credential"]}];
-if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

@@ -2359,7 +2359,6 @@
 <span id="2358">2358</span>
 <span id="2359">2359</span>
 <span id="2360">2360</span>
-<span id="2361">2361</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -3189,7 +3188,7 @@
 
             <span class="kw">let</span> (<span class="ident">email</span>, <span class="ident">email_verified</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">scope_set</span>.<span class="ident">contains</span>(<span class="string">&quot;email&quot;</span>) {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">code_xchg</span>.<span class="ident">uat</span>.<span class="ident">mail_primary</span> {
-                    (<span class="prelude-val">Some</span>(<span class="ident">mp</span>.<span class="ident">to_string</span>()), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
+                    (<span class="prelude-val">Some</span>(<span class="ident">mp</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
                 } <span class="kw">else</span> {
                     (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
                 }
@@ -3419,7 +3418,7 @@
 
                 <span class="kw">let</span> (<span class="ident">email</span>, <span class="ident">email_verified</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">at</span>.<span class="ident">scopes</span>.<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="string">&quot;email&quot;</span>.<span class="ident">to_string</span>()) {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">mp</span>) <span class="op">=</span> <span class="ident">account</span>.<span class="ident">mail_primary</span> {
-                        (<span class="prelude-val">Some</span>(<span class="ident">mp</span>.<span class="ident">to_string</span>()), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
+                        (<span class="prelude-val">Some</span>(<span class="ident">mp</span>), <span class="prelude-val">Some</span>(<span class="bool-val">true</span>))
                     } <span class="kw">else</span> {
                         (<span class="prelude-val">None</span>, <span class="prelude-val">None</span>)
                     }
@@ -3600,7 +3599,6 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
 
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event::ModifyEvent</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">Modify</span>, <span class="ident">ModifyList</span>};
 
     <span class="kw">use</span> <span class="ident">kanidm_proto::oauth2</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthType</span>, <span class="ident">UserAuthToken</span>};

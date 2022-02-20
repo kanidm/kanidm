@@ -2873,7 +2873,6 @@
 <span id="2872">2872</span>
 <span id="2873">2873</span>
 <span id="2874">2874</span>
-<span id="2875">2875</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
 <span class="doccomment">//! of the server, which are all enforced at higher levels. The role of the backend</span>
@@ -4451,8 +4450,8 @@
     };
     <span class="kw">use</span> <span class="kw">super</span>::{<span class="ident">DbEntry</span>, <span class="ident">IdxKey</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity::Limits</span>;
+    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude</span>::<span class="kw-2">*</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">IndexType</span>, <span class="ident">PartialValue</span>, <span class="ident">Value</span>};
-    <span class="kw">use</span> <span class="ident">smartstring::alias::String</span> <span class="kw">as</span> <span class="ident">AttrString</span>;
 
     <span class="macro">macro_rules!</span> <span class="ident">run_test</span> {
         (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">test_fn</span>:<span class="ident">expr</span>) =&gt; {{
@@ -5224,10 +5223,9 @@
             }
 
             <span class="comment">// Test that a fully indexed search works</span>
-            <span class="kw">let</span> <span class="ident">f_eq</span> <span class="op">=</span>
-                <span class="kw">unsafe</span> { <span class="macro">filter_resolved!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_utf8s</span>(<span class="string">&quot;william&quot;</span>))) };
+            <span class="kw">let</span> <span class="ident">feq</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="macro">filter_resolved!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">PartialValue::new_utf8s</span>(<span class="string">&quot;william&quot;</span>))) };
 
-            <span class="kw">let</span> (<span class="ident">r</span>, <span class="ident">_plan</span>) <span class="op">=</span> <span class="ident">be</span>.<span class="ident">filter2idl</span>(<span class="ident">f_eq</span>.<span class="ident">to_inner</span>(), <span class="number">0</span>).<span class="ident">unwrap</span>();
+            <span class="kw">let</span> (<span class="ident">r</span>, <span class="ident">_plan</span>) <span class="op">=</span> <span class="ident">be</span>.<span class="ident">filter2idl</span>(<span class="ident">feq</span>.<span class="ident">to_inner</span>(), <span class="number">0</span>).<span class="ident">unwrap</span>();
             <span class="kw">match</span> <span class="ident">r</span> {
                 <span class="ident">IdList::Indexed</span>(<span class="ident">idl</span>) =&gt; {
                     <span class="macro">assert!</span>(<span class="ident">idl</span> <span class="op">==</span> <span class="ident">IDLBitRange::from_iter</span>(<span class="macro">vec!</span>[<span class="number">1</span>]));

@@ -195,7 +195,7 @@
         <span class="ident">IdxKeyRef</span> { <span class="ident">attr</span>, <span class="ident">itype</span> }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdxKey</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">as_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdxKey</span> {
         <span class="ident">IdxKey</span> {
             <span class="ident">attr</span>: <span class="self">self</span>.<span class="ident">attr</span>.<span class="ident">into</span>(),
             <span class="ident">itype</span>: <span class="self">self</span>.<span class="ident">itype</span>.<span class="ident">clone</span>(),

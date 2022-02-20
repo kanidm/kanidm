@@ -609,49 +609,8 @@
 <span id="608">608</span>
 <span id="609">609</span>
 <span id="610">610</span>
-<span id="611">611</span>
-<span id="612">612</span>
-<span id="613">613</span>
-<span id="614">614</span>
-<span id="615">615</span>
-<span id="616">616</span>
-<span id="617">617</span>
-<span id="618">618</span>
-<span id="619">619</span>
-<span id="620">620</span>
-<span id="621">621</span>
-<span id="622">622</span>
-<span id="623">623</span>
-<span id="624">624</span>
-<span id="625">625</span>
-<span id="626">626</span>
-<span id="627">627</span>
-<span id="628">628</span>
-<span id="629">629</span>
-<span id="630">630</span>
-<span id="631">631</span>
-<span id="632">632</span>
-<span id="633">633</span>
-<span id="634">634</span>
-<span id="635">635</span>
-<span id="636">636</span>
-<span id="637">637</span>
-<span id="638">638</span>
-<span id="639">639</span>
-<span id="640">640</span>
-<span id="641">641</span>
-<span id="642">642</span>
-<span id="643">643</span>
-<span id="644">644</span>
-<span id="645">645</span>
-<span id="646">646</span>
-<span id="647">647</span>
-<span id="648">648</span>
-<span id="649">649</span>
 </pre><pre class="rust"><code><span class="macro">macro_rules!</span> <span class="ident">setup_test</span> {
     () =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils::duration_from_epoch_now</span>;
-
         <span class="comment">/*
         use env_logger;
         ::std::env::set_var(&quot;RUST_LOG&quot;, &quot;actix_web=debug,kanidm=debug&quot;);
@@ -869,8 +828,8 @@
 }
 
 <span class="comment">// Test helpers for all plugins.</span>
+<span class="comment">// #[macro_export]</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules!</span> <span class="ident">run_create_test</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>:<span class="ident">expr</span>,
@@ -919,8 +878,8 @@
     }};
 }
 
+<span class="comment">// #[macro_export]</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules!</span> <span class="ident">run_modify_test</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>:<span class="ident">expr</span>,
@@ -973,8 +932,8 @@
     }};
 }
 
+<span class="comment">// #[macro_export]</span>
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
-<span class="attribute">#[<span class="ident">macro_export</span>]</span>
 <span class="macro">macro_rules!</span> <span class="ident">run_delete_test</span> {
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">expect</span>:<span class="ident">expr</span>,
@@ -1029,9 +988,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">m_pres</span>, <span class="ident">m_purge</span>, <span class="ident">m_remove</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">Modify</span>, <span class="ident">ModifyList</span>};
         <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">Modify</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
         <span class="ident">ModifyList::new_list</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
     }};
@@ -1043,7 +999,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::FC</span>;
         <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">FC</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
         <span class="ident">f_and</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
     }};
@@ -1055,7 +1010,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::FC</span>;
         <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">FC</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
         <span class="ident">f_inc</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
     }};
@@ -1067,7 +1021,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::FC</span>;
         <span class="kw">let</span> <span class="ident">s</span>: <span class="ident">Box</span><span class="op">&lt;</span>[<span class="ident">FC</span>]<span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Box::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">vs</span>);
         <span class="ident">f_or</span>(<span class="ident">s</span>.<span class="ident">into_vec</span>())
     }};
@@ -1079,13 +1032,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::Filter</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::FC</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{
-            <span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_id</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_self</span>, <span class="ident">f_spn_name</span>, <span class="ident">f_sub</span>,
-        };
         <span class="ident">Filter::new_ignore_hidden</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>)
     }};
 }
@@ -1096,13 +1042,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::Filter</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::FC</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{
-            <span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_id</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_self</span>, <span class="ident">f_sub</span>,
-        };
         <span class="ident">Filter::new_recycled</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>)
     }};
 }
@@ -1113,13 +1052,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::Filter</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter::FC</span>;
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{
-            <span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_id</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_self</span>, <span class="ident">f_sub</span>,
-        };
         <span class="ident">Filter::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>)
     }};
 }
@@ -1131,9 +1063,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_sub</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
         <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Filter::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>);
         <span class="comment">// Create a resolved filter, via the most unsafe means possible!</span>
         <span class="ident">f</span>.<span class="ident">into_valid</span>()
@@ -1147,9 +1076,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">unused_imports</span>)]</span>
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">f_and</span>, <span class="ident">f_andnot</span>, <span class="ident">f_eq</span>, <span class="ident">f_inc</span>, <span class="ident">f_lt</span>, <span class="ident">f_or</span>, <span class="ident">f_pres</span>, <span class="ident">f_sub</span>};
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
         <span class="kw">let</span> <span class="ident">f</span>: <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterInvalid</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Filter::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">fc</span>);
         <span class="comment">// Create a resolved filter, via the most unsafe means possible!</span>
         <span class="ident">f</span>.<span class="ident">into_valid_resolved</span>()
@@ -1163,7 +1089,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">v</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::PartialValue</span>;
         <span class="ident">PartialValue::new_utf8</span>(<span class="ident">v</span>.<span class="ident">to_string</span>())
     }};
 }
@@ -1175,7 +1100,6 @@
     (
         <span class="macro-nonterminal">$</span><span class="macro-nonterminal">v</span>:<span class="ident">expr</span>
     ) =&gt; {{
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value::PartialValue</span>;
         <span class="ident">PartialValue::new_iutf8</span>(<span class="ident">v</span>.<span class="ident">to_string</span>())
     }};
 }
@@ -1264,14 +1188,12 @@
         <span class="macro">compile_error!</span>(<span class="string">&quot;ValueSet needs at least 1 element&quot;</span>)
     );
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset::ValueSet</span>;
         <span class="ident">ValueSet::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
     });
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>,) =&gt; ({
         <span class="macro">valueset!</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>)
     });
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>:<span class="ident">expr</span>, $(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>:<span class="ident">expr</span>),<span class="kw-2">*</span>) =&gt; ({
-        <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset::ValueSet</span>;
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">x</span>: <span class="ident">ValueSet</span> <span class="op">=</span> <span class="ident">ValueSet::new</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">e</span>);
         $(<span class="macro">assert!</span>(<span class="ident">x</span>.<span class="ident">insert</span>(<span class="macro-nonterminal">$</span><span class="macro-nonterminal">item</span>));)<span class="op">*</span>
         <span class="ident">x</span>

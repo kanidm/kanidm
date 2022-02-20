@@ -850,7 +850,6 @@
 <span id="849">849</span>
 <span id="850">850</span>
 <span id="851">851</span>
-<span id="852">852</span>
 </pre><pre class="rust"><code><span class="doccomment">//! LDAP specific operations handling components. This is where LDAP operations</span>
 <span class="doccomment">//! are sent to for processing.</span>
 
@@ -1382,7 +1381,6 @@
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">CreateEvent</span>, <span class="ident">ModifyEvent</span>};
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event::UnixPasswordChangeEvent</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap::LdapServer</span>;
-    <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::modify</span>::{<span class="ident">Modify</span>, <span class="ident">ModifyList</span>};
     <span class="kw">use</span> <span class="ident">async_std::task</span>;
     <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
     <span class="kw">use</span> <span class="ident">ldap3_server::proto</span>::{<span class="ident">LdapFilter</span>, <span class="ident">LdapOp</span>, <span class="ident">LdapSearchScope</span>};
