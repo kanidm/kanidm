@@ -766,7 +766,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     if let Some(lens) = data.get_mut(&kref as &dyn IdxKeyToRef) {
                         lens.push(idl_len)
                     } else {
-                        data.insert(kref.to_key(), vec![idl_len]);
+                        data.insert(kref.as_key(), vec![idl_len]);
                     }
                 }
             }

@@ -1,5 +1,7 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
 // In this file, we do want to panic on these faults.
 // #![deny(clippy::unwrap_used)]
 // #![deny(clippy::expect_used)]

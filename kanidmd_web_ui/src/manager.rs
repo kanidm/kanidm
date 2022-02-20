@@ -5,6 +5,7 @@
 //! will allow you to proceed with the oauth flow.
 
 use gloo::console;
+use wasm_bindgen::UnwrapThrowExt;
 use yew::functional::*;
 use yew::prelude::*;
 use yew_router::prelude::*;
@@ -37,7 +38,9 @@ pub enum Route {
 #[function_component(Landing)]
 fn landing() -> Html {
     // Do this to allow use_history to work because lol.
-    use_history().unwrap().push(ViewRoute::Apps);
+    use_history()
+        .expect_throw("Unable to access history")
+        .push(ViewRoute::Apps);
     html! { <main></main> }
 }
 

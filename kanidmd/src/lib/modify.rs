@@ -234,4 +234,8 @@ impl<VALID> ModifyList<VALID> {
     pub fn len(&self) -> usize {
         self.mods.len()
     }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
 }

@@ -190,7 +190,7 @@ impl AccountOpt {
                     eprintln!("Alternatively, you can manually enter the following OTP details:");
                     println!("Account Name: {}", tok.accountname);
                     println!("Issuer: {}", tok.issuer);
-                    println!("Algorithm: {}", tok.algo.to_string());
+                    println!("Algorithm: {}", tok.algo);
                     println!("Period/Step: {}", tok.step);
                     println!("Secret: {}", tok.get_secret());
 

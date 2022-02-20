@@ -34,7 +34,7 @@ impl<'a> IdxKeyRef<'a> {
         IdxKeyRef { attr, itype }
     }
 
-    pub fn to_key(&self) -> IdxKey {
+    pub fn as_key(&self) -> IdxKey {
         IdxKey {
             attr: self.attr.into(),
             itype: self.itype.clone(),

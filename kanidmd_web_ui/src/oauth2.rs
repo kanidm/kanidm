@@ -70,7 +70,7 @@ impl Oauth2App {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().unwrap();
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
 
         if status == 200 {
@@ -93,7 +93,7 @@ impl Oauth2App {
     ) -> Result<Oauth2Msg, FetchError> {
         let authreq_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
-            .expect("Failed to serialise authreq");
+            .expect_throw("Failed to serialise authreq");
 
         let mut opts = RequestInit::new();
         opts.method("POST");
@@ -113,13 +113,13 @@ impl Oauth2App {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().unwrap();
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
         let headers = resp.headers();
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: ConsentRequest = jsval.into_serde().unwrap();
+            let state: ConsentRequest = jsval.into_serde().expect_throw("Invalid response type");
             Ok(Oauth2Msg::Consent(state))
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -135,7 +135,7 @@ impl Oauth2App {
     ) -> Result<Oauth2Msg, FetchError> {
         let consentreq_jsvalue = serde_json::to_string(&consent_req.consent_token)
             .map(|s| JsValue::from(&s))
-            .expect("Failed to serialise consent_req");
+            .expect_throw("Failed to serialise consent_req");
 
         let mut opts = RequestInit::new();
         opts.method("POST");
@@ -156,7 +156,7 @@ impl Oauth2App {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().unwrap();
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
         let headers = resp.headers();
 
@@ -190,7 +190,7 @@ impl Component for Oauth2App {
         let location = ctx
             .link()
             .location()
-            .expect("Can't access current location");
+            .expect_throw("Can't access current location");
 
         let query: Option<AuthorisationRequest> = location
             .query()
@@ -279,9 +279,8 @@ impl Component for Oauth2App {
                 self.state = match (&self.state, ar) {
                     (State::TokenCheck(token), Some(ar)) => {
                         let token_c = token.clone();
-                        let ar_c = ar.clone();
                         ctx.link().send_future(async {
-                            match Self::fetch_authreq(token_c, ar_c).await {
+                            match Self::fetch_authreq(token_c, ar).await {
                                 Ok(v) => v,
                                 Err(v) => v.into(),
                             }

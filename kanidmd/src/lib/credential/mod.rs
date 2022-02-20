@@ -289,12 +289,12 @@ pub enum CredentialType {
     // PasswordWebauthnVerified(Password, Map<String, WebauthnCredential>),
 }
 
-impl Into<CredentialDetail> for &Credential {
-    fn into(self) -> CredentialDetail {
+impl From<&Credential> for CredentialDetail {
+    fn from(value: &Credential) -> Self {
         CredentialDetail {
-            uuid: self.uuid,
-            claims: self.claims.clone(),
-            type_: match &self.type_ {
+            uuid: value.uuid,
+            claims: value.claims.clone(),
+            type_: match &value.type_ {
                 CredentialType::Password(_) => CredentialDetailType::Password,
                 CredentialType::GeneratedPassword(_) => CredentialDetailType::GeneratedPassword,
                 CredentialType::Webauthn(wan) => {

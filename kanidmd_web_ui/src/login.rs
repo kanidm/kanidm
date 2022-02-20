@@ -78,7 +78,7 @@ impl LoginApp {
         };
         let authreq_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
-            .expect("Failed to serialise authreq");
+            .expect_throw("Failed to serialise authreq");
 
         let mut opts = RequestInit::new();
         opts.method("POST");
@@ -94,7 +94,7 @@ impl LoginApp {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().unwrap();
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
         let headers = resp.headers();
 
@@ -105,7 +105,7 @@ impl LoginApp {
                 .flatten()
                 .unwrap_or_else(|| "".to_string());
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = jsval.into_serde().unwrap();
+            let state: AuthResponse = jsval.into_serde().expect_throw("Invalid response type");
             Ok(LoginAppMsg::Start(session_id, state))
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -121,7 +121,7 @@ impl LoginApp {
     ) -> Result<LoginAppMsg, FetchError> {
         let authreq_jsvalue = serde_json::to_string(&authreq)
             .map(|s| JsValue::from(&s))
-            .expect("Failed to serialise authreq");
+            .expect_throw("Failed to serialise authreq");
 
         let mut opts = RequestInit::new();
         opts.method("POST");
@@ -141,13 +141,13 @@ impl LoginApp {
 
         let window = utils::window();
         let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
-        let resp: Response = resp_value.dyn_into().unwrap();
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
         let headers = resp.headers();
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = jsval.into_serde().unwrap();
+            let state: AuthResponse = jsval.into_serde().expect_throw("Invalid response type");
             Ok(LoginAppMsg::Next(state))
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -325,7 +325,7 @@ impl LoginApp {
                         .navigator()
                         .credentials()
                         .get_with_options(challenge)
-                        .expect("Unable to create promise");
+                        .expect_throw("Unable to create promise");
                     let fut = JsFuture::from(promise);
                     let linkc = ctx.link().clone();
 
@@ -421,10 +421,10 @@ impl Component for LoginApp {
 
         let html_document = document
             .dyn_into::<web_sys::HtmlDocument>()
-            .expect("failed to dyn cast to htmldocument");
+            .expect_throw("failed to dyn cast to htmldocument");
         let cookie = html_document
             .cookie()
-            .expect("failed to access page cookies");
+            .expect_throw("failed to access page cookies");
         console::log!("cookies");
         console::log!(cookie.as_str());
 
@@ -559,7 +559,7 @@ impl Component for LoginApp {
                         self.session_id = session_id;
                         if mechs.len() == 1 {
                             // If it's only one mech, just submit that.
-                            let mech = mechs.pop().unwrap();
+                            let mech = mechs.pop().expect_throw("Memory corruption occured");
                             let authreq = AuthRequest {
                                 step: AuthStep::Begin(mech),
                             };
@@ -614,7 +614,7 @@ impl Component for LoginApp {
                     AuthState::Continue(mut allowed) => {
                         if allowed.len() == 1 {
                             // If there is only one, change our state for that input type.
-                            match allowed.pop().unwrap() {
+                            match allowed.pop().expect_throw("Memory corruption occured") {
                                 AuthAllowed::Anonymous => {
                                     // Just submit this.
                                 }

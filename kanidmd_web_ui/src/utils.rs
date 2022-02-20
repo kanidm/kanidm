@@ -4,15 +4,17 @@ pub use web_sys::InputEvent;
 use web_sys::{Document, Event, HtmlElement, HtmlInputElement, Window};
 
 pub fn window() -> Window {
-    web_sys::window().expect("Unable to retrieve window")
+    web_sys::window().expect_throw("Unable to retrieve window")
 }
 
 pub fn document() -> Document {
-    window().document().expect("Unable to retrieve document")
+    window()
+        .document()
+        .expect_throw("Unable to retrieve document")
 }
 
 pub fn body() -> HtmlElement {
-    document().body().expect("Unable to retrieve body")
+    document().body().expect_throw("Unable to retrieve body")
 }
 
 pub fn autofocus() {
