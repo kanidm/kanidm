@@ -31,8 +31,8 @@ use tracing::trace;
 const DEFAULT_CACHE_TARGET: usize = 2048;
 const DEFAULT_IDL_CACHE_RATIO: usize = 32;
 const DEFAULT_NAME_CACHE_RATIO: usize = 8;
-const DEFAULT_CACHE_RMISS: usize = 8;
-const DEFAULT_CACHE_WMISS: usize = 8;
+const DEFAULT_CACHE_RMISS: usize = 0;
+const DEFAULT_CACHE_WMISS: usize = 4;
 
 #[derive(Debug, Clone, Ord, PartialOrd, Eq, PartialEq, Hash)]
 enum NameCacheKey {
@@ -219,8 +219,9 @@ macro_rules! name2uuid {
             let cache_key = NameCacheKey::Name2Uuid($name.to_string());
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::U(uuid)) = cache_r {
-                trace!("Got cached uuid for name2uuid");
                 return Ok(Some(uuid.clone()));
+            } else {
+                trace!("Cache miss uuid for name2uuid");
             }
 
             let db_r = $self.db.name2uuid($name)?;
@@ -243,8 +244,9 @@ macro_rules! uuid2spn {
             let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::S(ref spn)) = cache_r {
-                trace!("Got cached spn for uuid2spn");
                 return Ok(Some(spn.as_ref().clone()));
+            } else {
+                trace!("Cache miss spn for uuid2spn");
             }
 
             let db_r = $self.db.uuid2spn($uuid)?;
@@ -267,8 +269,9 @@ macro_rules! uuid2rdn {
             let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::R(ref rdn)) = cache_r {
-                trace!("Got cached rdn for uuid2rdn");
                 return Ok(Some(rdn.clone()));
+            } else {
+                trace!("Cache miss rdn for uuid2rdn");
             }
 
             let db_r = $self.db.uuid2rdn($uuid)?;
@@ -763,7 +766,7 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     if let Some(lens) = data.get_mut(&kref as &dyn IdxKeyToRef) {
                         lens.push(idl_len)
                     } else {
-                        data.insert(kref.to_key(), vec![idl_len]);
+                        data.insert(kref.as_key(), vec![idl_len]);
                     }
                 }
             }

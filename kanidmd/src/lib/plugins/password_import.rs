@@ -118,7 +118,6 @@ mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
     use crate::credential::{Credential, CredentialType};
-    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
 
     const IMPORT_HASH: &'static str =

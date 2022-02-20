@@ -4,8 +4,8 @@ use std::thread;
 use std::time::Duration;
 
 use kanidm::audit::LogLevel;
-use kanidm::config::{Configuration, IntegrationTestConfig};
-use kanidm::core::create_server_core;
+use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
+use score::create_server_core;
 
 use kanidm::tracing_tree;
 use kanidm_unix_common::cache::{CacheLayer, Id};
@@ -66,6 +66,7 @@ fn run_test(fix_fn: fn(&KanidmClient) -> (), test_fn: fn(CacheLayer, KanidmAsync
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.log_level = Some(LogLevel::Quiet as u32);
+    config.role = ServerRole::WriteReplicaNoUI;
     // config.log_level = Some(LogLevel::Verbose as u32);
     config.threads = 1;
 

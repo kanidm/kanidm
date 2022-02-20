@@ -8,28 +8,45 @@
 //! the entry point for all client traffic which is then directed to the
 //! various `actors`.
 
+#![deny(warnings)]
+#![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![deny(clippy::unreachable)]
+#![deny(clippy::await_holding_lock)]
+#![deny(clippy::needless_pass_by_value)]
+#![deny(clippy::trivially_copy_pass_by_ref)]
+
+#[macro_use]
+extern crate tracing;
+#[macro_use]
+extern crate kanidm;
+
 mod https;
 mod ldaps;
 use libc::umask;
 
 // use crossbeam::channel::unbounded;
-use crate::prelude::*;
+use kanidm::prelude::*;
 use std::sync::Arc;
 
-use crate::config::Configuration;
+use kanidm::config::Configuration;
 
 // SearchResult
 // use self::ctx::ServerCtx;
-use crate::actors::v1_read::QueryServerReadV1;
-use crate::actors::v1_write::QueryServerWriteV1;
-use crate::be::{Backend, BackendConfig, BackendTransaction, FsType};
-use crate::crypto::setup_tls;
-use crate::idm::server::{IdmServer, IdmServerDelayed};
-use crate::interval::IntervalActor;
-use crate::ldap::LdapServer;
-use crate::schema::Schema;
-use crate::status::StatusActor;
-use crate::utils::{duration_from_epoch_now, touch_file_or_quit};
+use kanidm::actors::v1_read::QueryServerReadV1;
+use kanidm::actors::v1_write::QueryServerWriteV1;
+use kanidm::be::{Backend, BackendConfig, BackendTransaction, FsType};
+use kanidm::crypto::setup_tls;
+use kanidm::idm::server::{IdmServer, IdmServerDelayed};
+use kanidm::interval::IntervalActor;
+use kanidm::ldap::LdapServer;
+use kanidm::schema::Schema;
+use kanidm::status::StatusActor;
+use kanidm::utils::{duration_from_epoch_now, touch_file_or_quit};
 
 use kanidm_proto::v1::OperationError;
 

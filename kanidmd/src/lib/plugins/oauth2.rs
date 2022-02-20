@@ -80,7 +80,6 @@ impl Plugin for Oauth2Secrets {
 
 #[cfg(test)]
 mod tests {
-    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
 
     #[test]

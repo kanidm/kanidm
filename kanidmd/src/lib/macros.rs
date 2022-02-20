@@ -1,7 +1,5 @@
 macro_rules! setup_test {
     () => {{
-        use crate::utils::duration_from_epoch_now;
-
         /*
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -219,8 +217,8 @@ where
 }
 
 // Test helpers for all plugins.
+// #[macro_export]
 #[cfg(test)]
-#[macro_export]
 macro_rules! run_create_test {
     (
         $expect:expr,
@@ -269,8 +267,8 @@ macro_rules! run_create_test {
     }};
 }
 
+// #[macro_export]
 #[cfg(test)]
-#[macro_export]
 macro_rules! run_modify_test {
     (
         $expect:expr,
@@ -323,8 +321,8 @@ macro_rules! run_modify_test {
     }};
 }
 
+// #[macro_export]
 #[cfg(test)]
-#[macro_export]
 macro_rules! run_delete_test {
     (
         $expect:expr,
@@ -379,9 +377,6 @@ macro_rules! modlist {
     (
         $vs:expr
     ) => {{
-        #[allow(unused_imports)]
-        use crate::modify::{m_pres, m_purge, m_remove};
-        use crate::modify::{Modify, ModifyList};
         let s: Box<[Modify]> = Box::new($vs);
         ModifyList::new_list(s.into_vec())
     }};
@@ -393,7 +388,6 @@ macro_rules! f_and {
     (
         $vs:expr
     ) => {{
-        use crate::filter::FC;
         let s: Box<[FC]> = Box::new($vs);
         f_and(s.into_vec())
     }};
@@ -405,7 +399,6 @@ macro_rules! f_inc {
     (
         $vs:expr
     ) => {{
-        use crate::filter::FC;
         let s: Box<[FC]> = Box::new($vs);
         f_inc(s.into_vec())
     }};
@@ -417,7 +410,6 @@ macro_rules! f_or {
     (
         $vs:expr
     ) => {{
-        use crate::filter::FC;
         let s: Box<[FC]> = Box::new($vs);
         f_or(s.into_vec())
     }};
@@ -429,13 +421,6 @@ macro_rules! filter {
     (
         $fc:expr
     ) => {{
-        use crate::filter::Filter;
-        #[allow(unused_imports)]
-        use crate::filter::FC;
-        #[allow(unused_imports)]
-        use crate::filter::{
-            f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub,
-        };
         Filter::new_ignore_hidden($fc)
     }};
 }
@@ -446,13 +431,6 @@ macro_rules! filter_rec {
     (
         $fc:expr
     ) => {{
-        use crate::filter::Filter;
-        #[allow(unused_imports)]
-        use crate::filter::FC;
-        #[allow(unused_imports)]
-        use crate::filter::{
-            f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_sub,
-        };
         Filter::new_recycled($fc)
     }};
 }
@@ -463,13 +441,6 @@ macro_rules! filter_all {
     (
         $fc:expr
     ) => {{
-        use crate::filter::Filter;
-        #[allow(unused_imports)]
-        use crate::filter::FC;
-        #[allow(unused_imports)]
-        use crate::filter::{
-            f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_sub,
-        };
         Filter::new($fc)
     }};
 }
@@ -481,9 +452,6 @@ macro_rules! filter_valid {
     (
         $fc:expr
     ) => {{
-        #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_inc, f_lt, f_or, f_pres, f_sub};
-        use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!
         f.into_valid()
@@ -497,9 +465,6 @@ macro_rules! filter_resolved {
     (
         $fc:expr
     ) => {{
-        #[allow(unused_imports)]
-        use crate::filter::{f_and, f_andnot, f_eq, f_inc, f_lt, f_or, f_pres, f_sub};
-        use crate::filter::{Filter, FilterInvalid};
         let f: Filter<FilterInvalid> = Filter::new($fc);
         // Create a resolved filter, via the most unsafe means possible!
         f.into_valid_resolved()
@@ -513,7 +478,6 @@ macro_rules! pvalue_utf8 {
     (
         $v:expr
     ) => {{
-        use crate::value::PartialValue;
         PartialValue::new_utf8(v.to_string())
     }};
 }
@@ -525,7 +489,6 @@ macro_rules! pvalue_iutf8 {
     (
         $v:expr
     ) => {{
-        use crate::value::PartialValue;
         PartialValue::new_iutf8(v.to_string())
     }};
 }
@@ -614,14 +577,12 @@ macro_rules! valueset {
         compile_error!("ValueSet needs at least 1 element")
     );
     ($e:expr) => ({
-        use crate::valueset::ValueSet;
         ValueSet::new($e)
     });
     ($e:expr,) => ({
         valueset!($e)
     });
     ($e:expr, $($item:expr),*) => ({
-        use crate::valueset::ValueSet;
         let mut x: ValueSet = ValueSet::new($e);
         $(assert!(x.insert($item));)*
         x

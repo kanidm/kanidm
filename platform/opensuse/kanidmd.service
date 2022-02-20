@@ -13,6 +13,7 @@ DynamicUser=yes
 UMask=0027
 StateDirectory=kanidm
 ExecStart=/usr/sbin/kanidmd server -c /etc/kanidm/server.toml
+KillSignal=SIGINT
 
 NoNewPrivileges=true
 PrivateTmp=true

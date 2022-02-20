@@ -2,7 +2,7 @@
 name = "kanidm"
 version = "1.1.0-alpha.7"
 authors = ["William Brown <william@blackhats.net.au>"]
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Server Library and Binary"
 documentation = "https://docs.rs/kanidm/latest/kanidm/"
@@ -12,10 +12,6 @@ repository = "https://github.com/kanidm/kanidm/"
 [lib]
 name = "kanidm"
 path = "src/lib/lib.rs"
-
-[[bin]]
-name = "kanidmd"
-path = "src/server/main.rs"
 
 [dependencies]
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
@@ -28,7 +24,6 @@ either = "1.6"
 
 url = { version = "2", features = ["serde"] }
 tide = "0.16"
-tide-openssl = "^0.1.1"
 async-trait = "0.1"
 async-h1 = "2.0"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
@@ -49,7 +44,6 @@ futures = "0.3"
 futures-util = "0.3"
 tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
-tokio-openssl = "0.6"
 openssl = "0.10"
 
 uuid = { version = "0.8", features = ["serde", "v4" ] }
@@ -63,7 +57,6 @@ rusqlite = { version = "0.26", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.19"
 
-structopt = { version = "0.3", default-features = false }
 time = { version = "0.2", features = ["serde", "std"] }
 
 hashbrown = { version = "0.11", features = ["serde", "inline-more", "ahash"] }
@@ -107,12 +100,7 @@ criterion = { version = "0.3", features = ["html_reports"] }
 webauthn-authenticator-rs = "0.3.0-alpha.12"
 
 [build-dependencies]
-structopt = { version = "0.3", default-features = false }
-serde = "1.0"
-serde_derive = "1.0"
-toml = "0.5"
-
-rustc_version = "0.4.0"
+profiles = { path = "../profiles" }
 
 [[bench]]
 name = "scaling_10k"

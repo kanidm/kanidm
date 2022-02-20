@@ -58,7 +58,7 @@ impl TreeMiddleware {
         let method = method.as_ref();
         let path = path.as_str();
 
-        request_info!(
+        security_info!(
             src = remote_address,
             http.host = host,
             http.method = method,

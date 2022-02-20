@@ -827,7 +827,7 @@ impl Oauth2ResourceServersReadTransaction {
 
             let (email, email_verified) = if scope_set.contains("email") {
                 if let Some(mp) = code_xchg.uat.mail_primary {
-                    (Some(mp.to_string()), Some(true))
+                    (Some(mp), Some(true))
                 } else {
                     (None, None)
                 }
@@ -1057,7 +1057,7 @@ impl Oauth2ResourceServersReadTransaction {
 
                 let (email, email_verified) = if at.scopes.contains(&"email".to_string()) {
                     if let Some(mp) = account.mail_primary {
-                        (Some(mp.to_string()), Some(true))
+                        (Some(mp), Some(true))
                     } else {
                         (None, None)
                     }
@@ -1238,7 +1238,6 @@ mod tests {
     use crate::prelude::*;
 
     use crate::event::ModifyEvent;
-    use crate::modify::{Modify, ModifyList};
 
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::{AuthType, UserAuthToken};

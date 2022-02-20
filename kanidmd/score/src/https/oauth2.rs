@@ -1,10 +1,10 @@
 use super::v1::{json_rest_event_get, json_rest_event_post};
 use super::{to_tide_response, AppState, RequestExtensions};
-use crate::idm::oauth2::{
+use kanidm::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenRequest, AuthorisationRequest, AuthorisePermitSuccess,
     ErrorResponse, Oauth2Error,
 };
-use crate::prelude::*;
+use kanidm::prelude::*;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use serde::{Deserialize, Serialize};
 

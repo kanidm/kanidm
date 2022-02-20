@@ -29,7 +29,7 @@ extern crate lazy_static;
 #[macro_use]
 pub mod macros;
 
-mod crypto;
+pub mod crypto;
 pub mod utils;
 #[macro_use]
 pub mod audit;
@@ -40,23 +40,22 @@ pub mod entry;
 pub mod event;
 pub mod filter;
 pub mod identity;
-mod interval;
-pub(crate) mod ldap;
+pub mod interval;
+pub mod ldap;
 mod modify;
 pub(crate) mod value;
 pub(crate) mod valueset;
 #[macro_use]
 mod plugins;
 mod access;
-mod actors;
+pub mod actors;
 pub mod idm;
 mod repl;
-mod schema;
+pub mod schema;
 pub mod server;
-mod status;
+pub mod status;
 
 pub mod config;
-pub mod core;
 
 /// A prelude of imports that should be imported by all other Kanidm modules to
 /// help make imports cleaner.
@@ -67,8 +66,16 @@ pub mod prelude {
     pub use url::Url;
     pub use uuid::Uuid;
 
+    pub use crate::tagged_event;
+    pub use crate::tracing_tree::EventTag;
+
     pub use crate::constants::*;
-    pub use crate::filter::{Filter, FilterInvalid};
+    pub use crate::filter::{
+        f_and, f_andnot, f_eq, f_id, f_inc, f_lt, f_or, f_pres, f_self, f_spn_name, f_sub,
+    };
+    pub use crate::filter::{Filter, FilterInvalid, FC};
+    pub use crate::modify::{m_pres, m_purge, m_remove};
+    pub use crate::modify::{Modify, ModifyList};
 
     pub use crate::entry::{
         Entry, EntryCommitted, EntryInit, EntryInvalid, EntryInvalidCommitted, EntryNew,

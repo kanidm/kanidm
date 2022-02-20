@@ -2,7 +2,7 @@
 name = "kanidm_client"
 version = "1.1.0-alpha.7"
 authors = ["William Brown <william@blackhats.net.au>"]
-edition = "2018"
+edition = "2021"
 license = "MPL-2.0"
 description = "Kanidm Client Library"
 documentation = "https://docs.rs/kanidm_client/latest/kanidm_client/"
@@ -25,6 +25,7 @@ tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "sig
 tracing-subscriber = "0.3"
 tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 kanidm = { path = "../kanidmd" }
+score = { path = "../kanidmd/score" }
 futures = "0.3"
 async-std = { version = "1.6", features = ["tokio1"] }
 

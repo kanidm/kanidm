@@ -1000,7 +1000,7 @@ impl QueryServer {
         }
     }
 
-    pub(crate) fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
+    pub fn initialise_helper(&self, ts: Duration) -> Result<(), OperationError> {
         // First, check our database version - attempt to do an initial indexing
         // based on the in memory configuration
         //
@@ -2306,13 +2306,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("initialise_idm p1 -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
-        if res.is_err() {
-            return res;
-        }
-
-        // Is the configured domain name matching what's in the domain_info?
-
-        //
+        let _ = res?;
 
         // The domain info now exists, we should be able to do these migrations as they will
         // cause SPN regenerations to occur
@@ -2334,9 +2328,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!("initialise_idm p2 -> result {:?}", res);
         }
         debug_assert!(res.is_ok());
-        if res.is_err() {
-            return res;
-        }
+        let _ = res?;
 
         // Create any system default schema entries.
 
@@ -2424,9 +2416,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             admin_error!(?res, "initialise_idm p3 -> result");
         }
         debug_assert!(res.is_ok());
-        if res.is_err() {
-            return res;
-        }
+        let _ = res?;
 
         self.changed_schema.set(true);
         self.changed_acp.set(true);
@@ -2755,7 +2745,6 @@ mod tests {
     use crate::credential::policy::CryptoPolicy;
     use crate::credential::Credential;
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, ReviveRecycledEvent, SearchEvent};
-    use crate::modify::{Modify, ModifyList};
     use crate::prelude::*;
     use kanidm_proto::v1::SchemaError;
     use std::sync::Arc;

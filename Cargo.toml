@@ -7,6 +7,8 @@ lto = "thin"
 members = [
     "kanidm_proto",
     "kanidmd",
+    "kanidmd/score",
+    "kanidmd/daemon",
     "kanidmd_web_ui",
     "kanidm_client",
     "kanidm_tools",
@@ -14,6 +16,7 @@ members = [
     "kanidm_unix_int/nss_kanidm",
     "kanidm_unix_int/pam_kanidm",
     "orca",
+    "profiles",
 ]
 
 exclude = [

@@ -1,8 +1,8 @@
-use crate::event::AuthResult;
-use crate::filter::{Filter, FilterInvalid};
-use crate::idm::AuthState;
-use crate::prelude::*;
-use crate::status::StatusRequestEvent;
+use kanidm::event::AuthResult;
+use kanidm::filter::{Filter, FilterInvalid};
+use kanidm::idm::AuthState;
+use kanidm::prelude::*;
+use kanidm::status::StatusRequestEvent;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{

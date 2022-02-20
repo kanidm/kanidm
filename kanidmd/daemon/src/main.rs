@@ -1,5 +1,7 @@
 #![deny(warnings)]
 #![warn(unused_extern_crates)]
+#![deny(clippy::todo)]
+#![deny(clippy::unimplemented)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
@@ -27,14 +29,14 @@ use std::str::FromStr;
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, OnlineBackup, ServerRole};
-use kanidm::core::{
+use kanidm::tracing_tree;
+use kanidm::utils::file_permissions_readonly;
+use score::{
     backup_server_core, create_server_core, dbscan_get_id2entry_core, dbscan_list_id2entry_core,
     dbscan_list_index_analysis_core, dbscan_list_index_core, dbscan_list_indexes_core,
     domain_rename_core, recover_account_core, reindex_server_core, restore_server_core,
     vacuum_server_core, verify_server_core,
 };
-use kanidm::tracing_tree;
-use kanidm::utils::file_permissions_readonly;
 
 use structopt::StructOpt;
 

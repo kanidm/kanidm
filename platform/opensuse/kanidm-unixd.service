@@ -14,6 +14,7 @@ RuntimeDirectory=kanidm-unixd
 
 Type=simple
 ExecStart=/usr/sbin/kanidm_unixd
+KillSignal=SIGINT
 
 # Implied by dynamic user.
 # ProtectHome=

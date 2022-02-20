@@ -1,0 +1,39 @@
+[package]
+name = "score"
+version = "0.1.0"
+authors = ["William Brown <william@blackhats.net.au>"]
+edition = "2021"
+license = "MPL-2.0"
+description = "Kanidm Server Library and Binary"
+documentation = "https://docs.rs/kanidm/latest/kanidm/"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+kanidm = { path = "../" }
+kanidm_proto = { path = "../../kanidm_proto" }
+libc = "0.2"
+
+uuid = { version = "0.8", features = ["serde", "v4" ] }
+
+tide = "0.16"
+tide-openssl = "^0.1.1"
+
+futures-util = "0.3"
+tokio = { version = "1", features = ["full"] }
+tokio-util = { version = "0.6", features = ["codec"] }
+tokio-openssl = "0.6"
+openssl = "0.10"
+ldap3_server = "0.1"
+
+bundy = "^0.1.1"
+
+tracing = { version = "0.1", features = ["attributes"] }
+serde = { version = "1", features = ["derive"] }
+async-trait = "0.1"
+async-std = { version = "1.6", features = ["tokio1"] }
+
+[build-dependencies]
+profiles = { path = "../../profiles" }

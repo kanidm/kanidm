@@ -10,15 +10,6 @@ ARGS ?= --build-arg "SCCACHE_REDIS=redis://172.24.20.4:6379"
 help:
 	@fgrep -h "##" $(MAKEFILE_LIST) | fgrep -v fgrep | sed -e 's/\\$$//' | sed -e 's/##/\n\t/'
 
-buildx/kanidmd/simd: ## build multiarch server images
-buildx/kanidmd/simd:
-	@docker buildx build $(EXT_OPTS) --pull --push --platform "linux/amd64" \
-		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
-		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
-		--build-arg "KANIDM_FEATURES=simd_support" \
-		$(ARGS) .
-	@docker buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
-
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
 buildx/kanidmd/x86_64_v3:
 	@docker buildx build $(EXT_OPTS) --pull --push --platform "linux/amd64" \

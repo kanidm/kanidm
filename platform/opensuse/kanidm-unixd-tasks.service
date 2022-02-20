@@ -11,6 +11,7 @@ After=chronyd.service ntpd.service network-online.target kanidm-unixd.service
 User=root
 Type=simple
 ExecStart=/usr/sbin/kanidm_unixd_tasks
+KillSignal=SIGINT
 
 CapabilityBoundingSet=CAP_CHOWN CAP_FOWNER CAP_DAC_OVERRIDE CAP_DAC_READ_SEARCH
 # SystemCallFilter=@aio @basic-io @chown @file-system @io-event @network-io @sync
