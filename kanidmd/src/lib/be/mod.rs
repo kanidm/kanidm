@@ -44,7 +44,8 @@ use crate::be::idl_arc_sqlite::{
 // Re-export this
 pub use crate::be::idl_sqlite::FsType;
 
-const FILTER_SEARCH_TEST_THRESHOLD: usize = 2;
+// Currently disabled due to improvements in idlset for intersection handling.
+const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
 
 #[derive(Debug, Clone)]

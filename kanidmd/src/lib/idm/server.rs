@@ -66,6 +66,7 @@ use concread::{
 use rand::prelude::*;
 use std::convert::TryFrom;
 use std::{sync::Arc, time::Duration};
+use tokio::sync::Mutex;
 use url::Url;
 
 use webauthn_rs::Webauthn;
@@ -75,16 +76,17 @@ use super::event::{GenerateBackupCodeEvent, ReadBackupCodeEvent, RemoveBackupCod
 
 use tracing::trace;
 
+type AuthSessionMutex = Arc<Mutex<AuthSession>>;
+type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
+
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
     // variaous accounts, and we have a good idea of how to structure the
     // in memory caches related to locking.
     session_ticket: Semaphore,
-    sessions: BptreeMap<Uuid, AuthSession>,
-    // Do we need a softlock ticket?
-    softlock_ticket: Semaphore,
-    softlocks: HashMap<Uuid, CredSoftLock>,
+    sessions: BptreeMap<Uuid, AuthSessionMutex>,
+    softlocks: HashMap<Uuid, CredSoftLockMutex>,
     /// A set of in progress MFA registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
     /// Reference to the query server.
@@ -102,10 +104,9 @@ pub struct IdmServer {
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
 pub struct IdmServerAuthTransaction<'a> {
     session_ticket: &'a Semaphore,
-    sessions: &'a BptreeMap<Uuid, AuthSession>,
+    sessions: &'a BptreeMap<Uuid, AuthSessionMutex>,
+    softlocks: &'a HashMap<Uuid, CredSoftLockMutex>,
 
-    softlock_ticket: &'a Semaphore,
-    softlocks: &'a HashMap<Uuid, CredSoftLock>,
     pub qs_read: QueryServerReadTransaction<'a>,
     /// Thread/Server ID
     sid: Sid,
@@ -220,7 +221,6 @@ impl IdmServer {
             IdmServer {
                 session_ticket: Semaphore::new(1),
                 sessions: BptreeMap::new(),
-                softlock_ticket: Semaphore::new(1),
                 softlocks: HashMap::new(),
                 mfareg_sessions: BptreeMap::new(),
                 qs,
@@ -245,15 +245,11 @@ impl IdmServer {
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut sid);
 
-        // let session_ticket = self.session_ticket.acquire().await;
         let qs_read = self.qs.read_async().await;
 
         IdmServerAuthTransaction {
-            // _session_ticket: session_ticket,
-            // sessions: self.sessions.write(),
             session_ticket: &self.session_ticket,
             sessions: &self.sessions,
-            softlock_ticket: &self.softlock_ticket,
             softlocks: &self.softlocks,
             qs_read,
             sid,
@@ -526,7 +522,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 //
                 // Check anything needed? Get the current auth-session-id from request
                 // because it associates to the nonce's etc which were all cached.
-                let euuid = self.qs_read.name_to_uuid(init.name.as_str())?; // I CAN'T TRACE WHERE AUDITSCOPE GOES :(((
+                let euuid = self.qs_read.name_to_uuid(init.name.as_str())?;
 
                 // Get the first / single entry we expect here ....
                 let entry = self.qs_read.internal_search_uuid(&euuid)?;
@@ -543,32 +539,54 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // out of the session tree.
                 let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
 
+                // Intent to take both trees to write.
+                let _session_ticket = self.session_ticket.acquire().await;
+
                 // Check the credential that the auth_session will attempt to
                 // use.
-                let is_valid = {
-                    let cred_uuid = account.primary_cred_uuid();
-                    // Acquire the softlock map
-                    let _softlock_ticket = self.softlock_ticket.acquire().await;
-                    let mut softlock_write = self.softlocks.write();
-                    // Does it exist?
-                    let r = softlock_write
-                        .get_mut(&cred_uuid)
-                        .map(|slock| {
-                            // Apply the current time.
-                            slock.apply_time_step(ct);
-                            // Now check the results
-                            slock.is_valid()
-                        })
-                        .unwrap_or(true);
-                    softlock_write.commit();
-                    r
+                //
+                // NOTE: Very careful use of await here to avoid an issue with write.
+                let maybe_slock_ref =
+                    account
+                        .primary_cred_uuid_and_policy()
+                        .map(|(cred_uuid, policy)| {
+                            // Acquire the softlock map
+                            //
+                            // We have no issue calling this with .write here, since we
+                            // already hold the session_ticket above.
+                            let mut softlock_write = self.softlocks.write();
+                            let slock_ref: CredSoftLockMutex =
+                                if let Some(slock_ref) = softlock_write.get(&cred_uuid) {
+                                    slock_ref.clone()
+                                } else {
+                                    // Create if not exist, and the cred type supports softlocking.
+                                    let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+                                    softlock_write.insert(cred_uuid, slock.clone());
+                                    slock
+                                };
+                            softlock_write.commit();
+                            slock_ref
+                        });
+
+                let mut maybe_slock = if let Some(slock_ref) = maybe_slock_ref.as_ref() {
+                    Some(slock_ref.lock().await)
+                } else {
+                    None
+                };
+
+                // Need to as_mut here so that we hold the slock for the whole operation.
+                let is_valid = if let Some(slock) = maybe_slock.as_mut() {
+                    slock.apply_time_step(ct);
+                    slock.is_valid()
+                } else {
+                    false
                 };
 
                 let (auth_session, state) = if is_valid {
                     AuthSession::new(account, self.webauthn, ct)
                 } else {
                     // it's softlocked, don't even bother.
-                    security_info!("Account is softlocked.");
+                    security_info!("Account is softlocked, or has no credentials associated.");
                     (
                         None,
                         AuthState::Denied("Account is temporarily locked".to_string()),
@@ -577,14 +595,12 @@ impl<'a> IdmServerAuthTransaction<'a> {
 
                 match auth_session {
                     Some(auth_session) => {
-                        // Now acquire the session tree for writing.
-                        let _session_ticket = self.session_ticket.acquire().await;
                         let mut session_write = self.sessions.write();
                         spanned!("idm::server::auth<Init> -> sessions", {
                             if session_write.contains_key(&sessionid) {
                                 Err(OperationError::InvalidSessionState)
                             } else {
-                                session_write.insert(sessionid, auth_session);
+                                session_write.insert(sessionid, Arc::new(Mutex::new(auth_session)));
                                 // Debugging: ensure we really inserted ...
                                 debug_assert!(session_write.get(&sessionid).is_some());
                                 Ok(())
@@ -612,34 +628,38 @@ impl<'a> IdmServerAuthTransaction<'a> {
             } // AuthEventStep::Init
             AuthEventStep::Begin(mech) => {
                 // lperf_segment!("idm::server::auth<Begin>", || {
-                let _session_ticket = self.session_ticket.acquire().await;
-                let _softlock_ticket = self.softlock_ticket.acquire().await;
+                // let _session_ticket = self.session_ticket.acquire().await;
 
-                let mut session_write = self.sessions.write();
+                let session_read = self.sessions.read();
                 // Do we have a session?
-                let auth_session = session_write
+                let auth_session_ref = session_read
                     // Why is the session missing?
-                    .get_mut(&mech.sessionid)
+                    .get(&mech.sessionid)
+                    .map(|auth_session_ref| auth_session_ref.clone())
                     .ok_or_else(|| {
                         admin_error!("Invalid Session State (no present session uuid)");
                         OperationError::InvalidSessionState
                     })?;
 
-                // From the auth_session, determine if the current account
-                // credential that we are using has become softlocked or not.
-                let mut softlock_write = self.softlocks.write();
+                let mut auth_session = auth_session_ref.lock().await;
 
-                let cred_uuid = auth_session.get_account().primary_cred_uuid();
-
-                let is_valid = softlock_write
-                    .get_mut(&cred_uuid)
-                    .map(|slock| {
-                        // Apply the current time.
-                        slock.apply_time_step(ct);
-                        // Now check the results
-                        slock.is_valid()
-                    })
-                    .unwrap_or(true);
+                let is_valid =
+                    if let Some(cred_uuid) = auth_session.get_account().primary_cred_uuid() {
+                        // From the auth_session, determine if the current account
+                        // credential that we are using has become softlocked or not.
+                        let softlock_read = self.softlocks.read();
+                        if let Some(slock_ref) = softlock_read.get(&cred_uuid) {
+                            let mut slock = slock_ref.lock().await;
+                            // Apply the current time.
+                            slock.apply_time_step(ct);
+                            // Now check the results
+                            slock.is_valid()
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    };
 
                 let r = if is_valid {
                     // Indicate to the session which auth mech we now want to proceed with.
@@ -656,78 +676,88 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         delay,
                     }
                 });
-                softlock_write.commit();
-                session_write.commit();
+                // softlock_write.commit();
+                // session_write.commit();
                 r
             } // End AuthEventStep::Mech
             AuthEventStep::Cred(creds) => {
                 // lperf_segment!("idm::server::auth<Creds>", || {
-                let _session_ticket = self.session_ticket.acquire().await;
-                let _softlock_ticket = self.softlock_ticket.acquire().await;
+                // let _session_ticket = self.session_ticket.acquire().await;
 
-                let mut session_write = self.sessions.write();
+                let session_read = self.sessions.read();
                 // Do we have a session?
-                let auth_session = session_write
+                let auth_session_ref = session_read
                     // Why is the session missing?
-                    .get_mut(&creds.sessionid)
+                    .get(&creds.sessionid)
+                    .map(|auth_session_ref| auth_session_ref.clone())
                     .ok_or_else(|| {
                         admin_error!("Invalid Session State (no present session uuid)");
                         OperationError::InvalidSessionState
                     })?;
 
+                let mut auth_session = auth_session_ref.lock().await;
+
+                let maybe_slock_ref =
+                    auth_session
+                        .get_account()
+                        .primary_cred_uuid()
+                        .and_then(|cred_uuid| {
+                            let softlock_read = self.softlocks.read();
+
+                            softlock_read.get(&cred_uuid).map(|s| s.clone())
+                        });
+
                 // From the auth_session, determine if the current account
                 // credential that we are using has become softlocked or not.
-                let mut softlock_write = self.softlocks.write();
 
-                let cred_uuid = auth_session.get_account().primary_cred_uuid();
+                let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
+                    Some(s.lock().await)
+                } else {
+                    None
+                };
 
-                let is_valid = softlock_write
-                    .get_mut(&cred_uuid)
-                    .map(|slock| {
-                        // Apply the current time.
-                        slock.apply_time_step(ct);
-                        // Now check the results
-                        slock.is_valid()
-                    })
-                    .unwrap_or(true);
+                let maybe_valid = if let Some(mut slock) = maybe_slock {
+                    // Apply the current time.
+                    slock.apply_time_step(ct);
+                    // Now check the results
+                    if slock.is_valid() {
+                        Some(slock)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
 
-                let r = if is_valid {
-                    // Process the credentials here as required.
-                    // Basically throw them at the auth_session and see what
-                    // falls out.
-                    let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
-                    auth_session
-                        .validate_creds(
-                            &creds.cred,
-                            &ct,
-                            &self.async_tx,
-                            self.webauthn,
-                            pw_badlist_cache,
-                            &*self.uat_bundy_hmac,
-                        )
-                        .map(|aus| {
-                            // Inspect the result:
-                            // if it was a failure, we need to inc the softlock.
-                            if let AuthState::Denied(_) = &aus {
-                                if let Some(slock) = softlock_write.get_mut(&cred_uuid) {
+                let r = match maybe_valid {
+                    Some(mut slock) => {
+                        // Process the credentials here as required.
+                        // Basically throw them at the auth_session and see what
+                        // falls out.
+                        let pw_badlist_cache = Some(&(*self.pw_badlist_cache));
+                        auth_session
+                            .validate_creds(
+                                &creds.cred,
+                                &ct,
+                                &self.async_tx,
+                                self.webauthn,
+                                pw_badlist_cache,
+                                &*self.uat_bundy_hmac,
+                            )
+                            .map(|aus| {
+                                // Inspect the result:
+                                // if it was a failure, we need to inc the softlock.
+                                if let AuthState::Denied(_) = &aus {
                                     // Update it.
                                     slock.record_failure(ct);
-                                } else {
-                                    // Create if not exist, and the cred type supports softlocking.
-                                    if let Some(policy) =
-                                        auth_session.get_account().primary_cred_softlock_policy()
-                                    {
-                                        let mut slock = CredSoftLock::new(policy);
-                                        slock.record_failure(ct);
-                                        softlock_write.insert(cred_uuid, slock);
-                                    }
-                                }
-                            };
-                            aus
-                        })
-                } else {
-                    // Fail the session
-                    auth_session.end_session("Account is temporarily locked")
+                                };
+                                aus
+                            })
+                    }
+                    _ => {
+                        // Fail the session
+                        auth_session.end_session("Account is temporarily locked")
+                    }
                 }
                 .map(|aus| {
                     // TODO: Change this william!
@@ -740,8 +770,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                         delay,
                     }
                 });
-                softlock_write.commit();
-                session_write.commit();
+                // softlock_write.commit();
+                // session_write.commit();
                 r
             } // End AuthEventStep::Cred
         }
@@ -769,45 +799,53 @@ impl<'a> IdmServerAuthTransaction<'a> {
             return Ok(None);
         }
 
-        let _softlock_ticket = self.softlock_ticket.acquire().await;
-        let mut softlock_write = self.softlocks.write();
+        let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
+            Some((cred_uuid, policy)) => {
+                let softlock_read = self.softlocks.read();
+                let slock_ref = match softlock_read.get(&cred_uuid) {
+                    Some(slock_ref) => slock_ref.clone(),
+                    None => {
+                        let _session_ticket = self.session_ticket.acquire().await;
+                        let mut softlock_write = self.softlocks.write();
+                        let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+                        softlock_write.insert(cred_uuid, slock.clone());
+                        softlock_write.commit();
+                        slock
+                    }
+                };
+                Some(slock_ref)
+            }
+            None => None,
+        };
 
-        let cred_uuid = account.unix_cred_uuid();
-        let is_valid = if let Some(cu) = cred_uuid.as_ref() {
-            // Advanced and then check the softlock.
-            softlock_write
-                .get_mut(cu)
-                .map(|slock| {
-                    // Apply the current time.
-                    slock.apply_time_step(ct);
-                    // Now check the results
-                    slock.is_valid()
-                })
-                // No sl, it's valid.
-                .unwrap_or(true)
+        let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
+            Some(s.lock().await)
         } else {
-            // No cred id? It'll fail in verify ...
-            true
+            None
+        };
+
+        let maybe_valid = if let Some(mut slock) = maybe_slock {
+            // Apply the current time.
+            slock.apply_time_step(ct);
+            // Now check the results
+            if slock.is_valid() {
+                Some(slock)
+            } else {
+                None
+            }
+        } else {
+            None
         };
 
         // Validate the unix_pw - this checks the account/cred lock states.
-        let res = if is_valid {
+        let res = if let Some(mut slock) = maybe_valid {
             // Account is unlocked, can proceed.
             account
                 .verify_unix_credential(uae.cleartext.as_str(), &self.async_tx, ct)
                 .map(|res| {
                     if res.is_none() {
-                        if let Some(cu) = cred_uuid.as_ref() {
-                            // Update the cred failure.
-                            if let Some(slock) = softlock_write.get_mut(cu) {
-                                // Update it.
-                                slock.record_failure(ct);
-                            } else if let Some(policy) = account.unix_cred_softlock_policy() {
-                                let mut slock = CredSoftLock::new(policy);
-                                slock.record_failure(ct);
-                                softlock_write.insert(*cu, slock);
-                            };
-                        }
+                        // Update it.
+                        slock.record_failure(ct);
                     };
                     res
                 })
@@ -816,8 +854,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
             security_info!("Account is softlocked.");
             Ok(None)
         };
-
-        softlock_write.commit();
         res
     }
 
@@ -869,28 +905,45 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 return Ok(None);
             }
 
-            let _softlock_ticket = self.softlock_ticket.acquire().await;
-            let mut softlock_write = self.softlocks.write();
-
-            let cred_uuid = account.unix_cred_uuid();
-            let is_valid = if let Some(cu) = cred_uuid.as_ref() {
-                // Advanced and then check the softlock.
-                softlock_write
-                    .get_mut(cu)
-                    .map(|slock| {
-                        // Apply the current time.
-                        slock.apply_time_step(ct);
-                        // Now check the results
-                        slock.is_valid()
-                    })
-                    // No sl, it's valid.
-                    .unwrap_or(true)
-            } else {
-                // No cred id? It'll fail in verify ...
-                true
+            let maybe_slock_ref = match account.unix_cred_uuid_and_policy() {
+                Some((cred_uuid, policy)) => {
+                    let softlock_read = self.softlocks.read();
+                    let slock_ref = match softlock_read.get(&cred_uuid) {
+                        Some(slock_ref) => slock_ref.clone(),
+                        None => {
+                            let _session_ticket = self.session_ticket.acquire().await;
+                            let mut softlock_write = self.softlocks.write();
+                            let slock = Arc::new(Mutex::new(CredSoftLock::new(policy)));
+                            softlock_write.insert(cred_uuid, slock.clone());
+                            softlock_write.commit();
+                            slock
+                        }
+                    };
+                    Some(slock_ref)
+                }
+                None => None,
             };
 
-            let res = if is_valid {
+            let maybe_slock = if let Some(s) = maybe_slock_ref.as_ref() {
+                Some(s.lock().await)
+            } else {
+                None
+            };
+
+            let maybe_valid = if let Some(mut slock) = maybe_slock {
+                // Apply the current time.
+                slock.apply_time_step(ct);
+                // Now check the results
+                if slock.is_valid() {
+                    Some(slock)
+                } else {
+                    None
+                }
+            } else {
+                None
+            };
+
+            let res = if let Some(mut slock) = maybe_valid {
                 if account
                     .verify_unix_credential(lae.cleartext.as_str(), &self.async_tx, ct)?
                     .is_some()
@@ -927,17 +980,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                     }))
                 } else {
                     // PW failure, update softlock.
-                    if let Some(cu) = cred_uuid.as_ref() {
-                        // Update the cred failure.
-                        if let Some(slock) = softlock_write.get_mut(cu) {
-                            // Update it.
-                            slock.record_failure(ct);
-                        } else if let Some(policy) = account.unix_cred_softlock_policy() {
-                            let mut slock = CredSoftLock::new(policy);
-                            slock.record_failure(ct);
-                            softlock_write.insert(*cu, slock);
-                        };
-                    };
+                    slock.record_failure(ct);
                     Ok(None)
                 }
             } else {
@@ -945,8 +988,6 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 security_info!("Account is softlocked.");
                 Ok(None)
             };
-
-            softlock_write.commit();
             res
         }
     }
