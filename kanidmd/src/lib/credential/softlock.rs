@@ -65,6 +65,7 @@ pub enum CredSoftLockPolicy {
     Password,
     Totp(u64),
     Webauthn,
+    Unrestricted,
 }
 
 impl CredSoftLockPolicy {
@@ -110,6 +111,10 @@ impl CredSoftLockPolicy {
                     ct + Duration::from_secs(1),
                     ct + Duration::from_secs(1),
                 )
+            }
+            CredSoftLockPolicy::Unrestricted => {
+                // No action needed
+                LockState::Init
             }
         }
     }

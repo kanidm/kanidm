@@ -755,22 +755,22 @@ impl Credential {
         }
     }
 
-    pub(crate) fn softlock_policy(&self) -> Option<CredSoftLockPolicy> {
+    pub(crate) fn softlock_policy(&self) -> CredSoftLockPolicy {
         match &self.type_ {
             CredentialType::Password(_pw) | CredentialType::GeneratedPassword(_pw) => {
-                Some(CredSoftLockPolicy::Password)
+                CredSoftLockPolicy::Password
             }
             CredentialType::PasswordMfa(_pw, totp, wan, _) => {
                 // For backup code, use totp/wan policy (whatever is available)
                 if let Some(r_totp) = totp {
-                    Some(CredSoftLockPolicy::Totp(r_totp.step))
+                    CredSoftLockPolicy::Totp(r_totp.step)
                 } else if !wan.is_empty() {
-                    Some(CredSoftLockPolicy::Webauthn)
+                    CredSoftLockPolicy::Webauthn
                 } else {
-                    None
+                    CredSoftLockPolicy::Password
                 }
             }
-            CredentialType::Webauthn(_wan) => Some(CredSoftLockPolicy::Webauthn),
+            CredentialType::Webauthn(_wan) => CredSoftLockPolicy::Webauthn,
         }
     }
 

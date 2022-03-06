@@ -135,7 +135,12 @@ impl Configuration {
         let mut c = Configuration {
             address: String::from("127.0.0.1:8080"),
             ldapaddress: None,
-            threads: num_cpus::get(),
+            threads: std::thread::available_parallelism()
+                .map(|t| t.get())
+                .unwrap_or_else(|_e| {
+                    eprintln!("WARNING: Unable to read number of available CPUs, defaulting to 1");
+                    1
+                }),
             db_path: String::from(""),
             db_fs_type: None,
             db_arc_size: None,

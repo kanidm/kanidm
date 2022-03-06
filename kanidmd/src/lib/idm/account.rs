@@ -238,17 +238,27 @@ impl Account {
         inputs
     }
 
-    pub fn primary_cred_uuid(&self) -> Uuid {
-        match &self.primary {
-            Some(cred) => cred.uuid,
-            None => UUID_ANONYMOUS,
-        }
+    pub fn primary_cred_uuid(&self) -> Option<Uuid> {
+        self.primary.as_ref().map(|cred| cred.uuid).or_else(|| {
+            if self.is_anonymous() {
+                Some(UUID_ANONYMOUS)
+            } else {
+                None
+            }
+        })
     }
 
-    pub fn primary_cred_softlock_policy(&self) -> Option<CredSoftLockPolicy> {
+    pub fn primary_cred_uuid_and_policy(&self) -> Option<(Uuid, CredSoftLockPolicy)> {
         self.primary
             .as_ref()
-            .and_then(|cred| cred.softlock_policy())
+            .map(|cred| (cred.uuid, cred.softlock_policy()))
+            .or_else(|| {
+                if self.is_anonymous() {
+                    Some((UUID_ANONYMOUS, CredSoftLockPolicy::Unrestricted))
+                } else {
+                    None
+                }
+            })
     }
 
     pub fn is_anonymous(&self) -> bool {

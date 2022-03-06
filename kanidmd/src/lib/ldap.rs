@@ -7,7 +7,7 @@ use crate::idm::server::{IdmServer, IdmServerTransaction};
 use crate::prelude::*;
 use async_std::task;
 use kanidm_proto::v1::{OperationError, UserAuthToken};
-use ldap3_server::simple::*;
+use ldap3_proto::simple::*;
 use regex::Regex;
 use std::collections::BTreeSet;
 use std::iter;
@@ -531,8 +531,8 @@ mod tests {
     use crate::ldap::LdapServer;
     use async_std::task;
     use hashbrown::HashSet;
-    use ldap3_server::proto::{LdapFilter, LdapOp, LdapSearchScope};
-    use ldap3_server::simple::*;
+    use ldap3_proto::proto::{LdapFilter, LdapOp, LdapSearchScope};
+    use ldap3_proto::simple::*;
 
     const TEST_PASSWORD: &'static str = "ntaoeuntnaoeuhraohuercahu😍";
 

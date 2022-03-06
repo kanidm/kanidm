@@ -31,7 +31,7 @@ use kanidm_proto::v1::{
     SearchRequest, SearchResponse, UserAuthToken, WhoamiResponse,
 };
 
-use ldap3_server::simple::LdapFilter;
+use ldap3_proto::simple::LdapFilter;
 use std::collections::BTreeSet;
 use std::time::Duration;
 use uuid::Uuid;

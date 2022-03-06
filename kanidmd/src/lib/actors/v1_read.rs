@@ -36,7 +36,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
 
-use ldap3_server::simple::*;
+use ldap3_proto::simple::*;
 use std::convert::TryFrom;
 
 // ===========================================================

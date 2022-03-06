@@ -166,12 +166,10 @@ impl UnixUserAccount {
         })
     }
 
-    pub fn unix_cred_uuid(&self) -> Option<Uuid> {
-        self.cred.as_ref().map(|c| c.uuid)
-    }
-
-    pub fn unix_cred_softlock_policy(&self) -> Option<CredSoftLockPolicy> {
-        self.cred.as_ref().and_then(|cred| cred.softlock_policy())
+    pub fn unix_cred_uuid_and_policy(&self) -> Option<(Uuid, CredSoftLockPolicy)> {
+        self.cred
+            .as_ref()
+            .map(|cred| (cred.uuid, cred.softlock_policy()))
     }
 
     pub fn is_anonymous(&self) -> bool {
