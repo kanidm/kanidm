@@ -9,8 +9,7 @@ RUN zypper ar obs://devel:languages:rust devel:languages:rust && \
     zypper install -y \
         cargo \
         rust \
-        gcc \
-        clang lld \
+        gcc clang lld \
         make automake autoconf \
         libopenssl-devel pam-devel \
         sqlite3-devel \
