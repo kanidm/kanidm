@@ -1903,7 +1903,7 @@ dependencies = [
  "jemallocator",
  "kanidm_proto",
  "lazy_static",
- "ldap3_server",
+ "ldap3_proto",
  "libc",
  "libsqlite3-sys",
  "num_enum",
@@ -2072,6 +2072,17 @@ dependencies = [
  "byteorder",
  "bytes",
  "nom 2.2.1",
+]
+
+[[package]]
+name = "ldap3_proto"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38792e250a5442c1af9a13c3e979796e96b494862d751a4172300b6f668d449c"
+dependencies = [
+ "bytes",
+ "lber",
+ "tokio-util",
 ]
 
 [[package]]
@@ -3174,7 +3185,7 @@ dependencies = [
  "futures-util",
  "kanidm",
  "kanidm_proto",
- "ldap3_server",
+ "ldap3_proto",
  "libc",
  "openssl",
  "profiles",

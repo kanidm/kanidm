@@ -17,7 +17,7 @@ use crate::value::{IndexType, PartialValue};
 use concread::arcache::ARCacheReadTxn;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
-use ldap3_server::proto::{LdapFilter, LdapSubstringFilter};
+use ldap3_proto::proto::{LdapFilter, LdapSubstringFilter};
 // use smartstring::alias::String as AttrString;
 use serde::Deserialize;
 use std::cmp::{Ordering, PartialOrd};
@@ -1332,7 +1332,7 @@ mod tests {
     use std::collections::BTreeSet;
 
     use kanidm_proto::v1::Filter as ProtoFilter;
-    use ldap3_server::simple::LdapFilter;
+    use ldap3_proto::simple::LdapFilter;
 
     #[test]
     fn test_filter_simple() {

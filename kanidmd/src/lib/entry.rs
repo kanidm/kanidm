@@ -43,7 +43,7 @@ use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
 use crate::be::{IdxKey, IdxSlope};
 
 use hashbrown::HashMap;
-use ldap3_server::simple::{LdapPartialAttribute, LdapSearchResultEntry};
+use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use smartstring::alias::String as AttrString;
 use std::collections::BTreeMap as Map;
 pub use std::collections::BTreeSet as Set;

@@ -70,7 +70,9 @@ base64 = "0.13"
 
 idlset = { version = "^0.2" }
 
-ldap3_server = "0.1"
+# Needs to be ldap3_proto!
+ldap3_proto = "0.2.2"
+
 webauthn-rs = "0.3"
 
 libc = "0.2"

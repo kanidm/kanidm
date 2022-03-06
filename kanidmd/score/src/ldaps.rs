@@ -7,7 +7,7 @@ use tokio_openssl::SslStream;
 
 use futures_util::sink::SinkExt;
 use futures_util::stream::StreamExt;
-use ldap3_server::{proto::LdapMsg, LdapCodec};
+use ldap3_proto::{proto::LdapMsg, LdapCodec};
 use std::marker::Unpin;
 use std::net;
 use std::str::FromStr;
