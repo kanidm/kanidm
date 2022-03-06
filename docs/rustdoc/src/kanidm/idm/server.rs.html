@@ -1,5 +1,6 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd&#x2F;src&#x2F;lib&#x2F;idm&#x2F;server.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>server.rs - source</title><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../light.css"  id="themeStyle"><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled ><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled ><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
-    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"><style type="text/css">#crate-search{background-image:url("../../../down-arrow.svg");}</style></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a href='../../../kanidm/index.html'><div class='logo-container rust-logo'><img src='../../../rust-logo.png' alt='logo'></div></a></nav><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><nav class="sub"><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav><section id="main" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd&#x2F;src&#x2F;lib&#x2F;idm&#x2F;server.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
+    <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="sidebar-menu" role="button">&#9776;</div><a class="sidebar-logo" href="../../../kanidm/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.png" alt="logo"></div>
+        </a></nav><main><div class="width-limiter"><div class="sub-container"><a class="sub-logo-container" href="../../../kanidm/index.html"><img class="rust-logo" src="../../../rust-logo.png" alt="logo"></a><nav class="sub"><div class="theme-picker"><button id="theme-picker" aria-label="Pick another theme!" aria-haspopup="menu" title="themes"><img width="18" height="18" alt="Pick another theme!" src="../../../brush.svg"></button><div id="theme-choices" role="menu"></div></div><form class="search-form"><div class="search-container"><div><select id="crate-search"><option value="All crates">All crates</option></select><input class="search-input" name="search" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"></div><button type="button" id="help-button" title="help">?</button><a id="settings-menu" href="../../../settings.html" title="settings"><img width="18" height="18" alt="Change settings" src="../../../wheel.svg"></a></div></form></nav></div><section id="main-content" class="content"><div class="example-wrap"><pre class="line-numbers"><span id="1">   1</span>
 <span id="2">   2</span>
 <span id="3">   3</span>
 <span id="4">   4</span>
@@ -3872,6 +3873,47 @@
 <span id="3871">3871</span>
 <span id="3872">3872</span>
 <span id="3873">3873</span>
+<span id="3874">3874</span>
+<span id="3875">3875</span>
+<span id="3876">3876</span>
+<span id="3877">3877</span>
+<span id="3878">3878</span>
+<span id="3879">3879</span>
+<span id="3880">3880</span>
+<span id="3881">3881</span>
+<span id="3882">3882</span>
+<span id="3883">3883</span>
+<span id="3884">3884</span>
+<span id="3885">3885</span>
+<span id="3886">3886</span>
+<span id="3887">3887</span>
+<span id="3888">3888</span>
+<span id="3889">3889</span>
+<span id="3890">3890</span>
+<span id="3891">3891</span>
+<span id="3892">3892</span>
+<span id="3893">3893</span>
+<span id="3894">3894</span>
+<span id="3895">3895</span>
+<span id="3896">3896</span>
+<span id="3897">3897</span>
+<span id="3898">3898</span>
+<span id="3899">3899</span>
+<span id="3900">3900</span>
+<span id="3901">3901</span>
+<span id="3902">3902</span>
+<span id="3903">3903</span>
+<span id="3904">3904</span>
+<span id="3905">3905</span>
+<span id="3906">3906</span>
+<span id="3907">3907</span>
+<span id="3908">3908</span>
+<span id="3909">3909</span>
+<span id="3910">3910</span>
+<span id="3911">3911</span>
+<span id="3912">3912</span>
+<span id="3913">3913</span>
+<span id="3914">3914</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -3940,6 +3982,7 @@
 <span class="kw">use</span> <span class="ident">rand::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
+<span class="kw">use</span> <span class="ident">tokio::sync::Mutex</span>;
 <span class="kw">use</span> <span class="ident">url::Url</span>;
 
 <span class="kw">use</span> <span class="ident">webauthn_rs::Webauthn</span>;
@@ -3949,16 +3992,17 @@
 
 <span class="kw">use</span> <span class="ident">tracing::trace</span>;
 
+<span class="kw">type</span> <span class="ident">AuthSessionMutex</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">AuthSession</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+<span class="kw">type</span> <span class="ident">CredSoftLockMutex</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CredSoftLock</span><span class="op">&gt;</span><span class="op">&gt;</span>;
+
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServer</span> {
     <span class="comment">// There is a good reason to keep this single thread - it</span>
     <span class="comment">// means that limits to sessions can be easily applied and checked to</span>
     <span class="comment">// variaous accounts, and we have a good idea of how to structure the</span>
     <span class="comment">// in memory caches related to locking.</span>
     <span class="ident">session_ticket</span>: <span class="ident">Semaphore</span>,
-    <span class="ident">sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">AuthSession</span><span class="op">&gt;</span>,
-    <span class="comment">// Do we need a softlock ticket?</span>
-    <span class="ident">softlock_ticket</span>: <span class="ident">Semaphore</span>,
-    <span class="ident">softlocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLock</span><span class="op">&gt;</span>,
+    <span class="ident">sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">AuthSessionMutex</span><span class="op">&gt;</span>,
+    <span class="ident">softlocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLockMutex</span><span class="op">&gt;</span>,
     <span class="doccomment">/// A set of in progress MFA registrations</span>
     <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">MfaRegSession</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Reference to the query server.</span>
@@ -3976,10 +4020,9 @@
 <span class="doccomment">/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServerAuthTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">session_ticket</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Semaphore</span>,
-    <span class="ident">sessions</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">AuthSession</span><span class="op">&gt;</span>,
+    <span class="ident">sessions</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">AuthSessionMutex</span><span class="op">&gt;</span>,
+    <span class="ident">softlocks</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLockMutex</span><span class="op">&gt;</span>,
 
-    <span class="ident">softlock_ticket</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Semaphore</span>,
-    <span class="ident">softlocks</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLock</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Thread/Server ID</span>
     <span class="ident">sid</span>: <span class="ident">Sid</span>,
@@ -4094,7 +4137,6 @@
             <span class="ident">IdmServer</span> {
                 <span class="ident">session_ticket</span>: <span class="ident">Semaphore::new</span>(<span class="number">1</span>),
                 <span class="ident">sessions</span>: <span class="ident">BptreeMap::new</span>(),
-                <span class="ident">softlock_ticket</span>: <span class="ident">Semaphore::new</span>(<span class="number">1</span>),
                 <span class="ident">softlocks</span>: <span class="ident">HashMap::new</span>(),
                 <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMap::new</span>(),
                 <span class="ident">qs</span>,
@@ -4119,15 +4161,11 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">rng</span> <span class="op">=</span> <span class="ident">StdRng::from_entropy</span>();
         <span class="ident">rng</span>.<span class="ident">fill</span>(<span class="kw-2">&amp;mut</span> <span class="ident">sid</span>);
 
-        <span class="comment">// let session_ticket = self.session_ticket.acquire().await;</span>
         <span class="kw">let</span> <span class="ident">qs_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs</span>.<span class="ident">read_async</span>().<span class="kw">await</span>;
 
         <span class="ident">IdmServerAuthTransaction</span> {
-            <span class="comment">// _session_ticket: session_ticket,</span>
-            <span class="comment">// sessions: self.sessions.write(),</span>
             <span class="ident">session_ticket</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">session_ticket</span>,
             <span class="ident">sessions</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">sessions</span>,
-            <span class="ident">softlock_ticket</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">softlock_ticket</span>,
             <span class="ident">softlocks</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">softlocks</span>,
             <span class="ident">qs_read</span>,
             <span class="ident">sid</span>,
@@ -4400,7 +4438,7 @@
                 <span class="comment">//</span>
                 <span class="comment">// Check anything needed? Get the current auth-session-id from request</span>
                 <span class="comment">// because it associates to the nonce&#39;s etc which were all cached.</span>
-                <span class="kw">let</span> <span class="ident">euuid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">name_to_uuid</span>(<span class="ident">init</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>; <span class="comment">// I CAN&#39;T TRACE WHERE AUDITSCOPE GOES :(((</span>
+                <span class="kw">let</span> <span class="ident">euuid</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">name_to_uuid</span>(<span class="ident">init</span>.<span class="ident">name</span>.<span class="ident">as_str</span>())<span class="question-mark">?</span>;
 
                 <span class="comment">// Get the first / single entry we expect here ....</span>
                 <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_read</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">euuid</span>)<span class="question-mark">?</span>;
@@ -4417,32 +4455,54 @@
                 <span class="comment">// out of the session tree.</span>
                 <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">Account::try_from_entry_ro</span>(<span class="ident">entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">qs_read</span>)<span class="question-mark">?</span>;
 
+                <span class="comment">// Intent to take both trees to write.</span>
+                <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
+
                 <span class="comment">// Check the credential that the auth_session will attempt to</span>
                 <span class="comment">// use.</span>
-                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> {
-                    <span class="kw">let</span> <span class="ident">cred_uuid</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">primary_cred_uuid</span>();
-                    <span class="comment">// Acquire the softlock map</span>
-                    <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
-                    <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
-                    <span class="comment">// Does it exist?</span>
-                    <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">softlock_write</span>
-                        .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>)
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">slock</span><span class="op">|</span> {
-                            <span class="comment">// Apply the current time.</span>
-                            <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
-                            <span class="comment">// Now check the results</span>
-                            <span class="ident">slock</span>.<span class="ident">is_valid</span>()
-                        })
-                        .<span class="ident">unwrap_or</span>(<span class="bool-val">true</span>);
-                    <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
-                    <span class="ident">r</span>
+                <span class="comment">//</span>
+                <span class="comment">// NOTE: Very careful use of await here to avoid an issue with write.</span>
+                <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span>
+                    <span class="ident">account</span>
+                        .<span class="ident">primary_cred_uuid_and_policy</span>()
+                        .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">cred_uuid</span>, <span class="ident">policy</span>)<span class="op">|</span> {
+                            <span class="comment">// Acquire the softlock map</span>
+                            <span class="comment">//</span>
+                            <span class="comment">// We have no issue calling this with .write here, since we</span>
+                            <span class="comment">// already hold the session_ticket above.</span>
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
+                            <span class="kw">let</span> <span class="ident">slock_ref</span>: <span class="ident">CredSoftLockMutex</span> <span class="op">=</span>
+                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>) <span class="op">=</span> <span class="ident">softlock_write</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>) {
+                                    <span class="ident">slock_ref</span>.<span class="ident">clone</span>()
+                                } <span class="kw">else</span> {
+                                    <span class="comment">// Create if not exist, and the cred type supports softlocking.</span>
+                                    <span class="kw">let</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">CredSoftLock::new</span>(<span class="ident">policy</span>)));
+                                    <span class="ident">softlock_write</span>.<span class="ident">insert</span>(<span class="ident">cred_uuid</span>, <span class="ident">slock</span>.<span class="ident">clone</span>());
+                                    <span class="ident">slock</span>
+                                };
+                            <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
+                            <span class="ident">slock_ref</span>
+                        });
+
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                };
+
+                <span class="comment">// Need to as_mut here so that we hold the slock for the whole operation.</span>
+                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span>.<span class="ident">as_mut</span>() {
+                    <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
+                    <span class="ident">slock</span>.<span class="ident">is_valid</span>()
+                } <span class="kw">else</span> {
+                    <span class="bool-val">false</span>
                 };
 
                 <span class="kw">let</span> (<span class="ident">auth_session</span>, <span class="ident">state</span>) <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
                     <span class="ident">AuthSession::new</span>(<span class="ident">account</span>, <span class="self">self</span>.<span class="ident">webauthn</span>, <span class="ident">ct</span>)
                 } <span class="kw">else</span> {
                     <span class="comment">// it&#39;s softlocked, don&#39;t even bother.</span>
-                    <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked.&quot;</span>);
+                    <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked, or has no credentials associated.&quot;</span>);
                     (
                         <span class="prelude-val">None</span>,
                         <span class="ident">AuthState::Denied</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>.<span class="ident">to_string</span>()),
@@ -4451,14 +4511,12 @@
 
                 <span class="kw">match</span> <span class="ident">auth_session</span> {
                     <span class="prelude-val">Some</span>(<span class="ident">auth_session</span>) =&gt; {
-                        <span class="comment">// Now acquire the session tree for writing.</span>
-                        <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
                         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">write</span>();
                         <span class="macro">spanned!</span>(<span class="string">&quot;idm::server::auth&lt;Init&gt; -&gt; sessions&quot;</span>, {
                             <span class="kw">if</span> <span class="ident">session_write</span>.<span class="ident">contains_key</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>) {
                                 <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidSessionState</span>)
                             } <span class="kw">else</span> {
-                                <span class="ident">session_write</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">auth_session</span>);
+                                <span class="ident">session_write</span>.<span class="ident">insert</span>(<span class="ident">sessionid</span>, <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">auth_session</span>)));
                                 <span class="comment">// Debugging: ensure we really inserted ...</span>
                                 <span class="macro">debug_assert!</span>(<span class="ident">session_write</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">sessionid</span>).<span class="ident">is_some</span>());
                                 <span class="prelude-val">Ok</span>(())
@@ -4486,34 +4544,38 @@
             } <span class="comment">// AuthEventStep::Init</span>
             <span class="ident">AuthEventStep::Begin</span>(<span class="ident">mech</span>) =&gt; {
                 <span class="comment">// lperf_segment!(&quot;idm::server::auth&lt;Begin&gt;&quot;, || {</span>
-                <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
+                <span class="comment">// let _session_ticket = self.session_ticket.acquire().await;</span>
 
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">write</span>();
+                <span class="kw">let</span> <span class="ident">session_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">read</span>();
                 <span class="comment">// Do we have a session?</span>
-                <span class="kw">let</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">session_write</span>
+                <span class="kw">let</span> <span class="ident">auth_session_ref</span> <span class="op">=</span> <span class="ident">session_read</span>
                     <span class="comment">// Why is the session missing?</span>
-                    .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">mech</span>.<span class="ident">sessionid</span>)
+                    .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">mech</span>.<span class="ident">sessionid</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">auth_session_ref</span><span class="op">|</span> <span class="ident">auth_session_ref</span>.<span class="ident">clone</span>())
                     .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid Session State (no present session uuid)&quot;</span>);
                         <span class="ident">OperationError::InvalidSessionState</span>
                     })<span class="question-mark">?</span>;
 
-                <span class="comment">// From the auth_session, determine if the current account</span>
-                <span class="comment">// credential that we are using has become softlocked or not.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">auth_session_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
 
-                <span class="kw">let</span> <span class="ident">cred_uuid</span> <span class="op">=</span> <span class="ident">auth_session</span>.<span class="ident">get_account</span>().<span class="ident">primary_cred_uuid</span>();
-
-                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="ident">softlock_write</span>
-                    .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">slock</span><span class="op">|</span> {
-                        <span class="comment">// Apply the current time.</span>
-                        <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
-                        <span class="comment">// Now check the results</span>
-                        <span class="ident">slock</span>.<span class="ident">is_valid</span>()
-                    })
-                    .<span class="ident">unwrap_or</span>(<span class="bool-val">true</span>);
+                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cred_uuid</span>) <span class="op">=</span> <span class="ident">auth_session</span>.<span class="ident">get_account</span>().<span class="ident">primary_cred_uuid</span>() {
+                        <span class="comment">// From the auth_session, determine if the current account</span>
+                        <span class="comment">// credential that we are using has become softlocked or not.</span>
+                        <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
+                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>) <span class="op">=</span> <span class="ident">softlock_read</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>) {
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">slock_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
+                            <span class="comment">// Apply the current time.</span>
+                            <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
+                            <span class="comment">// Now check the results</span>
+                            <span class="ident">slock</span>.<span class="ident">is_valid</span>()
+                        } <span class="kw">else</span> {
+                            <span class="bool-val">false</span>
+                        }
+                    } <span class="kw">else</span> {
+                        <span class="bool-val">false</span>
+                    };
 
                 <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
                     <span class="comment">// Indicate to the session which auth mech we now want to proceed with.</span>
@@ -4530,78 +4592,88 @@
                         <span class="ident">delay</span>,
                     }
                 });
-                <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
-                <span class="ident">session_write</span>.<span class="ident">commit</span>();
+                <span class="comment">// softlock_write.commit();</span>
+                <span class="comment">// session_write.commit();</span>
                 <span class="ident">r</span>
             } <span class="comment">// End AuthEventStep::Mech</span>
             <span class="ident">AuthEventStep::Cred</span>(<span class="ident">creds</span>) =&gt; {
                 <span class="comment">// lperf_segment!(&quot;idm::server::auth&lt;Creds&gt;&quot;, || {</span>
-                <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
-                <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
+                <span class="comment">// let _session_ticket = self.session_ticket.acquire().await;</span>
 
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">session_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">write</span>();
+                <span class="kw">let</span> <span class="ident">session_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">sessions</span>.<span class="ident">read</span>();
                 <span class="comment">// Do we have a session?</span>
-                <span class="kw">let</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">session_write</span>
+                <span class="kw">let</span> <span class="ident">auth_session_ref</span> <span class="op">=</span> <span class="ident">session_read</span>
                     <span class="comment">// Why is the session missing?</span>
-                    .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">sessionid</span>)
+                    .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">sessionid</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">auth_session_ref</span><span class="op">|</span> <span class="ident">auth_session_ref</span>.<span class="ident">clone</span>())
                     .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Invalid Session State (no present session uuid)&quot;</span>);
                         <span class="ident">OperationError::InvalidSessionState</span>
                     })<span class="question-mark">?</span>;
 
+                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">auth_session</span> <span class="op">=</span> <span class="ident">auth_session_ref</span>.<span class="ident">lock</span>().<span class="kw">await</span>;
+
+                <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span>
+                    <span class="ident">auth_session</span>
+                        .<span class="ident">get_account</span>()
+                        .<span class="ident">primary_cred_uuid</span>()
+                        .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">cred_uuid</span><span class="op">|</span> {
+                            <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
+
+                            <span class="ident">softlock_read</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>).<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">clone</span>())
+                        });
+
                 <span class="comment">// From the auth_session, determine if the current account</span>
                 <span class="comment">// credential that we are using has become softlocked or not.</span>
-                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
 
-                <span class="kw">let</span> <span class="ident">cred_uuid</span> <span class="op">=</span> <span class="ident">auth_session</span>.<span class="ident">get_account</span>().<span class="ident">primary_cred_uuid</span>();
+                <span class="kw">let</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">s</span>.<span class="ident">lock</span>().<span class="kw">await</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                };
 
-                <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="ident">softlock_write</span>
-                    .<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">slock</span><span class="op">|</span> {
-                        <span class="comment">// Apply the current time.</span>
-                        <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
-                        <span class="comment">// Now check the results</span>
-                        <span class="ident">slock</span>.<span class="ident">is_valid</span>()
-                    })
-                    .<span class="ident">unwrap_or</span>(<span class="bool-val">true</span>);
+                <span class="kw">let</span> <span class="ident">maybe_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span> {
+                    <span class="comment">// Apply the current time.</span>
+                    <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
+                    <span class="comment">// Now check the results</span>
+                    <span class="kw">if</span> <span class="ident">slock</span>.<span class="ident">is_valid</span>() {
+                        <span class="prelude-val">Some</span>(<span class="ident">slock</span>)
+                    } <span class="kw">else</span> {
+                        <span class="prelude-val">None</span>
+                    }
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                };
 
-                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
-                    <span class="comment">// Process the credentials here as required.</span>
-                    <span class="comment">// Basically throw them at the auth_session and see what</span>
-                    <span class="comment">// falls out.</span>
-                    <span class="kw">let</span> <span class="ident">pw_badlist_cache</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">pw_badlist_cache</span>));
-                    <span class="ident">auth_session</span>
-                        .<span class="ident">validate_creds</span>(
-                            <span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">cred</span>,
-                            <span class="kw-2">&amp;</span><span class="ident">ct</span>,
-                            <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>,
-                            <span class="self">self</span>.<span class="ident">webauthn</span>,
-                            <span class="ident">pw_badlist_cache</span>,
-                            <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>,
-                        )
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
-                            <span class="comment">// Inspect the result:</span>
-                            <span class="comment">// if it was a failure, we need to inc the softlock.</span>
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">aus</span> {
-                                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock</span>) <span class="op">=</span> <span class="ident">softlock_write</span>.<span class="ident">get_mut</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>) {
+                <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">maybe_valid</span> {
+                    <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) =&gt; {
+                        <span class="comment">// Process the credentials here as required.</span>
+                        <span class="comment">// Basically throw them at the auth_session and see what</span>
+                        <span class="comment">// falls out.</span>
+                        <span class="kw">let</span> <span class="ident">pw_badlist_cache</span> <span class="op">=</span> <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>(<span class="kw-2">*</span><span class="self">self</span>.<span class="ident">pw_badlist_cache</span>));
+                        <span class="ident">auth_session</span>
+                            .<span class="ident">validate_creds</span>(
+                                <span class="kw-2">&amp;</span><span class="ident">creds</span>.<span class="ident">cred</span>,
+                                <span class="kw-2">&amp;</span><span class="ident">ct</span>,
+                                <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>,
+                                <span class="self">self</span>.<span class="ident">webauthn</span>,
+                                <span class="ident">pw_badlist_cache</span>,
+                                <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>,
+                            )
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
+                                <span class="comment">// Inspect the result:</span>
+                                <span class="comment">// if it was a failure, we need to inc the softlock.</span>
+                                <span class="kw">if</span> <span class="kw">let</span> <span class="ident">AuthState::Denied</span>(<span class="kw">_</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">aus</span> {
                                     <span class="comment">// Update it.</span>
                                     <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                                } <span class="kw">else</span> {
-                                    <span class="comment">// Create if not exist, and the cred type supports softlocking.</span>
-                                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>) <span class="op">=</span>
-                                        <span class="ident">auth_session</span>.<span class="ident">get_account</span>().<span class="ident">primary_cred_softlock_policy</span>()
-                                    {
-                                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">CredSoftLock::new</span>(<span class="ident">policy</span>);
-                                        <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                                        <span class="ident">softlock_write</span>.<span class="ident">insert</span>(<span class="ident">cred_uuid</span>, <span class="ident">slock</span>);
-                                    }
-                                }
-                            };
-                            <span class="ident">aus</span>
-                        })
-                } <span class="kw">else</span> {
-                    <span class="comment">// Fail the session</span>
-                    <span class="ident">auth_session</span>.<span class="ident">end_session</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>)
+                                };
+                                <span class="ident">aus</span>
+                            })
+                    }
+                    <span class="kw">_</span> =&gt; {
+                        <span class="comment">// Fail the session</span>
+                        <span class="ident">auth_session</span>.<span class="ident">end_session</span>(<span class="string">&quot;Account is temporarily locked&quot;</span>)
+                    }
                 }
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
                     <span class="comment">// TODO: Change this william!</span>
@@ -4614,8 +4686,8 @@
                         <span class="ident">delay</span>,
                     }
                 });
-                <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
-                <span class="ident">session_write</span>.<span class="ident">commit</span>();
+                <span class="comment">// softlock_write.commit();</span>
+                <span class="comment">// session_write.commit();</span>
                 <span class="ident">r</span>
             } <span class="comment">// End AuthEventStep::Cred</span>
         }
@@ -4643,45 +4715,53 @@
             <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
         }
 
-        <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
+        <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">account</span>.<span class="ident">unix_cred_uuid_and_policy</span>() {
+            <span class="prelude-val">Some</span>((<span class="ident">cred_uuid</span>, <span class="ident">policy</span>)) =&gt; {
+                <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
+                <span class="kw">let</span> <span class="ident">slock_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">softlock_read</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>) {
+                    <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>) =&gt; <span class="ident">slock_ref</span>.<span class="ident">clone</span>(),
+                    <span class="prelude-val">None</span> =&gt; {
+                        <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
+                        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
+                        <span class="kw">let</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">CredSoftLock::new</span>(<span class="ident">policy</span>)));
+                        <span class="ident">softlock_write</span>.<span class="ident">insert</span>(<span class="ident">cred_uuid</span>, <span class="ident">slock</span>.<span class="ident">clone</span>());
+                        <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
+                        <span class="ident">slock</span>
+                    }
+                };
+                <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>)
+            }
+            <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
+        };
 
-        <span class="kw">let</span> <span class="ident">cred_uuid</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">unix_cred_uuid</span>();
-        <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cu</span>) <span class="op">=</span> <span class="ident">cred_uuid</span>.<span class="ident">as_ref</span>() {
-            <span class="comment">// Advanced and then check the softlock.</span>
-            <span class="ident">softlock_write</span>
-                .<span class="ident">get_mut</span>(<span class="ident">cu</span>)
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">slock</span><span class="op">|</span> {
-                    <span class="comment">// Apply the current time.</span>
-                    <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
-                    <span class="comment">// Now check the results</span>
-                    <span class="ident">slock</span>.<span class="ident">is_valid</span>()
-                })
-                <span class="comment">// No sl, it&#39;s valid.</span>
-                .<span class="ident">unwrap_or</span>(<span class="bool-val">true</span>)
+        <span class="kw">let</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">s</span>.<span class="ident">lock</span>().<span class="kw">await</span>)
         } <span class="kw">else</span> {
-            <span class="comment">// No cred id? It&#39;ll fail in verify ...</span>
-            <span class="bool-val">true</span>
+            <span class="prelude-val">None</span>
+        };
+
+        <span class="kw">let</span> <span class="ident">maybe_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span> {
+            <span class="comment">// Apply the current time.</span>
+            <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
+            <span class="comment">// Now check the results</span>
+            <span class="kw">if</span> <span class="ident">slock</span>.<span class="ident">is_valid</span>() {
+                <span class="prelude-val">Some</span>(<span class="ident">slock</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            }
+        } <span class="kw">else</span> {
+            <span class="prelude-val">None</span>
         };
 
         <span class="comment">// Validate the unix_pw - this checks the account/cred lock states.</span>
-        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
+        <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_valid</span> {
             <span class="comment">// Account is unlocked, can proceed.</span>
             <span class="ident">account</span>
                 .<span class="ident">verify_unix_credential</span>(<span class="ident">uae</span>.<span class="ident">cleartext</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>, <span class="ident">ct</span>)
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">res</span><span class="op">|</span> {
                     <span class="kw">if</span> <span class="ident">res</span>.<span class="ident">is_none</span>() {
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cu</span>) <span class="op">=</span> <span class="ident">cred_uuid</span>.<span class="ident">as_ref</span>() {
-                            <span class="comment">// Update the cred failure.</span>
-                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock</span>) <span class="op">=</span> <span class="ident">softlock_write</span>.<span class="ident">get_mut</span>(<span class="ident">cu</span>) {
-                                <span class="comment">// Update it.</span>
-                                <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                            } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>) <span class="op">=</span> <span class="ident">account</span>.<span class="ident">unix_cred_softlock_policy</span>() {
-                                <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">CredSoftLock::new</span>(<span class="ident">policy</span>);
-                                <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                                <span class="ident">softlock_write</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">cu</span>, <span class="ident">slock</span>);
-                            };
-                        }
+                        <span class="comment">// Update it.</span>
+                        <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
                     };
                     <span class="ident">res</span>
                 })
@@ -4690,8 +4770,6 @@
             <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked.&quot;</span>);
             <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
         };
-
-        <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
         <span class="ident">res</span>
     }
 
@@ -4743,28 +4821,45 @@
                 <span class="kw">return</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>);
             }
 
-            <span class="kw">let</span> <span class="ident">_softlock_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlock_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
-            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
-
-            <span class="kw">let</span> <span class="ident">cred_uuid</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">unix_cred_uuid</span>();
-            <span class="kw">let</span> <span class="ident">is_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cu</span>) <span class="op">=</span> <span class="ident">cred_uuid</span>.<span class="ident">as_ref</span>() {
-                <span class="comment">// Advanced and then check the softlock.</span>
-                <span class="ident">softlock_write</span>
-                    .<span class="ident">get_mut</span>(<span class="ident">cu</span>)
-                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">slock</span><span class="op">|</span> {
-                        <span class="comment">// Apply the current time.</span>
-                        <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
-                        <span class="comment">// Now check the results</span>
-                        <span class="ident">slock</span>.<span class="ident">is_valid</span>()
-                    })
-                    <span class="comment">// No sl, it&#39;s valid.</span>
-                    .<span class="ident">unwrap_or</span>(<span class="bool-val">true</span>)
-            } <span class="kw">else</span> {
-                <span class="comment">// No cred id? It&#39;ll fail in verify ...</span>
-                <span class="bool-val">true</span>
+            <span class="kw">let</span> <span class="ident">maybe_slock_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">account</span>.<span class="ident">unix_cred_uuid_and_policy</span>() {
+                <span class="prelude-val">Some</span>((<span class="ident">cred_uuid</span>, <span class="ident">policy</span>)) =&gt; {
+                    <span class="kw">let</span> <span class="ident">softlock_read</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">read</span>();
+                    <span class="kw">let</span> <span class="ident">slock_ref</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">softlock_read</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">cred_uuid</span>) {
+                        <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>) =&gt; <span class="ident">slock_ref</span>.<span class="ident">clone</span>(),
+                        <span class="prelude-val">None</span> =&gt; {
+                            <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
+                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">softlock_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">softlocks</span>.<span class="ident">write</span>();
+                            <span class="kw">let</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">CredSoftLock::new</span>(<span class="ident">policy</span>)));
+                            <span class="ident">softlock_write</span>.<span class="ident">insert</span>(<span class="ident">cred_uuid</span>, <span class="ident">slock</span>.<span class="ident">clone</span>());
+                            <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
+                            <span class="ident">slock</span>
+                        }
+                    };
+                    <span class="prelude-val">Some</span>(<span class="ident">slock_ref</span>)
+                }
+                <span class="prelude-val">None</span> =&gt; <span class="prelude-val">None</span>,
             };
 
-            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">is_valid</span> {
+            <span class="kw">let</span> <span class="ident">maybe_slock</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">s</span>) <span class="op">=</span> <span class="ident">maybe_slock_ref</span>.<span class="ident">as_ref</span>() {
+                <span class="prelude-val">Some</span>(<span class="ident">s</span>.<span class="ident">lock</span>().<span class="kw">await</span>)
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            };
+
+            <span class="kw">let</span> <span class="ident">maybe_valid</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_slock</span> {
+                <span class="comment">// Apply the current time.</span>
+                <span class="ident">slock</span>.<span class="ident">apply_time_step</span>(<span class="ident">ct</span>);
+                <span class="comment">// Now check the results</span>
+                <span class="kw">if</span> <span class="ident">slock</span>.<span class="ident">is_valid</span>() {
+                    <span class="prelude-val">Some</span>(<span class="ident">slock</span>)
+                } <span class="kw">else</span> {
+                    <span class="prelude-val">None</span>
+                }
+            } <span class="kw">else</span> {
+                <span class="prelude-val">None</span>
+            };
+
+            <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">slock</span>) <span class="op">=</span> <span class="ident">maybe_valid</span> {
                 <span class="kw">if</span> <span class="ident">account</span>
                     .<span class="ident">verify_unix_credential</span>(<span class="ident">lae</span>.<span class="ident">cleartext</span>.<span class="ident">as_str</span>(), <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>, <span class="ident">ct</span>)<span class="question-mark">?</span>
                     .<span class="ident">is_some</span>()
@@ -4801,17 +4896,7 @@
                     }))
                 } <span class="kw">else</span> {
                     <span class="comment">// PW failure, update softlock.</span>
-                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">cu</span>) <span class="op">=</span> <span class="ident">cred_uuid</span>.<span class="ident">as_ref</span>() {
-                        <span class="comment">// Update the cred failure.</span>
-                        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">slock</span>) <span class="op">=</span> <span class="ident">softlock_write</span>.<span class="ident">get_mut</span>(<span class="ident">cu</span>) {
-                            <span class="comment">// Update it.</span>
-                            <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                        } <span class="kw">else</span> <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">policy</span>) <span class="op">=</span> <span class="ident">account</span>.<span class="ident">unix_cred_softlock_policy</span>() {
-                            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">slock</span> <span class="op">=</span> <span class="ident">CredSoftLock::new</span>(<span class="ident">policy</span>);
-                            <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
-                            <span class="ident">softlock_write</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">cu</span>, <span class="ident">slock</span>);
-                        };
-                    };
+                    <span class="ident">slock</span>.<span class="ident">record_failure</span>(<span class="ident">ct</span>);
                     <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
                 }
             } <span class="kw">else</span> {
@@ -4819,8 +4904,6 @@
                 <span class="macro">security_info!</span>(<span class="string">&quot;Account is softlocked.&quot;</span>);
                 <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>)
             };
-
-            <span class="ident">softlock_write</span>.<span class="ident">commit</span>();
             <span class="ident">res</span>
         }
     }
@@ -7746,5 +7829,5 @@
     }
 }
 </code></pre></div>
-</section><section id="search" class="content hidden"></section><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidm" data-search-index-js="../../../search-index.js" data-search-js="../../../search.js"></div>
+</section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../" data-current-crate="kanidm" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.59.0 (9d1b2106e 2022-02-23)" ></div>
 </body></html>
