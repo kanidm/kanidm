@@ -646,6 +646,7 @@ dependencies = [
 [[package]]
 name = "concread"
 version = "0.3.0"
+source = "git+https://github.com/kanidm/concread.git#5681626deb73a0f2efd77effdd8cab2ebecbaca3"
 dependencies = [
  "ahash",
  "crossbeam",
