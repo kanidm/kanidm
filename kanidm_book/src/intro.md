@@ -15,7 +15,7 @@ The intent of the Kanidm project is to:
 
 ## Library documentation
 
-Looking for the `rustdoc` documentation for the libraries themselves? [Click here!](./rustdoc/kanidm/)
+Looking for the `rustdoc` documentation for the libraries themselves? [Click here!](./rustdoc/master/kanidm/)
 
 ## Why do I want Kanidm?
 

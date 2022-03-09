@@ -2,8 +2,9 @@ name: GitHub Pages
 
 on:
   push:
-    branches:
-      - master
+    # commented out while testing
+    # branches:
+    #   - master
 
 jobs:
   deploy:
@@ -26,17 +27,9 @@ jobs:
           toolchain: stable
 
       - uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps
-      - name: Copy developer readme into book
-        run: cp DEVELOPER_README.md ./kanidm_book/src/ && echo '- [Developer Guide](DEVELOPER_README.md)' >> ./kanidm_book/src/SUMMARY.md
 
-      - name: Run mdbook
-        run: mdbook build kanidm_book
-
-      - name: Move files around
-        run: mv ./kanidm_book/book/ ./docs/ && mkdir -p ./docs/rustdoc/ &&  mv ./target/doc/* ./docs/rustdoc/
+      - name: Run make book
+        run: make book
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
