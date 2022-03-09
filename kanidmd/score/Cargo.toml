@@ -28,12 +28,11 @@ tokio-openssl = "0.6"
 openssl = "0.10"
 ldap3_proto = "0.2.2"
 
-bundy = "^0.1.1"
-
 tracing = { version = "0.1", features = ["attributes"] }
 serde = { version = "1", features = ["derive"] }
 async-trait = "0.1"
 async-std = { version = "1.6", features = ["tokio1"] }
+compact_jwt = "^0.2.0"
 
 [build-dependencies]
 profiles = { path = "../../profiles" }

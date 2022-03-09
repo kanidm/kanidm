@@ -23,7 +23,8 @@ lazy_static! {
         m.insert("may");
         // Allow modification of some domain info types for local configuration.
         m.insert("domain_ssid");
-        m.insert("domain_token_key");
+        m.insert("fernet_private_key_str");
+        m.insert("es256_private_key_der");
         m.insert("badlist_password");
         m
     };
@@ -193,10 +194,10 @@ mod tests {
             ],
             "acp_search_attr": ["name", "class", "uuid", "classname", "attributename"],
             "acp_modify_class": ["system", "domain_info"],
-            "acp_modify_removedattr": ["class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "domain_token_key"],
-            "acp_modify_presentattr": ["class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "domain_token_key"],
+            "acp_modify_removedattr": ["class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"],
+            "acp_modify_presentattr": ["class", "displayname", "may", "must", "domain_name", "domain_uuid", "domain_ssid", "fernet_private_key_str", "es256_private_key_der"],
             "acp_create_class": ["object", "person", "system", "domain_info"],
-            "acp_create_attr": ["name", "class", "description", "displayname", "domain_name", "domain_uuid", "domain_ssid", "uuid", "domain_token_key"]
+            "acp_create_attr": ["name", "class", "description", "displayname", "domain_name", "domain_uuid", "domain_ssid", "uuid", "fernet_private_key_str", "es256_private_key_der"]
         }
     }"#;
 
@@ -330,7 +331,8 @@ mod tests {
                 "description": ["Demonstration of a remote domain's info being created for uuid generation"],
                 "domain_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
-                "domain_token_key": ["ABCD"]
+                "fernet_private_key_str": ["ABCD"],
+                "es256_private_key_der" : ["MTIz"]
             }
         }"#,
         );
@@ -368,7 +370,8 @@ mod tests {
                 "description": ["Demonstration of a remote domain's info being created for uuid generation"],
                 "domain_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
-                "domain_token_key": ["ABCD"]
+                "fernet_private_key_str": ["ABCD"],
+                "es256_private_key_der" : ["MTIz"]
             }
         }"#,
         );
@@ -397,7 +400,8 @@ mod tests {
                 "description": ["Demonstration of a remote domain's info being created for uuid generation"],
                 "domain_name": ["example.net.au"],
                 "domain_ssid": ["Example_Wifi"],
-                "domain_token_key": ["ABCD"]
+                "fernet_private_key_str": ["ABCD"],
+                "es256_private_key_der" : ["MTIz"]
             }
         }"#,
         );

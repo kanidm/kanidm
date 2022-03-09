@@ -713,15 +713,28 @@ pub trait QueryServerTransaction<'a> {
             })
     }
 
-    fn get_domain_token_key(&self) -> Result<String, OperationError> {
+    fn get_domain_fernet_private_key(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_secret("domain_token_key")
+                e.get_ava_single_secret("fernet_private_key_str")
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
             .map_err(|e| {
-                admin_error!(?e, "Error getting domain token key");
+                admin_error!(?e, "Error getting domain fernet key");
+                e
+            })
+    }
+
+    fn get_domain_es256_private_key(&self) -> Result<Vec<u8>, OperationError> {
+        self.internal_search_uuid(&UUID_DOMAIN_INFO)
+            .and_then(|e| {
+                e.get_ava_single_private_binary("es256_private_key_der")
+                    .map(|s| s.to_vec())
+                    .ok_or(OperationError::InvalidEntryState)
+            })
+            .map_err(|e| {
+                admin_error!(?e, "Error getting domain es256 key");
                 e
             })
     }
@@ -1078,6 +1091,10 @@ impl QueryServer {
 
         if system_info_version < 5 {
             migrate_txn.migrate_4_to_5()?;
+        }
+
+        if system_info_version < 6 {
+            migrate_txn.migrate_5_to_6()?;
         }
 
         migrate_txn.commit()?;
@@ -1972,6 +1989,18 @@ impl<'a> QueryServerWriteTransaction<'a> {
         })
     }
 
+    /// Migrate 5 to 6 - This updates the domain info item to reset the token
+    /// keys based on the new encryption types.
+    pub fn migrate_5_to_6(&self) -> Result<(), OperationError> {
+        spanned!("server::migrate_5_to_6", {
+            admin_warn!("starting 5 to 6 migration.");
+            let filter = filter!(f_eq("uuid", (*PVUUID_DOMAIN_INFO).clone()));
+            let modlist = ModifyList::new_purge("domain_token_key");
+            self.internal_modify(&filter, &modlist)
+            // Complete
+        })
+    }
+
     // These are where searches and other actions are actually implemented. This
     // is the "internal" version, where we define the event as being internal
     // only, allowing certain plugin by passes etc.
@@ -2249,6 +2278,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_DOMAIN_UUID,
             JSON_SCHEMA_ATTR_DOMAIN_SSID,
             JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY,
+            JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR,
             JSON_SCHEMA_ATTR_GIDNUMBER,
             JSON_SCHEMA_ATTR_BADLIST_PASSWORD,
             JSON_SCHEMA_ATTR_LOGINSHELL,

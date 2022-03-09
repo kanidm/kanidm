@@ -427,8 +427,12 @@ impl Entry<EntryInit, EntryNew> {
                         }).collect();
                         vs.unwrap()
                     }
-                    "domain_token_key" => {
+                    "domain_token_key" | "fernet_private_key_str" => {
                         let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_secret_str(&v)).collect();
+                        vs.unwrap()
+                    }
+                    "es256_private_key_der" => {
+                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_privatebinary_base64(&v)).collect();
                         vs.unwrap()
                     }
                     ia => {

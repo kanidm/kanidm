@@ -269,7 +269,7 @@ pub struct Credential {
 }
 
 #[derive(Clone, Debug)]
-/// The typo of credential that is stored. Each of these represents a full set of 'what is required'
+/// The type of credential that is stored. Each of these represents a full set of 'what is required'
 /// to complete an authentication session. The reason to have these typed like this is so we can
 /// apply policy later to what classes or levels of credentials can be used. We use these types
 /// to also know what type of auth session handler to initiate.

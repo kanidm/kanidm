@@ -1129,6 +1129,10 @@ impl Oauth2ResourceServersReadTransaction {
         let id_token_signing_alg_values_supported = match &o2rs.jws_signer {
             JwsSigner::ES256 { .. } => vec![IdTokenSignAlg::ES256],
             JwsSigner::RS256 { .. } => vec![IdTokenSignAlg::RS256],
+            JwsSigner::HS256 { .. } => {
+                admin_warn!("Invalid oauth2 configuration - HS256 is not supported!");
+                vec![]
+            }
         };
 
         let userinfo_signing_alg_values_supported = None;

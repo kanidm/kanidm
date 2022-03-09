@@ -20,13 +20,16 @@ use tide_openssl::TlsListener;
 use kanidm::tracing_tree::TreeMiddleware;
 use tracing::{error, info};
 
+use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+
 #[derive(Clone)]
 pub struct AppState {
     pub status_ref: &'static StatusActor,
     pub qe_w_ref: &'static QueryServerWriteV1,
     pub qe_r_ref: &'static QueryServerReadV1,
     // Store the token management parts.
-    pub bundy_handle: std::sync::Arc<bundy::hs512::HS512>,
+    pub jws_signer: std::sync::Arc<JwsSigner>,
+    pub jws_validator: std::sync::Arc<JwsValidator>,
 }
 
 pub trait RequestExtensions {
@@ -69,7 +72,7 @@ impl RequestExtensions for tide::Request<AppState> {
 
     fn get_current_auth_session_id(&self) -> Option<Uuid> {
         // We see if there is a signed header copy first.
-        let kref = &self.state().bundy_handle;
+        let kref = &self.state().jws_validator;
         self.header("X-KANIDM-AUTH-SESSION-ID")
             .and_then(|hv| {
                 // Get the first header value.
@@ -78,8 +81,12 @@ impl RequestExtensions for tide::Request<AppState> {
             .and_then(|h| {
                 // Take the token str and attempt to decrypt
                 // Attempt to re-inflate a uuid from bytes.
-                let uat: Option<Uuid> = kref.verify(h.as_str()).ok();
-                uat
+                JwsUnverified::from_str(h.as_str()).ok()
+            })
+            .and_then(|jwsu| {
+                jwsu.validate(kref)
+                    .map(|jws: Jws<SessionId>| jws.inner.sessionid)
+                    .ok()
             })
             // If not there, get from the cookie instead.
             .or_else(|| self.session().get::<Uuid>("auth-session-id"))
@@ -289,24 +296,26 @@ pub fn create_https_server(
     opt_tls_params: Option<&TlsConfiguration>,
     role: ServerRole,
     cookie_key: &[u8; 32],
-    bundy_key: &str,
+    jws_signer: JwsSigner,
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
     info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
 
-    let bundy_handle = bundy::hs512::HS512::from_str(bundy_key).map_err(|e| {
-        error!(?e, "Failed to generate bundy handle");
+    let jws_validator = jws_signer.get_validator().map_err(|e| {
+        error!(?e, "Failed to get jws validator");
     })?;
 
-    let bundy_handle = std::sync::Arc::new(bundy_handle);
+    let jws_validator = std::sync::Arc::new(jws_validator);
+    let jws_signer = std::sync::Arc::new(jws_signer);
 
     let mut tserver = tide::Server::with_state(AppState {
         status_ref,
         qe_w_ref,
         qe_r_ref,
-        bundy_handle,
+        jws_signer,
+        jws_validator,
     });
 
     // tide::log::with_level(tide::log::LevelFilter::Debug);

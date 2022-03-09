@@ -10,9 +10,12 @@ use std::fs::{create_dir, File};
 use std::io::ErrorKind;
 use std::io::{self, BufReader, BufWriter, Write};
 use std::path::PathBuf;
+use std::str::FromStr;
 use webauthn_authenticator_rs::{u2fhid::U2FHid, RequestChallengeResponse, WebauthnAuthenticator};
 
 use dialoguer::{theme::ColorfulTheme, Select};
+
+use compact_jwt::JwsUnverified;
 
 static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
@@ -398,9 +401,21 @@ impl SessionOpt {
             })
             .into_iter()
             .filter_map(|(u, t)| {
-                unsafe { bundy::Data::parse_without_verification::<UserAuthToken>(&t) }
+                let jwtu = JwsUnverified::from_str(&t)
+                    .map_err(|e| {
+                        error!(?e, "Unable to parse token from str");
+                    })
+                    .ok()?;
+
+                jwtu.validate_embeded()
+                    .map_err(|e| {
+                        error!(?e, "Unable to verify token signature, may be corrupt");
+                    })
+                    .map(|jwt| {
+                        let uat = jwt.inner;
+                        (u, (t, uat))
+                    })
                     .ok()
-                    .map(|uat| (u, (t, uat)))
             })
             .collect()
     }

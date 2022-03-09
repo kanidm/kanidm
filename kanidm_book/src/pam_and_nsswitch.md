@@ -141,8 +141,10 @@ Each of these controls one of the four stages of PAM. The content should look li
 
     # /etc/pam.d/common-account-pc
     account    [default=1 ignore=ignore success=ok] pam_localuser.so
-    account    required    pam_unix.so
-    account    required    pam_kanidm.so ignore_unknown_user
+    account    sufficient  pam_unix.so
+    account    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
+    account    sufficient    pam_kanidm.so ignore_unknown_user
+    account    pam_deny.so
 
     # /etc/pam.d/common-auth-pc
     auth        required      pam_env.so
@@ -153,17 +155,18 @@ Each of these controls one of the four stages of PAM. The content should look li
     auth        required      pam_deny.so
 
     # /etc/pam.d/common-password-pc
-    password    requisite   pam_pwquality.so
     password    [default=1 ignore=ignore success=ok] pam_localuser.so
     password    required    pam_unix.so use_authtok nullok shadow try_first_pass
+    password    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
     password    required    pam_kanidm.so
 
     # /etc/pam.d/common-session-pc
     session optional    pam_systemd.so
     session required    pam_limits.so
     session optional    pam_unix.so try_first_pass
-    session optional    pam_kanidm.so
     session optional    pam_umask.so
+    session [default=1 ignore=ignore success=ok] pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
+    session optional    pam_kanidm.so
     session optional    pam_env.so
 
 > **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in your 

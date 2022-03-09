@@ -41,9 +41,9 @@ use kanidm_proto::v1::{
     AuthType, BackupCodesView, CredentialStatus, RadiusAuthToken, SetCredentialResponse,
     UnixGroupToken, UnixUserToken, UserAuthToken,
 };
-use std::str::FromStr;
 
-use bundy::hs512::HS512;
+use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
+use fernet::Fernet;
 
 use tokio::sync::mpsc::{
     unbounded_channel as unbounded, UnboundedReceiver as Receiver, UnboundedSender as Sender,
@@ -57,14 +57,14 @@ use futures::task as futures_task;
 
 use concread::{
     bptree::{BptreeMap, BptreeMapWriteTxn},
-    CowCell,
-};
-use concread::{
     cowcell::{CowCellReadTxn, CowCellWriteTxn},
     hashmap::HashMap,
+    CowCell,
 };
+
 use rand::prelude::*;
 use std::convert::TryFrom;
+use std::str::FromStr;
 use std::{sync::Arc, time::Duration};
 use tokio::sync::Mutex;
 use url::Url;
@@ -79,6 +79,8 @@ use tracing::trace;
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 
+// type CredUpdateSessionMutex = Arc<Mutex<CredUpdateSession>>;
+
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -89,6 +91,7 @@ pub struct IdmServer {
     softlocks: HashMap<Uuid, CredSoftLockMutex>,
     /// A set of in progress MFA registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
+    // cred_update_sessions: BptreeMap<Uuid, CredUpdateSessionMutex>,
     /// Reference to the query server.
     qs: QueryServer,
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
@@ -98,7 +101,10 @@ pub struct IdmServer {
     webauthn: Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: Arc<CowCell<HashSet<String>>>,
     oauth2rs: Arc<Oauth2ResourceServers>,
-    uat_bundy_hmac: Arc<CowCell<HS512>>,
+
+    uat_jwt_signer: Arc<CowCell<JwsSigner>>,
+    uat_jwt_validator: Arc<CowCell<JwsValidator>>,
+    token_enc_key: Arc<CowCell<Fernet>>,
 }
 
 /// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.
@@ -114,13 +120,14 @@ pub struct IdmServerAuthTransaction<'a> {
     async_tx: Sender<DelayedAction>,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
-    uat_bundy_hmac: CowCellReadTxn<HS512>,
+    uat_jwt_signer: CowCellReadTxn<JwsSigner>,
+    uat_jwt_validator: CowCellReadTxn<JwsValidator>,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
 pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
-    uat_bundy_hmac: CowCellReadTxn<HS512>,
+    uat_jwt_validator: CowCellReadTxn<JwsValidator>,
     oauth2rs: Oauth2ResourceServersReadTransaction,
 }
 
@@ -134,7 +141,9 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
-    uat_bundy_hmac: CowCellWriteTxn<'a, HS512>,
+    uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
+    uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
+    token_enc_key: CowCellWriteTxn<'a, Fernet>,
     oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
@@ -160,11 +169,12 @@ impl IdmServer {
         let (async_tx, async_rx) = unbounded();
 
         // Get the domain name, as the relying party id.
-        let (rp_id, token_key, pw_badlist_set, oauth2rs_set) = {
+        let (rp_id, fernet_private_key, es256_private_key, pw_badlist_set, oauth2rs_set) = {
             let qs_read = task::block_on(qs.read_async());
             (
                 qs_read.get_domain_name().to_string(),
-                qs_read.get_domain_token_key()?,
+                qs_read.get_domain_fernet_private_key()?,
+                qs_read.get_domain_es256_private_key()?,
                 qs_read.get_password_badlist()?,
                 // Add a read/reload of all oauth2 configurations.
                 qs_read.get_oauth2rs_set()?,
@@ -205,11 +215,24 @@ impl IdmServer {
         });
 
         // Setup our auth token signing key.
-        let bundy_handle = HS512::from_str(&token_key).map_err(|e| {
-            admin_error!("Failed to generate uat_bundy_hmac - {:?}", e);
-            OperationError::InvalidState
+        let fernet_key = Fernet::new(&fernet_private_key).ok_or_else(|| {
+            admin_error!("Unable to load Fernet encryption key");
+            OperationError::CryptographyError
         })?;
-        let uat_bundy_hmac = Arc::new(CowCell::new(bundy_handle));
+        let token_enc_key = Arc::new(CowCell::new(fernet_key));
+
+        let jwt_signer = JwsSigner::from_es256_der(&es256_private_key).map_err(|e| {
+            admin_error!(err = ?e, "Unable to load ES256 JwsSigner from DER");
+            OperationError::CryptographyError
+        })?;
+
+        let jwt_validator = jwt_signer.get_validator().map_err(|e| {
+            admin_error!(err = ?e, "Unable to load ES256 JwsValidator from JwsSigner");
+            OperationError::CryptographyError
+        })?;
+
+        let uat_jwt_signer = Arc::new(CowCell::new(jwt_signer));
+        let uat_jwt_validator = Arc::new(CowCell::new(jwt_validator));
 
         let oauth2rs =
             Oauth2ResourceServers::try_from((oauth2rs_set, origin_url)).map_err(|e| {
@@ -228,7 +251,9 @@ impl IdmServer {
                 async_tx,
                 webauthn,
                 pw_badlist_cache: Arc::new(CowCell::new(pw_badlist_set)),
-                uat_bundy_hmac,
+                uat_jwt_signer,
+                uat_jwt_validator,
+                token_enc_key,
                 oauth2rs: Arc::new(oauth2rs),
             },
             IdmServerDelayed { async_rx },
@@ -256,7 +281,8 @@ impl IdmServer {
             async_tx: self.async_tx.clone(),
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
-            uat_bundy_hmac: self.uat_bundy_hmac.read(),
+            uat_jwt_signer: self.uat_jwt_signer.read(),
+            uat_jwt_validator: self.uat_jwt_validator.read(),
         }
     }
 
@@ -268,7 +294,7 @@ impl IdmServer {
     pub async fn proxy_read_async(&self) -> IdmServerProxyReadTransaction<'_> {
         IdmServerProxyReadTransaction {
             qs_read: self.qs.read_async().await,
-            uat_bundy_hmac: self.uat_bundy_hmac.read(),
+            uat_jwt_validator: self.uat_jwt_validator.read(),
             oauth2rs: self.oauth2rs.read(),
         }
     }
@@ -291,7 +317,9 @@ impl IdmServer {
             crypto_policy: &self.crypto_policy,
             webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.write(),
-            uat_bundy_hmac: self.uat_bundy_hmac.write(),
+            uat_jwt_signer: self.uat_jwt_signer.write(),
+            uat_jwt_validator: self.uat_jwt_validator.write(),
+            token_enc_key: self.token_enc_key.write(),
             oauth2rs: self.oauth2rs.write(),
         }
     }
@@ -347,7 +375,7 @@ pub(crate) trait IdmServerTransaction<'a> {
 
     fn get_qs_txn(&self) -> &Self::QsTransactionType;
 
-    fn get_uat_bundy_txn(&self) -> &HS512;
+    fn get_uat_validator_txn(&self) -> &JwsValidator;
 
     fn validate_and_parse_uat(
         &self,
@@ -355,17 +383,24 @@ pub(crate) trait IdmServerTransaction<'a> {
         ct: Duration,
     ) -> Result<UserAuthToken, OperationError> {
         // Given the token string, validate and recreate the UAT
-        let bref = self.get_uat_bundy_txn();
+        let jws_validator = self.get_uat_validator_txn();
 
-        let uat: UserAuthToken =
-            token
-                .ok_or(OperationError::NotAuthenticated)
-                .and_then(|token| {
-                    bref.verify(token).map_err(|e| {
+        let uat: UserAuthToken = token
+            .ok_or(OperationError::NotAuthenticated)
+            .and_then(|s| {
+                JwsUnverified::from_str(s).map_err(|e| {
+                    security_info!(?e, "Unable to decode token");
+                    OperationError::NotAuthenticated
+                })
+            })
+            .and_then(|jwtu| {
+                jwtu.validate(jws_validator)
+                    .map_err(|e| {
                         security_info!(?e, "Unable to verify token");
                         OperationError::NotAuthenticated
                     })
-                })?;
+                    .map(|t: Jws<UserAuthToken>| t.inner)
+            })?;
 
         if time::OffsetDateTime::unix_epoch() + ct >= uat.expiry {
             security_info!("Session expired");
@@ -469,8 +504,8 @@ impl<'a> IdmServerTransaction<'a> for IdmServerAuthTransaction<'a> {
         &self.qs_read
     }
 
-    fn get_uat_bundy_txn(&self) -> &HS512 {
-        &*self.uat_bundy_hmac
+    fn get_uat_validator_txn(&self) -> &JwsValidator {
+        &*self.uat_jwt_validator
     }
 }
 
@@ -742,7 +777,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
                                 &self.async_tx,
                                 self.webauthn,
                                 pw_badlist_cache,
-                                &*self.uat_bundy_hmac,
+                                &*self.uat_jwt_signer,
                             )
                             .map(|aus| {
                                 // Inspect the result:
@@ -1009,8 +1044,8 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyReadTransaction<'a> {
         &self.qs_read
     }
 
-    fn get_uat_bundy_txn(&self) -> &HS512 {
-        &*self.uat_bundy_hmac
+    fn get_uat_validator_txn(&self) -> &JwsValidator {
+        &*self.uat_jwt_validator
     }
 }
 
@@ -1186,8 +1221,8 @@ impl<'a> IdmServerTransaction<'a> for IdmServerProxyWriteTransaction<'a> {
         &self.qs_write
     }
 
-    fn get_uat_bundy_txn(&self) -> &HS512 {
-        &*self.uat_bundy_hmac
+    fn get_uat_validator_txn(&self) -> &JwsValidator {
+        &*self.uat_jwt_validator
     }
 }
 
@@ -1999,20 +2034,43 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             if self.qs_write.get_changed_domain() {
                 // reload token_key?
                 self.qs_write
-                    .get_domain_token_key()
+                    .get_domain_fernet_private_key()
                     .and_then(|token_key| {
-                        HS512::from_str(&token_key).map_err(|e| {
-                            admin_error!("Failed to generate uat_bundy_hmac - {:?}", e);
+                        Fernet::new(&token_key).ok_or_else(|| {
+                            admin_error!("Failed to generate token_enc_key");
                             OperationError::InvalidState
                         })
                     })
                     .map(|new_handle| {
-                        *self.uat_bundy_hmac = new_handle;
+                        *self.token_enc_key = new_handle;
+                    })?;
+                self.qs_write
+                    .get_domain_es256_private_key()
+                    .and_then(|key_der| {
+                        JwsSigner::from_es256_der(&key_der).map_err(|e| {
+                            admin_error!("Failed to generate uat_jwt_signer - {:?}", e);
+                            OperationError::InvalidState
+                        })
+                    })
+                    .and_then(|signer| {
+                        signer
+                            .get_validator()
+                            .map_err(|e| {
+                                admin_error!("Failed to generate uat_jwt_validator - {:?}", e);
+                                OperationError::InvalidState
+                            })
+                            .map(|validator| (signer, validator))
+                    })
+                    .map(|(new_signer, new_validator)| {
+                        *self.uat_jwt_signer = new_signer;
+                        *self.uat_jwt_validator = new_validator;
                     })?;
             }
             // Commit everything.
             self.oauth2rs.commit();
-            self.uat_bundy_hmac.commit();
+            self.uat_jwt_signer.commit();
+            self.uat_jwt_validator.commit();
+            self.token_enc_key.commit();
             self.pw_badlist_cache.commit();
             self.mfareg_sessions.commit();
             self.qs_write.commit()
@@ -3891,11 +3949,21 @@ mod tests {
 
                 // Now reset the token_key - we can cheat and push this
                 // through the migrate 3 to 4 code.
+                //
+                // fernet_private_key_str
+                // es256_private_key_der
                 let idms_prox_write = idms.proxy_write(ct.clone());
-                idms_prox_write
-                    .qs_write
-                    .migrate_3_to_4()
-                    .expect("Failed to reset domain token key");
+                let me_reset_tokens = unsafe {
+                    ModifyEvent::new_internal_invalid(
+                        filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_DOMAIN_INFO))),
+                        ModifyList::new_list(vec![
+                            Modify::Purged(AttrString::from("fernet_private_key_str")),
+                            Modify::Purged(AttrString::from("es256_private_key_der")),
+                            Modify::Purged(AttrString::from("domain_token_key")),
+                        ]),
+                    )
+                };
+                assert!(idms_prox_write.qs_write.modify(&me_reset_tokens).is_ok());
                 assert!(idms_prox_write.commit().is_ok());
                 // Check the old token is invalid, due to reload.
                 let new_token = check_admin_password(idms, TEST_PASSWORD);

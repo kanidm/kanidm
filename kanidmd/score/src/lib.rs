@@ -51,6 +51,7 @@ use kanidm::utils::{duration_from_epoch_now, touch_file_or_quit};
 use kanidm_proto::v1::OperationError;
 
 use async_std::task;
+use compact_jwt::JwsSigner;
 
 // === internal setup helpers
 
@@ -585,10 +586,10 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
 
     // Extract any configuration from the IDMS that we may need.
     // For now we just do this per run, but we need to extract this from the db later.
-    let bundy_key = match bundy::hs512::HS512::generate_key() {
+    let jws_signer = match JwsSigner::generate_hs256() {
         Ok(k) => k,
         Err(e) => {
-            error!("Unable to setup bundy -> {:?}", e);
+            error!("Unable to setup jws signer -> {:?}", e);
             return Err(());
         }
     };
@@ -692,7 +693,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             config.tls_config.as_ref(),
             config.role,
             &cookie_key,
-            &bundy_key,
+            jws_signer,
             status_ref,
             server_write_ref,
             server_read_ref,
