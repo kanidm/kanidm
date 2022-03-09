@@ -6,7 +6,6 @@ EXT_OPTS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
 ARGS ?= --build-arg "SCCACHE_REDIS=redis://172.24.20.4:6379"
 
-BOOK_DIR ?= ./
 BOOK_VERSION ?= master
 
 .DEFAULT: help

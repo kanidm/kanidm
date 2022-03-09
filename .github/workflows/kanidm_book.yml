@@ -2,9 +2,8 @@ name: GitHub Pages
 
 on:
   push:
-    # commented out while testing
-    # branches:
-    #   - master
+    branches:
+      - master
 
 jobs:
   deploy:
