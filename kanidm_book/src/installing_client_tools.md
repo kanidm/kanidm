@@ -19,9 +19,9 @@ the clients with:
     zypper ref
     zypper in kanidm-clients
 
-### OpenSUSE Leap 15.3
+### OpenSUSE Leap 15.3/15.4
 
-Leap 15.3 is still not fully supported with Kanidm. For an experimental client, you can
+Leap 15.3/15.4 is still not fully supported with Kanidm. For an experimental client, you can
 try the development repository. Using zypper you can add the repository with:
 
     zypper ar -f obs://network:idm network_idm
@@ -31,15 +31,17 @@ Then you need to refresh your metadata and install the clients.
     zypper ref
     zypper in kanidm-clients
 
-### Fedora
+### Fedora / Centos Stream
 
-Fedora is still experimentally supported through the development repository. You need to add the repository metadata into the correct directory.
+Fedora has limited supported through the development repository. You need to add the repository metadata into the correct directory.
 
     cd /etc/yum.repos.d
-    # 33
-    sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_33/network:idm.repo
-    # 34
+    # Fedora 34
     sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
+    # Fedora 35
+    sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_35/network:idm.repo
+    # Centos Stream 9
+    sudo wget https://download.opensuse.org/repositories/network:/idm/CentOS_9_Stream/network:idm.repo
 
 You can then install with:
 

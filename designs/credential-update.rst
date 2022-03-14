@@ -64,6 +64,14 @@ The credential update session can be rejected by the user, canceling it's progre
 
 A credential update session IS tied to a single server, similar to authentication.
 
+A credential update session has a unique-uuid assigned. When committed, this is added to a history-log
+on the users account so they can see and audit the change.
+
+If an intent token is used, the uuid of the intent token becomes the uuid of the credential update session.
+
+If an intent token is exchanged, and it's uuid already exists in the history-log of the account, the
+intent token is rejected.
+
 Credential Update Process
 =========================
 
