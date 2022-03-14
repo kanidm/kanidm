@@ -160,6 +160,8 @@ pub const _UUID_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: Uuid =
 pub const _UUID_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER: Uuid =
     uuid!("00000000-0000-0000-0000-ffff00000093");
 pub const _UUID_SCHEMA_CLASS_ORGPERSON: Uuid = uuid!("00000000-0000-0000-0000-ffff00000094");
+pub const UUID_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: Uuid =
+    uuid!("00000000-0000-0000-0000-ffff00000095");
 
 // System and domain infos
 // I'd like to strongly criticise william of the past for making poor choices about these allocations.

@@ -1179,6 +1179,12 @@ impl Value {
         matches!(&self, Value::OauthScopeMap(_, _))
     }
 
+    #[cfg(test)]
+    pub fn new_privatebinary_base64(der: &str) -> Self {
+        let der = base64::decode(der).unwrap();
+        Value::PrivateBinary(der)
+    }
+
     pub fn new_privatebinary(der: &[u8]) -> Self {
         Value::PrivateBinary(der.to_owned())
     }

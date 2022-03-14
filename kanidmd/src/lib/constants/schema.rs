@@ -274,6 +274,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_SSID: &str = r#"{
       ]
     }
 }"#;
+
 pub const JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: &str = r#"{
     "attrs": {
       "class": [
@@ -282,7 +283,7 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: &str = r#"{
         "attributetype"
       ],
       "description": [
-        "The domains token signing key, which is shared between IDM servers."
+        "The domain token encryption private key (NOT USED)."
       ],
       "index": [],
       "unique": [
@@ -299,6 +300,35 @@ pub const JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY: &str = r#"{
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000088"
+      ]
+    }
+}"#;
+
+pub const JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The token encryption private key."
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "false"
+      ],
+      "attributename": [
+        "fernet_private_key_str"
+      ],
+      "syntax": [
+        "SECRET_UTF8STRING"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000095"
       ]
     }
 }"#;
@@ -953,7 +983,8 @@ pub const JSON_SCHEMA_CLASS_DOMAIN_INFO: &str = r#"
         "name",
         "domain_uuid",
         "domain_name",
-        "domain_token_key"
+        "fernet_private_key_str",
+        "es256_private_key_der"
       ],
       "uuid": [
         "00000000-0000-0000-0000-ffff00000052"

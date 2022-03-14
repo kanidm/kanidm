@@ -511,20 +511,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a4a45a46ab1f2412e53d3a0ade76ffad2025804294569aae387231a0cd6e0899"
 
 [[package]]
-name = "bundy"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d70ddb99e1c5a8308abe085b80c9ca05b41577aa73a2f431a5fec6837b5aa054"
-dependencies = [
- "base64 0.13.0",
- "log",
- "openssl",
- "serde",
- "serde_derive",
- "serde_json",
-]
-
-[[package]]
 name = "byte-tools"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -620,6 +606,20 @@ name = "compact_jwt"
 version = "0.1.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41e359e67b8bb65fdcdc67e506f65b4aec4a97c7e731f321ed1b4b86c443ca6e"
+dependencies = [
+ "base64 0.13.0",
+ "openssl",
+ "serde",
+ "serde_json",
+ "tracing",
+ "url",
+ "uuid",
+]
+
+[[package]]
+name = "compact_jwt"
+version = "0.2.0"
+source = "git+https://github.com/kanidm/compact-jwt.git#f093323d69dacd49189348cbb904d7c8a8f61cbd"
 dependencies = [
  "base64 0.13.0",
  "openssl",
@@ -1887,9 +1887,8 @@ dependencies = [
  "async-std",
  "async-trait",
  "base64 0.13.0",
- "bundy",
  "chrono",
- "compact_jwt",
+ "compact_jwt 0.2.0",
  "compiled-uuid",
  "concread",
  "criterion",
@@ -1945,7 +1944,7 @@ version = "1.1.0-alpha.7"
 dependencies = [
  "async-std",
  "base64 0.13.0",
- "compact_jwt",
+ "compact_jwt 0.1.9",
  "futures",
  "kanidm",
  "kanidm_proto",
@@ -1981,7 +1980,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.7"
 dependencies = [
- "bundy",
+ "compact_jwt 0.2.0",
  "dialoguer",
  "kanidm_client",
  "kanidm_proto",
@@ -3181,7 +3180,7 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "async-trait",
- "bundy",
+ "compact_jwt 0.2.0",
  "futures-util",
  "kanidm",
  "kanidm_proto",

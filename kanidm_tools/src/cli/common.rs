@@ -1,9 +1,10 @@
 use crate::session::read_tokens;
 use crate::CommonOpt;
+use compact_jwt::{Jws, JwsUnverified};
+use dialoguer::{theme::ColorfulTheme, Select};
 use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UserAuthToken;
-
-use dialoguer::{theme::ColorfulTheme, Select};
+use std::str::FromStr;
 
 impl CommonOpt {
     pub fn to_unauth_client(&self) -> KanidmClient {
@@ -91,8 +92,19 @@ impl CommonOpt {
             }
         };
 
+        let jwtu = match JwsUnverified::from_str(&token) {
+            Ok(jwtu) => jwtu,
+            Err(e) => {
+                eprintln!("Unable to parse token - {:?}", e);
+                std::process::exit(1);
+            }
+        };
+
         // Is the token (probably) valid?
-        match unsafe { bundy::Data::parse_without_verification::<UserAuthToken>(&token) } {
+        match jwtu
+            .validate_embeded()
+            .map(|jws: Jws<UserAuthToken>| jws.inner)
+        {
             Ok(uat) => {
                 if time::OffsetDateTime::now_utc() >= uat.expiry {
                     error!(

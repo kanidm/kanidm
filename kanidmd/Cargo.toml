@@ -27,8 +27,7 @@ tide = "0.16"
 async-trait = "0.1"
 async-h1 = "2.0"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
-bundy = "^0.1.1"
-compact_jwt = "^0.1.7"
+compact_jwt = "^0.2.0"
 
 async-std = { version = "1.6", features = ["tokio1"] }
 

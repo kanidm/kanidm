@@ -954,11 +954,13 @@ pub const JSON_IDM_ACP_DOMAIN_ADMIN_PRIV_V1: &str = r#"{
             "domain_name",
             "domain_ssid",
             "domain_uuid",
-            "domain_token_key"
+            "fernet_private_key_str",
+            "es256_private_key_der"
         ],
         "acp_modify_removedattr": [
             "domain_ssid",
-            "domain_token_key"
+            "fernet_private_key_str",
+            "es256_private_key_der"
         ],
         "acp_modify_presentattr": [
             "domain_ssid"
