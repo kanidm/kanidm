@@ -2602,6 +2602,10 @@
 <span id="2600">2600</span>
 <span id="2601">2601</span>
 <span id="2602">2602</span>
+<span id="2603">2603</span>
+<span id="2604">2604</span>
+<span id="2605">2605</span>
+<span id="2606">2606</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Entries are the base unit of object storage in the server. This is one of the three foundational</span>
 <span class="doccomment">//! concepts along with [`filter`]s and [`schema`] that everything else builds upon.</span>
 <span class="doccomment">//!</span>
@@ -3031,8 +3035,12 @@
                         }).<span class="ident">collect</span>();
                         <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
-                    <span class="string">&quot;domain_token_key&quot;</span> =&gt; {
+                    <span class="string">&quot;domain_token_key&quot;</span> <span class="op">|</span> <span class="string">&quot;fernet_private_key_str&quot;</span> =&gt; {
                         <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_secret_str</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>();
+                        <span class="ident">vs</span>.<span class="ident">unwrap</span>()
+                    }
+                    <span class="string">&quot;es256_private_key_der&quot;</span> =&gt; {
+                        <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">ValueSet</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">Value::new_privatebinary_base64</span>(<span class="kw-2">&amp;</span><span class="ident">v</span>)).<span class="ident">collect</span>();
                         <span class="ident">vs</span>.<span class="ident">unwrap</span>()
                     }
                     <span class="ident">ia</span> =&gt; {

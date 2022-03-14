@@ -705,6 +705,7 @@
 <span id="703">703</span>
 <span id="704">704</span>
 <span id="705">705</span>
+<span id="706">706</span>
 </pre><pre class="rust"><code><span class="doccomment">//! These contain the server &quot;cores&quot;. These are able to startup the server</span>
 <span class="doccomment">//! (bootstrap) to a running state and then execute tasks. This is where modules</span>
 <span class="doccomment">//! are logically ordered based on their depenedncies for execution. Some of these</span>
@@ -758,6 +759,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::OperationError</span>;
 
 <span class="kw">use</span> <span class="ident">async_std::task</span>;
+<span class="kw">use</span> <span class="ident">compact_jwt::JwsSigner</span>;
 
 <span class="comment">// === internal setup helpers</span>
 
@@ -1292,10 +1294,10 @@
 
     <span class="comment">// Extract any configuration from the IDMS that we may need.</span>
     <span class="comment">// For now we just do this per run, but we need to extract this from the db later.</span>
-    <span class="kw">let</span> <span class="ident">bundy_key</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">bundy::hs512::HS512::generate_key</span>() {
+    <span class="kw">let</span> <span class="ident">jws_signer</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">JwsSigner::generate_hs256</span>() {
         <span class="prelude-val">Ok</span>(<span class="ident">k</span>) =&gt; <span class="ident">k</span>,
         <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-            <span class="macro">error!</span>(<span class="string">&quot;Unable to setup bundy -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+            <span class="macro">error!</span>(<span class="string">&quot;Unable to setup jws signer -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="kw">return</span> <span class="prelude-val">Err</span>(());
         }
     };
@@ -1399,7 +1401,7 @@
             <span class="ident">config</span>.<span class="ident">tls_config</span>.<span class="ident">as_ref</span>(),
             <span class="ident">config</span>.<span class="ident">role</span>,
             <span class="kw-2">&amp;</span><span class="ident">cookie_key</span>,
-            <span class="kw-2">&amp;</span><span class="ident">bundy_key</span>,
+            <span class="ident">jws_signer</span>,
             <span class="ident">status_ref</span>,
             <span class="ident">server_write_ref</span>,
             <span class="ident">server_read_ref</span>,

@@ -2360,6 +2360,10 @@
 <span id="2358">2358</span>
 <span id="2359">2359</span>
 <span id="2360">2360</span>
+<span id="2361">2361</span>
+<span id="2362">2362</span>
+<span id="2363">2363</span>
+<span id="2364">2364</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Oauth2 resource server configurations</span>
 <span class="doccomment">//!</span>
 <span class="doccomment">//! This contains the in memory and loaded set of active oauth2 resource server</span>
@@ -3491,6 +3495,10 @@
         <span class="kw">let</span> <span class="ident">id_token_signing_alg_values_supported</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">o2rs</span>.<span class="ident">jws_signer</span> {
             <span class="ident">JwsSigner::ES256</span> { .. } =&gt; <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::ES256</span>],
             <span class="ident">JwsSigner::RS256</span> { .. } =&gt; <span class="macro">vec!</span>[<span class="ident">IdTokenSignAlg::RS256</span>],
+            <span class="ident">JwsSigner::HS256</span> { .. } =&gt; {
+                <span class="macro">admin_warn!</span>(<span class="string">&quot;Invalid oauth2 configuration - HS256 is not supported!&quot;</span>);
+                <span class="macro">vec!</span>[]
+            }
         };
 
         <span class="kw">let</span> <span class="ident">userinfo_signing_alg_values_supported</span> <span class="op">=</span> <span class="prelude-val">None</span>;

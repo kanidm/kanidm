@@ -1194,6 +1194,8 @@
 <span id="1192">1192</span>
 <span id="1193">1193</span>
 <span id="1194">1194</span>
+<span id="1195">1195</span>
+<span id="1196">1196</span>
 </pre><pre class="rust"><code><span class="comment">/*
 // Template acp
 pub const _UUID_IDM_ACP_XX_V1: &amp;str = &quot;00000000-0000-0000-0000-ffffff0000XX&quot;;
@@ -2150,11 +2152,13 @@ pub const JSON_IDM_ACP_XX_V1: &amp;str = r#&quot;{
             &quot;domain_name&quot;,
             &quot;domain_ssid&quot;,
             &quot;domain_uuid&quot;,
-            &quot;domain_token_key&quot;
+            &quot;fernet_private_key_str&quot;,
+            &quot;es256_private_key_der&quot;
         ],
         &quot;acp_modify_removedattr&quot;: [
             &quot;domain_ssid&quot;,
-            &quot;domain_token_key&quot;
+            &quot;fernet_private_key_str&quot;,
+            &quot;es256_private_key_der&quot;
         ],
         &quot;acp_modify_presentattr&quot;: [
             &quot;domain_ssid&quot;

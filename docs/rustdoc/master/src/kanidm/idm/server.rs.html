@@ -3914,6 +3914,74 @@
 <span id="3912">3912</span>
 <span id="3913">3913</span>
 <span id="3914">3914</span>
+<span id="3915">3915</span>
+<span id="3916">3916</span>
+<span id="3917">3917</span>
+<span id="3918">3918</span>
+<span id="3919">3919</span>
+<span id="3920">3920</span>
+<span id="3921">3921</span>
+<span id="3922">3922</span>
+<span id="3923">3923</span>
+<span id="3924">3924</span>
+<span id="3925">3925</span>
+<span id="3926">3926</span>
+<span id="3927">3927</span>
+<span id="3928">3928</span>
+<span id="3929">3929</span>
+<span id="3930">3930</span>
+<span id="3931">3931</span>
+<span id="3932">3932</span>
+<span id="3933">3933</span>
+<span id="3934">3934</span>
+<span id="3935">3935</span>
+<span id="3936">3936</span>
+<span id="3937">3937</span>
+<span id="3938">3938</span>
+<span id="3939">3939</span>
+<span id="3940">3940</span>
+<span id="3941">3941</span>
+<span id="3942">3942</span>
+<span id="3943">3943</span>
+<span id="3944">3944</span>
+<span id="3945">3945</span>
+<span id="3946">3946</span>
+<span id="3947">3947</span>
+<span id="3948">3948</span>
+<span id="3949">3949</span>
+<span id="3950">3950</span>
+<span id="3951">3951</span>
+<span id="3952">3952</span>
+<span id="3953">3953</span>
+<span id="3954">3954</span>
+<span id="3955">3955</span>
+<span id="3956">3956</span>
+<span id="3957">3957</span>
+<span id="3958">3958</span>
+<span id="3959">3959</span>
+<span id="3960">3960</span>
+<span id="3961">3961</span>
+<span id="3962">3962</span>
+<span id="3963">3963</span>
+<span id="3964">3964</span>
+<span id="3965">3965</span>
+<span id="3966">3966</span>
+<span id="3967">3967</span>
+<span id="3968">3968</span>
+<span id="3969">3969</span>
+<span id="3970">3970</span>
+<span id="3971">3971</span>
+<span id="3972">3972</span>
+<span id="3973">3973</span>
+<span id="3974">3974</span>
+<span id="3975">3975</span>
+<span id="3976">3976</span>
+<span id="3977">3977</span>
+<span id="3978">3978</span>
+<span id="3979">3979</span>
+<span id="3980">3980</span>
+<span id="3981">3981</span>
+<span id="3982">3982</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -3957,9 +4025,9 @@
     <span class="ident">AuthType</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>, <span class="ident">RadiusAuthToken</span>, <span class="ident">SetCredentialResponse</span>,
     <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">UserAuthToken</span>,
 };
-<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
-<span class="kw">use</span> <span class="ident">bundy::hs512::HS512</span>;
+<span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
+<span class="kw">use</span> <span class="ident">fernet::Fernet</span>;
 
 <span class="kw">use</span> <span class="ident">tokio::sync::mpsc</span>::{
     <span class="ident">unbounded_channel</span> <span class="kw">as</span> <span class="ident">unbounded</span>, <span class="ident">UnboundedReceiver</span> <span class="kw">as</span> <span class="ident">Receiver</span>, <span class="ident">UnboundedSender</span> <span class="kw">as</span> <span class="ident">Sender</span>,
@@ -3973,14 +4041,14 @@
 
 <span class="kw">use</span> <span class="ident">concread</span>::{
     <span class="ident">bptree</span>::{<span class="ident">BptreeMap</span>, <span class="ident">BptreeMapWriteTxn</span>},
-    <span class="ident">CowCell</span>,
-};
-<span class="kw">use</span> <span class="ident">concread</span>::{
     <span class="ident">cowcell</span>::{<span class="ident">CowCellReadTxn</span>, <span class="ident">CowCellWriteTxn</span>},
     <span class="ident">hashmap::HashMap</span>,
+    <span class="ident">CowCell</span>,
 };
+
 <span class="kw">use</span> <span class="ident">rand::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::convert::TryFrom</span>;
+<span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">std</span>::{<span class="ident">sync::Arc</span>, <span class="ident">time::Duration</span>};
 <span class="kw">use</span> <span class="ident">tokio::sync::Mutex</span>;
 <span class="kw">use</span> <span class="ident">url::Url</span>;
@@ -3995,6 +4063,8 @@
 <span class="kw">type</span> <span class="ident">AuthSessionMutex</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">AuthSession</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 <span class="kw">type</span> <span class="ident">CredSoftLockMutex</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CredSoftLock</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
+<span class="comment">// type CredUpdateSessionMutex = Arc&lt;Mutex&lt;CredUpdateSession&gt;&gt;;</span>
+
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServer</span> {
     <span class="comment">// There is a good reason to keep this single thread - it</span>
     <span class="comment">// means that limits to sessions can be easily applied and checked to</span>
@@ -4005,6 +4075,7 @@
     <span class="ident">softlocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLockMutex</span><span class="op">&gt;</span>,
     <span class="doccomment">/// A set of in progress MFA registrations</span>
     <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">MfaRegSession</span><span class="op">&gt;</span>,
+    <span class="comment">// cred_update_sessions: BptreeMap&lt;Uuid, CredUpdateSessionMutex&gt;,</span>
     <span class="doccomment">/// Reference to the query server.</span>
     <span class="ident">qs</span>: <span class="ident">QueryServer</span>,
     <span class="doccomment">/// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it&#39;s just to allow dynamic pbkdf2rounds</span>
@@ -4014,7 +4085,10 @@
     <span class="ident">webauthn</span>: <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Oauth2ResourceServers</span><span class="op">&gt;</span>,
-    <span class="ident">uat_bundy_hmac</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">HS512</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+
+    <span class="ident">uat_jwt_signer</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">uat_jwt_validator</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="ident">token_enc_key</span>: <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">CowCell</span><span class="op">&lt;</span><span class="ident">Fernet</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// Contains methods that require writes, but in the context of writing to the idm in memory structures (maybe the query server too). This is things like authentication.</span>
@@ -4030,13 +4104,14 @@
     <span class="ident">async_tx</span>: <span class="ident">Sender</span><span class="op">&lt;</span><span class="ident">DelayedAction</span><span class="op">&gt;</span>,
     <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">uat_bundy_hmac</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HS512</span><span class="op">&gt;</span>,
+    <span class="ident">uat_jwt_signer</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">JwsSigner</span><span class="op">&gt;</span>,
+    <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span>,
 }
 
 <span class="doccomment">/// This contains read-only methods, like getting users, groups and other structured content.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
-    <span class="ident">uat_bundy_hmac</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HS512</span><span class="op">&gt;</span>,
+    <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Oauth2ResourceServersReadTransaction</span>,
 }
 
@@ -4050,7 +4125,9 @@
     <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CryptoPolicy</span>,
     <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="ident">uat_bundy_hmac</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">HS512</span><span class="op">&gt;</span>,
+    <span class="ident">uat_jwt_signer</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">JwsSigner</span><span class="op">&gt;</span>,
+    <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">JwsValidator</span><span class="op">&gt;</span>,
+    <span class="ident">token_enc_key</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Fernet</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Oauth2ResourceServersWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 }
 
@@ -4076,11 +4153,12 @@
         <span class="kw">let</span> (<span class="ident">async_tx</span>, <span class="ident">async_rx</span>) <span class="op">=</span> <span class="ident">unbounded</span>();
 
         <span class="comment">// Get the domain name, as the relying party id.</span>
-        <span class="kw">let</span> (<span class="ident">rp_id</span>, <span class="ident">token_key</span>, <span class="ident">pw_badlist_set</span>, <span class="ident">oauth2rs_set</span>) <span class="op">=</span> {
+        <span class="kw">let</span> (<span class="ident">rp_id</span>, <span class="ident">fernet_private_key</span>, <span class="ident">es256_private_key</span>, <span class="ident">pw_badlist_set</span>, <span class="ident">oauth2rs_set</span>) <span class="op">=</span> {
             <span class="kw">let</span> <span class="ident">qs_read</span> <span class="op">=</span> <span class="ident">task::block_on</span>(<span class="ident">qs</span>.<span class="ident">read_async</span>());
             (
                 <span class="ident">qs_read</span>.<span class="ident">get_domain_name</span>().<span class="ident">to_string</span>(),
-                <span class="ident">qs_read</span>.<span class="ident">get_domain_token_key</span>()<span class="question-mark">?</span>,
+                <span class="ident">qs_read</span>.<span class="ident">get_domain_fernet_private_key</span>()<span class="question-mark">?</span>,
+                <span class="ident">qs_read</span>.<span class="ident">get_domain_es256_private_key</span>()<span class="question-mark">?</span>,
                 <span class="ident">qs_read</span>.<span class="ident">get_password_badlist</span>()<span class="question-mark">?</span>,
                 <span class="comment">// Add a read/reload of all oauth2 configurations.</span>
                 <span class="ident">qs_read</span>.<span class="ident">get_oauth2rs_set</span>()<span class="question-mark">?</span>,
@@ -4121,11 +4199,24 @@
         });
 
         <span class="comment">// Setup our auth token signing key.</span>
-        <span class="kw">let</span> <span class="ident">bundy_handle</span> <span class="op">=</span> <span class="ident">HS512::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">token_key</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to generate uat_bundy_hmac - {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::InvalidState</span>
+        <span class="kw">let</span> <span class="ident">fernet_key</span> <span class="op">=</span> <span class="ident">Fernet::new</span>(<span class="kw-2">&amp;</span><span class="ident">fernet_private_key</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="string">&quot;Unable to load Fernet encryption key&quot;</span>);
+            <span class="ident">OperationError::CryptographyError</span>
         })<span class="question-mark">?</span>;
-        <span class="kw">let</span> <span class="ident">uat_bundy_hmac</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">bundy_handle</span>));
+        <span class="kw">let</span> <span class="ident">token_enc_key</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">fernet_key</span>));
+
+        <span class="kw">let</span> <span class="ident">jwt_signer</span> <span class="op">=</span> <span class="ident">JwsSigner::from_es256_der</span>(<span class="kw-2">&amp;</span><span class="ident">es256_private_key</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to load ES256 JwsSigner from DER&quot;</span>);
+            <span class="ident">OperationError::CryptographyError</span>
+        })<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">jwt_validator</span> <span class="op">=</span> <span class="ident">jwt_signer</span>.<span class="ident">get_validator</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+            <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to load ES256 JwsValidator from JwsSigner&quot;</span>);
+            <span class="ident">OperationError::CryptographyError</span>
+        })<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">uat_jwt_signer</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">jwt_signer</span>));
+        <span class="kw">let</span> <span class="ident">uat_jwt_validator</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">jwt_validator</span>));
 
         <span class="kw">let</span> <span class="ident">oauth2rs</span> <span class="op">=</span>
             <span class="ident">Oauth2ResourceServers::try_from</span>((<span class="ident">oauth2rs_set</span>, <span class="ident">origin_url</span>)).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -4144,7 +4235,9 @@
                 <span class="ident">async_tx</span>,
                 <span class="ident">webauthn</span>,
                 <span class="ident">pw_badlist_cache</span>: <span class="ident">Arc::new</span>(<span class="ident">CowCell::new</span>(<span class="ident">pw_badlist_set</span>)),
-                <span class="ident">uat_bundy_hmac</span>,
+                <span class="ident">uat_jwt_signer</span>,
+                <span class="ident">uat_jwt_validator</span>,
+                <span class="ident">token_enc_key</span>,
                 <span class="ident">oauth2rs</span>: <span class="ident">Arc::new</span>(<span class="ident">oauth2rs</span>),
             },
             <span class="ident">IdmServerDelayed</span> { <span class="ident">async_rx</span> },
@@ -4172,7 +4265,8 @@
             <span class="ident">async_tx</span>: <span class="self">self</span>.<span class="ident">async_tx</span>.<span class="ident">clone</span>(),
             <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">webauthn</span>,
             <span class="ident">pw_badlist_cache</span>: <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">read</span>(),
-            <span class="ident">uat_bundy_hmac</span>: <span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>.<span class="ident">read</span>(),
+            <span class="ident">uat_jwt_signer</span>: <span class="self">self</span>.<span class="ident">uat_jwt_signer</span>.<span class="ident">read</span>(),
+            <span class="ident">uat_jwt_validator</span>: <span class="self">self</span>.<span class="ident">uat_jwt_validator</span>.<span class="ident">read</span>(),
         }
     }
 
@@ -4184,7 +4278,7 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">proxy_read_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
         <span class="ident">IdmServerProxyReadTransaction</span> {
             <span class="ident">qs_read</span>: <span class="self">self</span>.<span class="ident">qs</span>.<span class="ident">read_async</span>().<span class="kw">await</span>,
-            <span class="ident">uat_bundy_hmac</span>: <span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>.<span class="ident">read</span>(),
+            <span class="ident">uat_jwt_validator</span>: <span class="self">self</span>.<span class="ident">uat_jwt_validator</span>.<span class="ident">read</span>(),
             <span class="ident">oauth2rs</span>: <span class="self">self</span>.<span class="ident">oauth2rs</span>.<span class="ident">read</span>(),
         }
     }
@@ -4207,7 +4301,9 @@
             <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">crypto_policy</span>,
             <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">webauthn</span>,
             <span class="ident">pw_badlist_cache</span>: <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">write</span>(),
-            <span class="ident">uat_bundy_hmac</span>: <span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>.<span class="ident">write</span>(),
+            <span class="ident">uat_jwt_signer</span>: <span class="self">self</span>.<span class="ident">uat_jwt_signer</span>.<span class="ident">write</span>(),
+            <span class="ident">uat_jwt_validator</span>: <span class="self">self</span>.<span class="ident">uat_jwt_validator</span>.<span class="ident">write</span>(),
+            <span class="ident">token_enc_key</span>: <span class="self">self</span>.<span class="ident">token_enc_key</span>.<span class="ident">write</span>(),
             <span class="ident">oauth2rs</span>: <span class="self">self</span>.<span class="ident">oauth2rs</span>.<span class="ident">write</span>(),
         }
     }
@@ -4263,7 +4359,7 @@
 
     <span class="kw">fn</span> <span class="ident">get_qs_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident"><span class="self">Self</span>::QsTransactionType</span>;
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span>;
+    <span class="kw">fn</span> <span class="ident">get_uat_validator_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">JwsValidator</span>;
 
     <span class="kw">fn</span> <span class="ident">validate_and_parse_uat</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -4271,17 +4367,24 @@
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// Given the token string, validate and recreate the UAT</span>
-        <span class="kw">let</span> <span class="ident">bref</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_uat_bundy_txn</span>();
+        <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_uat_validator_txn</span>();
 
-        <span class="kw">let</span> <span class="ident">uat</span>: <span class="ident">UserAuthToken</span> <span class="op">=</span>
-            <span class="ident">token</span>
-                .<span class="ident">ok_or</span>(<span class="ident">OperationError::NotAuthenticated</span>)
-                .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">token</span><span class="op">|</span> {
-                    <span class="ident">bref</span>.<span class="ident">verify</span>(<span class="ident">token</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">uat</span>: <span class="ident">UserAuthToken</span> <span class="op">=</span> <span class="ident">token</span>
+            .<span class="ident">ok_or</span>(<span class="ident">OperationError::NotAuthenticated</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> {
+                <span class="ident">JwsUnverified::from_str</span>(<span class="ident">s</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                    <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to decode token&quot;</span>);
+                    <span class="ident">OperationError::NotAuthenticated</span>
+                })
+            })
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">jwtu</span><span class="op">|</span> {
+                <span class="ident">jwtu</span>.<span class="ident">validate</span>(<span class="ident">jws_validator</span>)
+                    .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                         <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to verify token&quot;</span>);
                         <span class="ident">OperationError::NotAuthenticated</span>
                     })
-                })<span class="question-mark">?</span>;
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">t</span>: <span class="ident">Jws</span><span class="op">&lt;</span><span class="ident">UserAuthToken</span><span class="op">&gt;</span><span class="op">|</span> <span class="ident">t</span>.<span class="ident">inner</span>)
+            })<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="ident">time::OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="ident">ct</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">uat</span>.<span class="ident">expiry</span> {
             <span class="macro">security_info!</span>(<span class="string">&quot;Session expired&quot;</span>);
@@ -4385,8 +4488,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_read</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
-        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>
+    <span class="kw">fn</span> <span class="ident">get_uat_validator_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">JwsValidator</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_validator</span>
     }
 }
 
@@ -4658,7 +4761,7 @@
                                 <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">async_tx</span>,
                                 <span class="self">self</span>.<span class="ident">webauthn</span>,
                                 <span class="ident">pw_badlist_cache</span>,
-                                <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>,
+                                <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_signer</span>,
                             )
                             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">aus</span><span class="op">|</span> {
                                 <span class="comment">// Inspect the result:</span>
@@ -4925,8 +5028,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_read</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
-        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>
+    <span class="kw">fn</span> <span class="ident">get_uat_validator_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">JwsValidator</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_validator</span>
     }
 }
 
@@ -5102,8 +5205,8 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">qs_write</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">get_uat_bundy_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">HS512</span> {
-        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>
+    <span class="kw">fn</span> <span class="ident">get_uat_validator_txn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="ident">JwsValidator</span> {
+        <span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_validator</span>
     }
 }
 
@@ -5915,20 +6018,43 @@
             <span class="kw">if</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">get_changed_domain</span>() {
                 <span class="comment">// reload token_key?</span>
                 <span class="self">self</span>.<span class="ident">qs_write</span>
-                    .<span class="ident">get_domain_token_key</span>()
+                    .<span class="ident">get_domain_fernet_private_key</span>()
                     .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">token_key</span><span class="op">|</span> {
-                        <span class="ident">HS512::from_str</span>(<span class="kw-2">&amp;</span><span class="ident">token_key</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                            <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to generate uat_bundy_hmac - {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">Fernet::new</span>(<span class="kw-2">&amp;</span><span class="ident">token_key</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to generate token_enc_key&quot;</span>);
                             <span class="ident">OperationError::InvalidState</span>
                         })
                     })
                     .<span class="ident">map</span>(<span class="op">|</span><span class="ident">new_handle</span><span class="op">|</span> {
-                        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_bundy_hmac</span> <span class="op">=</span> <span class="ident">new_handle</span>;
+                        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">token_enc_key</span> <span class="op">=</span> <span class="ident">new_handle</span>;
+                    })<span class="question-mark">?</span>;
+                <span class="self">self</span>.<span class="ident">qs_write</span>
+                    .<span class="ident">get_domain_es256_private_key</span>()
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">key_der</span><span class="op">|</span> {
+                        <span class="ident">JwsSigner::from_es256_der</span>(<span class="kw-2">&amp;</span><span class="ident">key_der</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                            <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to generate uat_jwt_signer - {:?}&quot;</span>, <span class="ident">e</span>);
+                            <span class="ident">OperationError::InvalidState</span>
+                        })
+                    })
+                    .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">signer</span><span class="op">|</span> {
+                        <span class="ident">signer</span>
+                            .<span class="ident">get_validator</span>()
+                            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                                <span class="macro">admin_error!</span>(<span class="string">&quot;Failed to generate uat_jwt_validator - {:?}&quot;</span>, <span class="ident">e</span>);
+                                <span class="ident">OperationError::InvalidState</span>
+                            })
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">validator</span><span class="op">|</span> (<span class="ident">signer</span>, <span class="ident">validator</span>))
+                    })
+                    .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">new_signer</span>, <span class="ident">new_validator</span>)<span class="op">|</span> {
+                        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_signer</span> <span class="op">=</span> <span class="ident">new_signer</span>;
+                        <span class="kw-2">*</span><span class="self">self</span>.<span class="ident">uat_jwt_validator</span> <span class="op">=</span> <span class="ident">new_validator</span>;
                     })<span class="question-mark">?</span>;
             }
             <span class="comment">// Commit everything.</span>
             <span class="self">self</span>.<span class="ident">oauth2rs</span>.<span class="ident">commit</span>();
-            <span class="self">self</span>.<span class="ident">uat_bundy_hmac</span>.<span class="ident">commit</span>();
+            <span class="self">self</span>.<span class="ident">uat_jwt_signer</span>.<span class="ident">commit</span>();
+            <span class="self">self</span>.<span class="ident">uat_jwt_validator</span>.<span class="ident">commit</span>();
+            <span class="self">self</span>.<span class="ident">token_enc_key</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">commit</span>()
@@ -7807,11 +7933,21 @@
 
                 <span class="comment">// Now reset the token_key - we can cheat and push this</span>
                 <span class="comment">// through the migrate 3 to 4 code.</span>
+                <span class="comment">//</span>
+                <span class="comment">// fernet_private_key_str</span>
+                <span class="comment">// es256_private_key_der</span>
                 <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
-                <span class="ident">idms_prox_write</span>
-                    .<span class="ident">qs_write</span>
-                    .<span class="ident">migrate_3_to_4</span>()
-                    .<span class="ident">expect</span>(<span class="string">&quot;Failed to reset domain token key&quot;</span>);
+                <span class="kw">let</span> <span class="ident">me_reset_tokens</span> <span class="op">=</span> <span class="kw">unsafe</span> {
+                    <span class="ident">ModifyEvent::new_internal_invalid</span>(
+                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>))),
+                        <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[
+                            <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;fernet_private_key_str&quot;</span>)),
+                            <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;es256_private_key_der&quot;</span>)),
+                            <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;domain_token_key&quot;</span>)),
+                        ]),
+                    )
+                };
+                <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">qs_write</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_reset_tokens</span>).<span class="ident">is_ok</span>());
                 <span class="macro">assert!</span>(<span class="ident">idms_prox_write</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
                 <span class="comment">// Check the old token is invalid, due to reload.</span>
                 <span class="kw">let</span> <span class="ident">new_token</span> <span class="op">=</span> <span class="ident">check_admin_password</span>(<span class="ident">idms</span>, <span class="ident">TEST_PASSWORD</span>);

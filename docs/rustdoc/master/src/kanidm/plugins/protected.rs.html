@@ -418,6 +418,10 @@
 <span id="416">416</span>
 <span id="417">417</span>
 <span id="418">418</span>
+<span id="419">419</span>
+<span id="420">420</span>
+<span id="421">421</span>
+<span id="422">422</span>
 </pre><pre class="rust"><code><span class="comment">// System protected objects. Items matching specific requirements</span>
 <span class="comment">// may only have certain modifications performed.</span>
 
@@ -443,7 +447,8 @@
         <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;may&quot;</span>);
         <span class="comment">// Allow modification of some domain info types for local configuration.</span>
         <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;domain_ssid&quot;</span>);
-        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;domain_token_key&quot;</span>);
+        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;fernet_private_key_str&quot;</span>);
+        <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;es256_private_key_der&quot;</span>);
         <span class="ident">m</span>.<span class="ident">insert</span>(<span class="string">&quot;badlist_password&quot;</span>);
         <span class="ident">m</span>
     };
@@ -613,10 +618,10 @@
             ],
             &quot;acp_search_attr&quot;: [&quot;name&quot;, &quot;class&quot;, &quot;uuid&quot;, &quot;classname&quot;, &quot;attributename&quot;],
             &quot;acp_modify_class&quot;: [&quot;system&quot;, &quot;domain_info&quot;],
-            &quot;acp_modify_removedattr&quot;: [&quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;, &quot;domain_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;domain_token_key&quot;],
-            &quot;acp_modify_presentattr&quot;: [&quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;, &quot;domain_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;domain_token_key&quot;],
+            &quot;acp_modify_removedattr&quot;: [&quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;, &quot;domain_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;fernet_private_key_str&quot;, &quot;es256_private_key_der&quot;],
+            &quot;acp_modify_presentattr&quot;: [&quot;class&quot;, &quot;displayname&quot;, &quot;may&quot;, &quot;must&quot;, &quot;domain_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;fernet_private_key_str&quot;, &quot;es256_private_key_der&quot;],
             &quot;acp_create_class&quot;: [&quot;object&quot;, &quot;person&quot;, &quot;system&quot;, &quot;domain_info&quot;],
-            &quot;acp_create_attr&quot;: [&quot;name&quot;, &quot;class&quot;, &quot;description&quot;, &quot;displayname&quot;, &quot;domain_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;uuid&quot;, &quot;domain_token_key&quot;]
+            &quot;acp_create_attr&quot;: [&quot;name&quot;, &quot;class&quot;, &quot;description&quot;, &quot;displayname&quot;, &quot;domain_name&quot;, &quot;domain_uuid&quot;, &quot;domain_ssid&quot;, &quot;uuid&quot;, &quot;fernet_private_key_str&quot;, &quot;es256_private_key_der&quot;]
         }
     }&quot;#</span>;
 
@@ -750,7 +755,8 @@
                 &quot;description&quot;: [&quot;Demonstration of a remote domain&#39;s info being created for uuid generation&quot;],
                 &quot;domain_name&quot;: [&quot;example.net.au&quot;],
                 &quot;domain_ssid&quot;: [&quot;Example_Wifi&quot;],
-                &quot;domain_token_key&quot;: [&quot;ABCD&quot;]
+                &quot;fernet_private_key_str&quot;: [&quot;ABCD&quot;],
+                &quot;es256_private_key_der&quot; : [&quot;MTIz&quot;]
             }
         }&quot;#</span>,
         );
@@ -788,7 +794,8 @@
                 &quot;description&quot;: [&quot;Demonstration of a remote domain&#39;s info being created for uuid generation&quot;],
                 &quot;domain_name&quot;: [&quot;example.net.au&quot;],
                 &quot;domain_ssid&quot;: [&quot;Example_Wifi&quot;],
-                &quot;domain_token_key&quot;: [&quot;ABCD&quot;]
+                &quot;fernet_private_key_str&quot;: [&quot;ABCD&quot;],
+                &quot;es256_private_key_der&quot; : [&quot;MTIz&quot;]
             }
         }&quot;#</span>,
         );
@@ -817,7 +824,8 @@
                 &quot;description&quot;: [&quot;Demonstration of a remote domain&#39;s info being created for uuid generation&quot;],
                 &quot;domain_name&quot;: [&quot;example.net.au&quot;],
                 &quot;domain_ssid&quot;: [&quot;Example_Wifi&quot;],
-                &quot;domain_token_key&quot;: [&quot;ABCD&quot;]
+                &quot;fernet_private_key_str&quot;: [&quot;ABCD&quot;],
+                &quot;es256_private_key_der&quot; : [&quot;MTIz&quot;]
             }
         }&quot;#</span>,
         );

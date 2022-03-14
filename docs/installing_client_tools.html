@@ -136,14 +136,15 @@
                     <main>
                         <h1 id="installing-client-tools"><a class="header" href="#installing-client-tools">Installing Client Tools</a></h1>
 <blockquote>
-<p><strong>NOTE</strong> As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running the same release version of client/server binaries (eg. 1.1.0-alpha5, released 2021-07-07)</p>
+<p><strong>NOTE</strong> As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running matching release versions of client and server binaries.</p>
 </blockquote>
 <h2 id="from-packages"><a class="header" href="#from-packages">From packages</a></h2>
 <p>Kanidm currently supports:</p>
 <ul>
 <li>OpenSUSE Tumbleweed</li>
-<li>OpenSUSE Leap 15.3</li>
-<li>Fedora 33/34</li>
+<li>OpenSUSE Leap 15.3/15.4</li>
+<li>Fedora 34/35</li>
+<li>Centos Stream 9</li>
 </ul>
 <h3 id="opensuse-tumbleweed"><a class="header" href="#opensuse-tumbleweed">OpenSUSE Tumbleweed</a></h3>
 <p>Kanidm is part of OpenSUSE Tumbleweed since October 2020. This means you can install
@@ -151,8 +152,8 @@ the clients with:</p>
 <pre><code>zypper ref
 zypper in kanidm-clients
 </code></pre>
-<h3 id="opensuse-leap-153"><a class="header" href="#opensuse-leap-153">OpenSUSE Leap 15.3</a></h3>
-<p>Leap 15.3 is still not fully supported with Kanidm. For an experimental client, you can
+<h3 id="opensuse-leap-153154"><a class="header" href="#opensuse-leap-153154">OpenSUSE Leap 15.3/15.4</a></h3>
+<p>Leap 15.3/15.4 is still not fully supported with Kanidm. For an experimental client, you can
 try the development repository. Using zypper you can add the repository with:</p>
 <pre><code>zypper ar -f obs://network:idm network_idm
 </code></pre>
@@ -160,13 +161,15 @@ try the development repository. Using zypper you can add the repository with:</p
 <pre><code>zypper ref
 zypper in kanidm-clients
 </code></pre>
-<h3 id="fedora"><a class="header" href="#fedora">Fedora</a></h3>
-<p>Fedora is still experimentally supported through the development repository. You need to add the repository metadata into the correct directory.</p>
+<h3 id="fedora--centos-stream"><a class="header" href="#fedora--centos-stream">Fedora / Centos Stream</a></h3>
+<p>Fedora has limited supported through the development repository. You need to add the repository metadata into the correct directory.</p>
 <pre><code>cd /etc/yum.repos.d
-# 33
-sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_33/network:idm.repo
-# 34
+# Fedora 34
 sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
+# Fedora 35
+sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_35/network:idm.repo
+# Centos Stream 9
+sudo wget https://download.opensuse.org/repositories/network:/idm/CentOS_9_Stream/network:idm.repo
 </code></pre>
 <p>You can then install with:</p>
 <pre><code>sudo dnf install kanidm-clients

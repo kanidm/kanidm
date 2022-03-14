@@ -4148,6 +4148,36 @@
 <span id="4146">4146</span>
 <span id="4147">4147</span>
 <span id="4148">4148</span>
+<span id="4149">4149</span>
+<span id="4150">4150</span>
+<span id="4151">4151</span>
+<span id="4152">4152</span>
+<span id="4153">4153</span>
+<span id="4154">4154</span>
+<span id="4155">4155</span>
+<span id="4156">4156</span>
+<span id="4157">4157</span>
+<span id="4158">4158</span>
+<span id="4159">4159</span>
+<span id="4160">4160</span>
+<span id="4161">4161</span>
+<span id="4162">4162</span>
+<span id="4163">4163</span>
+<span id="4164">4164</span>
+<span id="4165">4165</span>
+<span id="4166">4166</span>
+<span id="4167">4167</span>
+<span id="4168">4168</span>
+<span id="4169">4169</span>
+<span id="4170">4170</span>
+<span id="4171">4171</span>
+<span id="4172">4172</span>
+<span id="4173">4173</span>
+<span id="4174">4174</span>
+<span id="4175">4175</span>
+<span id="4176">4176</span>
+<span id="4177">4177</span>
+<span id="4178">4178</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4863,15 +4893,28 @@
             })
     }
 
-    <span class="kw">fn</span> <span class="ident">get_domain_token_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">get_domain_fernet_private_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="ident">e</span>.<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;domain_token_key&quot;</span>)
+                <span class="ident">e</span>.<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;fernet_private_key_str&quot;</span>)
                     .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
             })
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Error getting domain token key&quot;</span>);
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Error getting domain fernet key&quot;</span>);
+                <span class="ident">e</span>
+            })
+    }
+
+    <span class="kw">fn</span> <span class="ident">get_domain_es256_private_key</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">u8</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="ident">e</span>.<span class="ident">get_ava_single_private_binary</span>(<span class="string">&quot;es256_private_key_der&quot;</span>)
+                    .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_vec</span>())
+                    .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
+            })
+            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Error getting domain es256 key&quot;</span>);
                 <span class="ident">e</span>
             })
     }
@@ -5228,6 +5271,10 @@
 
         <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">5</span> {
             <span class="ident">migrate_txn</span>.<span class="ident">migrate_4_to_5</span>()<span class="question-mark">?</span>;
+        }
+
+        <span class="kw">if</span> <span class="ident">system_info_version</span> <span class="op">&lt;</span> <span class="number">6</span> {
+            <span class="ident">migrate_txn</span>.<span class="ident">migrate_5_to_6</span>()<span class="question-mark">?</span>;
         }
 
         <span class="ident">migrate_txn</span>.<span class="ident">commit</span>()<span class="question-mark">?</span>;
@@ -6122,6 +6169,18 @@
         })
     }
 
+    <span class="doccomment">/// Migrate 5 to 6 - This updates the domain info item to reset the token</span>
+    <span class="doccomment">/// keys based on the new encryption types.</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">migrate_5_to_6</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::migrate_5_to_6&quot;</span>, {
+            <span class="macro">admin_warn!</span>(<span class="string">&quot;starting 5 to 6 migration.&quot;</span>);
+            <span class="kw">let</span> <span class="ident">filter</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, (<span class="kw-2">*</span><span class="ident">PVUUID_DOMAIN_INFO</span>).<span class="ident">clone</span>()));
+            <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge</span>(<span class="string">&quot;domain_token_key&quot;</span>);
+            <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filter</span>, <span class="kw-2">&amp;</span><span class="ident">modlist</span>)
+            <span class="comment">// Complete</span>
+        })
+    }
+
     <span class="comment">// These are where searches and other actions are actually implemented. This</span>
     <span class="comment">// is the &quot;internal&quot; version, where we define the event as being internal</span>
     <span class="comment">// only, allowing certain plugin by passes etc.</span>
@@ -6399,6 +6458,7 @@
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_UUID</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_SSID</span>,
             <span class="ident">JSON_SCHEMA_ATTR_DOMAIN_TOKEN_KEY</span>,
+            <span class="ident">JSON_SCHEMA_ATTR_FERNET_PRIVATE_KEY_STR</span>,
             <span class="ident">JSON_SCHEMA_ATTR_GIDNUMBER</span>,
             <span class="ident">JSON_SCHEMA_ATTR_BADLIST_PASSWORD</span>,
             <span class="ident">JSON_SCHEMA_ATTR_LOGINSHELL</span>,

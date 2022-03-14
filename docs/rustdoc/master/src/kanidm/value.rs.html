@@ -1755,6 +1755,12 @@
 <span id="1753">1753</span>
 <span id="1754">1754</span>
 <span id="1755">1755</span>
+<span id="1756">1756</span>
+<span id="1757">1757</span>
+<span id="1758">1758</span>
+<span id="1759">1759</span>
+<span id="1760">1760</span>
+<span id="1761">1761</span>
 </pre><pre class="rust"><code><span class="doccomment">//! Inside an entry, the key-value pairs are stored in these [`Value`] types. The components of</span>
 <span class="doccomment">//! the [`Value`] module allow storage and transformation of various types of input into strongly</span>
 <span class="doccomment">//! typed values, allows their comparison, filtering and more. It also has the code for serialising</span>
@@ -2934,6 +2940,12 @@
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">is_oauthscopemap</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="macro">matches!</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">Value::OauthScopeMap</span>(<span class="kw">_</span>, <span class="kw">_</span>))
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_privatebinary_base64</span>(<span class="ident">der</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="self">Self</span> {
+        <span class="kw">let</span> <span class="ident">der</span> <span class="op">=</span> <span class="ident">base64::decode</span>(<span class="ident">der</span>).<span class="ident">unwrap</span>();
+        <span class="ident">Value::PrivateBinary</span>(<span class="ident">der</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new_privatebinary</span>(<span class="ident">der</span>: <span class="kw-2">&amp;</span>[<span class="ident">u8</span>]) -&gt; <span class="self">Self</span> {
