@@ -603,21 +603,6 @@ dependencies = [
 
 [[package]]
 name = "compact_jwt"
-version = "0.1.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41e359e67b8bb65fdcdc67e506f65b4aec4a97c7e731f321ed1b4b86c443ca6e"
-dependencies = [
- "base64 0.13.0",
- "openssl",
- "serde",
- "serde_json",
- "tracing",
- "url",
- "uuid",
-]
-
-[[package]]
-name = "compact_jwt"
 version = "0.2.0"
 source = "git+https://github.com/kanidm/compact-jwt.git#f093323d69dacd49189348cbb904d7c8a8f61cbd"
 dependencies = [
@@ -1888,7 +1873,7 @@ dependencies = [
  "async-trait",
  "base64 0.13.0",
  "chrono",
- "compact_jwt 0.2.0",
+ "compact_jwt",
  "compiled-uuid",
  "concread",
  "criterion",
@@ -1944,7 +1929,7 @@ version = "1.1.0-alpha.7"
 dependencies = [
  "async-std",
  "base64 0.13.0",
- "compact_jwt 0.1.9",
+ "compact_jwt",
  "futures",
  "kanidm",
  "kanidm_proto",
@@ -1980,7 +1965,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.7"
 dependencies = [
- "compact_jwt 0.2.0",
+ "compact_jwt",
  "dialoguer",
  "kanidm_client",
  "kanidm_proto",
@@ -3180,7 +3165,7 @@ version = "0.1.0"
 dependencies = [
  "async-std",
  "async-trait",
- "compact_jwt 0.2.0",
+ "compact_jwt",
  "futures-util",
  "kanidm",
  "kanidm_proto",
