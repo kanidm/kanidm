@@ -41,6 +41,6 @@ concread = { git = "https://github.com/kanidm/concread.git" }
 # webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-authenticator-rs.git", rev = "c91205e57a783a7c3a6e09ade377c83a86fe0900" }
 
 # compact_jwt = { path = "../compact_jwt" }
-compact_jwt = { git = "https://github.com/kanidm/compact-jwt.git" }
+# compact_jwt = { git = "https://github.com/kanidm/compact-jwt.git" }
 
 
