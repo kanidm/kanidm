@@ -5,6 +5,7 @@
 
 pub(crate) mod account;
 pub(crate) mod authsession;
+pub(crate) mod credupdatesession;
 pub(crate) mod delayed;
 pub(crate) mod event;
 pub(crate) mod group;

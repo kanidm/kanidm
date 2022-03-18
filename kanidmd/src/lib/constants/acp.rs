@@ -112,7 +112,7 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
         "uuid": ["00000000-0000-0000-0000-ffffff000021"],
         "description": ["Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices."],
         "acp_receiver": [
-            "{\"and\": [\"self\", {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}, {\"eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
+            "{\"and\": [\"self\", {\"eq\": [\"class\", \"person\"]}, {\"eq\": [\"class\", \"account\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}, {\"eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
         ],
         "acp_targetscope": [
             "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"

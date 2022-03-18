@@ -79,8 +79,6 @@ use tracing::trace;
 type AuthSessionMutex = Arc<Mutex<AuthSession>>;
 type CredSoftLockMutex = Arc<Mutex<CredSoftLock>>;
 
-// type CredUpdateSessionMutex = Arc<Mutex<CredUpdateSession>>;
-
 pub struct IdmServer {
     // There is a good reason to keep this single thread - it
     // means that limits to sessions can be easily applied and checked to
@@ -91,7 +89,7 @@ pub struct IdmServer {
     softlocks: HashMap<Uuid, CredSoftLockMutex>,
     /// A set of in progress MFA registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
-    // cred_update_sessions: BptreeMap<Uuid, CredUpdateSessionMutex>,
+    cred_update_sessions: BptreeMap<Uuid, ()>,
     /// Reference to the query server.
     qs: QueryServer,
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
@@ -137,6 +135,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub qs_write: QueryServerWriteTransaction<'a>,
     /// Associate to an event origin ID, which has a TS and a UUID instead
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
+    cred_update_sessions: BptreeMapWriteTxn<'a, Uuid, ()>,
     sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
@@ -246,6 +245,7 @@ impl IdmServer {
                 sessions: BptreeMap::new(),
                 softlocks: HashMap::new(),
                 mfareg_sessions: BptreeMap::new(),
+                cred_update_sessions: BptreeMap::new(),
                 qs,
                 crypto_policy,
                 async_tx,
@@ -312,6 +312,7 @@ impl IdmServer {
 
         IdmServerProxyWriteTransaction {
             mfareg_sessions: self.mfareg_sessions.write(),
+            cred_update_sessions: self.cred_update_sessions.write(),
             qs_write,
             sid,
             crypto_policy: &self.crypto_policy,
@@ -2073,6 +2074,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.token_enc_key.commit();
             self.pw_badlist_cache.commit();
             self.mfareg_sessions.commit();
+            self.cred_update_sessions.commit();
             self.qs_write.commit()
         })
     }
@@ -3801,7 +3803,7 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_bundy_uat_expiry() {
+    fn test_idm_jwt_uat_expiry() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
@@ -3931,7 +3933,7 @@ mod tests {
     }
 
     #[test]
-    fn test_idm_bundy_uat_token_key_reload() {
+    fn test_idm_jwt_uat_token_key_reload() {
         run_idm_test!(
             |qs: &QueryServer, idms: &IdmServer, _idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);

@@ -1,7 +1,5 @@
 use crate::prelude::*;
 
-use uuid::Uuid;
-
 use kanidm_proto::v1::OperationError;
 use webauthn_rs::proto::RegisterPublicKeyCredential;
 
@@ -25,11 +23,11 @@ impl PasswordChangeEvent {
         cleartext: String,
         // qs: &QueryServerWriteTransaction,
     ) -> Result<Self, OperationError> {
-        let u = ident.get_uuid().ok_or(OperationError::InvalidState)?;
+        let target = ident.get_uuid().ok_or(OperationError::InvalidState)?;
 
         Ok(PasswordChangeEvent {
             ident,
-            target: u,
+            target,
             cleartext,
         })
     }
@@ -565,3 +563,4 @@ impl LdapAuthEvent {
         })
     }
 }
+

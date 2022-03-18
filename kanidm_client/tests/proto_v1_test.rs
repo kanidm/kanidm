@@ -374,27 +374,39 @@ fn test_server_radius_credential_lifecycle() {
             .idm_account_person_extend("admin", None, None)
             .unwrap();
 
+        let f = Filter::Eq("name".to_string(), "idm_admins".to_string());
+        let m = ModifyList::new_list(vec![Modify::Present(
+            "member".to_string(),
+            "system_admins".to_string(),
+        )]);
+        let res = rsclient.modify(f, m);
+        assert!(res.is_ok());
+
+        rsclient
+            .idm_account_create("demo_account", "Deeeeemo")
+            .unwrap();
+
         // Should have no radius secret
-        let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
+        let n_sec = rsclient.idm_account_radius_credential_get("demo_account").unwrap();
         assert!(n_sec.is_none());
 
         // Set one
         let sec1 = rsclient
-            .idm_account_radius_credential_regenerate("admin")
+            .idm_account_radius_credential_regenerate("demo_account")
             .unwrap();
 
         // Should be able to get it.
-        let r_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
+        let r_sec = rsclient.idm_account_radius_credential_get("demo_account").unwrap();
         assert!(sec1 == r_sec.unwrap());
 
         // test getting the token - we can do this as self or the radius server
-        let r_tok = rsclient.idm_account_radius_token_get("admin").unwrap();
+        let r_tok = rsclient.idm_account_radius_token_get("demo_account").unwrap();
         assert!(sec1 == r_tok.secret);
-        assert!(r_tok.name == "admin");
+        assert!(r_tok.name == "demo_account");
 
         // Reset it
         let sec2 = rsclient
-            .idm_account_radius_credential_regenerate("admin")
+            .idm_account_radius_credential_regenerate("demo_account")
             .unwrap();
 
         // Should be different
@@ -402,11 +414,11 @@ fn test_server_radius_credential_lifecycle() {
         assert!(sec1 != sec2);
 
         // Delete it
-        let res = rsclient.idm_account_radius_credential_delete("admin");
+        let res = rsclient.idm_account_radius_credential_delete("demo_account");
         assert!(res.is_ok());
 
         // No secret
-        let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
+        let n_sec = rsclient.idm_account_radius_credential_get("demo_account").unwrap();
         assert!(n_sec.is_none());
     });
 }
