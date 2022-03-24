@@ -24,6 +24,29 @@ impl InitCredentialUpdateEvent {
 impl<'a> IdmServerProxyWriteTransaction<'a> {
     pub fn init_credential_update(&mut self, _event: &InitCredentialUpdateEvent) -> () {
         admin_error!("init_credential_update");
+
+        // Is target an account?
+
+        // Given an ident
+        // entry
+        // attributes.
+
+        // need a search_permission_check
+        // need a modify_permission_check
+        // need a create_permission_check (future)
+        // need a delete_permission_check (future)
+
+        // Does the ident have permission to modify AND search the user-credentials of the target, given
+        // the current status of it's authentication?
+
+        // Build the cred update session.
+        // - store account policy (if present)
+        // - stash the current state of all associated credentials
+        // - 
+
+        // Store the update session into the map.
+
+        // - issue the CredentialUpdateToken (enc)
     }
 }
 

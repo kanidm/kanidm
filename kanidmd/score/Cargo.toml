@@ -37,3 +37,21 @@ compact_jwt = "^0.2.0"
 
 [build-dependencies]
 profiles = { path = "../../profiles" }
+
+[dev-dependencies]
+tracing-subscriber = "0.3"
+# tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
+# kanidm = { path = "../kanidmd" }
+# score = { path = "../kanidmd/score" }
+futures = "0.3"
+serde_json = "1.0"
+# async-std = { version = "1.6", features = ["tokio1"] }
+
+webauthn-authenticator-rs = "0.3.0-alpha.12"
+oauth2_ext = { package = "oauth2", version = "4.0", default-features = false }
+base64 = "0.13"
+# compact_jwt = "^0.1.5"
+
+kanidm_client = { path = "../../kanidm_client" }
+url = { version = "2", features = ["serde"] }
+reqwest = { version = "0.11", features=["cookies", "json", "native-tls"] }

@@ -367,6 +367,17 @@ impl AccessControlProfile {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct AccessEffectivePermission {
+    // I don't think we need this? The ident is implied by the requestor.
+    // ident: Uuid,
+    pub target: Uuid,
+    pub search: BTreeSet<AttrString>,
+    pub modify_pres: BTreeSet<AttrString>,
+    pub modify_rem: BTreeSet<AttrString>,
+    pub modify_class: BTreeSet<AttrString>,
+}
+
 // =========================================================================
 // ACP transactions and management for server bits.
 // =========================================================================
@@ -1137,6 +1148,23 @@ pub trait AccessControlsTransaction<'a> {
             Ok(r)
         })
     }
+
+    fn effective_permission_check(
+        &self,
+        ident: &Identity,
+        attrs: Option<BTreeSet<AttrString>>,
+        entries: &[Arc<EntrySealedCommitted>],
+    ) -> Result<Vec<AccessEffectivePermission>, OperationError> {
+        // I think we need a structure like " CheckResult, which is in the order of the
+        // entries, but also stashes the uuid. Then it has search, mod, create, delete,
+        // as seperate attrs to describe what is capable.
+
+        // Does create make sense here? I don't think it does. Create requires you to
+        // have an entry template. I think james was right about the create being
+        // a template copy op ...
+
+        unimplemented!();
+    }
 }
 
 pub struct AccessControlsWriteTransaction<'a> {
@@ -1359,11 +1387,13 @@ impl AccessControls {
 mod tests {
     use crate::access::{
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-        AccessControlSearch, AccessControls, AccessControlsTransaction,
+        AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission
     };
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
     use std::sync::Arc;
+    use std::collections::BTreeSet;
+    use compiled_uuid::uuid;
 
     macro_rules! acp_from_entry_err {
         (
@@ -2331,5 +2361,73 @@ mod tests {
         test_acp_delete!(&de_admin, vec![acp.clone()], &r_set, true);
         // Test reject delete
         test_acp_delete!(&de_anon, vec![acp], &r_set, false);
+    }
+
+    macro_rules! test_acp_effective_permissions {
+        (
+            $ident:expr,
+            $attrs:expr,
+            $search_controls:expr,
+            $modify_controls:expr,
+            $entries:expr,
+            $expect:expr
+        ) => {{
+            let ac = AccessControls::new();
+            let mut acw = ac.write();
+            acw.update_search($search_controls).expect("Failed to update");
+            acw.update_modify($modify_controls).expect("Failed to update");
+            let acw = acw;
+
+            let res = acw
+                .effective_permission_check($ident, $attrs, $entries)
+                .expect("Failed to apply effective_permission_check");
+
+            debug!("result --> {:?}", res);
+            debug!("expect --> {:?}", $expect);
+            // should be ok, and same as expect.
+            assert!(res == $expect);
+        }};
+    }
+
+    #[test]
+    fn test_access_effective_permission_check() {
+        let admin = unsafe {
+            Identity::from_impersonate_entry_ser(JSON_ADMIN_V1)
+        };
+
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
+
+        let r_set = vec![Arc::new(ev1.clone())];
+
+        test_acp_effective_permissions!(
+            &admin,
+            None,
+            vec![unsafe {
+                AccessControlSearch::from_raw(
+                    "test_acp",
+                    "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                    // apply to admin only
+                    filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                    // Allow admin to read only testperson1
+                    filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                    // They can read "name".
+                    "name",
+                )
+            }],
+            vec![],
+            &r_set,
+            vec![
+                AccessEffectivePermission {
+                    target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                    search: btreeset![
+                        AttrString::from("name")
+                    ],
+                    modify_pres: BTreeSet::new(),
+                    modify_rem: BTreeSet::new(),
+                    modify_class: BTreeSet::new(),
+                }
+            ]
+        )
     }
 }
