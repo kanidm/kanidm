@@ -43,8 +43,8 @@ pub mod identity;
 pub mod interval;
 pub mod ldap;
 mod modify;
-pub(crate) mod value;
-pub(crate) mod valueset;
+pub mod value;
+pub mod valueset;
 #[macro_use]
 mod plugins;
 mod access;

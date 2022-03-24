@@ -8,4 +8,6 @@ mod timings;
 
 pub use event_tag::EventTag;
 pub use middleware::TreeMiddleware;
-pub use subscriber::{main_init, operation_id, test_init, TreePreProcessed, TreeSubscriber};
+pub use subscriber::{
+    main_init, operation_id, test_init, test_level, TreePreProcessed, TreeSubscriber,
+};

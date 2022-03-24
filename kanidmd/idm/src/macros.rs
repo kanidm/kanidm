@@ -171,8 +171,6 @@ macro_rules! run_idm_test_inner {
         use crate::prelude::*;
         #[allow(unused_imports)]
         use crate::schema::Schema;
-
-        let _ = crate::tracing_tree::test_init();
         /*
         use env_logger;
         ::std::env::set_var("RUST_LOG", "actix_web=debug,kanidm=debug");
@@ -213,6 +211,7 @@ where
         &crate::idm::server::IdmServerDelayed,
     ),
 {
+    let _ = crate::tracing_tree::test_level(tracing::Level::ERROR);
     let _ = run_idm_test_inner!(test_fn);
 }
 

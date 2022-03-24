@@ -3,7 +3,6 @@ use criterion::{
 };
 
 use kanidm;
-use kanidm::audit::AuditScope;
 use kanidm::entry::{Entry, EntryInit, EntryNew};
 use kanidm::entry_init;
 use kanidm::idm::server::{IdmServer, IdmServerDelayed};
@@ -30,10 +29,7 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
 
                 for _i in 0..iters {
                     kanidm::macros::run_idm_test_no_logging(
-                        |_qs: &QueryServer,
-                         idms: &IdmServer,
-                         _idms_delayed: &IdmServerDelayed,
-                         au: &mut AuditScope| {
+                        |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                             let ct = duration_from_epoch_now();
 
                             let start = Instant::now();
@@ -50,10 +46,10 @@ pub fn scaling_user_create_single(c: &mut Criterion) {
                                     ("displayname", Value::new_utf8s(&name))
                                 );
 
-                                let cr = idms_prox_write.qs_write.internal_create(au, vec![e1]);
+                                let cr = idms_prox_write.qs_write.internal_create(vec![e1]);
                                 assert!(cr.is_ok());
 
-                                idms_prox_write.commit(au).expect("Must not fail");
+                                idms_prox_write.commit().expect("Must not fail");
                             }
                             elapsed = elapsed.checked_add(start.elapsed()).unwrap();
                         },
@@ -97,19 +93,16 @@ pub fn scaling_user_create_batched(c: &mut Criterion) {
 
                 for _i in 0..iters {
                     kanidm::macros::run_idm_test_no_logging(
-                        |_qs: &QueryServer,
-                         idms: &IdmServer,
-                         _idms_delayed: &IdmServerDelayed,
-                         au: &mut AuditScope| {
+                        |_qs: &QueryServer, idms: &IdmServer, _idms_delayed: &IdmServerDelayed| {
                             let ct = duration_from_epoch_now();
 
                             let start = Instant::now();
 
                             let idms_prox_write = task::block_on(idms.proxy_write_async(ct));
-                            let cr = idms_prox_write.qs_write.internal_create(au, data.clone());
+                            let cr = idms_prox_write.qs_write.internal_create(data.clone());
                             assert!(cr.is_ok());
 
-                            idms_prox_write.commit(au).expect("Must not fail");
+                            idms_prox_write.commit().expect("Must not fail");
                             elapsed = elapsed.checked_add(start.elapsed()).unwrap();
                         },
                     );

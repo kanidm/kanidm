@@ -387,7 +387,9 @@ fn test_server_radius_credential_lifecycle() {
             .unwrap();
 
         // Should have no radius secret
-        let n_sec = rsclient.idm_account_radius_credential_get("demo_account").unwrap();
+        let n_sec = rsclient
+            .idm_account_radius_credential_get("demo_account")
+            .unwrap();
         assert!(n_sec.is_none());
 
         // Set one
@@ -396,11 +398,15 @@ fn test_server_radius_credential_lifecycle() {
             .unwrap();
 
         // Should be able to get it.
-        let r_sec = rsclient.idm_account_radius_credential_get("demo_account").unwrap();
+        let r_sec = rsclient
+            .idm_account_radius_credential_get("demo_account")
+            .unwrap();
         assert!(sec1 == r_sec.unwrap());
 
         // test getting the token - we can do this as self or the radius server
-        let r_tok = rsclient.idm_account_radius_token_get("demo_account").unwrap();
+        let r_tok = rsclient
+            .idm_account_radius_token_get("demo_account")
+            .unwrap();
         assert!(sec1 == r_tok.secret);
         assert!(r_tok.name == "demo_account");
 
@@ -418,7 +424,9 @@ fn test_server_radius_credential_lifecycle() {
         assert!(res.is_ok());
 
         // No secret
-        let n_sec = rsclient.idm_account_radius_credential_get("demo_account").unwrap();
+        let n_sec = rsclient
+            .idm_account_radius_credential_get("demo_account")
+            .unwrap();
         assert!(n_sec.is_none());
     });
 }

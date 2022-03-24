@@ -556,10 +556,27 @@ pub fn main_init() -> JoinHandle<()> {
 // and then getting dropped, making the global subscriber panic on further attempts to send logs.
 #[allow(dead_code)]
 pub fn test_init() -> Result<(), SetGlobalDefaultError> {
-    tracing::subscriber::set_global_default(TreeSubscriber {
+    let subscriber = TreeSubscriber {
         inner: Registry::default().with(TreeLayer {
             fmt: LogFmt::Pretty,
             processor: TestProcessor {},
         }),
-    })
+    };
+
+    tracing::subscriber::set_global_default(subscriber)
+}
+
+#[allow(dead_code)]
+pub fn test_level(level: tracing::Level) -> Result<(), SetGlobalDefaultError> {
+    let subscriber = TreeSubscriber {
+        inner: Registry::default().with(TreeLayer {
+            fmt: LogFmt::Pretty,
+            processor: TestProcessor {},
+        }),
+    };
+
+    let subscriber =
+        tracing_subscriber::filter::LevelFilter::from_level(level).with_subscriber(subscriber);
+
+    tracing::subscriber::set_global_default(subscriber)
 }

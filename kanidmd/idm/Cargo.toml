@@ -99,7 +99,7 @@ webauthn-authenticator-rs = "0.3.0-alpha.12"
 [build-dependencies]
 profiles = { path = "../../profiles" }
 
-# [[bench]]
-# name = "scaling_10k"
-# harness = false
+[[bench]]
+name = "scaling_10k"
+harness = false
 
