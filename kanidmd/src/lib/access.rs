@@ -411,8 +411,8 @@ pub trait AccessControlsTransaction<'a> {
     fn search_related_acp<'b>(
         &'b self,
         rec_entry: &Entry<EntrySealed, EntryCommitted>,
-        se: &SearchEvent,
-    ) -> Vec<&'b AccessControlSearch> {
+        ident: &Identity,
+    ) -> Vec<(&'b AccessControlSearch, Filter<FilterValidResolved>)> {
         let search_state = self.get_search();
         // let acp_related_search_cache = self.get_acp_related_search_cache();
         let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
@@ -443,12 +443,11 @@ pub trait AccessControlsTransaction<'a> {
         } else {
         */
         // else, we calculate this, and then stash/cache the uuids.
-        let related_acp: Vec<&AccessControlSearch> =
+        let related_acp: Vec<(&AccessControlSearch, Filter<FilterValidResolved>)> =
             spanned!("access::search_related_acp<uncached>", {
                 search_state
                     .iter()
-                    // .filter_map(|(_, acs)| {
-                    .filter(|acs| {
+                    .filter_map(|acs| {
                         // Now resolve the receiver filter
                         // Okay, so in filter resolution, the primary error case
                         // is that we have a non-user in the event. We have already
@@ -465,17 +464,35 @@ pub trait AccessControlsTransaction<'a> {
                         // such that it takes an entry, rather than an event, but that
                         // would create issues in search.
                         match (&acs.acp.receiver).resolve(
-                            &se.ident,
+                            ident,
                             None,
                             Some(acp_resolve_filter_cache),
                         ) {
-                            Ok(f_res) => rec_entry.entry_match_no_index(&f_res),
+                            Ok(f_res) => {
+                                if rec_entry.entry_match_no_index(&f_res) {
+                                    // Now, for each of the acp's that apply to our receiver, resolve their
+                                    // related target filters.
+                                    (&acs.acp.targetscope)
+                                        .resolve(ident, None, Some(acp_resolve_filter_cache))
+                                        .map_err(|e| {
+                                            admin_error!(
+                                            ?e,
+                                            "A internal filter/event was passed for resolution!?!?"
+                                        );
+                                            e
+                                        })
+                                        .ok()
+                                        .map(|f_res| (acs, f_res))
+                                } else {
+                                    None
+                                }
+                            }
                             Err(e) => {
                                 admin_error!(
                                     ?e,
                                     "A internal filter/event was passed for resolution!?!?"
                                 );
-                                false
+                                None
                             }
                         }
                     })
@@ -512,25 +529,8 @@ pub trait AccessControlsTransaction<'a> {
             trace!(event = %se.ident, "Access check for search (filter) event");
 
             // First get the set of acps that apply to this receiver
-            let related_acp = self.search_related_acp(rec_entry, se);
-            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
-
-            let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
-                .into_iter()
-                .filter_map(|acs| {
-                    (&acs.acp.targetscope)
-                        .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "A internal filter/event was passed for resolution!?!?"
-                            );
-                            e
-                        })
-                        .ok()
-                        .map(|f_res| (acs, f_res))
-                })
-                .collect();
+            let related_acp: Vec<(&AccessControlSearch, _)> =
+                self.search_related_acp(rec_entry, &se.ident);
 
             /*
             related_acp.iter().for_each(|racp| {
@@ -630,37 +630,19 @@ pub trait AccessControlsTransaction<'a> {
              */
 
             trace!("Access check for search (reduce) event: {}", se.ident);
-            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
             // Get the relevant acps for this receiver.
-            let related_acp = self.search_related_acp(rec_entry, se);
-
-            let related_acp: Vec<&AccessControlSearch> = if let Some(r_attrs) = se.attrs.as_ref() {
-                related_acp
-                    .into_iter()
-                    .filter(|acs| !acs.attrs.is_disjoint(r_attrs))
-                    .collect()
-            } else {
-                related_acp
-            };
-
-            // Compile all the target filters in one pass.
-            let related_acp: Vec<(&AccessControlSearch, _)> = related_acp
-                .into_iter()
-                .filter_map(|acs| {
-                    (&acs.acp.targetscope)
-                        .resolve(&se.ident, None, Some(acp_resolve_filter_cache))
-                        .map_err(|e| {
-                            admin_error!(
-                                ?e,
-                                "A internal filter/event was passed for resolution!?!?"
-                            );
-                            e
-                        })
-                        .ok()
-                        .map(|f_res| (acs, f_res))
-                })
-                .collect();
+            let related_acp: Vec<(&AccessControlSearch, _)> =
+                self.search_related_acp(rec_entry, &se.ident);
+            let related_acp: Vec<(&AccessControlSearch, _)> =
+                if let Some(r_attrs) = se.attrs.as_ref() {
+                    related_acp
+                        .into_iter()
+                        .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
+                        .collect()
+                } else {
+                    related_acp
+                };
 
             /*
             related_acp.iter().for_each(|racp| {
@@ -1163,7 +1145,89 @@ pub trait AccessControlsTransaction<'a> {
         // have an entry template. I think james was right about the create being
         // a template copy op ...
 
-        unimplemented!();
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &ident.origin {
+            IdentType::Internal => {
+                // In production we can't risk leaking data here, so we return
+                // empty sets.
+                security_critical!("IMPOSSIBLE STATE: Internal search in external interface?! Returning empty for safety.");
+                // No need to check ACS
+                return Err(OperationError::InvalidState);
+            }
+            IdentType::User(u) => &u.entry,
+        };
+
+        spanned!("access::effective_permission_check", {
+            trace!(ident = %ident, "Effective permission check");
+            // I think we seperate this to multiple checks ...?
+
+            // == search ==
+            // Get the relevant acps for this receiver.
+            let related_acp: Vec<(&AccessControlSearch, _)> =
+                self.search_related_acp(rec_entry, ident);
+            let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = attrs.as_ref()
+            {
+                related_acp
+                    .into_iter()
+                    .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
+                    .collect()
+            } else {
+                related_acp
+            };
+
+            related_acp.iter().for_each(|(racp, _)| {
+                trace!("Related acs -> {:?}", racp.acp.name);
+            });
+
+            // for each entry
+            //
+
+            let effective_permissions: Vec<_> = entries.iter()
+                .map(|e| {
+                    let allowed_attrs: BTreeSet<AttrString> = related_acp
+                        .iter()
+                        .filter_map(|(acs, f_res)| {
+                            // if it applies
+                            if e.entry_match_no_index(f_res) {
+                                security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
+                                // add search_attrs to allowed.
+                                // Some(acs.attrs.iter().map(|s| s.as_str()))
+                                Some(acs.attrs.iter().map(|s| s.clone()))
+                            } else {
+                                trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
+                                None
+                            }
+                        })
+                        .flatten()
+                        .collect();
+
+                    security_access!(
+                        requested = ?attrs,
+                        allows = ?allowed_attrs,
+                        "attributes",
+                    );
+
+                    // intersect?
+                    let search_effective = if let Some(r_attrs) = attrs.as_ref() {
+                        r_attrs & &allowed_attrs
+                    } else {
+                        allowed_attrs
+                    };
+                    AccessEffectivePermission {
+                        target: *e.get_uuid(),
+                        search: search_effective,
+                        modify_pres: BTreeSet::new(),
+                        modify_rem: BTreeSet::new(),
+                        modify_class: BTreeSet::new(),
+                    }
+                })
+                .collect();
+
+            effective_permissions.iter().for_each(|ep| {
+                trace!(?ep);
+            });
+
+            Ok(effective_permissions)
+        })
     }
 }
 
@@ -1387,13 +1451,13 @@ impl AccessControls {
 mod tests {
     use crate::access::{
         AccessControlCreate, AccessControlDelete, AccessControlModify, AccessControlProfile,
-        AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission
+        AccessControlSearch, AccessControls, AccessControlsTransaction, AccessEffectivePermission,
     };
     use crate::event::{CreateEvent, DeleteEvent, ModifyEvent, SearchEvent};
     use crate::prelude::*;
-    use std::sync::Arc;
-    use std::collections::BTreeSet;
     use compiled_uuid::uuid;
+    use std::collections::BTreeSet;
+    use std::sync::Arc;
 
     macro_rules! acp_from_entry_err {
         (
@@ -2374,8 +2438,10 @@ mod tests {
         ) => {{
             let ac = AccessControls::new();
             let mut acw = ac.write();
-            acw.update_search($search_controls).expect("Failed to update");
-            acw.update_modify($modify_controls).expect("Failed to update");
+            acw.update_search($search_controls)
+                .expect("Failed to update");
+            acw.update_modify($modify_controls)
+                .expect("Failed to update");
             let acw = acw;
 
             let res = acw
@@ -2390,10 +2456,10 @@ mod tests {
     }
 
     #[test]
-    fn test_access_effective_permission_check() {
-        let admin = unsafe {
-            Identity::from_impersonate_entry_ser(JSON_ADMIN_V1)
-        };
+    fn test_access_effective_permission_check_1() {
+        let _ = crate::tracing_tree::test_init();
+
+        let admin = unsafe { Identity::from_impersonate_entry_ser(JSON_ADMIN_V1) };
 
         let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
         let ev1 = unsafe { e1.into_sealed_committed() };
@@ -2417,17 +2483,53 @@ mod tests {
             }],
             vec![],
             &r_set,
-            vec![
-                AccessEffectivePermission {
-                    target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
-                    search: btreeset![
-                        AttrString::from("name")
-                    ],
-                    modify_pres: BTreeSet::new(),
-                    modify_rem: BTreeSet::new(),
-                    modify_class: BTreeSet::new(),
-                }
-            ]
+            vec![AccessEffectivePermission {
+                target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                search: btreeset![AttrString::from("name")],
+                modify_pres: BTreeSet::new(),
+                modify_rem: BTreeSet::new(),
+                modify_class: BTreeSet::new(),
+            }]
+        )
+    }
+
+    #[test]
+    fn test_access_effective_permission_check_2() {
+        let _ = crate::tracing_tree::test_init();
+
+        let admin = unsafe { Identity::from_impersonate_entry_ser(JSON_ADMIN_V1) };
+
+        let e1: Entry<EntryInit, EntryNew> = Entry::unsafe_from_entry_str(JSON_TESTPERSON1);
+        let ev1 = unsafe { e1.into_sealed_committed() };
+
+        let r_set = vec![Arc::new(ev1.clone())];
+
+        test_acp_effective_permissions!(
+            &admin,
+            None,
+            vec![],
+            vec![unsafe {
+                AccessControlModify::from_raw(
+                    "test_acp",
+                    "d38640c4-0254-49f9-99b7-8ba7d0233f3d",
+                    // apply to admin only
+                    filter_valid!(f_eq("name", PartialValue::new_iname("admin"))),
+                    // Allow admin to read only testperson1
+                    filter_valid!(f_eq("name", PartialValue::new_iname("testperson1"))),
+                    // They can read "name".
+                    "name",
+                    "name",
+                    "object",
+                )
+            }],
+            &r_set,
+            vec![AccessEffectivePermission {
+                target: uuid!("cc8e95b4-c24f-4d68-ba54-8bed76f63930"),
+                search: BTreeSet::new(),
+                modify_pres: btreeset![AttrString::from("name")],
+                modify_rem: btreeset![AttrString::from("name")],
+                modify_class: btreeset![AttrString::from("object")],
+            }]
         )
     }
 }

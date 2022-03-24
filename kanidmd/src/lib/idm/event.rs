@@ -563,4 +563,3 @@ impl LdapAuthEvent {
         })
     }
 }
-
