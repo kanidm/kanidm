@@ -8,7 +8,7 @@ use structopt::StructOpt;
 
 use serde::{Deserialize, Serialize};
 
-include!("../src/lib/audit_loglevel.rs");
+include!("../idm/src/audit_loglevel.rs");
 include!("src/opt.rs");
 
 fn main() {

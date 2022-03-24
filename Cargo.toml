@@ -6,7 +6,7 @@ lto = "thin"
 [workspace]
 members = [
     "kanidm_proto",
-    "kanidmd",
+    "kanidmd/idm",
     "kanidmd/score",
     "kanidmd/daemon",
     "kanidmd_web_ui",

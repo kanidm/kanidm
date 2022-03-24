@@ -12,10 +12,10 @@ repository = "https://github.com/kanidm/kanidm/"
 
 [lib]
 name = "kanidm"
-path = "src/lib/lib.rs"
+path = "src/lib.rs"
 
 [dependencies]
-kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
+kanidm_proto = { path = "../../kanidm_proto", version = "1.1.0-alpha" }
 tracing = { version = "0.1", features = ["attributes"] }
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-serde = "0.1"
@@ -97,9 +97,9 @@ criterion = { version = "0.3", features = ["html_reports"] }
 webauthn-authenticator-rs = "0.3.0-alpha.12"
 
 [build-dependencies]
-profiles = { path = "../profiles" }
+profiles = { path = "../../profiles" }
 
-[[bench]]
-name = "scaling_10k"
-harness = false
+# [[bench]]
+# name = "scaling_10k"
+# harness = false
 
