@@ -14,9 +14,14 @@
   "files": [
     "kanidmd_web_ui_bg.wasm",
     "kanidmd_web_ui.js",
+<<<<<<< HEAD
     "LICENSE.md"
+=======
+    "kanidmd_web_ui.d.ts"
+>>>>>>> f8a157b7 (Effective permissions work!)
   ],
   "module": "kanidmd_web_ui.js",
   "homepage": "https://github.com/kanidm/kanidm/",
+  "types": "kanidmd_web_ui.d.ts",
   "sideEffects": false
 }

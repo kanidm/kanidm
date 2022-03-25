@@ -722,48 +722,28 @@ pub trait AccessControlsTransaction<'a> {
         })
     }
 
-    #[allow(clippy::cognitive_complexity)]
-    fn modify_allow_operation(
-        &self,
-        me: &ModifyEvent,
-        entries: &[Arc<EntrySealedCommitted>],
-    ) -> Result<bool, OperationError> {
-        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.ident.origin {
-            IdentType::Internal => {
-                trace!("Internal operation, bypassing access check");
-                // No need to check ACS
-                return Ok(true);
-            }
-            IdentType::User(u) => &u.entry,
-        };
-        spanned!("access::modify_allow_operation", {
-            trace!("Access check for modify event: {}", me.ident);
+    fn modify_related_acp<'b>(
+        &'b self,
+        rec_entry: &Entry<EntrySealed, EntryCommitted>,
+        ident: &Identity,
+    ) -> Vec<(&'b AccessControlModify, Filter<FilterValidResolved>)> {
+        // Some useful references we'll use for the remainder of the operation
+        let modify_state = self.get_modify();
+        let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
 
-            // Some useful references we'll use for the remainder of the operation
-            let modify_state = self.get_modify();
-            let acp_resolve_filter_cache = self.get_acp_resolve_filter_cache();
-
-            // Pre-check if the no-no purge class is present
-            let disallow = me
-                .modlist
-                .iter()
-                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
-
-            if disallow {
-                security_access!("Disallowing purge class in modification");
-                return Ok(false);
-            }
-
-            // Find the acps that relate to the caller, and compile their related
-            // target filters.
-            let related_acp: Vec<(&AccessControlModify, _)> = modify_state
+        // Find the acps that relate to the caller, and compile their related
+        // target filters.
+        let related_acp: Vec<(&AccessControlModify, _)> = spanned!(
+            "access::modify_related_acp<uncached>",
+            {
+                modify_state
                 .iter()
                 .filter_map(|acs| {
-                    match (&acs.acp.receiver).resolve(&me.ident, None, Some(acp_resolve_filter_cache)) {
+                    match (&acs.acp.receiver).resolve(ident, None, Some(acp_resolve_filter_cache)) {
                         Ok(f_res) => {
                             if rec_entry.entry_match_no_index(&f_res) {
                                 (&acs.acp.targetscope)
-                                    .resolve(&me.ident, None, Some(acp_resolve_filter_cache))
+                                    .resolve(ident, None, Some(acp_resolve_filter_cache))
                                     .map_err(|e| {
                                         admin_error!(
                                             "A internal filter/event was passed for resolution!?!? {:?}",
@@ -786,7 +766,45 @@ pub trait AccessControlsTransaction<'a> {
                         }
                     }
                 })
-                .collect();
+                .collect()
+            }
+        );
+
+        related_acp
+    }
+
+    #[allow(clippy::cognitive_complexity)]
+    fn modify_allow_operation(
+        &self,
+        me: &ModifyEvent,
+        entries: &[Arc<EntrySealedCommitted>],
+    ) -> Result<bool, OperationError> {
+        let rec_entry: &Entry<EntrySealed, EntryCommitted> = match &me.ident.origin {
+            IdentType::Internal => {
+                trace!("Internal operation, bypassing access check");
+                // No need to check ACS
+                return Ok(true);
+            }
+            IdentType::User(u) => &u.entry,
+        };
+        spanned!("access::modify_allow_operation", {
+            trace!("Access check for modify event: {}", me.ident);
+
+            // Pre-check if the no-no purge class is present
+            let disallow = me
+                .modlist
+                .iter()
+                .any(|m| matches!(m, Modify::Purged(a) if a == "class"));
+
+            if disallow {
+                security_access!("Disallowing purge class in modification");
+                return Ok(false);
+            }
+
+            // Find the acps that relate to the caller, and compile their related
+            // target filters.
+            let related_acp: Vec<(&AccessControlModify, _)> =
+                self.modify_related_acp(&rec_entry, &me.ident);
 
             related_acp.iter().for_each(|racp| {
                 trace!("Related acs -> {:?}", racp.0.acp.name);
@@ -1162,35 +1180,45 @@ pub trait AccessControlsTransaction<'a> {
 
             // == search ==
             // Get the relevant acps for this receiver.
-            let related_acp: Vec<(&AccessControlSearch, _)> =
+            let search_related_acp: Vec<(&AccessControlSearch, _)> =
                 self.search_related_acp(rec_entry, ident);
-            let related_acp: Vec<(&AccessControlSearch, _)> = if let Some(r_attrs) = attrs.as_ref()
-            {
-                related_acp
-                    .into_iter()
-                    .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
-                    .collect()
-            } else {
-                related_acp
-            };
+            let search_related_acp: Vec<(&AccessControlSearch, _)> =
+                if let Some(r_attrs) = attrs.as_ref() {
+                    search_related_acp
+                        .into_iter()
+                        .filter(|(acs, _)| !acs.attrs.is_disjoint(r_attrs))
+                        .collect()
+                } else {
+                    search_related_acp
+                };
 
-            related_acp.iter().for_each(|(racp, _)| {
+            /*
+            search_related_acp.iter().for_each(|(racp, _)| {
                 trace!("Related acs -> {:?}", racp.acp.name);
             });
+            */
 
-            // for each entry
-            //
+            // == modify ==
 
-            let effective_permissions: Vec<_> = entries.iter()
+            let modify_related_acp: Vec<(&AccessControlModify, _)> =
+                self.modify_related_acp(rec_entry, ident);
+
+            /*
+            modify_related_acp.iter().for_each(|(racp, _)| {
+                trace!("Related acm -> {:?}", racp.acp.name);
+            });
+            */
+
+            let effective_permissions: Vec<_> = entries
+                .iter()
                 .map(|e| {
-                    let allowed_attrs: BTreeSet<AttrString> = related_acp
+                    // == search ==
+                    let allowed_attrs: BTreeSet<AttrString> = search_related_acp
                         .iter()
                         .filter_map(|(acs, f_res)| {
                             // if it applies
                             if e.entry_match_no_index(f_res) {
-                                security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
-                                // add search_attrs to allowed.
-                                // Some(acs.attrs.iter().map(|s| s.as_str()))
+                                // security_access!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry matches acs");
                                 Some(acs.attrs.iter().map(|s| s.clone()))
                             } else {
                                 trace!(entry = ?e.get_uuid(), acs = %acs.acp.name, "entry DOES NOT match acs"); // should this be `security_access`?
@@ -1212,12 +1240,40 @@ pub trait AccessControlsTransaction<'a> {
                     } else {
                         allowed_attrs
                     };
+
+                    // == modify ==
+                    let modify_scoped_acp: Vec<&AccessControlModify> = modify_related_acp
+                        .iter()
+                        .filter_map(|(acm, f_res)| {
+                            if e.entry_match_no_index(f_res) {
+                                Some(*acm)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect();
+
+                    let modify_pres: BTreeSet<AttrString> = modify_scoped_acp
+                        .iter()
+                        .flat_map(|acp| acp.presattrs.iter().map(|v| v.clone()))
+                        .collect();
+
+                    let modify_rem: BTreeSet<AttrString> = modify_scoped_acp
+                        .iter()
+                        .flat_map(|acp| acp.remattrs.iter().map(|v| v.clone()))
+                        .collect();
+
+                    let modify_class: BTreeSet<AttrString> = modify_scoped_acp
+                        .iter()
+                        .flat_map(|acp| acp.classes.iter().map(|v| v.clone()))
+                        .collect();
+
                     AccessEffectivePermission {
                         target: *e.get_uuid(),
                         search: search_effective,
-                        modify_pres: BTreeSet::new(),
-                        modify_rem: BTreeSet::new(),
-                        modify_class: BTreeSet::new(),
+                        modify_pres,
+                        modify_rem,
+                        modify_class,
                     }
                 })
                 .collect();
