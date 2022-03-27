@@ -25,22 +25,17 @@ exclude = [
 
 
 [patch.crates-io]
-# tokio = { path = "../../tokio/tokio" }
-# tokio-util = { path = "../../tokio/tokio-util" }
-# tokio = { git = "https://github.com/Firstyear/tokio.git", rev = "aa6fb48d9a1f3652ee79e3b018a2b9d0c9f89c1e" }
-# tokio-util = { git = "https://github.com/Firstyear/tokio.git", rev = "aa6fb48d9a1f3652ee79e3b018a2b9d0c9f89c1e" }
-
 # concread = { path = "../concread" }
-concread = { git = "https://github.com/kanidm/concread.git" }
-# idlset = { path = "../idlset" }
-# ldap3_server = { path = "../ldap3_server" }
-# webauthn-rs = { path = "../webauthn-rs" }
-# webauthn-authenticator-rs = { path = "../webauthn-authenticator-rs" }
+# concread = { git = "https://github.com/kanidm/concread.git" }
 
-# webauthn-rs = { git = "https://github.com/kanidm/webauthn-rs.git", rev = "bef560b3619d42f12ae88f08435164a0a43605e5" }
-# webauthn-authenticator-rs = { git = "https://github.com/kanidm/webauthn-authenticator-rs.git", rev = "c91205e57a783a7c3a6e09ade377c83a86fe0900" }
+# idlset = { path = "../idlset" }
+
+# ldap3_server = { path = "../ldap3_server" }
+
+# webauthn-rs = { path = "../webauthn-rs" }
+
+# webauthn-authenticator-rs = { path = "../webauthn-authenticator-rs" }
 
 # compact_jwt = { path = "../compact_jwt" }
 # compact_jwt = { git = "https://github.com/kanidm/compact-jwt.git" }
-
 
