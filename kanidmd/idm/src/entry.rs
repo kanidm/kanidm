@@ -1795,6 +1795,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     /// Test if the following filter applies to and matches this entry.
     pub fn entry_match_no_index(&self, filter: &Filter<FilterValidResolved>) -> bool {
+        let _entered = trace_span!("entry::entry_match_no_index").entered();
         self.entry_match_no_index_inner(filter.to_inner())
     }
 

@@ -94,6 +94,7 @@ pub enum OperationError {
     SerdeCborError,
     AccessDenied,
     NotAuthenticated,
+    NotAuthorised,
     InvalidAuthState(String),
     InvalidSessionState,
     SystemProtectedObject,

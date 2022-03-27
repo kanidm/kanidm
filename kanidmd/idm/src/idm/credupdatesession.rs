@@ -1,5 +1,29 @@
 use crate::idm::server::IdmServerProxyWriteTransaction;
+use crate::idm::account::Account;
+use crate::access::AccessControlsTransaction;
 use crate::prelude::*;
+
+use crate::utils::uuid_from_duration;
+
+use serde::{Deserialize, Serialize};
+
+use std::sync::Arc;
+use std::time::Duration;
+
+use tokio::sync::Mutex;
+
+#[derive(Serialize, Deserialize, Debug)]
+struct CredentialUpdateSessionToken {
+    pub sessionid: Uuid,
+    // Current credentials
+    // Acc policy
+}
+
+pub(crate) struct CredentialUpdateSession {
+    account: Account,
+}
+
+pub(crate) type CredentialUpdateSessionMutex = Arc<Mutex<CredentialUpdateSession>>;
 
 pub struct InitCredentialUpdateEvent {
     pub ident: Identity,
@@ -19,31 +43,89 @@ impl InitCredentialUpdateEvent {
 }
 
 impl<'a> IdmServerProxyWriteTransaction<'a> {
-    pub fn init_credential_update(&mut self, _event: &InitCredentialUpdateEvent) -> () {
-        admin_error!("init_credential_update");
+    pub fn init_credential_update(&mut self,
+        event: &InitCredentialUpdateEvent,
+        ct: Duration,
+    ) -> Result<String, OperationError> {
+        spanned!("idm::server::credupdatesession<Init>", {
+            admin_error!("init_credential_update");
 
-        // Is target an account?
+            let entry = self.qs_write.internal_search_uuid(&event.target)?;
 
-        // Given an ident
-        // entry
-        // attributes.
+            security_info!(
+                ?entry,
+                uuid = %event.target,
+                "Initiating Credential Update Session",
+            );
 
-        // need a search_permission_check
-        // need a modify_permission_check
-        // need a create_permission_check (future)
-        // need a delete_permission_check (future)
+            // Is target an account? This checks for us.
+            let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
 
-        // Does the ident have permission to modify AND search the user-credentials of the target, given
-        // the current status of it's authentication?
+            let effective_perms = self.qs_write.get_accesscontrols()
+                .effective_permission_check(
+                    &event.ident,
+                    Some(btreeset![AttrString::from("primary_credential")]),
+                    &[entry],
+                )?;
 
-        // Build the cred update session.
-        // - store account policy (if present)
-        // - stash the current state of all associated credentials
-        // -
+            let eperm = effective_perms.get(0)
+                .ok_or_else(|| {
+                    admin_error!("Effective Permission check returned no results");
+                    OperationError::InvalidState
+                })?;
 
-        // Store the update session into the map.
+            // Does the ident have permission to modify AND search the user-credentials of the target, given
+            // the current status of it's authentication?
 
-        // - issue the CredentialUpdateToken (enc)
+            if eperm.target != account.uuid {
+                admin_error!("Effective Permission check target differs from requested entry uuid");
+                return Err(OperationError::InvalidEntryState);
+            }
+
+            if !eperm.search.contains("primary_credential")
+                || !eperm.modify_pres.contains("primary_credential")
+                || !eperm.modify_rem.contains("primary_credential") {
+
+                security_info!("Requestor {} does not have permission to update credentials of {}", event.ident, account.uuid);
+                return Err(OperationError::NotAuthorised);
+            }
+
+            // ==== AUTHORISATION CHECKED ===
+
+            // Build the cred update session.
+            // - store account policy (if present)
+            // - stash the current state of all associated credentials
+            // -
+
+            // Store the update session into the map.
+
+
+
+
+            // - issue the CredentialUpdateToken (enc)
+            let sessionid = uuid_from_duration(ct, self.sid);
+
+            let session = Arc::new(Mutex::new(CredentialUpdateSession {
+                account,
+            }));
+
+            let token = CredentialUpdateSessionToken {
+                sessionid,
+            };
+
+            let token_data = serde_json::to_vec(&token).map_err(|e| {
+                admin_error!(err = ?e, "Unable to encode token data");
+                OperationError::SerdeJsonError
+            })?;
+
+            let token_enc = self.token_enc_key.encrypt_at_time(&token_data, ct.as_secs());
+
+            // Point of no return
+
+            self.cred_update_sessions.insert(sessionid, session);
+
+            Ok(token_enc)
+        })
     }
 }
 
@@ -89,9 +171,12 @@ mod tests {
                 .internal_search_uuid(&testperson_uuid)
                 .expect("failed");
 
-            let _cur = idms_prox_write.init_credential_update(
+            let cur = idms_prox_write.init_credential_update(
                 &InitCredentialUpdateEvent::new_impersonate_entry(testperson),
+                ct,
             );
+
+            assert!(cur.is_ok())
 
             // user with permission - success
 

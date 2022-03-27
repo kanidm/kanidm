@@ -2,6 +2,7 @@ use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::credential::BackupCodes;
+use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
@@ -89,7 +90,7 @@ pub struct IdmServer {
     softlocks: HashMap<Uuid, CredSoftLockMutex>,
     /// A set of in progress MFA registrations
     mfareg_sessions: BptreeMap<Uuid, MfaRegSession>,
-    cred_update_sessions: BptreeMap<Uuid, ()>,
+    cred_update_sessions: BptreeMap<Uuid, CredentialUpdateSessionMutex>,
     /// Reference to the query server.
     qs: QueryServer,
     /// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it's just to allow dynamic pbkdf2rounds
@@ -135,14 +136,14 @@ pub struct IdmServerProxyWriteTransaction<'a> {
     pub qs_write: QueryServerWriteTransaction<'a>,
     /// Associate to an event origin ID, which has a TS and a UUID instead
     mfareg_sessions: BptreeMapWriteTxn<'a, Uuid, MfaRegSession>,
-    cred_update_sessions: BptreeMapWriteTxn<'a, Uuid, ()>,
-    sid: Sid,
+    pub(crate) cred_update_sessions: BptreeMapWriteTxn<'a, Uuid, CredentialUpdateSessionMutex>,
+    pub(crate) sid: Sid,
     crypto_policy: &'a CryptoPolicy,
     webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pw_badlist_cache: CowCellWriteTxn<'a, HashSet<String>>,
     uat_jwt_signer: CowCellWriteTxn<'a, JwsSigner>,
     uat_jwt_validator: CowCellWriteTxn<'a, JwsValidator>,
-    token_enc_key: CowCellWriteTxn<'a, Fernet>,
+    pub(crate) token_enc_key: CowCellWriteTxn<'a, Fernet>,
     oauth2rs: Oauth2ResourceServersWriteTransaction<'a>,
 }
 
