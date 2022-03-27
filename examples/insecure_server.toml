@@ -1,12 +1,15 @@
 bindaddress = "127.0.0.1:8443"
 ldapbindaddress = "127.0.0.1:3636"
-db_path = "/tmp/kanidm.db"
+
 db_fs_type = "zfs"
-tls_chain = "../insecure/chain.pem"
-tls_key = "../insecure/key.pem"
+db_path = "/tmp/kanidm/kanidm.db"
+tls_chain = "/tmp/kanidm/chain.pem"
+tls_key = "/tmp/kanidm/key.pem"
+
 # log_level = "perfbasic"
 # log_level = "quiet"
 log_level = "verbose"
+
 domain = "idm.example.com"
 origin = "https://idm.example.com:8443"
 

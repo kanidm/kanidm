@@ -10,9 +10,13 @@ cargo doc --document-private-items --open --no-deps
 
 [designs]: https://github.com/kanidm/kanidm/tree/master/designs
 
+### Rust Documentation
+
+The library documentation is [here](https://kanidm.github.io/kanidm/rustdoc/master/kanidm/).
+
 ### Minimum Supported Rust Version
 
-The project is expected to work on MSRV of 1.47.0.
+The MSRV is specified [here](https://github.com/kanidm/kanidm/blob/master/profiles/RUST_MSRV).
 
 ### Dependencies
 
@@ -99,31 +103,33 @@ git rebase --abort
 
 ### Development Server Quickstart for Interactive Testing
 
-After getting the code, you will need a rust environment. Please investigate rustup for your platform
-to establish this.
+After getting the code, you will need a rust environment. Please investigate [rustup](https://rustup.rs) for your platform to establish this.
 
-Once you have the source code, you need certificates to use with the server. I recommend using
-let's encrypt, but if this is not possible, please use our insecure cert tool. Without certificates
-authentication will fail.
+Once you have the source code, you need certificates to use with the server, because without certificates, authentication will fail. 
 
-    mkdir insecure
-    cd insecure
-    ../insecure_generate_tls.sh
+We recommend using [Let's Encrypt](https://letsencrypt.org), but if this is not possible, please use our insecure cert tool (`insecure_generate_tls.sh`). The insecure cert tool creates `/tmp/kanidm` and puts some self-signed certificates there.
 
-You can now build and run the server with the commands below. It will use a database in /tmp/kanidm.db
+You can now build and run the server with the commands below. It will use a database in `/tmp/kanidm.db`.
 
-    cd kanidmd
-    cargo run -- recover_account -c ./server.toml -n admin
-    cargo run -- server -c ./server.toml
+Create the initial database and generate an `admin` username:
+
+    cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml -n admin
+    <snip>
+    Success - password reset to -> Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
+
+Record the password above, then run the server start command:
+
+    cd kanidmd/daemon
+    cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
 
 In a new terminal, you can now build and run the client tools with:
 
-    cd kanidm_tools
-    cargo run -- --help
-    cargo run -- login -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
-    cargo run -- self whoami -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
-    cargo run -- login -H https://localhost:8443 -D admin -C ../insecure/ca.pem
-    cargo run -- self whoami -H https://localhost:8443 -D admin -C ../insecure/ca.pem
+    cargo run --bin kanidm -- --help
+    cargo run --bin kanidm -- login -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
+    cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
+    
+    cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
+    cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 
 ### Building the Web UI
 
@@ -141,4 +147,6 @@ Then you are able to build the UI.
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
 
-Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in `/profiles`. For example: `KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd`
+Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in `/profiles`. 
+
+For example: `KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd`

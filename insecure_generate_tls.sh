@@ -1,6 +1,23 @@
 #!/bin/sh
 
-cat > ./altnames.cnf << DEVEOF
+
+KANI_TMP=/tmp/kanidm/
+
+ALTNAME_FILE="${KANI_TMP}altnames.cnf"
+CACERT="${KANI_TMP}ca.pem"
+CAKEY="${KANI_TMP}cakey.pem"
+
+KEYFILE="${KANI_TMP}key.pem"
+CERTFILE="${KANI_TMP}cert.pem"
+CSRFILE="${KANI_TMP}cert.csr"
+CHAINFILE="${KANI_TMP}chain.pem"
+
+if [ ! -d "${KANI_TMP}" ]; then
+    echo "Creating temp kanidm dir: ${KANI_TMP}"
+    mkdir -p "${KANI_TMP}"
+fi
+
+cat > "${ALTNAME_FILE}" << DEVEOF
 [req]
 nsComment = "Certificate"
 distinguished_name  = req_distinguished_name
@@ -44,12 +61,34 @@ IP.1 = 127.0.0.1
 DEVEOF
 
 # Make the ca
-openssl req -x509 -new -newkey rsa:4096 -sha256 -keyout cakey.pem -out ca.pem -days 31 -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
-openssl genrsa -out key.pem 4096
-openssl req -sha256 -key key.pem -out cert.csr -days 31 -config altnames.cnf -new -extensions v3_req
-openssl x509 -req -days 31 -in cert.csr -CA ca.pem -CAkey cakey.pem -CAcreateserial -out cert.pem -extfile altnames.cnf -extensions v3_req -sha256
-# Create the chain
-cat cert.pem ca.pem > chain.pem
+openssl req -x509 -new -newkey rsa:4096 -sha256 \
+    -keyout "${CAKEY}" \
+    -out "${CACERT}" \
+    -days 31 \
+    -subj "/C=AU/ST=Queensland/L=Brisbane/O=INSECURE/CN=insecure.ca.localhost" -nodes
 
-echo use chain.pem, and key.pem
+# generate the private key
+openssl genrsa -out "${KEYFILE}" 4096
+
+# generate the certficate signing request
+openssl req -sha256 \
+    -config "${ALTNAME_FILE}" \
+    -days 31 \
+    -new -extensions v3_req \
+    -key "${KEYFILE}"\
+    -out "${CSRFILE}"
+# sign the cert
+openssl x509 -req -days 31 \
+    -extfile "${ALTNAME_FILE}" \
+    -CA "${CACERT}" \
+    -CAkey "${CAKEY}" \
+    -CAcreateserial \
+    -in "${CSRFILE}" \
+    -out "${CERTFILE}" \
+    -extensions v3_req -sha256
+# Create the chain
+cat "${CERTFILE}" "${CACERT}" > "${CHAINFILE}"
+
+echo "Certificate chain is at: ${CHAINFILE}"
+echo "Private key is at: ${KEYFILE}"
 
