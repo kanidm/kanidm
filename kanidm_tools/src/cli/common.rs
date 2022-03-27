@@ -17,7 +17,10 @@ impl CommonOpt {
                 error!("Failed to parse config (if present) -- {:?}", e);
                 std::process::exit(1);
             });
-        debug!("Successfully read configuration from {}", &config_path);
+        debug!(
+            "Successfully loaded configuration, looked in /etc/kanidm/config and {}",
+            &config_path
+        );
 
         let client_builder = match &self.addr {
             Some(a) => client_builder.address(a.to_string()),
