@@ -1951,8 +1951,10 @@ as having TLS present on your communication channels.</p>
 <p>See the <a href="https://github.com/kanidm/kanidm/tree/master/designs">designs</a> folder, and compile the private documentation locally:</p>
 <pre><code>cargo doc --document-private-items --open --no-deps
 </code></pre>
+<h3 id="rust-documentation"><a class="header" href="#rust-documentation">Rust Documentation</a></h3>
+<p>The library documentation is <a href="https://kanidm.github.io/kanidm/rustdoc/master/kanidm/">here</a>.</p>
 <h3 id="minimum-supported-rust-version"><a class="header" href="#minimum-supported-rust-version">Minimum Supported Rust Version</a></h3>
-<p>The project is expected to work on MSRV of 1.47.0.</p>
+<p>The MSRV is specified <a href="https://github.com/kanidm/kanidm/blob/master/profiles/RUST_MSRV">here</a>.</p>
 <h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
 <h4 id="macos"><a class="header" href="#macos">MacOS</a></h4>
 <p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain.</p>
@@ -2001,27 +2003,26 @@ git rebase master
 <pre><code>git rebase --abort
 </code></pre>
 <h3 id="development-server-quickstart-for-interactive-testing"><a class="header" href="#development-server-quickstart-for-interactive-testing">Development Server Quickstart for Interactive Testing</a></h3>
-<p>After getting the code, you will need a rust environment. Please investigate rustup for your platform
-to establish this.</p>
-<p>Once you have the source code, you need certificates to use with the server. I recommend using
-let's encrypt, but if this is not possible, please use our insecure cert tool. Without certificates
-authentication will fail.</p>
-<pre><code>mkdir insecure
-cd insecure
-../insecure_generate_tls.sh
+<p>After getting the code, you will need a rust environment. Please investigate <a href="https://rustup.rs">rustup</a> for your platform to establish this.</p>
+<p>Once you have the source code, you need certificates to use with the server, because without certificates, authentication will fail. </p>
+<p>We recommend using <a href="https://letsencrypt.org">Let's Encrypt</a>, but if this is not possible, please use our insecure cert tool (<code>insecure_generate_tls.sh</code>). The insecure cert tool creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
+<p>You can now build and run the server with the commands below. It will use a database in <code>/tmp/kanidm.db</code>.</p>
+<p>Create the initial database and generate an <code>admin</code> username:</p>
+<pre><code>cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml -n admin
+&lt;snip&gt;
+Success - password reset to -&gt; Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9cT4
 </code></pre>
-<p>You can now build and run the server with the commands below. It will use a database in /tmp/kanidm.db</p>
-<pre><code>cd kanidmd
-cargo run -- recover_account -c ./server.toml -n admin
-cargo run -- server -c ./server.toml
+<p>Record the password above, then run the server start command:</p>
+<pre><code>cd kanidmd/daemon
+cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
 </code></pre>
 <p>In a new terminal, you can now build and run the client tools with:</p>
-<pre><code>cd kanidm_tools
-cargo run -- --help
-cargo run -- login -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
-cargo run -- self whoami -H https://localhost:8443 -D anonymous -C ../insecure/ca.pem
-cargo run -- login -H https://localhost:8443 -D admin -C ../insecure/ca.pem
-cargo run -- self whoami -H https://localhost:8443 -D admin -C ../insecure/ca.pem
+<pre><code>cargo run --bin kanidm -- --help
+cargo run --bin kanidm -- login -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
+cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
+
+cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
+cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 </code></pre>
 <h3 id="building-the-web-ui"><a class="header" href="#building-the-web-ui">Building the Web UI</a></h3>
 <p><strong>NOTE:</strong> There is a pre-packaged version of the Web UI at <code>/kanidmd_web_ui/pkg/</code>, which can be used directly. This means you don't need to build the Web UI yourself</p>
@@ -2034,7 +2035,8 @@ npm install --global rollup
 ./build_wasm.sh
 </code></pre>
 <p>The &quot;developer&quot; profile for kanidmd will automatically use the pkg output in this folder.</p>
-<p>Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in <code>/profiles</code>. For example: <code>KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd</code></p>
+<p>Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in <code>/profiles</code>. </p>
+<p>For example: <code>KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd</code></p>
 
                     </main>
 
