@@ -21,6 +21,8 @@ fn main() {
             "RUST_LOG",
             "kanidm=debug,kanidm_client=debug,webauthn=debug",
         );
+    } else {
+        ::std::env::set_var("RUST_LOG", "kanidm=INFO,kanidm_client=INFO,webauthn=INFO");
     }
     tracing_subscriber::fmt::init();
 
