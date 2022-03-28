@@ -128,9 +128,9 @@ impl KanidmClientBuilder {
         }
 
         // TODO #253: Handle these errors better, or at least provide diagnostics?
-        let mut f = File::open(ca_path).map_err(|_| ())?;
-        f.read_to_end(&mut buf).map_err(|_| ())?;
-        reqwest::Certificate::from_pem(&buf).map_err(|_| ())
+        let mut f = File::open(ca_path).map_err(|e| {error!(?e);})?;
+        f.read_to_end(&mut buf).map_err(|e| {error!(?e);})?;
+        reqwest::Certificate::from_pem(&buf).map_err(|e| {error!(?e);})
     }
 
     fn apply_config_options(self, kcc: KanidmClientConfig) -> Result<Self, ()> {
@@ -206,10 +206,10 @@ impl KanidmClientBuilder {
 
         let mut contents = String::new();
         f.read_to_string(&mut contents)
-            .map_err(|e| eprintln!("{:?}", e))?;
+            .map_err(|e| error!("{:?}", e))?;
 
         let config: KanidmClientConfig =
-            toml::from_str(contents.as_str()).map_err(|e| eprintln!("{:?}", e))?;
+            toml::from_str(contents.as_str()).map_err(|e| error!("{:?}", e))?;
 
         self.apply_config_options(config)
     }
