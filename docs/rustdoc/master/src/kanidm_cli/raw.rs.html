@@ -140,14 +140,14 @@
                 <span class="kw">let</span> <span class="ident">filter</span>: <span class="ident">Filter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_str</span>(<span class="ident">sopt</span>.<span class="ident">filter</span>.<span class="ident">as_str</span>()) {
                     <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span>;
                     }
                 };
 
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">search</span>(<span class="ident">filter</span>) {
                     <span class="prelude-val">Ok</span>(<span class="ident">rset</span>) =&gt; <span class="ident">rset</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>)),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
             <span class="ident">RawOpt::Create</span>(<span class="ident">copt</span>) =&gt; {
@@ -156,7 +156,7 @@
                 <span class="kw">let</span> <span class="ident">r_entries</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">read_file</span>(<span class="kw-2">&amp;</span><span class="ident">copt</span>.<span class="ident">file</span>) {
                     <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span>;
                     }
                 };
@@ -164,7 +164,7 @@
                 <span class="kw">let</span> <span class="ident">entries</span> <span class="op">=</span> <span class="ident">r_entries</span>.<span class="ident">into_iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">b</span><span class="op">|</span> <span class="ident">Entry</span> { <span class="ident">attrs</span>: <span class="ident">b</span> }).<span class="ident">collect</span>();
 
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">create</span>(<span class="ident">entries</span>) {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
             }
             <span class="ident">RawOpt::Modify</span>(<span class="ident">mopt</span>) =&gt; {
@@ -173,7 +173,7 @@
                 <span class="kw">let</span> <span class="ident">filter</span>: <span class="ident">Filter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_str</span>(<span class="ident">mopt</span>.<span class="ident">filter</span>.<span class="ident">as_str</span>()) {
                     <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span>;
                     }
                 };
@@ -181,14 +181,14 @@
                 <span class="kw">let</span> <span class="ident">r_list</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Modify</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">read_file</span>(<span class="kw-2">&amp;</span><span class="ident">mopt</span>.<span class="ident">file</span>) {
                     <span class="prelude-val">Ok</span>(<span class="ident">r</span>) =&gt; <span class="ident">r</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span>;
                     }
                 };
 
                 <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_list</span>(<span class="ident">r_list</span>);
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">modify</span>(<span class="ident">filter</span>, <span class="ident">modlist</span>) {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
             }
             <span class="ident">RawOpt::Delete</span>(<span class="ident">dopt</span>) =&gt; {
@@ -196,13 +196,13 @@
                 <span class="kw">let</span> <span class="ident">filter</span>: <span class="ident">Filter</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">serde_json::from_str</span>(<span class="ident">dopt</span>.<span class="ident">filter</span>.<span class="ident">as_str</span>()) {
                     <span class="prelude-val">Ok</span>(<span class="ident">f</span>) =&gt; <span class="ident">f</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                         <span class="kw">return</span>;
                     }
                 };
 
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">delete</span>(<span class="ident">filter</span>) {
-                    <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                    <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
             }
         }

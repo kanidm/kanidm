@@ -43,14 +43,14 @@
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_domain_get</span>() {
                     <span class="prelude-val">Ok</span>(<span class="ident">e</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">e</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
             <span class="ident">DomainOpt::ResetTokenKey</span>(<span class="ident">copt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_domain_reset_token_key</span>() {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
-                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }
             }
         }

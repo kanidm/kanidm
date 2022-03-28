@@ -590,7 +590,7 @@
 
     <span class="kw">let</span> <span class="ident">selection</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">user_select</span> {
         <span class="prelude-val">Err</span>(<span class="ident">error</span>) =&gt; {
-            <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to handle user input: {:?}&quot;</span>, <span class="ident">error</span>);
+            <span class="macro">error!</span>(<span class="string">&quot;Failed to handle user input: {:?}&quot;</span>, <span class="ident">error</span>);
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         }
         <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
@@ -621,7 +621,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">backup_code</span> <span class="op">=</span> <span class="ident">String::new</span>();
         <span class="kw">loop</span> {
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;mut</span> <span class="ident">backup_code</span>) {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::SystemError</span>);
             };
             <span class="kw">if</span> <span class="op">!</span><span class="ident">backup_code</span>.<span class="ident">trim</span>().<span class="ident">is_empty</span>() {
@@ -636,11 +636,11 @@
             <span class="macro">print!</span>(<span class="string">&quot;Enter TOTP: &quot;</span>);
             <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdout</span>().<span class="ident">flush</span>() {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Somehow we failed to flush stdout: {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">error!</span>(<span class="string">&quot;Somehow we failed to flush stdout: {:?}&quot;</span>, <span class="ident">e</span>);
             };
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">buffer</span> <span class="op">=</span> <span class="ident">String::new</span>();
             <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">io::stdin</span>().<span class="ident">read_line</span>(<span class="kw-2">&amp;mut</span> <span class="ident">buffer</span>) {
-                <span class="macro">eprintln!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="macro">error!</span>(<span class="string">&quot;Failed to read from stdin -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">ClientError::SystemError</span>);
             };
 
@@ -823,7 +823,7 @@
                 <span class="ident">_tmp_username</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">prompt_for_username_get_username</span>() {
                     <span class="prelude-val">Ok</span>(<span class="ident">value</span>) =&gt; <span class="ident">value</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">msg</span>) =&gt; {
-                        <span class="macro">eprintln!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">msg</span>);
+                        <span class="macro">error!</span>(<span class="string">&quot;{}&quot;</span>, <span class="ident">msg</span>);
                         <span class="ident">std::process::exit</span>(<span class="number">1</span>);
                     }
                 };
@@ -842,9 +842,9 @@
                 <span class="macro">error!</span>(<span class="string">&quot;Error persisting authentication token store&quot;</span>);
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
             };
-            <span class="macro">info!</span>(<span class="string">&quot;Removed session for {}&quot;</span>, <span class="ident">username</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;Removed session for {}&quot;</span>, <span class="ident">username</span>);
         } <span class="kw">else</span> {
-            <span class="macro">info!</span>(<span class="string">&quot;No sessions for {}&quot;</span>, <span class="ident">username</span>);
+            <span class="macro">println!</span>(<span class="string">&quot;No sessions for {}&quot;</span>, <span class="ident">username</span>);
         }
     }
 }
