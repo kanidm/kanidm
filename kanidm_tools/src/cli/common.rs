@@ -87,7 +87,7 @@ impl CommonOpt {
                     match prompt_for_username_get_token() {
                         Ok(value) => value,
                         Err(msg) => {
-                            eprintln!("{}", msg);
+                            error!("{}", msg);
                             std::process::exit(1);
                         }
                     }
@@ -98,7 +98,7 @@ impl CommonOpt {
         let jwtu = match JwsUnverified::from_str(&token) {
             Ok(jwtu) => jwtu,
             Err(e) => {
-                eprintln!("Unable to parse token - {:?}", e);
+                error!("Unable to parse token - {:?}", e);
                 std::process::exit(1);
             }
         };
@@ -139,7 +139,7 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
         _ => return Err("Error retrieving authentication token store".to_string()),
     };
     if tokens.is_empty() {
-        eprintln!("No tokens in store, quitting!");
+        error!("No tokens in store, quitting!");
         std::process::exit(1);
     }
     let mut options = Vec::new();
@@ -153,7 +153,7 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
         .interact();
     let selection = match user_select {
         Err(error) => {
-            eprintln!("Failed to handle user input: {:?}", error);
+            error!("Failed to handle user input: {:?}", error);
             std::process::exit(1);
         }
         Ok(value) => value,
@@ -168,7 +168,7 @@ pub fn prompt_for_username_get_values() -> Result<(String, String), String> {
             Ok((f_uname.to_string(), f_token.to_string()))
         }
         None => {
-            eprintln!("Memory corruption trying to read token store, quitting!");
+            error!("Memory corruption trying to read token store, quitting!");
             std::process::exit(1);
         }
     }

@@ -100,7 +100,7 @@ impl AccountOpt {
                             );
                         }
                         Err(e) => {
-                            eprintln!("Error -> {:?}", e);
+                            error!("Error -> {:?}", e);
                         }
                     }
                 }
@@ -114,7 +114,7 @@ impl AccountOpt {
                         ) {
                         Ok(v) => v,
                         Err(e) => {
-                            eprintln!("Error Starting Registration -> {:?}", e);
+                            error!("Error Starting Registration -> {:?}", e);
                             return;
                         }
                     };
@@ -126,7 +126,7 @@ impl AccountOpt {
                     let rego = match wa.do_registration(client.get_origin(), chal) {
                         Ok(rego) => rego,
                         Err(e) => {
-                            eprintln!("Error Signing -> {:?}", e);
+                            error!("Error Signing -> {:?}", e);
                             return;
                         }
                     };
@@ -140,7 +140,7 @@ impl AccountOpt {
                             println!("Webauthn token registration success.");
                         }
                         Err(e) => {
-                            eprintln!("Error Completing -> {:?}", e);
+                            error!("Error Completing -> {:?}", e);
                         }
                     }
                 }
@@ -154,7 +154,7 @@ impl AccountOpt {
                             println!("Webauthn removal success.");
                         }
                         Err(e) => {
-                            eprintln!("Error Removing Webauthn from account -> {:?}", e);
+                            error!("Error Removing Webauthn from account -> {:?}", e);
                         }
                     }
                 }
@@ -165,7 +165,7 @@ impl AccountOpt {
                     ) {
                         Ok(v) => v,
                         Err(e) => {
-                            eprintln!("Error Starting Registration -> {:?}", e);
+                            error!("Error Starting Registration -> {:?}", e);
                             return;
                         }
                     };
@@ -176,7 +176,7 @@ impl AccountOpt {
                     let code = match QrCode::new(tok.to_uri().as_str()) {
                         Ok(c) => c,
                         Err(e) => {
-                            eprintln!("Failed to generate QR code -> {:?}", e);
+                            error!("Failed to generate QR code -> {:?}", e);
                             return;
                         }
                     };
@@ -206,7 +206,7 @@ impl AccountOpt {
                         // Finish the line?
                         eprintln!();
                         if let Err(e) = input_result {
-                            eprintln!("Failed to read from stdin -> {:?}", e);
+                            error!("Failed to read from stdin -> {:?}", e);
                             break;
                         };
 
@@ -214,7 +214,7 @@ impl AccountOpt {
                         let totp = match totp_input.trim().parse::<u32>() {
                             Ok(v) => v,
                             Err(e) => {
-                                eprintln!("Invalid TOTP -> {:?}", e);
+                                error!("Invalid TOTP -> {:?}", e);
                                 // Try again.
                                 continue;
                             }
@@ -238,7 +238,7 @@ impl AccountOpt {
 
                                 let mut confirm_input = String::new();
                                 if let Err(e) = io::stdin().read_line(&mut confirm_input) {
-                                    eprintln!("Failed to read from stdin -> {:?}", e);
+                                    error!("Failed to read from stdin -> {:?}", e);
                                 };
 
                                 if confirm_input.to_lowercase().trim() == "i am sure" {
@@ -250,7 +250,7 @@ impl AccountOpt {
                                             println!("TOTP registration success.");
                                         }
                                         Err(e) => {
-                                            eprintln!("Error Completing -> {:?}", e);
+                                            error!("Error Completing -> {:?}", e);
                                         }
                                     };
                                 } else {
@@ -264,7 +264,7 @@ impl AccountOpt {
                                 continue;
                             }
                             Err(e) => {
-                                eprintln!("Error Completing -> {:?}", e);
+                                error!("Error Completing -> {:?}", e);
                                 break;
                             }
                         }
@@ -279,7 +279,7 @@ impl AccountOpt {
                             println!("TOTP removal success.");
                         }
                         Err(e) => {
-                            eprintln!("Error Removing TOTP from account -> {:?}", e);
+                            error!("Error Removing TOTP from account -> {:?}", e);
                         }
                     }
                 }
@@ -295,7 +295,7 @@ impl AccountOpt {
                             println!("---");
                         }
                         Err(e) => {
-                            eprintln!("Error generating Backup Codes for account -> {:?}", e);
+                            error!("Error generating Backup Codes for account -> {:?}", e);
                         }
                     }
                 }
@@ -308,7 +308,7 @@ impl AccountOpt {
                             println!("BackupCodeRemove success.");
                         }
                         Err(e) => {
-                            eprintln!("Error BackupCodeRemove for account -> {:?}", e);
+                            error!("Error BackupCodeRemove for account -> {:?}", e);
                         }
                     }
                 }
@@ -320,7 +320,7 @@ impl AccountOpt {
                             print!("{}", status);
                         }
                         Err(e) => {
-                            eprintln!("Error displaying credential status -> {:?}", e);
+                            error!("Error displaying credential status -> {:?}", e);
                         }
                     }
                 }
@@ -336,7 +336,7 @@ impl AccountOpt {
                         Ok(Some(s)) => println!("Radius secret: {}", s),
                         Ok(None) => println!("NO Radius secret"),
                         Err(e) => {
-                            eprintln!("Error -> {:?}", e);
+                            error!("Error -> {:?}", e);
                         }
                     }
                 }
@@ -345,7 +345,7 @@ impl AccountOpt {
                     if let Err(e) = client
                         .idm_account_radius_credential_regenerate(aopt.aopts.account_id.as_str())
                     {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
                 AccountRadius::Delete(aopt) => {
@@ -353,7 +353,7 @@ impl AccountOpt {
                     if let Err(e) =
                         client.idm_account_radius_credential_delete(aopt.aopts.account_id.as_str())
                     {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
             }, // end AccountOpt::Radius
@@ -363,7 +363,7 @@ impl AccountOpt {
                     match client.idm_account_unix_token_get(aopt.aopts.account_id.as_str()) {
                         Ok(token) => println!("{}", token),
                         Err(e) => {
-                            eprintln!("Error -> {:?}", e);
+                            error!("Error -> {:?}", e);
                         }
                     }
                 }
@@ -374,7 +374,7 @@ impl AccountOpt {
                         aopt.gidnumber,
                         aopt.shell.as_deref(),
                     ) {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
                 AccountPosix::SetPassword(aopt) => {
@@ -391,7 +391,7 @@ impl AccountOpt {
                         aopt.aopts.account_id.as_str(),
                         password.as_str(),
                     ) {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
             }, // end AccountOpt::Posix
@@ -403,7 +403,7 @@ impl AccountOpt {
                         aopt.mail.as_deref(),
                         aopt.legalname.as_deref(),
                     ) {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
             }, // end AccountOpt::Person
@@ -414,7 +414,7 @@ impl AccountOpt {
                     match client.idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str()) {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
                         Err(e) => {
-                            eprintln!("Error -> {:?}", e);
+                            error!("Error -> {:?}", e);
                         }
                     }
                 }
@@ -425,7 +425,7 @@ impl AccountOpt {
                         aopt.tag.as_str(),
                         aopt.pubkey.as_str(),
                     ) {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
                 AccountSsh::Delete(aopt) => {
@@ -434,7 +434,7 @@ impl AccountOpt {
                         aopt.aopts.account_id.as_str(),
                         aopt.tag.as_str(),
                     ) {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
             }, // end AccountOpt::Ssh
@@ -442,7 +442,7 @@ impl AccountOpt {
                 let client = copt.to_client();
                 match client.idm_account_list() {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
-                    Err(e) => eprintln!("Error -> {:?}", e),
+                    Err(e) => error!("Error -> {:?}", e),
                 }
             }
             AccountOpt::Get(aopt) => {
@@ -450,13 +450,13 @@ impl AccountOpt {
                 match client.idm_account_get(aopt.aopts.account_id.as_str()) {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
-                    Err(e) => eprintln!("Error -> {:?}", e),
+                    Err(e) => error!("Error -> {:?}", e),
                 }
             }
             AccountOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client();
                 if let Err(e) = client.idm_account_delete(aopt.aopts.account_id.as_str()) {
-                    eprintln!("Error -> {:?}", e)
+                    error!("Error -> {:?}", e)
                 }
             }
             AccountOpt::Create(acopt) => {
@@ -465,7 +465,7 @@ impl AccountOpt {
                     acopt.aopts.account_id.as_str(),
                     acopt.display_name.as_str(),
                 ) {
-                    eprintln!("Error -> {:?}", e)
+                    error!("Error -> {:?}", e)
                 }
             }
             AccountOpt::Validity(avopt) => match avopt {
@@ -517,7 +517,7 @@ impl AccountOpt {
                                 println!("expire: never");
                             }
                         }
-                        Err(e) => eprintln!("Error -> {:?}", e),
+                        Err(e) => error!("Error -> {:?}", e),
                     }
                 }
                 AccountValidity::ExpireAt(ano) => {
@@ -527,14 +527,14 @@ impl AccountOpt {
                         match client
                             .idm_account_purge_attr(ano.aopts.account_id.as_str(), "account_expire")
                         {
-                            Err(e) => eprintln!("Error -> {:?}", e),
+                            Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
                     } else {
                         if let Err(e) =
                             OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
                         {
-                            eprintln!("Error -> {:?}", e);
+                            error!("Error -> {:?}", e);
                             return;
                         }
 
@@ -543,7 +543,7 @@ impl AccountOpt {
                             "account_expire",
                             &[ano.datetime.as_str()],
                         ) {
-                            Err(e) => eprintln!("Error -> {:?}", e),
+                            Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
                     }
@@ -556,7 +556,7 @@ impl AccountOpt {
                             ano.aopts.account_id.as_str(),
                             "account_valid_from",
                         ) {
-                            Err(e) => eprintln!("Error -> {:?}", e),
+                            Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
                     } else {
@@ -564,7 +564,7 @@ impl AccountOpt {
                         if let Err(e) =
                             OffsetDateTime::parse(ano.datetime.as_str(), time::Format::Rfc3339)
                         {
-                            eprintln!("Error -> {:?}", e);
+                            error!("Error -> {:?}", e);
                             return;
                         }
 
@@ -573,7 +573,7 @@ impl AccountOpt {
                             "account_valid_from",
                             &[ano.datetime.as_str()],
                         ) {
-                            Err(e) => eprintln!("Error -> {:?}", e),
+                            Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
                     }

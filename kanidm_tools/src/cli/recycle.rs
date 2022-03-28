@@ -16,7 +16,7 @@ impl RecycleOpt {
                 match client.recycle_bin_list() {
                     Ok(r) => r.iter().for_each(|e| println!("{}", e)),
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
             }
@@ -26,14 +26,14 @@ impl RecycleOpt {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                     }
                 }
             }
             RecycleOpt::Revive(nopt) => {
                 let client = nopt.copt.to_client();
                 if let Err(e) = client.recycle_bin_revive(nopt.name.as_str()) {
-                    eprintln!("Error -> {:?}", e);
+                    error!("Error -> {:?}", e);
                 }
             }
         }
