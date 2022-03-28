@@ -127,7 +127,7 @@ fn get_index_choice_dialoguer(msg: &str, options: &[String]) -> usize {
 
     let selection = match user_select {
         Err(error) => {
-            eprintln!("Failed to handle user input: {:?}", error);
+            error!("Failed to handle user input: {:?}", error);
             std::process::exit(1);
         }
         Ok(value) => value,
@@ -158,7 +158,7 @@ impl LoginOpt {
         let mut backup_code = String::new();
         loop {
             if let Err(e) = io::stdin().read_line(&mut backup_code) {
-                eprintln!("Failed to read from stdin -> {:?}", e);
+                error!("Failed to read from stdin -> {:?}", e);
                 return Err(ClientError::SystemError);
             };
             if !backup_code.trim().is_empty() {
@@ -173,11 +173,11 @@ impl LoginOpt {
             print!("Enter TOTP: ");
             // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
             if let Err(e) = io::stdout().flush() {
-                eprintln!("Somehow we failed to flush stdout: {:?}", e);
+                error!("Somehow we failed to flush stdout: {:?}", e);
             };
             let mut buffer = String::new();
             if let Err(e) = io::stdin().read_line(&mut buffer) {
-                eprintln!("Failed to read from stdin -> {:?}", e);
+                error!("Failed to read from stdin -> {:?}", e);
                 return Err(ClientError::SystemError);
             };
 
@@ -360,7 +360,7 @@ impl LogoutOpt {
                 _tmp_username = match prompt_for_username_get_username() {
                     Ok(value) => value,
                     Err(msg) => {
-                        eprintln!("{}", msg);
+                        error!("{}", msg);
                         std::process::exit(1);
                     }
                 };
@@ -379,9 +379,9 @@ impl LogoutOpt {
                 error!("Error persisting authentication token store");
                 std::process::exit(1);
             };
-            info!("Removed session for {}", username);
+            println!("Removed session for {}", username);
         } else {
-            info!("No sessions for {}", username);
+            println!("No sessions for {}", username);
         }
     }
 }

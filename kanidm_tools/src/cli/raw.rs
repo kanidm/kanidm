@@ -34,14 +34,14 @@ impl RawOpt {
                 let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                         return;
                     }
                 };
 
                 match client.search(filter) {
                     Ok(rset) => rset.iter().for_each(|e| println!("{}", e)),
-                    Err(e) => eprintln!("Error -> {:?}", e),
+                    Err(e) => error!("Error -> {:?}", e),
                 }
             }
             RawOpt::Create(copt) => {
@@ -50,7 +50,7 @@ impl RawOpt {
                 let r_entries: Vec<BTreeMap<String, Vec<String>>> = match read_file(&copt.file) {
                     Ok(r) => r,
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                         return;
                     }
                 };
@@ -58,7 +58,7 @@ impl RawOpt {
                 let entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
 
                 if let Err(e) = client.create(entries) {
-                    eprintln!("Error -> {:?}", e);
+                    error!("Error -> {:?}", e);
                 }
             }
             RawOpt::Modify(mopt) => {
@@ -67,7 +67,7 @@ impl RawOpt {
                 let filter: Filter = match serde_json::from_str(mopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                         return;
                     }
                 };
@@ -75,14 +75,14 @@ impl RawOpt {
                 let r_list: Vec<Modify> = match read_file(&mopt.file) {
                     Ok(r) => r,
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                         return;
                     }
                 };
 
                 let modlist = ModifyList::new_list(r_list);
                 if let Err(e) = client.modify(filter, modlist) {
-                    eprintln!("Error -> {:?}", e);
+                    error!("Error -> {:?}", e);
                 }
             }
             RawOpt::Delete(dopt) => {
@@ -90,13 +90,13 @@ impl RawOpt {
                 let filter: Filter = match serde_json::from_str(dopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {
-                        eprintln!("Error -> {:?}", e);
+                        error!("Error -> {:?}", e);
                         return;
                     }
                 };
 
                 if let Err(e) = client.delete(filter) {
-                    eprintln!("Error -> {:?}", e);
+                    error!("Error -> {:?}", e);
                 }
             }
         }
