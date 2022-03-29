@@ -2,11 +2,11 @@ use crate::credential::policy::CryptoPolicy;
 use crate::credential::softlock::CredSoftLock;
 use crate::credential::webauthn::WebauthnDomainConfig;
 use crate::credential::BackupCodes;
-use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::event::{AuthEvent, AuthEventStep, AuthResult};
 use crate::identity::{IdentType, IdentUser, Limits};
 use crate::idm::account::Account;
 use crate::idm::authsession::AuthSession;
+use crate::idm::credupdatesession::CredentialUpdateSessionMutex;
 use crate::idm::event::{
     AcceptSha1TotpEvent, CredentialStatusEvent, GeneratePasswordEvent, GenerateTotpEvent,
     LdapAuthEvent, PasswordChangeEvent, RadiusAuthTokenEvent, RegenerateRadiusSecretEvent,
@@ -121,6 +121,14 @@ pub struct IdmServerAuthTransaction<'a> {
     pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     uat_jwt_signer: CowCellReadTxn<JwsSigner>,
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
+}
+
+pub(crate) struct IdmServerCredUpdateTransaction<'a> {
+    pub qs_read: QueryServerReadTransaction<'a>,
+    // sid: Sid,
+    pub webauthn: &'a Webauthn<WebauthnDomainConfig>,
+    pub pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
+    pub cred_update_sessions: BptreeMapReadTxn<Uuid, CredentialUpdateSessionMutex>,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
