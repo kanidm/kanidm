@@ -2,6 +2,7 @@
 name = "kanidm_tools"
 version = "1.1.0-alpha.7"
 authors = ["William Brown <william@blackhats.net.au>"]
+rust-version = "1.59"
 edition = "2021"
 default-run = "kanidm"
 license = "MPL-2.0"
