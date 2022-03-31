@@ -1,4 +1,3 @@
-use rustc_version::{version, Version};
 use serde::Deserialize;
 use std::env;
 
@@ -29,18 +28,8 @@ struct ProfileConfig {
 }
 
 pub fn apply_profile() {
-    println!("cargo:rerun-if-env-changed=KANIDM_RUST_MSRV");
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE_TOML");
-
-    // check to see if the rust version matches the rust minimum version we require for this build
-    let rust_minver = env!("KANIDM_RUST_MSRV");
-    let required_rust_ver = Version::parse(&rust_minver.replace("\n", "")).unwrap();
-    println!("Rust version:     {}", version().unwrap());
-    println!("Required version: {}", required_rust_ver);
-    if version().unwrap() < required_rust_ver {
-        panic!("This crate requires rustc >= {}, quitting.", rust_minver);
-    }
 
     // transform any requested paths for our server. We do this by reading
     // our profile that we have been provided.

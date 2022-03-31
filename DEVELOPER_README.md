@@ -16,7 +16,7 @@ The library documentation is [here](https://kanidm.github.io/kanidm/rustdoc/mast
 
 ### Minimum Supported Rust Version
 
-The MSRV is specified [here](https://github.com/kanidm/kanidm/blob/master/profiles/RUST_MSRV).
+The MSRV is specified in the package `Cargo.toml` files.
 
 ### Dependencies
 

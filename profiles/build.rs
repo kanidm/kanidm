@@ -3,10 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rerun-if-changed=RUST_MSRV");
     println!("cargo:rerun-if-env-changed=KANIDM_BUILD_PROFILE");
-
-    let rust_minver = include_str!("RUST_MSRV");
 
     let profile = env::var("KANIDM_BUILD_PROFILE").unwrap_or_else(|_| "developer".to_string());
 
@@ -23,5 +20,4 @@ fn main() {
 
     println!("cargo:rustc-env=KANIDM_BUILD_PROFILE={}", profile);
     println!("cargo:rustc-env=KANIDM_BUILD_PROFILE_TOML={}", contents);
-    println!("cargo:rustc-env=KANIDM_RUST_MSRV={}", rust_minver);
 }
