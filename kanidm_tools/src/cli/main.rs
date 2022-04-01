@@ -22,7 +22,8 @@ fn main() {
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
     let filter_layer = if opt.debug() {
-        match EnvFilter::try_new("kanidm=debug,kanidm_client=debug,webauthn=debug") {
+        match EnvFilter::try_new("kanidm=debug,kanidm_client=debug,webauthn=debug,kanidm_cli=debug")
+        {
             Ok(f) => f,
             Err(e) => {
                 eprintln!("ERROR! Unable to start tracing {:?}", e);
@@ -32,7 +33,7 @@ fn main() {
     } else {
         match EnvFilter::try_from_default_env() {
             Ok(f) => f,
-            Err(_) => EnvFilter::new("kanidm_client=warn"),
+            Err(_) => EnvFilter::new("kanidm_client=warn,kanidm_cli=warn"),
         }
     };
 
