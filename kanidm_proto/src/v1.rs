@@ -322,7 +322,7 @@ pub struct AccountUnixExtend {
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct AccountPersonExtend {
+pub struct AccountPersonSet {
     pub mail: Option<Vec<String>>,
     pub legalname: Option<String>,
 }

@@ -524,6 +524,9 @@ pub fn create_https_server(
     account_route
         .at("/:id/_person/_extend")
         .post(account_post_id_person_extend);
+    account_route
+        .at("/:id/_person/_set")
+        .post(account_post_id_person_set);
     account_route.at("/:id/_lock").get(do_nothing);
 
     account_route.at("/:id/_credential").get(do_nothing);

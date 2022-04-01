@@ -6,7 +6,7 @@ use kanidm::status::StatusRequestEvent;
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AccountPersonExtend, AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
+    AccountPersonSet, AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
     CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest, OperationError, SearchRequest,
     SetCredentialRequest, SingleStringRequest,
 };
@@ -556,12 +556,25 @@ pub async fn account_get_id_radius_token(req: tide::Request<AppState>) -> tide::
 pub async fn account_post_id_person_extend(mut req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;
-    let obj: AccountPersonExtend = req.body_json().await?;
+    let obj: AccountPersonSet = req.body_json().await?;
     let (eventid, hvalue) = req.new_eventid();
     let res = req
         .state()
         .qe_w_ref
         .handle_idmaccountpersonextend(uat, uuid_or_name, obj, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn account_post_id_person_set(mut req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+    let obj: AccountPersonSet = req.body_json().await?;
+    let (eventid, hvalue) = req.new_eventid();
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmaccountpersonset(uat, uuid_or_name, obj, eventid)
         .await;
     to_tide_response(res, hvalue)
 }

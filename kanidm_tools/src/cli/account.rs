@@ -39,6 +39,7 @@ impl AccountOpt {
                 AccountPosix::SetPassword(apo) => apo.copt.debug,
             },
             AccountOpt::Person(apopt) => match apopt {
+                AccountPerson::Extend(apo) => apo.copt.debug,
                 AccountPerson::Set(apo) => apo.copt.debug,
             },
             AccountOpt::Ssh(asopt) => match asopt {
@@ -396,9 +397,19 @@ impl AccountOpt {
                 }
             }, // end AccountOpt::Posix
             AccountOpt::Person(apopt) => match apopt {
-                AccountPerson::Set(aopt) => {
+                AccountPerson::Extend(aopt) => {
                     let client = aopt.copt.to_client();
                     if let Err(e) = client.idm_account_person_extend(
+                        aopt.aopts.account_id.as_str(),
+                        aopt.mail.as_deref(),
+                        aopt.legalname.as_deref(),
+                    ) {
+                        error!("Error -> {:?}", e);
+                    }
+                }
+                AccountPerson::Set(aopt) => {
+                    let client = aopt.copt.to_client();
+                    if let Err(e) = client.idm_account_person_set(
                         aopt.aopts.account_id.as_str(),
                         aopt.mail.as_deref(),
                         aopt.legalname.as_deref(),

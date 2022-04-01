@@ -28,7 +28,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
-    AccountPersonExtend, AccountUnixExtend, CreateRequest, DeleteRequest, GroupUnixExtend,
+    AccountPersonSet, AccountUnixExtend, CreateRequest, DeleteRequest, GroupUnixExtend,
     ModifyRequest, SetCredentialRequest, SetCredentialResponse,
 };
 
@@ -963,15 +963,68 @@ impl QueryServerWriteV1 {
         &self,
         uat: Option<String>,
         uuid_or_name: String,
-        px: AccountPersonExtend,
+        px: AccountPersonSet,
         eventid: Uuid,
     ) -> Result<(), OperationError> {
-        let AccountPersonExtend { mail, legalname } = px;
+        let AccountPersonSet { mail, legalname } = px;
 
-        // The filter_map here means we only create the mods if the gidnumber or shell are set
-        // in the actual request.
         let mut mods: Vec<_> = Vec::with_capacity(4 + mail.as_ref().map(|v| v.len()).unwrap_or(0));
         mods.push(Modify::Present("class".into(), Value::new_class("person")));
+
+        if let Some(s) = legalname {
+            mods.push(Modify::Purged("legalname".into()));
+            mods.push(Modify::Present("legalname".into(), Value::new_utf8(s)));
+        }
+
+        if let Some(mail) = mail {
+            mods.push(Modify::Purged("mail".into()));
+
+            let mut miter = mail.into_iter();
+            if let Some(m_primary) = miter.next() {
+                let v =
+                    Value::new_email_address_primary_s(m_primary.as_str()).ok_or_else(|| {
+                        OperationError::InvalidAttribute(format!(
+                            "Invalid mail address {}",
+                            m_primary
+                        ))
+                    })?;
+                mods.push(Modify::Present("mail".into(), v));
+            }
+
+            for m in miter {
+                let v = Value::new_email_address_s(m.as_str()).ok_or_else(|| {
+                    OperationError::InvalidAttribute(format!("Invalid mail address {}", m))
+                })?;
+                mods.push(Modify::Present("mail".into(), v));
+            }
+        }
+
+        let ml = ModifyList::new_list(mods);
+
+        let filter = filter_all!(f_eq("class", PartialValue::new_class("account")));
+
+        let res = self
+            .modify_from_internal_parts(uat, &uuid_or_name, &ml, filter)
+            .await;
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmaccountpersonset",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmaccountpersonset(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        px: AccountPersonSet,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let AccountPersonSet { mail, legalname } = px;
+
+        let mut mods: Vec<_> = Vec::with_capacity(3 + mail.as_ref().map(|v| v.len()).unwrap_or(0));
 
         if let Some(s) = legalname {
             mods.push(Modify::Purged("legalname".into()));

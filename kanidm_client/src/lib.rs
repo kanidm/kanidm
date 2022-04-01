@@ -850,6 +850,15 @@ impl KanidmClient {
         tokio_block_on(self.asclient.idm_account_person_extend(id, mail, legalname))
     }
 
+    pub fn idm_account_person_set(
+        &self,
+        id: &str,
+        mail: Option<&[String]>,
+        legalname: Option<&str>,
+    ) -> Result<(), ClientError> {
+        tokio_block_on(self.asclient.idm_account_person_set(id, mail, legalname))
+    }
+
     /*
     pub fn idm_account_rename_ssh_pubkey(&self, id: &str, oldtag: &str, newtag: &str) -> Result<(), ClientError> {
         self.perform_put_request(format!("/v1/account/{}/_ssh_pubkeys/{}", id, oldtag).as_str(), newtag.to_string())
