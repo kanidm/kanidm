@@ -1314,11 +1314,25 @@ impl KanidmAsyncClient {
         mail: Option<&[String]>,
         legalname: Option<&str>,
     ) -> Result<(), ClientError> {
-        let px = AccountPersonExtend {
+        let px = AccountPersonSet {
             mail: mail.map(|s| s.to_vec()),
             legalname: legalname.map(str::to_string),
         };
         self.perform_post_request(format!("/v1/account/{}/_person/_extend", id).as_str(), px)
+            .await
+    }
+
+    pub async fn idm_account_person_set(
+        &self,
+        id: &str,
+        mail: Option<&[String]>,
+        legalname: Option<&str>,
+    ) -> Result<(), ClientError> {
+        let px = AccountPersonSet {
+            mail: mail.map(|s| s.to_vec()),
+            legalname: legalname.map(str::to_string),
+        };
+        self.perform_post_request(format!("/v1/account/{}/_person/_set", id).as_str(), px)
             .await
     }
 

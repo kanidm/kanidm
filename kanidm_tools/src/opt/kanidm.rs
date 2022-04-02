@@ -233,6 +233,8 @@ pub struct AccountPersonOpt {
 
 #[derive(Debug, StructOpt)]
 pub enum AccountPerson {
+    #[structopt(name = "extend")]
+    Extend(AccountPersonOpt),
     #[structopt(name = "set")]
     Set(AccountPersonOpt),
 }

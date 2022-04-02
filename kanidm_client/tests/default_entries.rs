@@ -95,9 +95,18 @@ fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<boo
                 .idm_account_unix_cred_put(id, "dsadjasiodqwjk12asdl")
                 .is_ok(),
         ),
+        "legalname" => Some(
+            rsclient
+                .idm_account_person_set(id, None, Some("test legal name".into()))
+                .is_ok(),
+        ),
+        "mail" => Some(
+            rsclient
+                .idm_account_person_set(id, Some(&[format!("{}@example.com", id)]), None)
+                .is_ok(),
+        ),
         entry => {
             let new_value = match entry {
-                "mail" => format!("{}@example.com", id),
                 "acp_receiver" => r#"{"eq":["memberof","00000000-0000-0000-0000-000000000011"]}"#.to_string(),
                 "acp_targetscope" => "{\"and\": [{\"eq\": [\"class\",\"access_control_profile\"]}, {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}]}}]}".to_string(),
                  _ => id.to_string(),

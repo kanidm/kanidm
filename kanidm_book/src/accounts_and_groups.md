@@ -117,6 +117,30 @@ where the "valid from" is *after* the expire_at, the expire_at will be respected
 
 These validity settings impact all authentication functions of the account (kanidm, ldap, radius).
 
+## People Accounts
+
+Kanidm allows extending accounts to include additional "people" attributes,
+such as their legal name and email address.
+
+Initially, an account does not have these attributes. If desired, an account
+may be modified to have these "person" attributes like so:
+
+    # Note, both the --legalname and --mail flags may be omitted
+    kanidm account person extend demo_user --legalname "initial name" --mail "initial@email.address"
+
+Once an account has been extended, the "person" attributes may be set by the
+user of the account, or anyone with enough privileges.
+
+Whether an account is currently a "person" or not can be identified from the "account get" output:
+
+    kanidm account get demo_user
+    # ---
+    # class: person
+    # ... (other output omitted)
+
+The presence of a "class: person" stanza indicates that this account may have
+"people" attributes.
+
 ## Why Can't I Change admin With idm_admin?
 
 As a security mechanism there is a distinction between "accounts" and "high permission
