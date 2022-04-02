@@ -648,6 +648,9 @@
 <span id="646">646</span>
 <span id="647">647</span>
 <span id="648">648</span>
+<span id="649">649</span>
+<span id="650">650</span>
+<span id="651">651</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -1174,6 +1177,9 @@
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_person/_extend&quot;</span>)
         .<span class="ident">post</span>(<span class="ident">account_post_id_person_extend</span>);
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_person/_set&quot;</span>)
+        .<span class="ident">post</span>(<span class="ident">account_post_id_person_set</span>);
     <span class="ident">account_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_lock&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);
 
     <span class="ident">account_route</span>.<span class="ident">at</span>(<span class="string">&quot;/:id/_credential&quot;</span>).<span class="ident">get</span>(<span class="ident">do_nothing</span>);

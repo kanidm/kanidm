@@ -706,6 +706,24 @@ where the &quot;valid from&quot; is <em>after</em> the expire_at, the expire_at 
 <pre><code>kanidm account validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
 </code></pre>
 <p>These validity settings impact all authentication functions of the account (kanidm, ldap, radius).</p>
+<h2 id="people-accounts"><a class="header" href="#people-accounts">People Accounts</a></h2>
+<p>Kanidm allows extending accounts to include additional &quot;people&quot; attributes,
+such as their legal name and email address.</p>
+<p>Initially, an account does not have these attributes. If desired, an account
+may be modified to have these &quot;person&quot; attributes like so:</p>
+<pre><code># Note, both the --legalname and --mail flags may be omitted
+kanidm account person extend demo_user --legalname &quot;initial name&quot; --mail &quot;initial@email.address&quot;
+</code></pre>
+<p>Once an account has been extended, the &quot;person&quot; attributes may be set by the
+user of the account, or anyone with enough privileges.</p>
+<p>Whether an account is currently a &quot;person&quot; or not can be identified from the &quot;account get&quot; output:</p>
+<pre><code>kanidm account get demo_user
+# ---
+# class: person
+# ... (other output omitted)
+</code></pre>
+<p>The presence of a &quot;class: person&quot; stanza indicates that this account may have
+&quot;people&quot; attributes.</p>
 <h2 id="why-cant-i-change-admin-with-idm_admin"><a class="header" href="#why-cant-i-change-admin-with-idm_admin">Why Can't I Change admin With idm_admin?</a></h2>
 <p>As a security mechanism there is a distinction between &quot;accounts&quot; and &quot;high permission
 accounts&quot;. This is to help prevent elevation attacks, where say a member of a

@@ -947,6 +947,19 @@
 <span id="945">945</span>
 <span id="946">946</span>
 <span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm::event::AuthResult</span>;
 <span class="kw">use</span> <span class="ident">kanidm::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident">kanidm::idm::AuthState</span>;
@@ -955,7 +968,7 @@
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Entry</span> <span class="kw">as</span> <span class="ident">ProtoEntry</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AccountPersonExtend</span>, <span class="ident">AccountUnixExtend</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span> <span class="kw">as</span> <span class="ident">ProtoAuthState</span>,
+    <span class="ident">AccountPersonSet</span>, <span class="ident">AccountUnixExtend</span>, <span class="ident">AuthRequest</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span> <span class="kw">as</span> <span class="ident">ProtoAuthState</span>,
     <span class="ident">CreateRequest</span>, <span class="ident">DeleteRequest</span>, <span class="ident">GroupUnixExtend</span>, <span class="ident">ModifyRequest</span>, <span class="ident">OperationError</span>, <span class="ident">SearchRequest</span>,
     <span class="ident">SetCredentialRequest</span>, <span class="ident">SingleStringRequest</span>,
 };
@@ -1505,12 +1518,25 @@
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">account_post_id_person_extend</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
     <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
     <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
-    <span class="kw">let</span> <span class="ident">obj</span>: <span class="ident">AccountPersonExtend</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">obj</span>: <span class="ident">AccountPersonSet</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
     <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
     <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
         .<span class="ident">state</span>()
         .<span class="ident">qe_w_ref</span>
         .<span class="ident">handle_idmaccountpersonextend</span>(<span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">obj</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">account_post_id_person_set</span>(<span class="kw-2">mut</span> <span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
+    <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
+    <span class="kw">let</span> <span class="ident">obj</span>: <span class="ident">AccountPersonSet</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">body_json</span>().<span class="kw">await</span><span class="question-mark">?</span>;
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_w_ref</span>
+        .<span class="ident">handle_idmaccountpersonset</span>(<span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">obj</span>, <span class="ident">eventid</span>)
         .<span class="kw">await</span>;
     <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
