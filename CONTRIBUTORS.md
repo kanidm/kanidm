@@ -14,9 +14,9 @@
 * Samuel Cabrero (scabrero)
 * Victor Wai (vcwai)
 * James Hodgkinson (yaleman)
+* Euan Kemp (euank)
 
 ## Acknowledgements
 
 * M. Gerstner
 * Perri Boulton
-
