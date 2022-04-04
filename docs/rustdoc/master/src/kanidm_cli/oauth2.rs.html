@@ -138,6 +138,23 @@
 <span id="136">136</span>
 <span id="137">137</span>
 <span id="138">138</span>
+<span id="139">139</span>
+<span id="140">140</span>
+<span id="141">141</span>
+<span id="142">142</span>
+<span id="143">143</span>
+<span id="144">144</span>
+<span id="145">145</span>
+<span id="146">146</span>
+<span id="147">147</span>
+<span id="148">148</span>
+<span id="149">149</span>
+<span id="150">150</span>
+<span id="151">151</span>
+<span id="152">152</span>
+<span id="153">153</span>
+<span id="154">154</span>
+<span id="155">155</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::Oauth2Opt</span>;
 
 <span class="kw">impl</span> <span class="ident">Oauth2Opt</span> {
@@ -151,6 +168,7 @@
             <span class="ident">Oauth2Opt::DeleteScopeMap</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::ResetSecrets</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
+            <span class="ident">Oauth2Opt::SetDisplayname</span>(<span class="ident">cbopt</span>) =&gt; <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::EnablePkce</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::DisablePkce</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">Oauth2Opt::EnableLegacyCrypto</span>(<span class="ident">nopt</span>) =&gt; <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -241,6 +259,22 @@
             <span class="ident">Oauth2Opt::Delete</span>(<span class="ident">nopt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
                 <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_delete</span>(<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()) {
+                    <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
+                    <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
+                }
+            }
+            <span class="ident">Oauth2Opt::SetDisplayname</span>(<span class="ident">cbopt</span>) =&gt; {
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>();
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_oauth2_rs_update</span>(
+                    <span class="ident">cbopt</span>.<span class="ident">nopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(),
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="ident">cbopt</span>.<span class="ident">displayname</span>.<span class="ident">as_str</span>()),
+                    <span class="prelude-val">None</span>,
+                    <span class="prelude-val">None</span>,
+                    <span class="bool-val">false</span>,
+                    <span class="bool-val">false</span>,
+                    <span class="bool-val">false</span>,
+                ) {
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Success&quot;</span>),
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>),
                 }

@@ -510,6 +510,17 @@
 <span id="508">508</span>
 <span id="509">509</span>
 <span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
     <span class="attribute">#[<span class="ident">structopt</span>()]</span>
@@ -897,6 +908,14 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetDisplayname</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">nopt</span>: <span class="ident">Named</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
+    <span class="ident">displayname</span>: <span class="ident">String</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetImplicitScopes</span> {
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
@@ -951,6 +970,9 @@
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="doccomment">/// Delete a oauth2 resource server</span>
     <span class="ident">Delete</span>(<span class="ident">Named</span>),
+    <span class="doccomment">/// Set a new displayname for a resource server</span>
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_displayname&quot;</span>)]</span>
+    <span class="ident">SetDisplayname</span>(<span class="ident">Oauth2SetDisplayname</span>),
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;enable_pkce&quot;</span>)]</span>
     <span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.</span>
     <span class="ident">EnablePkce</span>(<span class="ident">Named</span>),
