@@ -11,6 +11,7 @@ impl Oauth2Opt {
             Oauth2Opt::DeleteScopeMap(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::ResetSecrets(cbopt) => cbopt.copt.debug,
             Oauth2Opt::Delete(nopt) => nopt.copt.debug,
+            Oauth2Opt::SetDisplayname(cbopt) => cbopt.nopt.copt.debug,
             Oauth2Opt::EnablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::DisablePkce(nopt) => nopt.copt.debug,
             Oauth2Opt::EnableLegacyCrypto(nopt) => nopt.copt.debug,
@@ -101,6 +102,22 @@ impl Oauth2Opt {
             Oauth2Opt::Delete(nopt) => {
                 let client = nopt.copt.to_client();
                 match client.idm_oauth2_rs_delete(nopt.name.as_str()) {
+                    Ok(_) => println!("Success"),
+                    Err(e) => error!("Error -> {:?}", e),
+                }
+            }
+            Oauth2Opt::SetDisplayname(cbopt) => {
+                let client = cbopt.nopt.copt.to_client();
+                match client.idm_oauth2_rs_update(
+                    cbopt.nopt.name.as_str(),
+                    None,
+                    Some(&cbopt.displayname.as_str()),
+                    None,
+                    None,
+                    false,
+                    false,
+                    false,
+                ) {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }

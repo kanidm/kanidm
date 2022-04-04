@@ -385,6 +385,14 @@ pub struct Oauth2BasicCreateOpt {
 }
 
 #[derive(Debug, StructOpt)]
+pub struct Oauth2SetDisplayname {
+    #[structopt(flatten)]
+    nopt: Named,
+    #[structopt(name = "displayname")]
+    displayname: String,
+}
+
+#[derive(Debug, StructOpt)]
 pub struct Oauth2SetImplicitScopes {
     #[structopt(flatten)]
     nopt: Named,
@@ -439,6 +447,9 @@ pub enum Oauth2Opt {
     #[structopt(name = "delete")]
     /// Delete a oauth2 resource server
     Delete(Named),
+    /// Set a new displayname for a resource server
+    #[structopt(name = "set_displayname")]
+    SetDisplayname(Oauth2SetDisplayname),
     #[structopt(name = "enable_pkce")]
     /// Enable PKCE on this oauth2 resource server. This defaults to being enabled.
     EnablePkce(Named),
