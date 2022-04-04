@@ -60,6 +60,43 @@ pub enum ConsistencyError {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "lowercase")]
+pub enum PasswordFeedback {
+    // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html
+    UseAFewWordsAvoidCommonPhrases,
+    NoNeedForSymbolsDigitsOrUppercaseLetters,
+    AddAnotherWordOrTwo,
+    CapitalizationDoesntHelpVeryMuch,
+    AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase,
+    ReversedWordsArentMuchHarderToGuess,
+    PredictableSubstitutionsDontHelpVeryMuch,
+    UseALongerKeyboardPatternWithMoreTurns,
+    AvoidRepeatedWordsAndCharacters,
+    AvoidSequences,
+    AvoidRecentYears,
+    AvoidYearsThatAreAssociatedWithYou,
+    AvoidDatesAndYearsThatAreAssociatedWithYou,
+    // https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Warning.html
+    StraightRowsOfKeysAreEasyToGuess,
+    ShortKeyboardPatternsAreEasyToGuess,
+    RepeatsLikeAaaAreEasyToGuess,
+    RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess,
+    ThisIsATop10Password,
+    ThisIsATop100Password,
+    ThisIsACommonPassword,
+    ThisIsSimilarToACommonlyUsedPassword,
+    SequencesLikeAbcAreEasyToGuess,
+    RecentYearsAreEasyToGuess,
+    AWordByItselfIsEasyToGuess,
+    DatesAreOftenEasyToGuess,
+    NamesAndSurnamesByThemselvesAreEasyToGuess,
+    CommonNamesAndSurnamesAreEasyToGuess,
+    // Custom
+    TooShort(usize),
+    BadListed,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(rename_all = "lowercase")]
 pub enum OperationError {
     SessionExpired,
     EmptyRequest,
@@ -99,10 +136,7 @@ pub enum OperationError {
     InvalidSessionState,
     SystemProtectedObject,
     SystemProtectedAttribute,
-    PasswordTooWeak,
-    PasswordTooShort(usize),
-    PasswordEmpty,
-    PasswordBadListed,
+    PasswordQuality(Vec<PasswordFeedback>),
     CryptographyError,
     ResourceLimit,
     QueueDisconnected,

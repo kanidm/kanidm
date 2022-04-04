@@ -110,9 +110,6 @@ pub(crate) struct Account {
     pub valid_from: Option<OffsetDateTime>,
     pub expire: Option<OffsetDateTime>,
     pub radius_secret: Option<String>,
-    // primary: Credential
-    // app_creds: Vec<Credential>
-    // account expiry? (as opposed to cred expiry)
     pub spn: String,
     // TODO #256: When you add mail, you should update the check to zxcvbn
     // to include these.

@@ -12,7 +12,7 @@ use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
 
 use kanidm_client::ClientError;
 use kanidm_client::ClientError::Http as ClientErrorHttp;
-use kanidm_proto::v1::OperationError::{PasswordBadListed, PasswordTooShort, PasswordTooWeak};
+use kanidm_proto::v1::OperationError::PasswordQuality;
 
 impl AccountOpt {
     pub fn debug(&self) -> bool {
@@ -81,10 +81,10 @@ impl AccountOpt {
                     ) {
                         match e {
                             // TODO: once the password length is configurable at a system level (#498), pull from the configuration.
-                            ClientErrorHttp(_, Some(PasswordBadListed), _) => error!("Password is banned by the administrator of this system, please try a different one."),
-                            ClientErrorHttp(_, Some(PasswordTooShort(pwminlength)), _) => error!("Password was too short (needs to be at least {} characters), please try again.", pwminlength),
-                            ClientErrorHttp(_, Some(PasswordTooWeak), _) => error!("The supplied password did not match configured complexity requirements, please use a password with upper/lower case letters, symbols and digits."),
-                            _ => error!("Error setting password -> {:?}", e)
+                            ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                                error!("{:?}", feedback)
+                            }
+                            _ => error!("Error setting password -> {:?}", e),
                         }
                     }
                 }

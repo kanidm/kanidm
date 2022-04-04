@@ -39,8 +39,8 @@ use crate::idm::delayed::{
 
 use hashbrown::HashSet;
 use kanidm_proto::v1::{
-    AuthType, BackupCodesView, CredentialStatus, RadiusAuthToken, SetCredentialResponse,
-    UnixGroupToken, UnixUserToken, UserAuthToken,
+    AuthType, BackupCodesView, CredentialStatus, PasswordFeedback, RadiusAuthToken,
+    SetCredentialResponse, UnixGroupToken, UnixUserToken, UserAuthToken,
 };
 
 use compact_jwt::{Jws, JwsSigner, JwsUnverified, JwsValidator};
@@ -57,7 +57,7 @@ use core::task::{Context, Poll};
 use futures::task as futures_task;
 
 use concread::{
-    bptree::{BptreeMap, BptreeMapWriteTxn},
+    bptree::{BptreeMap, BptreeMapReadTxn, BptreeMapWriteTxn},
     cowcell::{CowCellReadTxn, CowCellWriteTxn},
     hashmap::HashMap,
     CowCell,
@@ -128,7 +128,9 @@ pub(crate) struct IdmServerCredUpdateTransaction<'a> {
     // sid: Sid,
     pub webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pub pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
-    pub cred_update_sessions: BptreeMapReadTxn<Uuid, CredentialUpdateSessionMutex>,
+    pub cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
+    pub token_enc_key: CowCellReadTxn<Fernet>,
+    pub crypto_policy: &'a CryptoPolicy,
 }
 
 /// This contains read-only methods, like getting users, groups and other structured content.
@@ -331,6 +333,23 @@ impl IdmServer {
             uat_jwt_validator: self.uat_jwt_validator.write(),
             token_enc_key: self.token_enc_key.write(),
             oauth2rs: self.oauth2rs.write(),
+        }
+    }
+
+    #[cfg(test)]
+    pub(crate) fn cred_update_transaction(&self) -> IdmServerCredUpdateTransaction<'_> {
+        task::block_on(self.cred_update_transaction_async())
+    }
+
+    pub(crate) async fn cred_update_transaction_async(&self) -> IdmServerCredUpdateTransaction<'_> {
+        IdmServerCredUpdateTransaction {
+            qs_read: self.qs.read_async().await,
+            // sid: Sid,
+            webauthn: &self.webauthn,
+            pw_badlist_cache: self.pw_badlist_cache.read(),
+            cred_update_sessions: self.cred_update_sessions.read(),
+            token_enc_key: self.token_enc_key.read(),
+            crypto_policy: &self.crypto_policy,
         }
     }
 
@@ -1257,14 +1276,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // is the password at least 10 char?
         if cleartext.len() < PW_MIN_LENGTH {
-            return Err(OperationError::PasswordTooShort(PW_MIN_LENGTH));
+            return Err(OperationError::PasswordQuality(vec![
+                PasswordFeedback::TooShort(PW_MIN_LENGTH),
+            ]));
         }
 
         // does the password pass zxcvbn?
 
         let entropy = zxcvbn::zxcvbn(cleartext, related_inputs).map_err(|e| {
             admin_error!("zxcvbn check failure (password empty?) {:?}", e);
-            OperationError::PasswordEmpty
+            OperationError::PasswordQuality(vec![PasswordFeedback::TooShort(PW_MIN_LENGTH)])
         })?;
 
         // check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this
@@ -1285,7 +1306,10 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             security_info!(?feedback, "pw quality feedback");
 
             // return Err(OperationError::PasswordTooWeak(feedback))
-            return Err(OperationError::PasswordTooWeak);
+            // return Err(OperationError::PasswordTooWeak);
+            return Err(OperationError::PasswordQuality(vec![
+                PasswordFeedback::BadListed,
+            ]));
         }
 
         // check a password badlist to eliminate more content
@@ -1293,7 +1317,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)
         if (&*self.pw_badlist_cache).contains(&cleartext.to_lowercase()) {
             security_info!("Password found in badlist, rejecting");
-            Err(OperationError::PasswordBadListed)
+            Err(OperationError::PasswordQuality(vec![
+                PasswordFeedback::BadListed,
+            ]))
         } else {
             Ok(())
         }
