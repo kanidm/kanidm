@@ -95,6 +95,16 @@ pub const JSON_IDM_PEOPLE_EXTEND_PRIV_V1: &str = r#"{
     }
 }"#;
 
+// Self-write of mail
+pub const JSON_IDM_PEOPLE_SELF_WRITE_MAIL_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["group", "object"],
+        "name": ["idm_people_self_write_mail_priv"],
+        "uuid": ["00000000-0000-0000-0000-000000000033"],
+        "description": ["Builtin IDM Group for people accounts to update their own mail."]
+    }
+}"#;
+
 pub const JSON_IDM_HP_PEOPLE_READ_PRIV_V1: &str = r#"{
     "attrs": {
         "class": ["group", "object"],

@@ -185,6 +185,17 @@ fn login_account(rsclient: &KanidmClient, id: &str) -> () {
     assert!(res.is_ok());
 }
 
+// Login to the given account, but first login with default admin credentials.
+// This is necessary when switching between unprivileged accounts, but adds extra calls which
+// create extra debugging noise, so should be avoided when unnecessary.
+fn login_account_via_admin(rsclient: &KanidmClient, id: &str) -> () {
+    let _ = rsclient.logout();
+    rsclient
+        .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+        .unwrap();
+    login_account(rsclient, id)
+}
+
 fn test_read_attrs(rsclient: &KanidmClient, id: &str, attrs: &[&str], is_readable: bool) -> () {
     println!("Test read to {}, is readable: {}", id, is_readable);
     let rset = rsclient
@@ -628,5 +639,35 @@ fn test_default_entries_rbac_radius_servers() {
         test_read_attrs(&rsclient, "test", &USER_READABLE_ATTRS, true);
         test_read_attrs(&rsclient, "test", &RADIUS_NECESSARY_ATTRS, true);
         test_write_attrs(&rsclient, "test", &RADIUS_NECESSARY_ATTRS, false);
+    });
+}
+
+#[test]
+fn test_self_write_mail_priv_people() {
+    run_test(|rsclient: KanidmClient| {
+        rsclient
+            .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
+            .unwrap();
+
+        // test and other, each can write to themselves, but not each other
+        create_user_with_all_attrs(&rsclient, "test", None);
+        create_user_with_all_attrs(&rsclient, "other", None);
+        rsclient
+            .idm_group_add_members("idm_people_self_write_mail_priv", &["other", "test"])
+            .unwrap();
+        // a non-person, they can't write to themselves even with the priv
+        create_user(&rsclient, "nonperson", "idm_people_self_write_mail_priv");
+
+        login_account(&rsclient, "test");
+        // can write to own mail
+        test_write_attrs(&rsclient, "test", &["mail"], true);
+        // not someone elses
+        test_write_attrs(&rsclient, "other", &["mail"], false);
+
+        // but they can write to theirs
+        login_account_via_admin(&rsclient, "other");
+        test_write_attrs(&rsclient, "other", &["mail"], true);
+        login_account_via_admin(&rsclient, "nonperson");
+        test_write_attrs(&rsclient, "nonperson", &["mail"], false);
     });
 }
