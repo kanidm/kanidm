@@ -242,6 +242,13 @@ user of the account, or anyone with enough privileges.</p>
 </code></pre>
 <p>The presence of a &quot;class: person&quot; stanza indicates that this account may have
 &quot;people&quot; attributes.</p>
+<h3 id="allowing-people-accounts-to-change-their-mail-attribute"><a class="header" href="#allowing-people-accounts-to-change-their-mail-attribute">Allowing people accounts to change their mail attribute</a></h3>
+<p>By default, Kanidm allows an account to change some attributes, but not their
+mail address.</p>
+<p>Adding the user to the <code>idm_people_self_write_mail</code> group, as shown
+below, allows the user to edit their own mail.</p>
+<pre><code>kanidm group add_members idm_people_self_write_mail_priv demo_user --name idm_admin
+</code></pre>
 <h2 id="why-cant-i-change-admin-with-idm_admin"><a class="header" href="#why-cant-i-change-admin-with-idm_admin">Why Can't I Change admin With idm_admin?</a></h2>
 <p>As a security mechanism there is a distinction between &quot;accounts&quot; and &quot;high permission
 accounts&quot;. This is to help prevent elevation attacks, where say a member of a
