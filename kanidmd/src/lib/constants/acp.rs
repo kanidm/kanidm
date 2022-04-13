@@ -115,13 +115,34 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
             "{\"and\": [\"self\", {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}, {\"eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
         ],
         "acp_targetscope": [
-            "\"self\""
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
         ],
         "acp_modify_removedattr": [
             "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password"
         ],
         "acp_modify_presentattr": [
             "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password"
+        ]
+    }
+}"#;
+
+pub const JSON_IDM_PEOPLE_SELF_ACP_WRITE_MAIL_PRIV_V1: &str = r#"{
+    "attrs": {
+        "class": ["object", "access_control_profile", "access_control_modify"],
+        "name": ["idm_people_self_acp_write_mail"],
+        "uuid": ["00000000-0000-0000-0000-ffffff000041"],
+        "description": ["Builtin IDM Control for self write of mail for people accounts."],
+        "acp_receiver": [
+            "{\"eq\":[\"memberof\",\"00000000-0000-0000-0000-000000000033\"]}"
+        ],
+        "acp_targetscope": [
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+        ],
+        "acp_modify_removedattr": [
+            "mail"
+        ],
+        "acp_modify_presentattr": [
+            "mail"
         ]
     }
 }"#;

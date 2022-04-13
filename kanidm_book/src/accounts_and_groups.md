@@ -141,6 +141,16 @@ Whether an account is currently a "person" or not can be identified from the "ac
 The presence of a "class: person" stanza indicates that this account may have
 "people" attributes.
 
+### Allowing people accounts to change their mail attribute
+
+By default, Kanidm allows an account to change some attributes, but not their
+mail address.
+
+Adding the user to the `idm_people_self_write_mail` group, as shown
+below, allows the user to edit their own mail.
+
+    kanidm group add_members idm_people_self_write_mail_priv demo_user --name idm_admin
+
 ## Why Can't I Change admin With idm_admin?
 
 As a security mechanism there is a distinction between "accounts" and "high permission
