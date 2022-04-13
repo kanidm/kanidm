@@ -1,0 +1,39 @@
+[package]
+name = "kanidm_tui"
+version = "0.1.0"
+authors = ["George Rose (Geo-7) <george@1w1g.com>"]
+rust-version = "1.59"
+edition = "2021"
+license = "MPL-2.0"
+description = "Kanidm Terminal UI"
+documentation = "https://docs.rs/kanidm_tools/latest/kanidm_tui/"
+homepage = "https://github.com/kanidm/kanidm/"
+repository = "https://github.com/kanidm/kanidm/"
+ 
+
+[dependencies]
+kanidm_client = {version = "1.1.0-alpha.4" }
+kanidm_proto = {version = "1.1.0-alpha.4" }
+structopt = { version = "0.3", default-features = false }
+tui ="0.17"
+crossterm ={ version ="0.22"}
+unicode-width = "0.1.5"
+
+
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
+rpassword = "5.0"
+libc = "0.2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1.0"
+shellexpand = "2.0"
+rayon = "1.2"
+time = { version = "0.2", features = ["serde", "std"] }
+qrcode = { version = "0.12", default-features = false }
+compact_jwt = "^0.2.0"
+zxcvbn = "2.0"
+
+dialoguer =  "0.9"
+
+webauthn-authenticator-rs = "^0.3.0-alpha.12"
+

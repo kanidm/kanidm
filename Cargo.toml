@@ -20,7 +20,8 @@ members = [
 ]
 
 exclude = [
-    "kanidm_unix_int/pam_tester"
+    "kanidm_unix_int/pam_tester",
+    "kanidm_tui"
 ]
 
 

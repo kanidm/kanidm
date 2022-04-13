@@ -26,6 +26,8 @@ pub mod oauth2;
 pub mod raw;
 pub mod recycle;
 pub mod session;
+#[cfg(feature = "kanidm_tui")]
+pub mod tui;
 
 impl SelfOpt {
     pub fn debug(&self) -> bool {
@@ -104,6 +106,8 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group(gopt) => gopt.debug(),
             KanidmClientOpt::System(sopt) => sopt.debug(),
             KanidmClientOpt::Recycle(ropt) => ropt.debug(),
+            #[cfg(feature = "kanidm_tui")]
+            KanidmClientOpt::Tui(topt) => topt.debug(),
         }
     }
 
@@ -118,6 +122,8 @@ impl KanidmClientOpt {
             KanidmClientOpt::Group(gopt) => gopt.exec(),
             KanidmClientOpt::System(sopt) => sopt.exec(),
             KanidmClientOpt::Recycle(ropt) => ropt.exec(),
+            #[cfg(feature = "kanidm_tui")]
+            KanidmClientOpt::Tui(topt) => topt.exec(),
         }
     }
 }

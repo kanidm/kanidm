@@ -487,7 +487,12 @@ pub enum SystemOpt {
     /// Configure and display domain configuration
     Domain(DomainOpt),
 }
-
+#[cfg(feature="tui")]
+#[derive(Debug, StructOpt)]
+pub struct TuiOpt{
+    #[structopt(flatten)]
+    copt: CommonOpt,
+} 
 #[derive(Debug, StructOpt)]
 #[structopt(about = "Kanidm Client Utility")]
 pub enum KanidmClientOpt {
@@ -518,4 +523,9 @@ pub enum KanidmClientOpt {
     #[structopt(name = "raw")]
     /// Unsafe - low level, raw database operations.
     Raw(RawOpt),
+    #[cfg(feature="tui")]
+    #[structopt(name = "tui")]
+    /// Open kanidm Terminal UI
+    Tui(TuiOpt),
+
 }
