@@ -115,7 +115,7 @@ pub const JSON_IDM_SELF_ACP_WRITE_V1: &str = r#"{
             "{\"and\": [\"self\", {\"andnot\": {\"or\": [{\"eq\": [\"class\", \"tombstone\"]}, {\"eq\": [\"class\", \"recycled\"]}, {\"eq\": [\"uuid\", \"00000000-0000-0000-0000-ffffffffffff\"]}]}}]}"
         ],
         "acp_targetscope": [
-            "{\"and\": [{\"eq\": [\"class\",\"account\"]}, \"self\"]}"
+            "{\"and\": [{\"eq\": [\"class\",\"person\"]}, {\"eq\": [\"class\",\"account\"]}, \"self\"]}"
         ],
         "acp_modify_removedattr": [
             "name", "displayname", "legalname", "radius_secret", "primary_credential", "ssh_publickey", "unix_password"
