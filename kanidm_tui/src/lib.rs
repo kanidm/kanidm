@@ -20,7 +20,6 @@ use crossterm::{
 use std::sync::mpsc;
 use std::time::{Duration, Instant};
 use std::{io, thread};
-use structopt::StructOpt;
 use tui::{
     backend::CrosstermBackend,
     layout::{Alignment, Constraint, Direction, Layout},
@@ -34,23 +33,16 @@ use unicode_width::UnicodeWidthStr;
 static TOKEN_DIR: &str = "~/.cache";
 static TOKEN_PATH: &str = "~/.cache/kanidm_tokens";
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug)]
 struct CommonOpt {
-    #[structopt(short = "d", long = "debug", env = "KANIDM_DEBUG")]
     pub debug: bool,
-    #[structopt(short = "H", long = "url", env = "KANIDM_URL")]
     pub addr: Option<String>,
-    #[structopt(short = "D", long = "name", env = "KANIDM_NAME")]
     pub username: Option<String>,
-    #[structopt(parse(from_os_str), short = "C", long = "ca", env = "KANIDM_CA_PATH")]
     pub ca_path: Option<PathBuf>,
-    //This is used in kanidm tui no need to prompt for password
-    #[structopt(short = "p", long = "password", env = "KANIDM_PASS")]
     pub password: Option<String>,
 }
-#[derive(Debug, StructOpt)]
+#[derive(Debug)]
 struct LoginOpt {
-    #[structopt(flatten)]
     copt: CommonOpt,
     // TODO adding webauthn
     //#[structopt(short = "w", long = "webauthn")]

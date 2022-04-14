@@ -2050,7 +2050,6 @@ dependencies = [
  "serde",
  "serde_json",
  "shellexpand",
- "structopt",
  "time 0.2.27",
  "tracing",
  "tracing-subscriber",
