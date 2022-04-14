@@ -1934,7 +1934,7 @@ dependencies = [
  "hashbrown",
  "idlset",
  "jemallocator",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_proto",
  "lazy_static",
  "ldap3_proto",
  "libc",
@@ -1981,7 +1981,7 @@ dependencies = [
  "compact_jwt 0.1.9",
  "futures",
  "kanidm",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_proto",
  "oauth2",
  "reqwest",
  "score",
@@ -1998,41 +1998,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "kanidm_client"
-version = "1.1.0-alpha.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4ac98c615cd284883c7da9bf8f720e165a85aaf8c39888b6bea197042402e079"
-dependencies = [
- "kanidm_proto 1.1.0-alpha.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "reqwest",
- "serde",
- "serde_json",
- "tokio",
- "toml",
- "tracing",
- "url",
- "uuid",
- "webauthn-rs",
-]
-
-[[package]]
 name = "kanidm_proto"
 version = "1.1.0-alpha.7"
-dependencies = [
- "base32",
- "serde",
- "serde_json",
- "time 0.2.27",
- "url",
- "uuid",
- "webauthn-rs",
-]
-
-[[package]]
-name = "kanidm_proto"
-version = "1.1.0-alpha.7"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c414c3ca70811738e79fb33dea722da46709e428d7500980a326a2a6cbd2e0f"
 dependencies = [
  "base32",
  "serde",
@@ -2049,8 +2016,8 @@ version = "1.1.0-alpha.7"
 dependencies = [
  "compact_jwt 0.2.0",
  "dialoguer",
- "kanidm_client 1.1.0-alpha.7",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_client",
+ "kanidm_proto",
  "kanidm_tui",
  "libc",
  "qrcode",
@@ -2074,8 +2041,8 @@ dependencies = [
  "compact_jwt 0.2.0",
  "crossterm",
  "dialoguer",
- "kanidm_client 1.1.0-alpha.7 (registry+https://github.com/rust-lang/crates.io-index)",
- "kanidm_proto 1.1.0-alpha.7 (registry+https://github.com/rust-lang/crates.io-index)",
+ "kanidm_client",
+ "kanidm_proto",
  "libc",
  "qrcode",
  "rayon",
@@ -2101,8 +2068,8 @@ dependencies = [
  "bytes",
  "futures",
  "kanidm",
- "kanidm_client 1.1.0-alpha.7",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_client",
+ "kanidm_proto",
  "libc",
  "libsqlite3-sys",
  "lru",
@@ -2130,7 +2097,7 @@ version = "1.1.0-alpha.7"
 dependencies = [
  "gloo 0.5.0",
  "js-sys",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_proto",
  "serde",
  "serde_json",
  "wasm-bindgen",
@@ -2607,8 +2574,8 @@ dependencies = [
  "csv",
  "futures-util",
  "jemallocator",
- "kanidm_client 1.1.0-alpha.7",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_client",
+ "kanidm_proto",
  "ldap3_server",
  "mathru",
  "openssl",
@@ -3300,7 +3267,7 @@ dependencies = [
  "compact_jwt 0.2.0",
  "futures-util",
  "kanidm",
- "kanidm_proto 1.1.0-alpha.7",
+ "kanidm_proto",
  "ldap3_proto",
  "libc",
  "openssl",

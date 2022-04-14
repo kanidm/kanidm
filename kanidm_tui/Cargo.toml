@@ -12,8 +12,8 @@ repository = "https://github.com/kanidm/kanidm/"
  
 
 [dependencies]
-kanidm_client = {version = "1.1.0-alpha.4" }
-kanidm_proto = {version = "1.1.0-alpha.4" }
+kanidm_client = { path = "../kanidm_client"}
+kanidm_proto = { path = "../kanidm_proto"}
 structopt = { version = "0.3", default-features = false }
 tui ="0.17"
 crossterm ={ version ="0.22"}
