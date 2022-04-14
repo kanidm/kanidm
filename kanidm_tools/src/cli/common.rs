@@ -32,16 +32,19 @@ impl CommonOpt {
             Some(p) => {
                 debug!("Adding trusted CA cert {:?}", p);
                 client_builder
-                .add_root_certificate_filepath(p)
-                .unwrap_or_else(|e| {
-                    error!("Failed to add ca certificate -- {:?}", e);
-                    std::process::exit(1);
-                })
+                    .add_root_certificate_filepath(p)
+                    .unwrap_or_else(|e| {
+                        error!("Failed to add ca certificate -- {:?}", e);
+                        std::process::exit(1);
+                    })
             }
             None => client_builder,
         };
 
-        debug!("Post attempting to add trusted CA cert, client builder state: {:?}", client_builder);
+        debug!(
+            "Post attempting to add trusted CA cert, client builder state: {:?}",
+            client_builder
+        );
 
         client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
