@@ -369,6 +369,11 @@ fn test_server_radius_credential_lifecycle() {
         let res = rsclient.auth_simple_password("admin", ADMIN_TEST_PASSWORD);
         assert!(res.is_ok());
 
+        // self management of credentials is only for persons.
+        rsclient
+            .idm_account_person_extend("admin", None, None)
+            .unwrap();
+
         // Should have no radius secret
         let n_sec = rsclient.idm_account_radius_credential_get("admin").unwrap();
         assert!(n_sec.is_none());
