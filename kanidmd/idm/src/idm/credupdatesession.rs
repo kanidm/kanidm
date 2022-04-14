@@ -60,7 +60,13 @@ pub(crate) struct CredentialUpdateSession {
     // Acc policy
     // The credentials as they are being updated
     primary: Option<Credential>,
+
+    // Internal reg state.
+    mfaregstate: Option<()>,
+
     // trusted_devices: Map<Webauthn>?
+
+    // 
 }
 
 #[derive(Debug)]
@@ -70,6 +76,10 @@ pub(crate) struct CredentialUpdateSessionStatus {
     //
     can_commit: bool,
     primary: Option<CredentialDetail>,
+    // Any info the client needs about mfareg state.
+    mfaregstate: Option<()>,
+
+
 }
 
 impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
@@ -222,7 +232,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<CredentialUpdateIntentToken, OperationError> {
         spanned!("idm::server::credupdatesession<Init>", {
-            let account = self.validate_init_credential_update(event.target, &event.ident)?;
+            let _account = self.validate_init_credential_update(event.target, &event.ident)?;
 
             // ==== AUTHORISATION CHECKED ===
 
@@ -478,7 +488,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                 .ok_or(OperationError::InvalidState)
                 .map(|v| v.clone())
                 .map_err(|e| {
-                    security_info!("zxcvbn returned no feedback when score < 3");
+                    security_info!("zxcvbn returned no feedback when score < 3 -> {:?}", e);
                     PasswordQuality::TooShort(PW_MIN_LENGTH)
                 })?;
 
@@ -624,6 +634,18 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    pub async fn credential_primary_delete(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.lock().await;
+        trace!(?session);
+        session.primary = None;
+        Ok(session.deref().into())
+    }
+
     // Generate password?
 }
 
@@ -633,14 +655,19 @@ mod tests {
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
         MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
-    use crate::event::CreateEvent;
+    use crate::event::{AuthEvent, AuthResult, CreateEvent};
     use crate::idm::server::IdmServer;
     use crate::prelude::*;
     use std::time::Duration;
 
+    use crate::idm::AuthState;
+    use compiled_uuid::uuid;
+    use kanidm_proto::v1::AuthMech;
+
     use async_std::task;
 
     const TEST_CURRENT_TIME: u64 = 6000;
+    const TESTPERSON_UUID: Uuid = uuid!("cf231fea-1a8f-4410-a520-fd9b1a379c86");
 
     #[test]
     fn test_idm_credential_update_session_init() {
@@ -651,13 +678,12 @@ mod tests {
             let mut idms_prox_write = idms.proxy_write(ct);
 
             let testaccount_uuid = Uuid::new_v4();
-            let testperson_uuid = Uuid::new_v4();
 
             let e1 = entry_init!(
                 ("class", Value::new_class("object")),
                 ("class", Value::new_class("account")),
                 ("name", Value::new_iname("user_account_only")),
-                ("uuid", Value::new_uuid(testaccount_uuid)),
+                ("uuid", Value::new_uuid(TESTPERSON_UUID)),
                 ("description", Value::new_utf8s("testaccount")),
                 ("displayname", Value::new_utf8s("testaccount"))
             );
@@ -667,7 +693,7 @@ mod tests {
                 ("class", Value::new_class("account")),
                 ("class", Value::new_class("person")),
                 ("name", Value::new_iname("testperson")),
-                ("uuid", Value::new_uuid(testperson_uuid)),
+                ("uuid", Value::new_uuid(TESTPERSON_UUID)),
                 ("description", Value::new_utf8s("testperson")),
                 ("displayname", Value::new_utf8s("testperson"))
             );
@@ -683,7 +709,7 @@ mod tests {
 
             let testperson = idms_prox_write
                 .qs_write
-                .internal_search_uuid(&testperson_uuid)
+                .internal_search_uuid(&TESTPERSON_UUID)
                 .expect("failed");
 
             let idm_admin = idms_prox_write
@@ -717,7 +743,7 @@ mod tests {
             let cur = idms_prox_write.init_credential_update_intent(
                 &InitCredentialUpdateIntentEvent::new_impersonate_entry(
                     idm_admin,
-                    testperson_uuid,
+                    TESTPERSON_UUID,
                     MINIMUM_INTENT_TTL,
                 ),
                 ct,
@@ -754,14 +780,12 @@ mod tests {
     fn setup_test_session(idms: &IdmServer, ct: Duration) -> CredentialUpdateSessionToken {
         let mut idms_prox_write = idms.proxy_write(ct);
 
-        let testperson_uuid = Uuid::new_v4();
-
         let e2 = entry_init!(
             ("class", Value::new_class("object")),
             ("class", Value::new_class("account")),
             ("class", Value::new_class("person")),
             ("name", Value::new_iname("testperson")),
-            ("uuid", Value::new_uuid(testperson_uuid)),
+            ("uuid", Value::new_uuid(TESTPERSON_UUID)),
             ("description", Value::new_utf8s("testperson")),
             ("displayname", Value::new_utf8s("testperson"))
         );
@@ -772,7 +796,25 @@ mod tests {
 
         let testperson = idms_prox_write
             .qs_write
-            .internal_search_uuid(&testperson_uuid)
+            .internal_search_uuid(&TESTPERSON_UUID)
+            .expect("failed");
+
+        let cur = idms_prox_write.init_credential_update(
+            &InitCredentialUpdateEvent::new_impersonate_entry(testperson),
+            ct,
+        );
+
+        idms_prox_write.commit().expect("Failed to commit txn");
+
+        cur.expect("Failed to start update")
+    }
+
+    fn renew_test_session(idms: &IdmServer, ct: Duration) -> CredentialUpdateSessionToken {
+        let mut idms_prox_write = idms.proxy_write(ct);
+
+        let testperson = idms_prox_write
+            .qs_write
+            .internal_search_uuid(&TESTPERSON_UUID)
             .expect("failed");
 
         let cur = idms_prox_write.init_credential_update(
@@ -795,11 +837,59 @@ mod tests {
         idms_prox_write.commit().expect("Failed to commit txn");
     }
 
+    fn check_testperson_password(idms: &IdmServer, pw: &str, ct: Duration) -> Option<String> {
+        let mut idms_auth = idms.auth();
+
+        let auth_init = AuthEvent::named_init("testperson");
+
+        let r1 = task::block_on(idms_auth.auth(&auth_init, ct));
+        let ar = r1.unwrap();
+        let AuthResult {
+            sessionid,
+            state,
+            delay: _,
+        } = ar;
+
+        if !matches!(state, AuthState::Choose(_)) {
+            debug!("Can't proceed - {:?}", state);
+            return None;
+        };
+
+        let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::Password);
+
+        let r2 = task::block_on(idms_auth.auth(&auth_begin, ct));
+        let ar = r2.unwrap();
+        let AuthResult {
+            sessionid,
+            state,
+            delay: _,
+        } = ar;
+
+        assert!(matches!(state, AuthState::Continue(_)));
+
+        let anon_step = AuthEvent::cred_step_password(sessionid, pw);
+
+        // Expect success
+        let r2 = task::block_on(idms_auth.auth(&anon_step, ct));
+        debug!("r2 ==> {:?}", r2);
+        idms_auth.commit().expect("Must not fail");
+
+        match r2 {
+            Ok(AuthResult {
+                sessionid: _,
+                state: AuthState::Success(token),
+                delay: _,
+            }) => Some(token),
+            _ => None,
+        }
+    }
+
     #[test]
-    fn test_idm_credential_update_onboarding() {
+    fn test_idm_credential_update_onboarding_create_new_pw() {
         run_idm_test!(|_qs: &QueryServer,
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
+            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
             let cust = setup_test_session(idms, ct);
@@ -814,28 +904,41 @@ mod tests {
 
             trace!(?c_status);
 
-            assert!(matches!(c_status.primary, None));
+            assert!(c_status.primary.is_none());
 
             // Test initially creating a credential.
             //   - pw first
-            let c_res = task::block_on(cutxn.credential_primary_set_password(
-                &cust,
-                ct,
-                "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki",
-            ))
-            .expect("Failed to update the primary cred password");
-
-            // - assert we are consistent to commit.
-            let c_status = task::block_on(cutxn.credential_status(&cust, ct))
-                .expect("Failed to get the current session status.");
+            let c_status =
+                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
+                    .expect("Failed to update the primary cred password");
 
             assert!(c_status.can_commit);
 
             drop(cutxn);
-
             commit_session(idms, ct, cust);
 
-            // Check it?
+            // Check it works!
+            assert!(check_testperson_password(idms, test_pw, ct).is_some());
+
+            // Test deleting the pw
+            let cust = renew_test_session(idms, ct);
+            let cutxn = idms.cred_update_transaction();
+
+            let c_status = task::block_on(cutxn.credential_status(&cust, ct))
+                .expect("Failed to get the current session status.");
+            trace!(?c_status);
+            assert!(c_status.primary.is_some());
+
+            let c_status = task::block_on(cutxn.credential_primary_delete(&cust, ct))
+                .expect("Failed to delete the primary cred");
+            trace!(?c_status);
+            assert!(c_status.primary.is_none());
+
+            drop(cutxn);
+            commit_session(idms, ct, cust);
+
+            // Must fail now!
+            assert!(check_testperson_password(idms, test_pw, ct).is_none());
         })
     }
 
@@ -843,12 +946,56 @@ mod tests {
     //    - fail pw quality checks etc
     //    - set correctly.
 
-    //  Assert pw can't be unset - whole credential must be deleted?
-
     // Primary cred must be pw or pwmfa
 
     // - setup TOTP
-    // - remove totp.
+    #[test]
+    fn test_idm_credential_update_onboarding_create_new_mfa_totp_basic() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+            let cust = setup_test_session(idms, ct);
+            let cutxn = idms.cred_update_transaction();
+
+            // Setup the PW
+            let c_status =
+                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
+                    .expect("Failed to update the primary cred password");
+
+            // Since it's pw only.
+            assert!(c_status.can_commit);
+
+            // 
+            let c_status =
+                task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+                    .expect("Failed to update the primary cred password");
+
+            // Check the status has the token.
+
+            // Get the challenge from totp_token.
+
+            let chal = ();
+
+            let c_status =
+                task::block_on(cutxn.credential_primary_set_totp(&cust, ct, chal))
+                    .expect("Failed to update the primary cred password");
+
+            drop(cutxn);
+            commit_session(idms, ct, cust);
+
+            // Check it works!
+            assert!(check_testperson_password_totp(idms, test_pw, ct).is_some());
+            // No need to test delete, we already did with pw above.
+        })
+    }
+
+    // Check sha1 totp.
+
+    // - remove totp -> Downgrade from mfa to sfa.
+
 
     // - setup webauthn
     // - remove webauthn
