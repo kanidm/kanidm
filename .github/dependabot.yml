@@ -1,7 +1,7 @@
 version: 2
 updates:
 - package-ecosystem: pip
-  directory: "/"
+  directory: "/kanidm_rlm_python"
   schedule:
     interval: weekly
     time: "06:00"

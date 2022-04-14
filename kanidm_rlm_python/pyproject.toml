@@ -1,0 +1,16 @@
+[tool.poetry]
+name = "kanidmradius"
+version = "0.0.1"
+description = ""
+authors = []
+
+[tool.poetry.dependencies]
+python = "^3.6.2"
+requests = "^2.27.1"
+
+[tool.poetry.dev-dependencies]
+pylint = "^2.13.5"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
