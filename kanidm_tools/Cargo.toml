@@ -33,7 +33,7 @@ kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.4" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.4" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-rpassword = "5.0"
+rpassword = "6.0"
 structopt = { version = "0.3", default-features = false }
 libc = "0.2"
 serde = { version = "1", features = ["derive"] }

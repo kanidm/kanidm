@@ -51,7 +51,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 
 toml = "0.5"
-rpassword = "5.0"
+rpassword = "6.0"
 tokio = { version = "1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 
