@@ -2089,14 +2089,9 @@ dependencies = [
 
 [[package]]
 name = "ldap3_server"
-version = "0.1.11"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7873d5bd5baabdb77aa2d8a762bf8b1136f9f90cc90f44639b4c0d4486281dcb"
-dependencies = [
- "bytes",
- "lber",
- "tokio-util",
-]
+checksum = "b0f5360c76f01120e2429d370b589036bfb7c18bee9bcb113c94d22724d80c8b"
 
 [[package]]
 name = "lexical-core"
