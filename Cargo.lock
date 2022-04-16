@@ -2218,9 +2218,9 @@ checksum = "a3e378b66a060d48947b590737b30a1be76706c8dd7b8ba0f2fe3989c68a853f"
 
 [[package]]
 name = "mathru"
-version = "0.11.3"
+version = "0.12.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9140fc31c8956ceffd08f43fc6e4ce7b92d95c33159174872ae5e99b0303cde4"
+checksum = "d2bc4eefa78af77a4a4e13c3a030c56804d705d4c93420c16a3f5109e2252c29"
 dependencies = [
  "rand 0.8.5",
 ]
