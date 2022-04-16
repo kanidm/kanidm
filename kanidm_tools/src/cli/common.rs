@@ -18,8 +18,8 @@ impl CommonOpt {
                 std::process::exit(1);
             });
         debug!(
-            "Successfully loaded configuration, looked in /etc/kanidm/config and {}",
-            &config_path
+            "Successfully loaded configuration, looked in /etc/kanidm/config and {} - client builder state: {:?}",
+            &config_path, &client_builder
         );
 
         let client_builder = match &self.addr {
@@ -29,14 +29,22 @@ impl CommonOpt {
 
         let ca_path: Option<&str> = self.ca_path.as_ref().map(|p| p.to_str()).flatten();
         let client_builder = match ca_path {
-            Some(p) => client_builder
-                .add_root_certificate_filepath(p)
-                .unwrap_or_else(|e| {
-                    error!("Failed to add ca certificate -- {:?}", e);
-                    std::process::exit(1);
-                }),
+            Some(p) => {
+                debug!("Adding trusted CA cert {:?}", p);
+                client_builder
+                    .add_root_certificate_filepath(p)
+                    .unwrap_or_else(|e| {
+                        error!("Failed to add ca certificate -- {:?}", e);
+                        std::process::exit(1);
+                    })
+            }
             None => client_builder,
         };
+
+        debug!(
+            "Post attempting to add trusted CA cert, client builder state: {:?}",
+            client_builder
+        );
 
         client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
