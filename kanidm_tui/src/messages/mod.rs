@@ -2,7 +2,8 @@ use crate::{App,Event,MenuTitle};
 use tui::backend::Backend;
 use crossterm::event::{KeyCode,KeyEvent};
 use std::sync::mpsc::Receiver;
-use crate::app::{InputMode,get_logins};
+use crate::app::InputMode;
+use crate::login::get_logins;
 
 
 pub fn handle_instructions<B>(app: &mut App<B>,rx: Receiver<Event<KeyEvent>>)
@@ -26,11 +27,12 @@ where B: Backend
                                 app.render();
                             }
                             KeyCode::Char('l') => {
-                                app.active_menu_item = MenuTitle::Login;
-                                app.input_mode = InputMode::EnterUser;
-                                app.render();
+                                app.render_login();
                             }
-                            KeyCode::Char('h') => app.active_menu_item = MenuTitle::Home,
+                            KeyCode::Char('h') | KeyCode::Esc => {
+                                app.active_menu_item = MenuTitle::Home;
+                                app.render_default();
+                            },
                             _ => {}
                         },
                         Event::Refresh => {
@@ -62,7 +64,7 @@ where B: Backend
                             app.masked_password = "".to_string();
                             app.input_mode = InputMode::Normal;
                             app.active_menu_item = MenuTitle::Home;
-                            app.render();
+                            app.render_default();
                         }
                         KeyCode::Enter => {
                             app.input_mode = InputMode::EnterPass;
@@ -94,16 +96,12 @@ where B: Backend
                             app.password = "".to_string();
                             app.input_mode = InputMode::Normal;
                             app.active_menu_item = MenuTitle::Home;
-                            app.render();
+                            app.render_default();
                         }
                         KeyCode::Enter => {
                             app.login_to_server();
-                            app.username = "".to_string();
-                            app.password = "".to_string();
-                            app.masked_password = "".to_string();
-                            app.input_mode = InputMode::Normal;
-                            app.active_menu_item = MenuTitle::Home;
-                            app.render();
+                           
+                            app.render_after_login();
                         }
 
 
@@ -117,7 +115,7 @@ where B: Backend
                 }
                 InputMode::Starting =>{
                     app.input_mode=InputMode::Normal;
-                    app.render();
+                    app.render_default();
                 },
             }
 

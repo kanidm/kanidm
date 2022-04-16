@@ -15,6 +15,7 @@ use app::{App,MenuTitle,Event};
 mod ui;
 mod app;
 mod messages;
+mod login;
 
 /// App holds the state of the TUI application
 

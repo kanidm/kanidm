@@ -7,7 +7,7 @@ use tui::{
     Terminal,
 }; 
 use crate::app::{MenuTitle,InputMode};
-use crate::app::{get_login_name,get_logins};
+use crate::login::{get_login_name,get_logins};
 use unicode_width::UnicodeWidthStr;
 pub struct Display<B>
 where
@@ -25,7 +25,7 @@ where B: Backend{
         }
     }
 
-    pub fn render(&mut self,active_menu_item: MenuTitle,input_mode: InputMode,username: String,masked_password: String,login_list_no: usize){
+    pub fn render(&mut self,active_menu_item: MenuTitle,input_mode: InputMode,username: String,masked_password: String,login_list_no: usize,help_message: String){
     let mut login_list_state = ListState::default();
     let _ =login_list_state.select(Some(login_list_no));
         self.terminal
@@ -55,10 +55,8 @@ where B: Backend{
                     match active_menu_item {
                         MenuTitle::Home => {
                             f.render_widget(render_home(), main_chunk[0]);
-                            let help_message = Paragraph::new(vec![Spans::from(vec![Span::raw(
-            "You can see list of Logins at the right pane, If it is empty press 'L' to login ",
-        )])]);
-                            f.render_widget(help_message, chunk[1]);
+                            let help_message_paragraph = Paragraph::new(vec![Spans::from(vec![Span::raw(help_message,)])]);
+                            f.render_widget(help_message_paragraph, chunk[1]);
                         }
                         MenuTitle::Login => {
                             let login_block_chunk = Layout::default()
@@ -77,24 +75,9 @@ where B: Backend{
                                 InputMode::Normal => {
                                     (vec![], Style::default().add_modifier(Modifier::RAPID_BLINK))
                                 }
-                                _ => (
-                                    vec![
-                                        Span::raw("Press "),
-                                        Span::styled(
-                                            "Esc",
-                                            Style::default().add_modifier(Modifier::BOLD),
-                                        ),
-                                        Span::raw(" to stop editing, "),
-                                        Span::styled(
-                                            "Enter",
-                                            Style::default().add_modifier(Modifier::BOLD),
-                                        ),
-                                        Span::raw(" login to server"),
-                                    ],
-                                    Style::default(),
-                                ),
+                                _ => (vec![Spans::from(vec![Span::raw(help_message,)])], Style::default().add_modifier(Modifier::BOLD)),
                             };
-                            let mut text = Text::from(Spans::from(msg));
+                            let mut text = Text::from(msg);
                             text.patch_style(style);
                             let help_message = Paragraph::new(text);
                             f.render_widget(help_message, chunk[1]);
