@@ -585,6 +585,7 @@ impl AuthSession {
             // of what's next, or ordering.
             let valid_mechs = auth_session.valid_auth_mechs();
 
+            security_info!(?valid_mechs, "Offering auth mechanisms");
             let as_state = AuthState::Choose(valid_mechs);
             (Some(auth_session), as_state)
         }
@@ -629,6 +630,7 @@ impl AuthSession {
                     let allowed: Vec<_> = allowed_handler.next_auth_allowed();
 
                     if allowed.is_empty() {
+                        security_info!("Unable to negotiate credentials");
                         (
                             None,
                             Err(OperationError::InvalidAuthState(
@@ -642,6 +644,7 @@ impl AuthSession {
                         )
                     }
                 } else {
+                    security_error!("Unable to select a credential for authentication");
                     (
                         Some(AuthSessionState::Denied(BAD_CREDENTIALS)),
                         Ok(AuthState::Denied(BAD_CREDENTIALS.to_string())),

@@ -748,6 +748,14 @@ impl AuthEventStep {
             cred: AuthCredential::Password(pw.to_string()),
         })
     }
+
+    #[cfg(test)]
+    pub fn cred_step_totp(sid: Uuid, totp: u32) -> Self {
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::Totp(totp),
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -802,6 +810,14 @@ impl AuthEvent {
         AuthEvent {
             ident: None,
             step: AuthEventStep::cred_step_password(sid, pw),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_totp(sid: Uuid, totp: u32) -> Self {
+        AuthEvent {
+            ident: None,
+            step: AuthEventStep::cred_step_totp(sid, totp),
         }
     }
 }

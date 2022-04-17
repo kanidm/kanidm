@@ -4,7 +4,10 @@ use crate::idm::account::Account;
 use crate::idm::server::IdmServerCredUpdateTransaction;
 use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::prelude::*;
-use kanidm_proto::v1::{CredentialDetail, PasswordFeedback};
+
+use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
+
+use kanidm_proto::v1::{CredentialDetail, PasswordFeedback, TotpSecret};
 
 use crate::utils::uuid_from_duration;
 
@@ -54,6 +57,14 @@ pub struct CredentialUpdateSessionToken {
 }
 
 #[derive(Debug)]
+enum MfaRegState {
+    None,
+    TotpInit(Totp),
+    TotpTryAgain(Totp),
+    TotpInvalidSha1(Totp),
+}
+
+#[derive(Debug)]
 pub(crate) struct CredentialUpdateSession {
     // Current credentials - these are on the Account!
     account: Account,
@@ -62,11 +73,19 @@ pub(crate) struct CredentialUpdateSession {
     primary: Option<Credential>,
 
     // Internal reg state.
-    mfaregstate: Option<()>,
-
+    mfaregstate: MfaRegState,
     // trusted_devices: Map<Webauthn>?
 
-    // 
+    //
+}
+
+#[derive(Debug)]
+enum MfaRegStateStatus {
+    // Nothing in progress.
+    None,
+    TotpCheck(TotpSecret),
+    TotpTryAgain,
+    TotpInvalidSha1,
 }
 
 #[derive(Debug)]
@@ -77,9 +96,7 @@ pub(crate) struct CredentialUpdateSessionStatus {
     can_commit: bool,
     primary: Option<CredentialDetail>,
     // Any info the client needs about mfareg state.
-    mfaregstate: Option<()>,
-
-
+    mfaregstate: MfaRegStateStatus,
 }
 
 impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
@@ -87,6 +104,14 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
         CredentialUpdateSessionStatus {
             can_commit: true,
             primary: session.primary.as_ref().map(|c| c.into()),
+            mfaregstate: match &session.mfaregstate {
+                MfaRegState::None => MfaRegStateStatus::None,
+                MfaRegState::TotpInit(token) => MfaRegStateStatus::TotpCheck(
+                    token.to_proto(session.account.name.as_str(), session.account.spn.as_str()),
+                ),
+                MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
+                MfaRegState::TotpInvalidSha1(_) => MfaRegStateStatus::TotpInvalidSha1,
+            },
         }
     }
 }
@@ -206,7 +231,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
         let primary = account.primary.clone();
 
-        let session = Arc::new(Mutex::new(CredentialUpdateSession { account, primary }));
+        let session = Arc::new(Mutex::new(CredentialUpdateSession {
+            account,
+            primary,
+            mfaregstate: MfaRegState::None,
+        }));
 
         let token = CredentialUpdateSessionTokenInner { sessionid };
 
@@ -634,6 +663,89 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    pub async fn credential_primary_init_totp(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.lock().await;
+        trace!(?session);
+
+        // Is there something else in progress?
+        // Or should this just cancel it ....
+        if !matches!(session.mfaregstate, MfaRegState::None) {
+            admin_info!("Invalid TOTP state, another update is in progress");
+            return Err(OperationError::InvalidState);
+        }
+
+        // Generate the TOTP.
+        let totp_token = Totp::generate_secure(TOTP_DEFAULT_STEP);
+
+        session.mfaregstate = MfaRegState::TotpInit(totp_token);
+        // Now that it's in the state, it'll be in the status when returned.
+        Ok(session.deref().into())
+    }
+
+    pub async fn credential_primary_check_totp(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+        totp_chal: u32,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.lock().await;
+        trace!(?session);
+
+        // Are we in a totp reg state?
+        match &session.mfaregstate {
+            MfaRegState::TotpInit(totp_token) | MfaRegState::TotpTryAgain(totp_token) => {
+                if totp_token.verify(totp_chal, &ct) {
+                    // It was valid. Update the credential.
+                    let ncred = session
+                        .primary
+                        .as_ref()
+                        .map(|cred| cred.update_totp(totp_token.clone()))
+                        .ok_or_else(|| {
+                            admin_error!("A TOTP was added, but no primary credential stub exists");
+                            OperationError::InvalidState
+                        })?;
+
+                    session.primary = Some(ncred);
+
+                    // Set the state to None.
+                    session.mfaregstate = MfaRegState::None;
+                    Ok(session.deref().into())
+                } else {
+                    // What if it's a broken authenticator app? Google authenticator
+                    // and authy both force sha1 and ignore the algo we send. So lets
+                    // check that just in case.
+                    let token_sha1 = totp_token.clone().downgrade_to_legacy();
+
+                    if token_sha1.verify(totp_chal, &ct) {
+                        // Greeeaaaaaatttt it's a broken app. Let's check the user
+                        // knows this is broken, before we proceed.
+                        session.mfaregstate = MfaRegState::TotpInvalidSha1(token_sha1);
+                        Ok(session.deref().into())
+                    } else {
+                        // Let them check again, it's a typo.
+                        session.mfaregstate = MfaRegState::TotpTryAgain(totp_token.clone());
+                        Ok(session.deref().into())
+                    }
+                }
+            }
+            _ => Err(OperationError::InvalidRequestState),
+        }
+    }
+
+    pub async fn credential_primary_accept_sha1_totp(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        unimplemented!();
+    }
+
     pub async fn credential_primary_delete(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -653,8 +765,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 mod tests {
     use super::{
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
-        MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
+        MfaRegStateStatus, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
+    use crate::credential::totp::Totp;
     use crate::event::{AuthEvent, AuthResult, CreateEvent};
     use crate::idm::server::IdmServer;
     use crate::prelude::*;
@@ -662,7 +775,7 @@ mod tests {
 
     use crate::idm::AuthState;
     use compiled_uuid::uuid;
-    use kanidm_proto::v1::AuthMech;
+    use kanidm_proto::v1::{AuthMech, CredentialDetailType};
 
     use async_std::task;
 
@@ -867,14 +980,81 @@ mod tests {
 
         assert!(matches!(state, AuthState::Continue(_)));
 
-        let anon_step = AuthEvent::cred_step_password(sessionid, pw);
+        let pw_step = AuthEvent::cred_step_password(sessionid, pw);
 
         // Expect success
-        let r2 = task::block_on(idms_auth.auth(&anon_step, ct));
+        let r2 = task::block_on(idms_auth.auth(&pw_step, ct));
         debug!("r2 ==> {:?}", r2);
         idms_auth.commit().expect("Must not fail");
 
         match r2 {
+            Ok(AuthResult {
+                sessionid: _,
+                state: AuthState::Success(token),
+                delay: _,
+            }) => Some(token),
+            _ => None,
+        }
+    }
+
+    fn check_testperson_password_totp(
+        idms: &IdmServer,
+        pw: &str,
+        token: &Totp,
+        ct: Duration,
+    ) -> Option<String> {
+        let mut idms_auth = idms.auth();
+
+        let auth_init = AuthEvent::named_init("testperson");
+
+        let r1 = task::block_on(idms_auth.auth(&auth_init, ct));
+        let ar = r1.unwrap();
+        let AuthResult {
+            sessionid,
+            state,
+            delay: _,
+        } = ar;
+
+        if !matches!(state, AuthState::Choose(_)) {
+            debug!("Can't proceed - {:?}", state);
+            return None;
+        };
+
+        let auth_begin = AuthEvent::begin_mech(sessionid, AuthMech::PasswordMfa);
+
+        let r2 = task::block_on(idms_auth.auth(&auth_begin, ct));
+        let ar = r2.unwrap();
+        let AuthResult {
+            sessionid,
+            state,
+            delay: _,
+        } = ar;
+
+        assert!(matches!(state, AuthState::Continue(_)));
+
+        let totp = token
+            .do_totp_duration_from_epoch(&ct)
+            .expect("Failed to perform totp step");
+
+        let totp_step = AuthEvent::cred_step_totp(sessionid, totp);
+        let r2 = task::block_on(idms_auth.auth(&totp_step, ct));
+        let ar = r2.unwrap();
+        let AuthResult {
+            sessionid,
+            state,
+            delay: _,
+        } = ar;
+
+        assert!(matches!(state, AuthState::Continue(_)));
+
+        let pw_step = AuthEvent::cred_step_password(sessionid, pw);
+
+        // Expect success
+        let r3 = task::block_on(idms_auth.auth(&pw_step, ct));
+        debug!("r3 ==> {:?}", r3);
+        idms_auth.commit().expect("Must not fail");
+
+        match r3 {
             Ok(AuthResult {
                 sessionid: _,
                 state: AuthState::Success(token),
@@ -968,26 +1148,48 @@ mod tests {
             // Since it's pw only.
             assert!(c_status.can_commit);
 
-            // 
-            let c_status =
-                task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
-                    .expect("Failed to update the primary cred password");
+            //
+            let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+                .expect("Failed to update the primary cred password");
 
             // Check the status has the token.
+            let totp_token: Totp = match c_status.mfaregstate {
+                MfaRegStateStatus::TotpCheck(secret) => Some(secret.into()),
 
-            // Get the challenge from totp_token.
+                _ => None,
+            }
+            .expect("Unable to retrieve totp token, invalid state.");
 
-            let chal = ();
+            trace!(?totp_token);
+            let chal = totp_token
+                .do_totp_duration_from_epoch(&ct)
+                .expect("Failed to perform totp step");
 
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_totp(&cust, ct, chal))
-                    .expect("Failed to update the primary cred password");
+            // Intentionally get it wrong.
+            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal + 1))
+                .expect("Failed to update the primary cred password");
+
+            assert!(matches!(
+                c_status.mfaregstate,
+                MfaRegStateStatus::TotpTryAgain
+            ));
+
+            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+                .expect("Failed to update the primary cred password");
+
+            assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+            assert!(matches!(
+                c_status.primary.as_ref().map(|c| &c.type_),
+                Some(CredentialDetailType::PasswordMfa(true, _, 0))
+            ));
+
+            // Should be okay now!
 
             drop(cutxn);
             commit_session(idms, ct, cust);
 
             // Check it works!
-            assert!(check_testperson_password_totp(idms, test_pw, ct).is_some());
+            assert!(check_testperson_password_totp(idms, test_pw, &totp_token, ct).is_some());
             // No need to test delete, we already did with pw above.
         })
     }
@@ -995,7 +1197,6 @@ mod tests {
     // Check sha1 totp.
 
     // - remove totp -> Downgrade from mfa to sfa.
-
 
     // - setup webauthn
     // - remove webauthn

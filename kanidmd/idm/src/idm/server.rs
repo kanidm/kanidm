@@ -603,6 +603,8 @@ impl<'a> IdmServerAuthTransaction<'a> {
                 // out of the session tree.
                 let account = Account::try_from_entry_ro(entry.as_ref(), &mut self.qs_read)?;
 
+                trace!(?account.primary);
+
                 // Intent to take both trees to write.
                 let _session_ticket = self.session_ticket.acquire().await;
 
