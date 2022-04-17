@@ -204,6 +204,14 @@
 <span id="199">199</span>
 <span id="200">200</span>
 <span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::session::read_tokens</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::CommonOpt</span>;
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsUnverified</span>};
@@ -224,8 +232,8 @@
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
             });
         <span class="macro">debug!</span>(
-            <span class="string">&quot;Successfully loaded configuration, looked in /etc/kanidm/config and {}&quot;</span>,
-            <span class="kw-2">&amp;</span><span class="ident">config_path</span>
+            <span class="string">&quot;Successfully loaded configuration, looked in /etc/kanidm/config and {} - client builder state: {:?}&quot;</span>,
+            <span class="kw-2">&amp;</span><span class="ident">config_path</span>, <span class="kw-2">&amp;</span><span class="ident">client_builder</span>
         );
 
         <span class="kw">let</span> <span class="ident">client_builder</span> <span class="op">=</span> <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">addr</span> {
@@ -235,14 +243,22 @@
 
         <span class="kw">let</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">ca_path</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">p</span><span class="op">|</span> <span class="ident">p</span>.<span class="ident">to_str</span>()).<span class="ident">flatten</span>();
         <span class="kw">let</span> <span class="ident">client_builder</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">ca_path</span> {
-            <span class="prelude-val">Some</span>(<span class="ident">p</span>) =&gt; <span class="ident">client_builder</span>
-                .<span class="ident">add_root_certificate_filepath</span>(<span class="ident">p</span>)
-                .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">error!</span>(<span class="string">&quot;Failed to add ca certificate -- {:?}&quot;</span>, <span class="ident">e</span>);
-                    <span class="ident">std::process::exit</span>(<span class="number">1</span>);
-                }),
+            <span class="prelude-val">Some</span>(<span class="ident">p</span>) =&gt; {
+                <span class="macro">debug!</span>(<span class="string">&quot;Adding trusted CA cert {:?}&quot;</span>, <span class="ident">p</span>);
+                <span class="ident">client_builder</span>
+                    .<span class="ident">add_root_certificate_filepath</span>(<span class="ident">p</span>)
+                    .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                        <span class="macro">error!</span>(<span class="string">&quot;Failed to add ca certificate -- {:?}&quot;</span>, <span class="ident">e</span>);
+                        <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+                    })
+            }
             <span class="prelude-val">None</span> =&gt; <span class="ident">client_builder</span>,
         };
+
+        <span class="macro">debug!</span>(
+            <span class="string">&quot;Post attempting to add trusted CA cert, client builder state: {:?}&quot;</span>,
+            <span class="ident">client_builder</span>
+        );
 
         <span class="ident">client_builder</span>.<span class="ident">build</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to build client instance -- {:?}&quot;</span>, <span class="ident">e</span>);

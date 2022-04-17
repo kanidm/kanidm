@@ -80,6 +80,9 @@
 <span id="75">75</span>
 <span id="76">76</span>
 <span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
 
@@ -124,35 +127,38 @@
               <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom&quot;</span><span class="op">&gt;</span>
                 <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;Apps&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
               <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;table-responsive&quot;</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="ident">table</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;table table-striped table-sm&quot;</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">thead</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;#&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">thead</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="ident">tbody</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;1,001&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;random&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;data&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;placeholder&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;text&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;1,015&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;random&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;tabular&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;information&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                        <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;text&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
-                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
-                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">tbody</span><span class="op">&gt;</span>
-                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">table</span><span class="op">&gt;</span>
-                <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+              <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;alert alert-warning&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;alert&quot;</span><span class="op">&gt;</span>
+                { <span class="string">&quot;🦀 Kanidm is still in early Alpha, this interface is a placeholder! &quot;</span> }
+              <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+              <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;table-responsive&quot;</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">table</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;table table-striped table-sm&quot;</span><span class="op">&gt;</span>
+                  <span class="op">&lt;</span><span class="ident">thead</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;#&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">th</span> <span class="ident">scope</span><span class="op">=</span><span class="string">&quot;col&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Header&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">th</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
+                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">thead</span><span class="op">&gt;</span>
+                  <span class="op">&lt;</span><span class="ident">tbody</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;1,001&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;random&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;data&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;placeholder&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;text&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">tr</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;1,015&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;random&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;tabular&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;informaasdftion&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">td</span><span class="op">&gt;</span>{ <span class="string">&quot;text&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">td</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">tr</span><span class="op">&gt;</span>
+                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">tbody</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="op">/</span><span class="ident">table</span><span class="op">&gt;</span>
+              <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="op">&gt;</span>
         }
     }
