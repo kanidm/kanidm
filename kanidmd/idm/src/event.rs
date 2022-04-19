@@ -756,6 +756,14 @@ impl AuthEventStep {
             cred: AuthCredential::Totp(totp),
         })
     }
+
+    #[cfg(test)]
+    pub fn cred_step_backup_code(sid: Uuid, code: &str) -> Self {
+        AuthEventStep::Cred(AuthEventStepCred {
+            sessionid: sid,
+            cred: AuthCredential::BackupCode(code.to_string()),
+        })
+    }
 }
 
 #[derive(Debug)]
@@ -818,6 +826,14 @@ impl AuthEvent {
         AuthEvent {
             ident: None,
             step: AuthEventStep::cred_step_totp(sid, totp),
+        }
+    }
+
+    #[cfg(test)]
+    pub fn cred_step_backup_code(sid: Uuid, code: &str) -> Self {
+        AuthEvent {
+            ident: None,
+            step: AuthEventStep::cred_step_backup_code(sid, code),
         }
     }
 }
