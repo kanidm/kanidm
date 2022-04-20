@@ -68,6 +68,13 @@ pub enum IndexType {
     SubString,
 }
 
+#[derive(Debug, Clone)]
+pub enum IntentTokenState {
+    Valid,
+    InProgress(Uuid, Duration),
+    Consumed,
+}
+
 impl TryFrom<&str> for IndexType {
     type Error = ();
 

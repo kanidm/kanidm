@@ -308,7 +308,7 @@ impl From<&Credential> for CredentialDetail {
                     CredentialDetailType::PasswordMfa(
                         totp.is_some(),
                         labels,
-                        backup_code.iter().count(),
+                        backup_code.as_ref().map(|c| c.code_set.len()).unwrap_or(0),
                     )
                 }
             },

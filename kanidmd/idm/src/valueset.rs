@@ -16,7 +16,7 @@ use crate::be::dbvalue::{
     DbCidV1, DbValueAddressV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1,
     DbValuePhoneNumberV1, DbValueTaggedStringV1, DbValueV1,
 };
-use crate::value::{Address, INAME_RE, NSUNIQUEID_RE, OAUTHSCOPE_RE};
+use crate::value::{Address, IntentTokenState, INAME_RE, NSUNIQUEID_RE, OAUTHSCOPE_RE};
 
 #[derive(Debug, Clone)]
 enum I {
@@ -56,6 +56,9 @@ enum I {
     // Enumeration(SmolSet<[String; 1]>),
     // Float64(Vec<[f64; 1]>),
     RestrictedString(BTreeSet<String>),
+    IntentToken(BTreeMap<Uuid, IntentTokenState>),
+    TrustedDeviceEnrollment(BTreeMap<Uuid, ()>),
+    AuthSession(BTreeMap<Uuid, ()>),
 }
 
 pub struct ValueSet {
