@@ -46,7 +46,7 @@ tokio = { version = "1", features = ["full"] }
 tokio-util = { version = "0.6", features = ["codec"] }
 openssl = "0.10"
 
-uuid = { version = "0.8", features = ["serde", "v4" ] }
+uuid = { version = "1.0", features = ["serde", "v4" ] }
 compiled-uuid = "0.1.2"
 serde = { version = "1", features = ["derive"] }
 serde_cbor = "0.11"
