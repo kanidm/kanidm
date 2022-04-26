@@ -141,6 +141,7 @@ pub enum OperationError {
     ResourceLimit,
     QueueDisconnected,
     Webauthn,
+    Wait(time::OffsetDateTime),
 }
 
 impl PartialEq for OperationError {

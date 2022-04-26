@@ -13,8 +13,8 @@ use time::OffsetDateTime;
 use tracing::trace;
 
 use crate::be::dbvalue::{
-    DbCidV1, DbValueAddressV1, DbValueCredV1, DbValueEmailAddressV1, DbValueOauthScopeMapV1,
-    DbValuePhoneNumberV1, DbValueTaggedStringV1, DbValueV1,
+    DbCidV1, DbValueAddressV1, DbValueCredV1, DbValueEmailAddressV1, DbValueIntentTokenStateV1,
+    DbValueOauthScopeMapV1, DbValuePhoneNumberV1, DbValueTaggedStringV1, DbValueV1,
 };
 use crate::value::{Address, IntentTokenState, INAME_RE, NSUNIQUEID_RE, OAUTHSCOPE_RE};
 
@@ -34,6 +34,9 @@ enum I {
     SecretValue(SmolSet<[String; 1]>),
     Spn(BTreeSet<(String, String)>),
     Uint32(SmolSet<[u32; 1]>),
+    // Uint64(SmolSet<[u64; 1]>),
+    // Int64(SmolSet<[i64; 1]>),
+    // Float64(Vec<[f64; 1]>),
     Cid(SmolSet<[Cid; 1]>),
     Nsuniqueid(BTreeSet<String>),
     DateTime(SmolSet<[OffsetDateTime; 1]>),
@@ -53,8 +56,6 @@ enum I {
     OauthScopeMap(BTreeMap<Uuid, BTreeSet<String>>),
     PrivateBinary(SmolSet<[Vec<u8>; 1]>),
     PublicBinary(BTreeMap<String, Vec<u8>>),
-    // Enumeration(SmolSet<[String; 1]>),
-    // Float64(Vec<[f64; 1]>),
     RestrictedString(BTreeSet<String>),
     IntentToken(BTreeMap<Uuid, IntentTokenState>),
     TrustedDeviceEnrollment(BTreeMap<Uuid, ()>),
@@ -129,6 +130,9 @@ impl From<Value> for ValueSet {
                 Value::Address(a) => I::Address { set: btreeset![a] },
                 Value::PublicBinary(tag, bin) => I::PublicBinary(btreemap![(tag, bin)]),
                 Value::RestrictedString(s) => I::RestrictedString(btreeset![s]),
+                Value::IntentToken(u, t) => I::IntentToken(btreemap![(u, t)]),
+                Value::TrustedDeviceEnrollment(u) => I::TrustedDeviceEnrollment(btreemap![(u, ())]),
+                Value::AuthSession(u) => I::AuthSession(btreemap![(u, ())]),
             },
         }
     }
@@ -219,6 +223,20 @@ impl TryFrom<DbValueV1> for ValueSet {
                 // I::Address { set: btreeset![a] },
                 DbValueV1::PublicBinary(tag, bin) => I::PublicBinary(btreemap![(tag, bin)]),
                 DbValueV1::RestrictedString(s) => I::RestrictedString(btreeset![s]),
+                DbValueV1::IntentToken { u, s } => {
+                    let ts = match s {
+                        DbValueIntentTokenStateV1::V => IntentTokenState::Valid,
+                        DbValueIntentTokenStateV1::P(pu, pd) => {
+                            IntentTokenState::InProgress(pu, pd)
+                        }
+                        DbValueIntentTokenStateV1::C => IntentTokenState::Consumed,
+                    };
+                    I::IntentToken(btreemap![(u, ts)])
+                }
+                DbValueV1::TrustedDeviceEnrollment { u } => {
+                    I::TrustedDeviceEnrollment(btreemap![(u, ())])
+                }
+                DbValueV1::AuthSession { u } => I::AuthSession(btreemap![(u, ())]),
             },
         })
     }
@@ -308,6 +326,30 @@ impl ValueSet {
                 }
             }
             (I::RestrictedString(set), Value::RestrictedString(s)) => Ok(set.insert(s)),
+            (I::IntentToken(map), Value::IntentToken(u, ts)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(ts);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::TrustedDeviceEnrollment(map), Value::TrustedDeviceEnrollment(u)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(());
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::AuthSession(map), Value::AuthSession(u)) => {
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(());
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
             (_, _) => Err(OperationError::InvalidValueState),
         }
     }
@@ -422,6 +464,36 @@ impl ValueSet {
                 }
             }
             (I::RestrictedString(set), DbValueV1::RestrictedString(s)) => Ok(set.insert(s)),
+            (I::IntentToken(map), DbValueV1::IntentToken { u, s }) => {
+                let ts = match s {
+                    DbValueIntentTokenStateV1::V => IntentTokenState::Valid,
+                    DbValueIntentTokenStateV1::P(i, d) => IntentTokenState::InProgress(i, d),
+                    DbValueIntentTokenStateV1::C => IntentTokenState::Consumed,
+                };
+
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(ts);
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::TrustedDeviceEnrollment(map), DbValueV1::TrustedDeviceEnrollment { u }) => {
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(());
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
+            (I::AuthSession(map), DbValueV1::AuthSession { u }) => {
+                if let BTreeEntry::Vacant(e) = map.entry(u) {
+                    e.insert(());
+                    Ok(true)
+                } else {
+                    Ok(false)
+                }
+            }
             (_, _) => Err(()),
         }
         .and_then(|is_new| {
@@ -545,6 +617,15 @@ impl ValueSet {
             (I::RestrictedString(a), I::RestrictedString(b)) => {
                 mergesets!(a, b)
             }
+            (I::IntentToken(a), I::IntentToken(b)) => {
+                mergemaps!(a, b)
+            }
+            (I::TrustedDeviceEnrollment(a), I::TrustedDeviceEnrollment(b)) => {
+                mergemaps!(a, b)
+            }
+            (I::AuthSession(a), I::AuthSession(b)) => {
+                mergemaps!(a, b)
+            }
             // I think that in this case, we need to specify self / everything as we are changing
             // type and we need to potentially purge everything, so we just return the left side.
             _ => Err(OperationError::InvalidValueState),
@@ -655,6 +736,15 @@ impl ValueSet {
             I::RestrictedString(set) => {
                 set.extend(iter.filter_map(|v| v.to_restrictedstring()));
             }
+            I::IntentToken(map) => {
+                map.extend(iter.filter_map(|v| v.to_intenttoken()));
+            }
+            I::TrustedDeviceEnrollment(map) => {
+                map.extend(iter.filter_map(|v| v.to_trusteddeviceenrollment()));
+            }
+            I::AuthSession(map) => {
+                map.extend(iter.filter_map(|v| v.to_authsession()));
+            }
         }
     }
 
@@ -739,6 +829,15 @@ impl ValueSet {
             }
             I::RestrictedString(set) => {
                 set.clear();
+            }
+            I::IntentToken(map) => {
+                map.clear();
+            }
+            I::TrustedDeviceEnrollment(map) => {
+                map.clear();
+            }
+            I::AuthSession(map) => {
+                map.clear();
             }
         };
         debug_assert!(self.is_empty());
@@ -834,6 +933,15 @@ impl ValueSet {
             (I::RestrictedString(set), PartialValue::RestrictedString(s)) => {
                 set.remove(s);
             }
+            (I::IntentToken(map), PartialValue::IntentToken(t)) => {
+                map.remove(t);
+            }
+            (I::TrustedDeviceEnrollment(map), PartialValue::TrustedDeviceEnrollment(t)) => {
+                map.remove(t);
+            }
+            (I::AuthSession(map), PartialValue::AuthSession(t)) => {
+                map.remove(t);
+            }
             (_, _) => {
                 debug_assert!(false)
             }
@@ -876,6 +984,11 @@ impl ValueSet {
             (I::RestrictedString(set), PartialValue::RestrictedString(s)) => {
                 set.contains(s.as_str())
             }
+            (I::IntentToken(map), PartialValue::IntentToken(u)) => map.contains_key(u),
+            (I::TrustedDeviceEnrollment(map), PartialValue::TrustedDeviceEnrollment(u)) => {
+                map.contains_key(u)
+            }
+            (I::AuthSession(map), PartialValue::AuthSession(u)) => map.contains_key(u),
             _ => false,
         }
     }
@@ -928,6 +1041,9 @@ impl ValueSet {
             I::PrivateBinary(set) => set.len(),
             I::PublicBinary(map) => map.len(),
             I::RestrictedString(set) => set.len(),
+            I::IntentToken(map) => map.len(),
+            I::TrustedDeviceEnrollment(map) => map.len(),
+            I::AuthSession(map) => map.len(),
         }
     }
 
@@ -989,6 +1105,18 @@ impl ValueSet {
             I::PrivateBinary(_set) => vec![],
             I::PublicBinary(map) => map.keys().cloned().collect(),
             I::RestrictedString(set) => set.iter().cloned().collect(),
+            I::IntentToken(map) => map
+                .keys()
+                .map(|u| u.to_hyphenated_ref().to_string())
+                .collect(),
+            I::TrustedDeviceEnrollment(map) => map
+                .keys()
+                .map(|u| u.to_hyphenated_ref().to_string())
+                .collect(),
+            I::AuthSession(map) => map
+                .keys()
+                .map(|u| u.to_hyphenated_ref().to_string())
+                .collect(),
         }
     }
 
@@ -1263,6 +1391,48 @@ impl ValueSet {
                 } else {
                     Some(ValueSet {
                         inner: I::RestrictedString(x),
+                    })
+                }
+            }
+            (I::IntentToken(a), I::IntentToken(b)) => {
+                let x: BTreeMap<_, _> = a
+                    .iter()
+                    .filter(|(k, _)| b.contains_key(k))
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::IntentToken(x),
+                    })
+                }
+            }
+            (I::TrustedDeviceEnrollment(a), I::TrustedDeviceEnrollment(b)) => {
+                let x: BTreeMap<_, _> = a
+                    .iter()
+                    .filter(|(k, _)| b.contains_key(k))
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::TrustedDeviceEnrollment(x),
+                    })
+                }
+            }
+            (I::AuthSession(a), I::AuthSession(b)) => {
+                let x: BTreeMap<_, _> = a
+                    .iter()
+                    .filter(|(k, _)| b.contains_key(k))
+                    .map(|(k, v)| (*k, v.clone()))
+                    .collect();
+                if x.is_empty() {
+                    None
+                } else {
+                    Some(ValueSet {
+                        inner: I::AuthSession(x),
                     })
                 }
             }
@@ -1553,6 +1723,13 @@ impl ValueSet {
         }
     }
 
+    pub fn as_intenttoken(&self) -> Option<&BTreeMap<Uuid, IntentTokenState>> {
+        match &self.inner {
+            I::IntentToken(map) => Some(map),
+            _ => None,
+        }
+    }
+
     pub fn to_proto_string_clone_iter(&self) -> ProtoIter<'_> {
         // to_proto_string_clone
         match &self.inner {
@@ -1582,6 +1759,9 @@ impl ValueSet {
             I::PrivateBinary(set) => ProtoIter::PrivateBinary(set.iter()),
             I::PublicBinary(set) => ProtoIter::PublicBinary(set.iter()),
             I::RestrictedString(set) => ProtoIter::RestrictedString(set.iter()),
+            I::IntentToken(map) => ProtoIter::IntentToken(map.iter()),
+            I::TrustedDeviceEnrollment(map) => ProtoIter::TrustedDeviceEnrollment(map.iter()),
+            I::AuthSession(map) => ProtoIter::AuthSession(map.iter()),
         }
     }
 
@@ -1617,6 +1797,9 @@ impl ValueSet {
             I::PrivateBinary(set) => DbValueV1Iter::PrivateBinary(set.iter()),
             I::PublicBinary(set) => DbValueV1Iter::PublicBinary(set.iter()),
             I::RestrictedString(set) => DbValueV1Iter::RestrictedString(set.iter()),
+            I::IntentToken(map) => DbValueV1Iter::IntentToken(map.iter()),
+            I::TrustedDeviceEnrollment(map) => DbValueV1Iter::TrustedDeviceEnrollment(map.iter()),
+            I::AuthSession(map) => DbValueV1Iter::AuthSession(map.iter()),
         }
     }
 
@@ -1648,6 +1831,11 @@ impl ValueSet {
             I::PrivateBinary(set) => PartialValueIter::PrivateBinary(set.iter()),
             I::PublicBinary(set) => PartialValueIter::PublicBinary(set.iter()),
             I::RestrictedString(set) => PartialValueIter::RestrictedString(set.iter()),
+            I::IntentToken(map) => PartialValueIter::IntentToken(map.iter()),
+            I::TrustedDeviceEnrollment(map) => {
+                PartialValueIter::TrustedDeviceEnrollment(map.iter())
+            }
+            I::AuthSession(map) => PartialValueIter::AuthSession(map.iter()),
         }
     }
 
@@ -1679,6 +1867,9 @@ impl ValueSet {
             I::PrivateBinary(set) => ValueIter::PrivateBinary(set.iter()),
             I::PublicBinary(set) => ValueIter::PublicBinary(set.iter()),
             I::RestrictedString(set) => ValueIter::RestrictedString(set.iter()),
+            I::IntentToken(map) => ValueIter::IntentToken(map.iter()),
+            I::TrustedDeviceEnrollment(map) => ValueIter::TrustedDeviceEnrollment(map.iter()),
+            I::AuthSession(map) => ValueIter::AuthSession(map.iter()),
         }
     }
 
@@ -1811,6 +2002,10 @@ impl ValueSet {
         matches!(self.inner, I::PrivateBinary(_))
     }
 
+    pub fn is_intenttoken(&self) -> bool {
+        matches!(self.inner, I::IntentToken(_))
+    }
+
     pub fn validate(&self) -> bool {
         match &self.inner {
             I::Iname(set) => set.iter().all(|s| {
@@ -1909,6 +2104,9 @@ impl PartialEq for ValueSet {
             (I::PrivateBinary(a), I::PrivateBinary(b)) => a.eq(b),
             (I::PublicBinary(a), I::PublicBinary(b)) => a.eq(b),
             (I::RestrictedString(a), I::RestrictedString(b)) => a.eq(b),
+            (I::IntentToken(a), I::IntentToken(b)) => a.eq(b),
+            (I::TrustedDeviceEnrollment(a), I::TrustedDeviceEnrollment(b)) => a.eq(b),
+            (I::AuthSession(a), I::AuthSession(b)) => a.eq(b),
             _ => false,
         }
     }
@@ -1976,6 +2174,9 @@ pub enum ValueIter<'a> {
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
     PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
     RestrictedString(std::collections::btree_set::Iter<'a, String>),
+    IntentToken(std::collections::btree_map::Iter<'a, Uuid, IntentTokenState>),
+    TrustedDeviceEnrollment(std::collections::btree_map::Iter<'a, Uuid, ()>),
+    AuthSession(std::collections::btree_map::Iter<'a, Uuid, ()>),
 }
 
 impl<'a> Iterator for ValueIter<'a> {
@@ -2035,6 +2236,13 @@ impl<'a> Iterator for ValueIter<'a> {
             ValueIter::RestrictedString(iter) => {
                 iter.next().map(|i| Value::new_restrictedstring(i.clone()))
             }
+            ValueIter::IntentToken(iter) => iter
+                .next()
+                .map(|(u, ts)| Value::IntentToken(*u, ts.clone())),
+            ValueIter::TrustedDeviceEnrollment(iter) => {
+                iter.next().map(|(u, _)| Value::TrustedDeviceEnrollment(*u))
+            }
+            ValueIter::AuthSession(iter) => iter.next().map(|(u, _)| Value::AuthSession(*u)),
         }
     }
 }
@@ -2066,6 +2274,9 @@ pub enum PartialValueIter<'a> {
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
     PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
     RestrictedString(std::collections::btree_set::Iter<'a, String>),
+    IntentToken(std::collections::btree_map::Iter<'a, Uuid, IntentTokenState>),
+    TrustedDeviceEnrollment(std::collections::btree_map::Iter<'a, Uuid, ()>),
+    AuthSession(std::collections::btree_map::Iter<'a, Uuid, ()>),
 }
 
 impl<'a> Iterator for PartialValueIter<'a> {
@@ -2138,6 +2349,15 @@ impl<'a> Iterator for PartialValueIter<'a> {
             PartialValueIter::RestrictedString(iter) => iter
                 .next()
                 .map(|i| PartialValue::new_restrictedstring_s(i.as_str())),
+            PartialValueIter::IntentToken(iter) => {
+                iter.next().map(|(u, _state)| PartialValue::IntentToken(*u))
+            }
+            PartialValueIter::TrustedDeviceEnrollment(iter) => iter
+                .next()
+                .map(|(u, _)| PartialValue::TrustedDeviceEnrollment(*u)),
+            PartialValueIter::AuthSession(iter) => {
+                iter.next().map(|(u, _)| PartialValue::AuthSession(*u))
+            }
         }
     }
 }
@@ -2175,6 +2395,9 @@ pub enum DbValueV1Iter<'a> {
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
     PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
     RestrictedString(std::collections::btree_set::Iter<'a, String>),
+    IntentToken(std::collections::btree_map::Iter<'a, Uuid, IntentTokenState>),
+    TrustedDeviceEnrollment(std::collections::btree_map::Iter<'a, Uuid, ()>),
+    AuthSession(std::collections::btree_map::Iter<'a, Uuid, ()>),
 }
 
 impl<'a> Iterator for DbValueV1Iter<'a> {
@@ -2270,6 +2493,20 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
             DbValueV1Iter::RestrictedString(iter) => {
                 iter.next().map(|i| DbValueV1::RestrictedString(i.clone()))
             }
+            DbValueV1Iter::IntentToken(iter) => iter.next().map(|(u, s)| DbValueV1::IntentToken {
+                u: *u,
+                s: match s {
+                    IntentTokenState::Valid => DbValueIntentTokenStateV1::V,
+                    IntentTokenState::InProgress(i, d) => DbValueIntentTokenStateV1::P(*i, *d),
+                    IntentTokenState::Consumed => DbValueIntentTokenStateV1::C,
+                },
+            }),
+            DbValueV1Iter::TrustedDeviceEnrollment(iter) => iter
+                .next()
+                .map(|(u, _)| DbValueV1::TrustedDeviceEnrollment { u: *u }),
+            DbValueV1Iter::AuthSession(iter) => {
+                iter.next().map(|(u, _)| DbValueV1::AuthSession { u: *u })
+            }
         }
     }
 }
@@ -2301,6 +2538,9 @@ pub enum ProtoIter<'a> {
     PrivateBinary(SmolSetIter<'a, [Vec<u8>; 1]>),
     PublicBinary(std::collections::btree_map::Iter<'a, String, Vec<u8>>),
     RestrictedString(std::collections::btree_set::Iter<'a, String>),
+    IntentToken(std::collections::btree_map::Iter<'a, Uuid, IntentTokenState>),
+    TrustedDeviceEnrollment(std::collections::btree_map::Iter<'a, Uuid, ()>),
+    AuthSession(std::collections::btree_map::Iter<'a, Uuid, ()>),
 }
 
 impl<'a> Iterator for ProtoIter<'a> {
@@ -2360,6 +2600,15 @@ impl<'a> Iterator for ProtoIter<'a> {
                 .next()
                 .map(|(t, b)| format!("{}: {}", t, base64::encode_config(&b, base64::URL_SAFE))),
             ProtoIter::RestrictedString(iter) => iter.next().cloned(),
+            ProtoIter::IntentToken(iter) => iter
+                .next()
+                .map(|(u, m)| format!("{}: {:?}", ValueSet::uuid_to_proto_string(u), m)),
+            ProtoIter::TrustedDeviceEnrollment(iter) => iter
+                .next()
+                .map(|(u, _)| format!("{}", ValueSet::uuid_to_proto_string(u))),
+            ProtoIter::AuthSession(iter) => iter
+                .next()
+                .map(|(u, _)| format!("{}", ValueSet::uuid_to_proto_string(u))),
         }
     }
 }

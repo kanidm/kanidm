@@ -31,6 +31,13 @@ impl std::fmt::Debug for DbPasswordV1 {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueIntentTokenStateV1 {
+    V,
+    P(Uuid, Duration),
+    C,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub enum DbTotpAlgoV1 {
     S1,
     S256,
@@ -231,6 +238,15 @@ pub enum DbValueV1 {
     PublicBinary(String, Vec<u8>),
     #[serde(rename = "RS")]
     RestrictedString(String),
+    #[serde(rename = "IT")]
+    IntentToken {
+        u: Uuid,
+        s: DbValueIntentTokenStateV1,
+    },
+    #[serde(rename = "TE")]
+    TrustedDeviceEnrollment { u: Uuid },
+    #[serde(rename = "AS")]
+    AuthSession { u: Uuid },
 }
 
 #[cfg(test)]

@@ -514,6 +514,7 @@ pub trait QueryServerTransaction<'a> {
                         .ok_or_else(|| OperationError::InvalidAttribute("Invalid Oauth Scope syntax".to_string())),
                     SyntaxType::OauthScopeMap => Err(OperationError::InvalidAttribute("Oauth Scope Maps can not be supplied through modification - please use the IDM api".to_string())),
                     SyntaxType::PrivateBinary => Err(OperationError::InvalidAttribute("Private Binary Values can not be supplied through modification".to_string())),
+                    SyntaxType::IntentToken => Err(OperationError::InvalidAttribute("Intent Token Values can not be supplied through modification".to_string())),
                 }
             }
             None => {
@@ -634,6 +635,13 @@ pub trait QueryServerTransaction<'a> {
                     }),
                     SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
                     SyntaxType::PrivateBinary => Ok(PartialValue::PrivateBinary),
+                    SyntaxType::IntentToken => {
+                        PartialValue::new_intenttoken_s(value).ok_or_else(|| {
+                            OperationError::InvalidAttribute(
+                                "Invalid Intent Token ID (uuid) syntax".to_string(),
+                            )
+                        })
+                    }
                 }
             }
             None => {
@@ -2295,6 +2303,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
             JSON_SCHEMA_ATTR_OAUTH2_ALLOW_INSECURE_CLIENT_DISABLE_PKCE,
             JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE,
             JSON_SCHEMA_ATTR_RS256_PRIVATE_KEY_DER,
+            JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN,
             JSON_SCHEMA_CLASS_PERSON,
             JSON_SCHEMA_CLASS_ORGPERSON,
             JSON_SCHEMA_CLASS_GROUP,

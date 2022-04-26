@@ -836,6 +836,35 @@ pub const JSON_SCHEMA_ATTR_OAUTH2_JWT_LEGACY_CRYPTO_ENABLE: &str = r#"{
     }
 }"#;
 
+pub const JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = r#"{
+    "attrs": {
+      "class": [
+        "object",
+        "system",
+        "attributetype"
+      ],
+      "description": [
+        "The status of a credential update intent token"
+      ],
+      "index": [],
+      "unique": [
+        "false"
+      ],
+      "multivalue": [
+        "true"
+      ],
+      "attributename": [
+        "credential_update_intent_token"
+      ],
+      "syntax": [
+        "INTENT_TOKEN"
+      ],
+      "uuid": [
+        "00000000-0000-0000-0000-ffff00000096"
+      ]
+    }
+}"#;
+
 // === classes ===
 
 pub const JSON_SCHEMA_CLASS_PERSON: &str = r#"
@@ -939,6 +968,7 @@ pub const JSON_SCHEMA_CLASS_ACCOUNT: &str = r#"
       ],
       "systemmay": [
         "primary_credential",
+        "credential_update_intent_token",
         "ssh_publickey",
         "radius_secret",
         "account_expire",

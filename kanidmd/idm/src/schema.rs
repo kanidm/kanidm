@@ -196,6 +196,7 @@ impl SchemaAttribute {
             SyntaxType::OauthScope => v.is_oauthscope(),
             SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
             SyntaxType::PrivateBinary => v.is_privatebinary(),
+            SyntaxType::IntentToken => matches!(v, PartialValue::IntentToken(_)),
         };
         if r {
             Ok(())
@@ -235,6 +236,7 @@ impl SchemaAttribute {
                 SyntaxType::OauthScope => v.is_oauthscope(),
                 SyntaxType::OauthScopeMap => v.is_oauthscopemap() || v.is_refer(),
                 SyntaxType::PrivateBinary => v.is_privatebinary(),
+                SyntaxType::IntentToken => matches!(v, Value::IntentToken(_, _)),
             };
         if r {
             Ok(())
@@ -281,6 +283,7 @@ impl SchemaAttribute {
             SyntaxType::OauthScope => ava.is_oauthscope(),
             SyntaxType::OauthScopeMap => ava.is_oauthscopemap(),
             SyntaxType::PrivateBinary => ava.is_privatebinary(),
+            SyntaxType::IntentToken => ava.is_intenttoken(),
         };
         if valid && ava.validate() {
             Ok(())

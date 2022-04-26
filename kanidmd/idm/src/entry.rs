@@ -32,7 +32,7 @@ use crate::prelude::*;
 use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{IndexType, SyntaxType};
-use crate::value::{PartialValue, Value};
+use crate::value::{IntentTokenState, PartialValue, Value};
 use crate::valueset::ValueSet;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -1603,6 +1603,14 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         attr: &str,
     ) -> Option<&std::collections::BTreeMap<Uuid, std::collections::BTreeSet<String>>> {
         self.attrs.get(attr).and_then(|vs| vs.as_oauthscopemap())
+    }
+
+    #[inline(always)]
+    pub fn get_ava_as_intenttokens(
+        &self,
+        attr: &str,
+    ) -> Option<&std::collections::BTreeMap<Uuid, IntentTokenState>> {
+        self.attrs.get(attr).and_then(|vs| vs.as_intenttoken())
     }
 
     #[inline(always)]

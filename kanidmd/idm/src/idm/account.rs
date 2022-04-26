@@ -12,8 +12,9 @@ use crate::credential::totp::Totp;
 use crate::credential::{softlock::CredSoftLockPolicy, Credential};
 use crate::idm::group::Group;
 use crate::modify::{ModifyInvalid, ModifyList};
-use crate::value::{PartialValue, Value};
+use crate::value::{IntentTokenState, PartialValue, Value};
 
+use std::collections::BTreeMap;
 use std::time::Duration;
 use time::OffsetDateTime;
 use uuid::Uuid;
@@ -76,6 +77,11 @@ macro_rules! try_from_entry {
 
         let uuid = $value.get_uuid().clone();
 
+        let credential_update_intent_tokens = $value
+            .get_ava_as_intenttokens("credential_update_intent_token")
+            .cloned()
+            .unwrap_or_else(|| BTreeMap::new());
+
         Ok(Account {
             uuid,
             name,
@@ -88,6 +94,7 @@ macro_rules! try_from_entry {
             spn,
             mail_primary,
             mail,
+            credential_update_intent_tokens,
         })
     }};
 }
@@ -115,6 +122,7 @@ pub(crate) struct Account {
     // to include these.
     pub mail_primary: Option<String>,
     pub mail: Vec<String>,
+    pub credential_update_intent_tokens: BTreeMap<Uuid, IntentTokenState>,
 }
 
 impl Account {

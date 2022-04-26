@@ -4,6 +4,7 @@ use crate::idm::account::Account;
 use crate::idm::server::IdmServerCredUpdateTransaction;
 use crate::idm::server::IdmServerProxyWriteTransaction;
 use crate::prelude::*;
+use crate::value::IntentTokenState;
 use hashbrown::HashSet;
 
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
@@ -16,6 +17,7 @@ use serde::{Deserialize, Serialize};
 
 use std::sync::Arc;
 use std::time::Duration;
+use time::OffsetDateTime;
 
 use tokio::sync::Mutex;
 
@@ -69,6 +71,8 @@ enum MfaRegState {
 pub(crate) struct CredentialUpdateSession {
     // Current credentials - these are on the Account!
     account: Account,
+    //
+    intent_token_id: Option<Uuid>,
     // Acc policy
     // The credentials as they are being updated
     primary: Option<Credential>,
@@ -218,17 +222,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
     fn create_credupdate_session(
         &mut self,
+        sessionid: Uuid,
+        intent_token_id: Option<Uuid>,
         account: Account,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionToken, OperationError> {
-        // Need to change this to the expiry time, so we can purge up to.
-        let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
         // - stash the current state of all associated credentials
         let primary = account.primary.clone();
         // - store account policy (if present)
 
         let session = Arc::new(Mutex::new(CredentialUpdateSession {
             account,
+            intent_token_id,
             primary,
             mfaregstate: MfaRegState::None,
         }));
@@ -327,17 +332,49 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let entry = self.qs_write.internal_search_uuid(&token.target)?;
 
-        security_info!(
-            ?entry,
-            %token.target,
-            "Initiating Credential Update Session",
-        );
-
         // Is target an account? This checks for us.
         let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
 
         // Check there is not already a user session in progress with this intent token.
         // Is there a need to revoke intent tokens?
+
+        match account
+            .credential_update_intent_tokens
+            .get(&token.sessionid)
+        {
+            Some(IntentTokenState::Consumed) => {
+                security_info!(
+                    ?entry,
+                    %token.target,
+                    "Rejecting Update Session - Intent Token has already been exchanged",
+                );
+                return Err(OperationError::SessionExpired);
+            }
+            Some(IntentTokenState::InProgress(si, sd)) => {
+                if ct > *sd {
+                    // The former session has expired, continue.
+                    security_info!(
+                        ?entry,
+                        %token.target,
+                        "Initiating Credential Update Session - Previous session {} has expired", si
+                    );
+                } else {
+                    security_info!(
+                        ?entry,
+                        %token.target,
+                        "Rejecting Update Session - Intent Token is in use {}. Try again later", si
+                    );
+                    return Err(OperationError::Wait(OffsetDateTime::unix_epoch() + *sd));
+                }
+            }
+            Some(IntentTokenState::Valid) | None => {
+                security_info!(
+                    ?entry,
+                    %token.target,
+                    "Initiating Credential Update Session",
+                );
+            }
+        };
 
         // To prevent issues with repl, we need to associate this cred update session id, with
         // this intent token id.
@@ -347,10 +384,32 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // We need to pin the id from the intent token into the credential to ensure it's not re-used
 
+        // Need to change this to the expiry time, so we can purge up to.
+        let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+
+        let modlist = ModifyList::new_append(
+            "credential_update_intent_token",
+            Value::IntentToken(
+                token.sessionid,
+                IntentTokenState::InProgress(sessionid, ct + MAXIMUM_CRED_UPDATE_TTL),
+            ),
+        );
+
+        self.qs_write
+            .internal_modify(
+                // Filter as executed
+                &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                &modlist,
+            )
+            .map_err(|e| {
+                request_error!(error = ?e);
+                e
+            })?;
+
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(account, ct)
+        self.create_credupdate_session(sessionid, Some(token.sessionid), account, ct)
     }
 
     pub fn init_credential_update(
@@ -363,8 +422,11 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             // ==== AUTHORISATION CHECKED ===
 
+            // Need to change this to the expiry time, so we can purge up to.
+            let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+
             // Build the cred update session.
-            self.create_credupdate_session(account, ct)
+            self.create_credupdate_session(sessionid, None, account, ct)
         })
     }
 
@@ -420,6 +482,18 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             None => {
                 modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
             }
+        };
+
+        // If an intent token was used, remove it's former value, and add it as consumed.
+        if let Some(intent_token_id) = session.intent_token_id {
+            modlist.push_mod(Modify::Removed(
+                AttrString::from("credential_update_intent_token"),
+                PartialValue::IntentToken(intent_token_id),
+            ));
+            modlist.push_mod(Modify::Present(
+                AttrString::from("credential_update_intent_token"),
+                Value::IntentToken(intent_token_id, IntentTokenState::Consumed),
+            ));
         };
 
         // Are any other checks needed?

@@ -68,7 +68,7 @@ pub enum IndexType {
     SubString,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntentTokenState {
     Valid,
     InProgress(Uuid, Duration),
@@ -161,6 +161,7 @@ pub enum SyntaxType {
     OauthScope,
     OauthScopeMap,
     PrivateBinary,
+    IntentToken,
 }
 
 impl TryFrom<&str> for SyntaxType {
@@ -192,6 +193,7 @@ impl TryFrom<&str> for SyntaxType {
             "OAUTH_SCOPE" => Ok(SyntaxType::OauthScope),
             "OAUTH_SCOPE_MAP" => Ok(SyntaxType::OauthScopeMap),
             "PRIVATE_BINARY" => Ok(SyntaxType::PrivateBinary),
+            "INTENT_TOKEN" => Ok(SyntaxType::IntentToken),
             _ => Err(()),
         }
     }
@@ -224,6 +226,7 @@ impl TryFrom<usize> for SyntaxType {
             19 => Ok(SyntaxType::OauthScope),
             20 => Ok(SyntaxType::OauthScopeMap),
             21 => Ok(SyntaxType::PrivateBinary),
+            22 => Ok(SyntaxType::IntentToken),
             _ => Err(()),
         }
     }
@@ -254,6 +257,7 @@ impl SyntaxType {
             SyntaxType::OauthScope => 19,
             SyntaxType::OauthScopeMap => 20,
             SyntaxType::PrivateBinary => 21,
+            SyntaxType::IntentToken => 22,
         }
     }
 }
@@ -283,6 +287,7 @@ impl fmt::Display for SyntaxType {
             SyntaxType::OauthScope => "OAUTH_SCOPE",
             SyntaxType::OauthScopeMap => "OAUTH_SCOPE_MAP",
             SyntaxType::PrivateBinary => "PRIVATE_BINARY",
+            SyntaxType::IntentToken => "INTENT_TOKEN",
         })
     }
 }
@@ -327,6 +332,9 @@ pub enum PartialValue {
     // Enumeration(String),
     // Float64(f64),
     RestrictedString(String),
+    IntentToken(Uuid),
+    TrustedDeviceEnrollment(Uuid),
+    AuthSession(Uuid),
 }
 
 impl From<SyntaxType> for PartialValue {
@@ -638,6 +646,13 @@ impl PartialValue {
         PartialValue::RestrictedString(s.to_string())
     }
 
+    pub fn new_intenttoken_s(us: &str) -> Option<Self> {
+        match Uuid::parse_str(us) {
+            Ok(u) => Some(PartialValue::IntentToken(u)),
+            Err(_) => None,
+        }
+    }
+
     pub fn to_str(&self) -> Option<&str> {
         match self {
             PartialValue::Utf8(s) => Some(s.as_str()),
@@ -689,6 +704,9 @@ impl PartialValue {
             PartialValue::OauthScopeMap(u) => u.to_hyphenated_ref().to_string(),
             PartialValue::Address(a) => a.to_string(),
             PartialValue::PhoneNumber(a) => a.to_string(),
+            PartialValue::IntentToken(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::TrustedDeviceEnrollment(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::AuthSession(u) => u.to_hyphenated_ref().to_string(),
         }
     }
 
@@ -733,6 +751,9 @@ pub enum Value {
     // Enumeration(String),
     // Float64(f64),
     RestrictedString(String),
+    IntentToken(Uuid, IntentTokenState),
+    TrustedDeviceEnrollment(Uuid),
+    AuthSession(Uuid),
 }
 
 impl PartialEq for Value {
@@ -1414,6 +1435,27 @@ impl Value {
     pub fn to_address(self) -> Option<Address> {
         match self {
             Value::Address(a) => Some(a),
+            _ => None,
+        }
+    }
+
+    pub fn to_intenttoken(self) -> Option<(Uuid, IntentTokenState)> {
+        match self {
+            Value::IntentToken(u, s) => Some((u, s)),
+            _ => None,
+        }
+    }
+
+    pub fn to_trusteddeviceenrollment(self) -> Option<(Uuid, ())> {
+        match self {
+            Value::TrustedDeviceEnrollment(u) => Some((u, ())),
+            _ => None,
+        }
+    }
+
+    pub fn to_authsession(self) -> Option<(Uuid, ())> {
+        match self {
+            Value::AuthSession(u) => Some((u, ())),
             _ => None,
         }
     }

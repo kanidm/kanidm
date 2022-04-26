@@ -124,9 +124,9 @@ pub struct IdmServerAuthTransaction<'a> {
 }
 
 pub(crate) struct IdmServerCredUpdateTransaction<'a> {
-    pub qs_read: QueryServerReadTransaction<'a>,
+    pub _qs_read: QueryServerReadTransaction<'a>,
     // sid: Sid,
-    pub webauthn: &'a Webauthn<WebauthnDomainConfig>,
+    pub _webauthn: &'a Webauthn<WebauthnDomainConfig>,
     pub pw_badlist_cache: CowCellReadTxn<HashSet<String>>,
     pub cred_update_sessions: BptreeMapReadTxn<'a, Uuid, CredentialUpdateSessionMutex>,
     pub token_enc_key: CowCellReadTxn<Fernet>,
@@ -343,9 +343,9 @@ impl IdmServer {
 
     pub(crate) async fn cred_update_transaction_async(&self) -> IdmServerCredUpdateTransaction<'_> {
         IdmServerCredUpdateTransaction {
-            qs_read: self.qs.read_async().await,
+            _qs_read: self.qs.read_async().await,
             // sid: Sid,
-            webauthn: &self.webauthn,
+            _webauthn: &self.webauthn,
             pw_badlist_cache: self.pw_badlist_cache.read(),
             cred_update_sessions: self.cred_update_sessions.read(),
             token_enc_key: self.token_enc_key.read(),
