@@ -41,7 +41,7 @@ fn uuid_from_u64_u32(a: u64, b: u32, sid: Sid) -> Uuid {
     #[allow(clippy::expect_used)]
     Builder::from_slice(v.as_slice())
         .expect("invalid slice for uuid builder")
-        .build()
+        .into_uuid()
 }
 
 pub fn uuid_from_duration(d: Duration, sid: Sid) -> Uuid {
@@ -193,13 +193,13 @@ mod tests {
         let u1 = uuid_from_duration(Duration::from_secs(1), [0xff; 4]);
         assert_eq!(
             "00000000-0000-0001-0000-0000ffffffff",
-            u1.to_hyphenated().to_string()
+            u1.as_hyphenated().to_string()
         );
 
         let u2 = uuid_from_duration(Duration::from_secs(1000), [0xff; 4]);
         assert_eq!(
             "00000000-0000-03e8-0000-0000ffffffff",
-            u2.to_hyphenated().to_string()
+            u2.as_hyphenated().to_string()
         );
     }
 

@@ -29,26 +29,26 @@ name = "kanidm_badlist_preprocess"
 path = "src/badlist_preprocess.rs"
 
 [dependencies]
-kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha.4" }
-kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha.4" }
-tracing = "0.1"
-tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
-rpassword = "5.0"
-structopt = { version = "0.3", default-features = false }
-libc = "0.2"
-serde = { version = "1", features = ["derive"] }
-serde_json = "1.0"
-shellexpand = "2.0"
-rayon = "1.2"
-time = { version = "0.2", features = ["serde", "std"] }
-qrcode = { version = "0.12", default-features = false }
-compact_jwt = "^0.2.0"
+kanidm_client = { path = "../kanidm_client" }
+kanidm_proto = { path = "../kanidm_proto" }
+tracing = "^0.1.34"
+tracing-subscriber = { version = "^0.3.11", features = ["env-filter", "fmt"] }
+rpassword = "^6.0.1"
+structopt = { version = "^0.3.26", default-features = false }
+libc = "^0.2.124"
+serde = { version = "^1.0.136", features = ["derive"] }
+serde_json = "^1.0.79"
+shellexpand = "^2.1.0"
+rayon = "^1.5.2"
+time = { version = "=0.2.27", features = ["serde", "std"] }
+qrcode = { version = "^0.12.0", default-features = false }
+compact_jwt = "^0.2.1"
 
-zxcvbn = "2.0"
+zxcvbn = "^2.2.1"
 
-dialoguer =  "0.9"
+dialoguer =  "^0.10.0"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.12"
 
 [build-dependencies]
-structopt = { version = "0.3", default-features = false }
+structopt = { version = "^0.3.26", default-features = false }

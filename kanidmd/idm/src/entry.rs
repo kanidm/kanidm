@@ -977,7 +977,7 @@ impl Entry<EntrySealed, EntryCommitted> {
                     .get("name")
                     .and_then(|vs| vs.to_proto_string_single().map(|v| format!("name={}", v)))
             })
-            .unwrap_or_else(|| format!("uuid={}", self.get_uuid().to_hyphenated_ref()))
+            .unwrap_or_else(|| format!("uuid={}", self.get_uuid().as_hyphenated()))
     }
 
     #[inline]

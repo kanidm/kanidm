@@ -15,86 +15,83 @@ name = "kanidm"
 path = "src/lib.rs"
 
 [dependencies]
-kanidm_proto = { path = "../../kanidm_proto", version = "1.1.0-alpha" }
-tracing = { version = "0.1", features = ["attributes"] }
-tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-tracing-serde = "0.1"
+kanidm_proto = { path = "../../kanidm_proto" }
+tracing = { version = "^0.1.34", features = ["attributes"] }
+tracing-subscriber = { version = "^0.3.11", features = ["env-filter"] }
+tracing-serde = "^0.1.3"
 
-jemallocator = { version = "0.3.0", optional = true }
-either = "1.6"
+jemallocator = { version = "0.3.2", optional = true }
+either = "^1.6.1"
 
-url = { version = "2", features = ["serde"] }
-tide = "0.16"
-async-trait = "0.1"
-async-h1 = "2.0"
+url = { version = "^2.2.2", features = ["serde"] }
+tide = "^0.16.0"
+async-trait = "^0.1.53"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
-compact_jwt = "^0.2.0"
+compact_jwt = "^0.2.1"
 
-async-std = { version = "1.6", features = ["tokio1"] }
+async-std = { version = "^1.11.0", features = ["tokio1"] }
 
-rand = "0.8"
-toml = "0.5"
+rand = "^0.8.5"
+toml = "^0.5.9"
 
-chrono = "0.4"
-saffron = "0.1.0"
-regex = "1"
-lazy_static = "1.2.0"
+chrono = "^0.4.19"
+saffron = "^0.1.0"
+regex = "^1.5.5"
+lazy_static = "^1.4.0"
 
-futures = "0.3"
-futures-util = "0.3"
-tokio = { version = "1", features = ["full"] }
-tokio-util = { version = "0.6", features = ["codec"] }
-openssl = "0.10"
+futures = "^0.3.21"
+futures-util = "^0.3.21"
+tokio = { version = "^1.17.0", features = ["net", "sync", "time"] }
+tokio-util = { version = "^0.7.1", features = ["codec"] }
+openssl = "^0.10.38"
 
-uuid = { version = "0.8", features = ["serde", "v4" ] }
+uuid = { version = "^1.0.0", features = ["serde", "v4" ] }
 compiled-uuid = "0.1.2"
-serde = { version = "1", features = ["derive"] }
-serde_cbor = "0.11"
-serde_json = "1.0"
+serde = { version = "^1.0.136", features = ["derive"] }
+serde_cbor = "^0.11.2"
+serde_json = "^1.0.79"
 
-libsqlite3-sys = { version = "0.23" }
-rusqlite = { version = "0.26", features = ["backup"] }
-r2d2 = "0.8"
-r2d2_sqlite = "0.19"
+libsqlite3-sys = "0.24.2"
+rusqlite = "^0.27.0"
+r2d2 = "^0.8.9"
+r2d2_sqlite = "^0.20.0"
 
-time = { version = "0.2", features = ["serde", "std"] }
+time = { version = "=0.2.27", features = ["serde", "std"] }
 
-hashbrown = { version = "0.11", features = ["serde", "inline-more", "ahash"] }
-concread = "^0.3"
-smolset = "1.3"
+hashbrown = { version = "0.12.0", features = ["serde", "inline-more", "ahash"] }
+concread = "^0.3.1"
+smolset = "^1.3.1"
 
 sshkeys = "^0.3.1"
 
-zxcvbn = "2.0"
-base64 = "0.13"
+zxcvbn = "^2.2.1"
+base64 = "^0.13.0"
 
-idlset = { version = "^0.2" }
+idlset = { version = "^0.2.3" }
 
-# Needs to be ldap3_proto!
-ldap3_proto = "0.2.2"
+ldap3_proto = "^0.2.3"
 
-webauthn-rs = "0.3"
+webauthn-rs = "^0.3.2"
 
-libc = "0.2"
-users = "0.11"
+libc = "^0.2.124"
+users = "^0.11.0"
 
-smartstring = { version = "0.2", features = ["serde"] }
+smartstring = { version = "^1.0.1", features = ["serde"] }
 
-validator = { version = "0.14", features = ["phone"] }
+validator = { version = "^0.14.0", features = ["phone"] }
 
-touch = "0.0.1"
-filetime = "0.2"
+touch = "^0.0.1"
+filetime = "^0.2.16"
 
-num_enum = "0.5"
-
+num_enum = "^0.5.7"
 
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
 
 [dev-dependencies]
-criterion = { version = "0.3", features = ["html_reports"] }
+criterion = { version = "^0.3.5", features = ["html_reports"] }
 # For testing webauthn
-webauthn-authenticator-rs = "0.3.0-alpha.12"
+webauthn-authenticator-rs = "^0.3.2"
 
 [build-dependencies]
 profiles = { path = "../../profiles" }

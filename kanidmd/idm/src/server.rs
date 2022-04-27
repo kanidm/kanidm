@@ -298,7 +298,7 @@ pub trait QueryServerTransaction<'a> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
             .uuid2rdn(uuid)
-            .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.to_hyphenated_ref())))
+            .map(|v| v.unwrap_or_else(|| format!("uuid={}", uuid.as_hyphenated())))
     }
 
     // From internal, generate an exists event and dispatch

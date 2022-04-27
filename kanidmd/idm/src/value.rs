@@ -677,7 +677,7 @@ impl PartialValue {
             | PartialValue::Nsuniqueid(s)
             | PartialValue::EmailAddress(s)
             | PartialValue::RestrictedString(s) => s.clone(),
-            PartialValue::Refer(u) | PartialValue::Uuid(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::Refer(u) | PartialValue::Uuid(u) => u.as_hyphenated().to_string(),
             PartialValue::Bool(b) => b.to_string(),
             PartialValue::Syntax(syn) => syn.to_string(),
             PartialValue::Index(it) => it.to_string(),
@@ -701,12 +701,12 @@ impl PartialValue {
             }
             PartialValue::Url(u) => u.to_string(),
             PartialValue::OauthScope(u) => u.to_string(),
-            PartialValue::OauthScopeMap(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::OauthScopeMap(u) => u.as_hyphenated().to_string(),
             PartialValue::Address(a) => a.to_string(),
             PartialValue::PhoneNumber(a) => a.to_string(),
-            PartialValue::IntentToken(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::TrustedDeviceEnrollment(u) => u.to_hyphenated_ref().to_string(),
-            PartialValue::AuthSession(u) => u.to_hyphenated_ref().to_string(),
+            PartialValue::IntentToken(u) => u.as_hyphenated().to_string(),
+            PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
+            PartialValue::AuthSession(u) => u.as_hyphenated().to_string(),
         }
     }
 
@@ -1472,7 +1472,7 @@ impl Value {
     pub(crate) fn to_proto_string_clone(&self) -> String {
         match &self {
             Value::Iname(s) => s.clone(),
-            Value::Uuid(u) => u.to_hyphenated_ref().to_string(),
+            Value::Uuid(u) => u.as_hyphenated().to_string(),
             // We display the tag and fingerprint.
             Value::SshKey(tag, key) =>
             // Check it's really an sshkey in the
