@@ -46,7 +46,7 @@ compact_jwt = "^0.2.0"
 
 zxcvbn = "2.0"
 
-dialoguer =  "0.9"
+dialoguer =  "0.10"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.12"
 
