@@ -1,5 +1,6 @@
 #!/bin/bash
 
+git config --global pull.ff only
 export CARGO_TARGET_DIR="${TMPDIR}cargo_target"
 DOCS_DIR="/tmp/kanidm_docs"
 
@@ -55,4 +56,4 @@ EOM
 ls -la "${DOCS_DIR}"
 
 mv "${DOCS_DIR}" ./docs/
-ln -s "${LATEST}" ./docs/stable/
+ln -s "${LATEST}" ./docs/stable
