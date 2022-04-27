@@ -86,6 +86,7 @@ book_versioned:
 	git pull origin "${BOOK_VERSION}"
 	cargo doc --no-deps --quiet
 	mdbook build kanidm_book
+	mkdir -p ./docs
 	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
 	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
 	mv ./target/doc/* ./docs/${BOOK_VERSION}/rustdoc/
