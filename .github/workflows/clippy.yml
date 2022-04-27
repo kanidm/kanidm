@@ -25,9 +25,6 @@ jobs:
       with:
         toolchain: stable
 
-    - name: Run clippy
-      uses: actions-rs/cargo@v1
-      with:
-        command: clippy
-        args: --no-deps
+    - name: "Run clippy (ignores errors, this is just a check)"
+      command: cargo clippy --no-deps
       continue-on-error: true
