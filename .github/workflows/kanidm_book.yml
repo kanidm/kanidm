@@ -10,7 +10,9 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+          fetch-depth: 0
+          clean: false
 
       - name: Install deps
         run: |
@@ -34,7 +36,9 @@ jobs:
       # - name: Run make book
         # run: make book
       - name: Make all the books
-        run: git tag -l | grep -E '^v' | xargs -n1 -I{} bash -c 'BOOK_VERSION="{}" make book'
+        run: |
+          git tag -l | grep -E '^v' | xargs -n1 -I{} bash -c 'BOOK_VERSION="{}" make book'
+          ls -la
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
