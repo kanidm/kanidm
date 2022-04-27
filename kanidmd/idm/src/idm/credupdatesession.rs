@@ -53,6 +53,8 @@ pub struct CredentialUpdateIntentToken {
 #[derive(Serialize, Deserialize, Debug)]
 struct CredentialUpdateSessionTokenInner {
     pub sessionid: Uuid,
+    // How long is it valid for?
+    pub max_ttl: Duration,
 }
 
 pub struct CredentialUpdateSessionToken {
@@ -238,16 +240,16 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             mfaregstate: MfaRegState::None,
         }));
 
-        let token = CredentialUpdateSessionTokenInner { sessionid };
+        let max_ttl = ct + MAXIMUM_CRED_UPDATE_TTL;
+
+        let token = CredentialUpdateSessionTokenInner { sessionid, max_ttl };
 
         let token_data = serde_json::to_vec(&token).map_err(|e| {
             admin_error!(err = ?e, "Unable to encode token data");
             OperationError::SerdeJsonError
         })?;
 
-        let token_enc = self
-            .token_enc_key
-            .encrypt_at_time(&token_data, ct.as_secs());
+        let token_enc = self.token_enc_key.encrypt(&token_data);
 
         // Point of no return
 
@@ -311,7 +313,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<CredentialUpdateSessionToken, OperationError> {
         let token: CredentialUpdateIntentTokenInner = self
             .token_enc_key
-            .decrypt_at_time(&token.token_enc, None, ct.as_secs())
+            .decrypt(&token.token_enc)
             .map_err(|e| {
                 admin_error!(?e, "Failed to decrypt intent request");
                 OperationError::SessionExpired
@@ -422,7 +424,8 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
             // ==== AUTHORISATION CHECKED ===
 
-            // Need to change this to the expiry time, so we can purge up to.
+            // This is the expiry time, so that our cleanup task can "purge up to now" rather
+            // than needing to do calculations.
             let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
             // Build the cred update session.
@@ -441,7 +444,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     ) -> Result<(), OperationError> {
         let session_token: CredentialUpdateSessionTokenInner = self
             .token_enc_key
-            .decrypt_at_time(&cust.token_enc, None, ct.as_secs())
+            .decrypt(&cust.token_enc)
             .map_err(|e| {
                 admin_error!(?e, "Failed to decrypt credential update session request");
                 OperationError::SessionExpired
@@ -452,6 +455,12 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     OperationError::SerdeJsonError
                 })
             })?;
+
+        if ct >= session_token.max_ttl {
+            trace!(?ct, ?session_token.max_ttl);
+            security_info!(%session_token.sessionid, "session expired");
+            return Err(OperationError::SessionExpired);
+        }
 
         let session_handle = self.cred_update_sessions.remove(&session_token.sessionid)
             .ok_or_else(|| {
@@ -522,7 +531,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
     ) -> Result<CredentialUpdateSessionMutex, OperationError> {
         let session_token: CredentialUpdateSessionTokenInner = self
             .token_enc_key
-            .decrypt_at_time(&cust.token_enc, None, ct.as_secs())
+            .decrypt(&cust.token_enc)
             .map_err(|e| {
                 admin_error!(?e, "Failed to decrypt credential update session request");
                 OperationError::SessionExpired
@@ -535,18 +544,15 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
             })?;
 
         // Check the TTL
-        // Asserted by the above.
-        /*
-        if ct >= token.max_ttl {
-            trace!(?ct, ?token.max_ttl);
-            security_info!(%token.sessionid, "session expired");
+        if ct >= session_token.max_ttl {
+            trace!(?ct, ?session_token.max_ttl);
+            security_info!(%session_token.sessionid, "session expired");
             return Err(OperationError::SessionExpired);
         }
-        */
 
         self.cred_update_sessions.get(&session_token.sessionid)
             .ok_or_else(|| {
-                admin_error!("No such sessionid exists on this server - may be due to a load balancer failover or replay?");
+                admin_error!("No such sessionid exists on this server - may be due to a load balancer failover or token replay?");
                 OperationError::InvalidState
             })
             .cloned()

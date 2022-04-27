@@ -225,11 +225,11 @@ impl TryFrom<DbValueV1> for ValueSet {
                 DbValueV1::RestrictedString(s) => I::RestrictedString(btreeset![s]),
                 DbValueV1::IntentToken { u, s } => {
                     let ts = match s {
-                        DbValueIntentTokenStateV1::V => IntentTokenState::Valid,
-                        DbValueIntentTokenStateV1::P(pu, pd) => {
+                        DbValueIntentTokenStateV1::Valid => IntentTokenState::Valid,
+                        DbValueIntentTokenStateV1::InProgress(pu, pd) => {
                             IntentTokenState::InProgress(pu, pd)
                         }
-                        DbValueIntentTokenStateV1::C => IntentTokenState::Consumed,
+                        DbValueIntentTokenStateV1::Consumed => IntentTokenState::Consumed,
                     };
                     I::IntentToken(btreemap![(u, ts)])
                 }
@@ -466,9 +466,11 @@ impl ValueSet {
             (I::RestrictedString(set), DbValueV1::RestrictedString(s)) => Ok(set.insert(s)),
             (I::IntentToken(map), DbValueV1::IntentToken { u, s }) => {
                 let ts = match s {
-                    DbValueIntentTokenStateV1::V => IntentTokenState::Valid,
-                    DbValueIntentTokenStateV1::P(i, d) => IntentTokenState::InProgress(i, d),
-                    DbValueIntentTokenStateV1::C => IntentTokenState::Consumed,
+                    DbValueIntentTokenStateV1::Valid => IntentTokenState::Valid,
+                    DbValueIntentTokenStateV1::InProgress(i, d) => {
+                        IntentTokenState::InProgress(i, d)
+                    }
+                    DbValueIntentTokenStateV1::Consumed => IntentTokenState::Consumed,
                 };
 
                 if let BTreeEntry::Vacant(e) = map.entry(u) {
@@ -2496,9 +2498,11 @@ impl<'a> Iterator for DbValueV1Iter<'a> {
             DbValueV1Iter::IntentToken(iter) => iter.next().map(|(u, s)| DbValueV1::IntentToken {
                 u: *u,
                 s: match s {
-                    IntentTokenState::Valid => DbValueIntentTokenStateV1::V,
-                    IntentTokenState::InProgress(i, d) => DbValueIntentTokenStateV1::P(*i, *d),
-                    IntentTokenState::Consumed => DbValueIntentTokenStateV1::C,
+                    IntentTokenState::Valid => DbValueIntentTokenStateV1::Valid,
+                    IntentTokenState::InProgress(i, d) => {
+                        DbValueIntentTokenStateV1::InProgress(*i, *d)
+                    }
+                    IntentTokenState::Consumed => DbValueIntentTokenStateV1::Consumed,
                 },
             }),
             DbValueV1Iter::TrustedDeviceEnrollment(iter) => iter

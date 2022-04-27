@@ -32,9 +32,12 @@ impl std::fmt::Debug for DbPasswordV1 {
 
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueIntentTokenStateV1 {
-    V,
-    P(Uuid, Duration),
-    C,
+    #[serde(rename = "v")]
+    Valid,
+    #[serde(rename = "p")]
+    InProgress(Uuid, Duration),
+    #[serde(rename = "c")]
+    Consumed,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
