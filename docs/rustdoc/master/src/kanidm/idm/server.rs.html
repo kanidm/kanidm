@@ -1,4 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/src/lib/idm/server.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `kanidmd/idm/src/idm/server.rs`."><meta name="keywords" content="rust, rustlang, rust-lang"><title>server.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Regular.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../FiraSans-Medium.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Regular.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceSerif4-Bold.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../SourceCodePro-Semibold.ttf.woff2"><link rel="stylesheet" type="text/css" href="../../../normalize.css"><link rel="stylesheet" type="text/css" href="../../../rustdoc.css" id="mainThemeStyle"><link rel="stylesheet" type="text/css" href="../../../ayu.css" disabled><link rel="stylesheet" type="text/css" href="../../../dark.css" disabled><link rel="stylesheet" type="text/css" href="../../../light.css" id="themeStyle"><script id="default-settings" ></script><script src="../../../storage.js"></script><script src="../../../crates.js"></script><script defer src="../../../main.js"></script><script defer src="../../../source-script.js"></script><script defer src="../../../source-files.js"></script>
     <noscript><link rel="stylesheet" href="../../../noscript.css"></noscript><link rel="alternate icon" type="image/png" href="../../../favicon-16x16.png"><link rel="alternate icon" type="image/png" href="../../../favicon-32x32.png"><link rel="icon" type="image/svg+xml" href="../../../favicon.svg"></head><body class="rustdoc source"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle">&#9776;</button><a class="sidebar-logo" href="../../../kanidm/index.html"><div class="logo-container"><img class="rust-logo" src="../../../rust-logo.svg" alt="logo"></div>
         </a><h2 class="location"></h2>
     </nav>
@@ -3985,6 +3985,45 @@
 <span id="3980">3980</span>
 <span id="3981">3981</span>
 <span id="3982">3982</span>
+<span id="3983">3983</span>
+<span id="3984">3984</span>
+<span id="3985">3985</span>
+<span id="3986">3986</span>
+<span id="3987">3987</span>
+<span id="3988">3988</span>
+<span id="3989">3989</span>
+<span id="3990">3990</span>
+<span id="3991">3991</span>
+<span id="3992">3992</span>
+<span id="3993">3993</span>
+<span id="3994">3994</span>
+<span id="3995">3995</span>
+<span id="3996">3996</span>
+<span id="3997">3997</span>
+<span id="3998">3998</span>
+<span id="3999">3999</span>
+<span id="4000">4000</span>
+<span id="4001">4001</span>
+<span id="4002">4002</span>
+<span id="4003">4003</span>
+<span id="4004">4004</span>
+<span id="4005">4005</span>
+<span id="4006">4006</span>
+<span id="4007">4007</span>
+<span id="4008">4008</span>
+<span id="4009">4009</span>
+<span id="4010">4010</span>
+<span id="4011">4011</span>
+<span id="4012">4012</span>
+<span id="4013">4013</span>
+<span id="4014">4014</span>
+<span id="4015">4015</span>
+<span id="4016">4016</span>
+<span id="4017">4017</span>
+<span id="4018">4018</span>
+<span id="4019">4019</span>
+<span id="4020">4020</span>
+<span id="4021">4021</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -3993,6 +4032,7 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::identity</span>::{<span class="ident">IdentType</span>, <span class="ident">IdentUser</span>, <span class="ident">Limits</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::account::Account</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::authsession::AuthSession</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::credupdatesession::CredentialUpdateSessionMutex</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::event</span>::{
     <span class="ident">AcceptSha1TotpEvent</span>, <span class="ident">CredentialStatusEvent</span>, <span class="ident">GeneratePasswordEvent</span>, <span class="ident">GenerateTotpEvent</span>,
     <span class="ident">LdapAuthEvent</span>, <span class="ident">PasswordChangeEvent</span>, <span class="ident">RadiusAuthTokenEvent</span>, <span class="ident">RegenerateRadiusSecretEvent</span>,
@@ -4025,8 +4065,8 @@
 
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AuthType</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>, <span class="ident">RadiusAuthToken</span>, <span class="ident">SetCredentialResponse</span>,
-    <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">UserAuthToken</span>,
+    <span class="ident">AuthType</span>, <span class="ident">BackupCodesView</span>, <span class="ident">CredentialStatus</span>, <span class="ident">PasswordFeedback</span>, <span class="ident">RadiusAuthToken</span>,
+    <span class="ident">SetCredentialResponse</span>, <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>, <span class="ident">UserAuthToken</span>,
 };
 
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsSigner</span>, <span class="ident">JwsUnverified</span>, <span class="ident">JwsValidator</span>};
@@ -4043,7 +4083,7 @@
 <span class="kw">use</span> <span class="ident">futures::task</span> <span class="kw">as</span> <span class="ident">futures_task</span>;
 
 <span class="kw">use</span> <span class="ident">concread</span>::{
-    <span class="ident">bptree</span>::{<span class="ident">BptreeMap</span>, <span class="ident">BptreeMapWriteTxn</span>},
+    <span class="ident">bptree</span>::{<span class="ident">BptreeMap</span>, <span class="ident">BptreeMapReadTxn</span>, <span class="ident">BptreeMapWriteTxn</span>},
     <span class="ident">cowcell</span>::{<span class="ident">CowCellReadTxn</span>, <span class="ident">CowCellWriteTxn</span>},
     <span class="ident">hashmap::HashMap</span>,
     <span class="ident">CowCell</span>,
@@ -4066,8 +4106,6 @@
 <span class="kw">type</span> <span class="ident">AuthSessionMutex</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">AuthSession</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 <span class="kw">type</span> <span class="ident">CredSoftLockMutex</span> <span class="op">=</span> <span class="ident">Arc</span><span class="op">&lt;</span><span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CredSoftLock</span><span class="op">&gt;</span><span class="op">&gt;</span>;
 
-<span class="comment">// type CredUpdateSessionMutex = Arc&lt;Mutex&lt;CredUpdateSession&gt;&gt;;</span>
-
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServer</span> {
     <span class="comment">// There is a good reason to keep this single thread - it</span>
     <span class="comment">// means that limits to sessions can be easily applied and checked to</span>
@@ -4078,7 +4116,7 @@
     <span class="ident">softlocks</span>: <span class="ident">HashMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredSoftLockMutex</span><span class="op">&gt;</span>,
     <span class="doccomment">/// A set of in progress MFA registrations</span>
     <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">MfaRegSession</span><span class="op">&gt;</span>,
-    <span class="comment">// cred_update_sessions: BptreeMap&lt;Uuid, CredUpdateSessionMutex&gt;,</span>
+    <span class="ident">cred_update_sessions</span>: <span class="ident">BptreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">CredentialUpdateSessionMutex</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Reference to the query server.</span>
     <span class="ident">qs</span>: <span class="ident">QueryServer</span>,
     <span class="doccomment">/// The configured crypto policy for the IDM server. Later this could be transactional and loaded from the db similar to access. But today it&#39;s just to allow dynamic pbkdf2rounds</span>
@@ -4111,6 +4149,16 @@
     <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">JwsValidator</span><span class="op">&gt;</span>,
 }
 
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">IdmServerCredUpdateTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
+    <span class="kw">pub</span> <span class="ident">_qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
+    <span class="comment">// sid: Sid,</span>
+    <span class="kw">pub</span> <span class="ident">_webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">cred_update_sessions</span>: <span class="ident">BptreeMapReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Uuid</span>, <span class="ident">CredentialUpdateSessionMutex</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">token_enc_key</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">Fernet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CryptoPolicy</span>,
+}
+
 <span class="doccomment">/// This contains read-only methods, like getting users, groups and other structured content.</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">IdmServerProxyReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="kw">pub</span> <span class="ident">qs_read</span>: <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
@@ -4124,13 +4172,14 @@
     <span class="kw">pub</span> <span class="ident">qs_write</span>: <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
     <span class="doccomment">/// Associate to an event origin ID, which has a TS and a UUID instead</span>
     <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMapWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Uuid</span>, <span class="ident">MfaRegSession</span><span class="op">&gt;</span>,
-    <span class="ident">sid</span>: <span class="ident">Sid</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">cred_update_sessions</span>: <span class="ident">BptreeMapWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Uuid</span>, <span class="ident">CredentialUpdateSessionMutex</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">sid</span>: <span class="ident">Sid</span>,
     <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">CryptoPolicy</span>,
     <span class="ident">webauthn</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;a</span> <span class="ident">Webauthn</span><span class="op">&lt;</span><span class="ident">WebauthnDomainConfig</span><span class="op">&gt;</span>,
     <span class="ident">pw_badlist_cache</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">uat_jwt_signer</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">JwsSigner</span><span class="op">&gt;</span>,
     <span class="ident">uat_jwt_validator</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">JwsValidator</span><span class="op">&gt;</span>,
-    <span class="ident">token_enc_key</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Fernet</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="ident">token_enc_key</span>: <span class="ident">CowCellWriteTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, <span class="ident">Fernet</span><span class="op">&gt;</span>,
     <span class="ident">oauth2rs</span>: <span class="ident">Oauth2ResourceServersWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span>,
 }
 
@@ -4233,6 +4282,7 @@
                 <span class="ident">sessions</span>: <span class="ident">BptreeMap::new</span>(),
                 <span class="ident">softlocks</span>: <span class="ident">HashMap::new</span>(),
                 <span class="ident">mfareg_sessions</span>: <span class="ident">BptreeMap::new</span>(),
+                <span class="ident">cred_update_sessions</span>: <span class="ident">BptreeMap::new</span>(),
                 <span class="ident">qs</span>,
                 <span class="ident">crypto_policy</span>,
                 <span class="ident">async_tx</span>,
@@ -4299,6 +4349,7 @@
 
         <span class="ident">IdmServerProxyWriteTransaction</span> {
             <span class="ident">mfareg_sessions</span>: <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">write</span>(),
+            <span class="ident">cred_update_sessions</span>: <span class="self">self</span>.<span class="ident">cred_update_sessions</span>.<span class="ident">write</span>(),
             <span class="ident">qs_write</span>,
             <span class="ident">sid</span>,
             <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">crypto_policy</span>,
@@ -4308,6 +4359,23 @@
             <span class="ident">uat_jwt_validator</span>: <span class="self">self</span>.<span class="ident">uat_jwt_validator</span>.<span class="ident">write</span>(),
             <span class="ident">token_enc_key</span>: <span class="self">self</span>.<span class="ident">token_enc_key</span>.<span class="ident">write</span>(),
             <span class="ident">oauth2rs</span>: <span class="self">self</span>.<span class="ident">oauth2rs</span>.<span class="ident">write</span>(),
+        }
+    }
+
+    <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">cred_update_transaction</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerCredUpdateTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+        <span class="ident">task::block_on</span>(<span class="self">self</span>.<span class="ident">cred_update_transaction_async</span>())
+    }
+
+    <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">cred_update_transaction_async</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">IdmServerCredUpdateTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span> {
+        <span class="ident">IdmServerCredUpdateTransaction</span> {
+            <span class="ident">_qs_read</span>: <span class="self">self</span>.<span class="ident">qs</span>.<span class="ident">read_async</span>().<span class="kw">await</span>,
+            <span class="comment">// sid: Sid,</span>
+            <span class="ident">_webauthn</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">webauthn</span>,
+            <span class="ident">pw_badlist_cache</span>: <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">read</span>(),
+            <span class="ident">cred_update_sessions</span>: <span class="self">self</span>.<span class="ident">cred_update_sessions</span>.<span class="ident">read</span>(),
+            <span class="ident">token_enc_key</span>: <span class="self">self</span>.<span class="ident">token_enc_key</span>.<span class="ident">read</span>(),
+            <span class="ident">crypto_policy</span>: <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">crypto_policy</span>,
         }
     }
 
@@ -4560,6 +4628,8 @@
                 <span class="comment">// continue, and helps to keep non-needed entry specific data</span>
                 <span class="comment">// out of the session tree.</span>
                 <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">Account::try_from_entry_ro</span>(<span class="ident">entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">qs_read</span>)<span class="question-mark">?</span>;
+
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">account</span>.<span class="ident">primary</span>);
 
                 <span class="comment">// Intent to take both trees to write.</span>
                 <span class="kw">let</span> <span class="ident">_session_ticket</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">session_ticket</span>.<span class="ident">acquire</span>().<span class="kw">await</span>;
@@ -5234,14 +5304,16 @@
 
         <span class="comment">// is the password at least 10 char?</span>
         <span class="kw">if</span> <span class="ident">cleartext</span>.<span class="ident">len</span>() <span class="op">&lt;</span> <span class="ident">PW_MIN_LENGTH</span> {
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::PasswordTooShort</span>(<span class="ident">PW_MIN_LENGTH</span>));
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::PasswordQuality</span>(<span class="macro">vec!</span>[
+                <span class="ident">PasswordFeedback::TooShort</span>(<span class="ident">PW_MIN_LENGTH</span>),
+            ]));
         }
 
         <span class="comment">// does the password pass zxcvbn?</span>
 
         <span class="kw">let</span> <span class="ident">entropy</span> <span class="op">=</span> <span class="ident">zxcvbn::zxcvbn</span>(<span class="ident">cleartext</span>, <span class="ident">related_inputs</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">admin_error!</span>(<span class="string">&quot;zxcvbn check failure (password empty?) {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">OperationError::PasswordEmpty</span>
+            <span class="ident">OperationError::PasswordQuality</span>(<span class="macro">vec!</span>[<span class="ident">PasswordFeedback::TooShort</span>(<span class="ident">PW_MIN_LENGTH</span>)])
         })<span class="question-mark">?</span>;
 
         <span class="comment">// check account pwpolicy (for 3 or 4)? Do we need pw strength beyond this</span>
@@ -5262,7 +5334,10 @@
             <span class="macro">security_info!</span>(<span class="question-mark">?</span><span class="ident">feedback</span>, <span class="string">&quot;pw quality feedback&quot;</span>);
 
             <span class="comment">// return Err(OperationError::PasswordTooWeak(feedback))</span>
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::PasswordTooWeak</span>);
+            <span class="comment">// return Err(OperationError::PasswordTooWeak);</span>
+            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::PasswordQuality</span>(<span class="macro">vec!</span>[
+                <span class="ident">PasswordFeedback::BadListed</span>,
+            ]));
         }
 
         <span class="comment">// check a password badlist to eliminate more content</span>
@@ -5270,7 +5345,9 @@
         <span class="comment">// also, when pw_badlist_cache is read from DB, it is read as Value (iutf8 lowercase)</span>
         <span class="kw">if</span> (<span class="kw-2">&amp;</span><span class="kw-2">*</span><span class="self">self</span>.<span class="ident">pw_badlist_cache</span>).<span class="ident">contains</span>(<span class="kw-2">&amp;</span><span class="ident">cleartext</span>.<span class="ident">to_lowercase</span>()) {
             <span class="macro">security_info!</span>(<span class="string">&quot;Password found in badlist, rejecting&quot;</span>);
-            <span class="prelude-val">Err</span>(<span class="ident">OperationError::PasswordBadListed</span>)
+            <span class="prelude-val">Err</span>(<span class="ident">OperationError::PasswordQuality</span>(<span class="macro">vec!</span>[
+                <span class="ident">PasswordFeedback::BadListed</span>,
+            ]))
         } <span class="kw">else</span> {
             <span class="prelude-val">Ok</span>(())
         }
@@ -6060,6 +6137,7 @@
             <span class="self">self</span>.<span class="ident">token_enc_key</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">commit</span>();
+            <span class="self">self</span>.<span class="ident">cred_update_sessions</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">commit</span>()
         })
     }
@@ -7788,7 +7866,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_idm_bundy_uat_expiry</span>() {
+    <span class="kw">fn</span> <span class="ident">test_idm_jwt_uat_expiry</span>() {
         <span class="macro">run_idm_test!</span>(
             <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
@@ -7918,7 +7996,7 @@
     }
 
     <span class="attribute">#[<span class="ident">test</span>]</span>
-    <span class="kw">fn</span> <span class="ident">test_idm_bundy_uat_token_key_reload</span>() {
+    <span class="kw">fn</span> <span class="ident">test_idm_jwt_uat_token_key_reload</span>() {
         <span class="macro">run_idm_test!</span>(
             <span class="op">|</span><span class="ident">qs</span>: <span class="kw-2">&amp;</span><span class="ident">QueryServer</span>, <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
                 <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);

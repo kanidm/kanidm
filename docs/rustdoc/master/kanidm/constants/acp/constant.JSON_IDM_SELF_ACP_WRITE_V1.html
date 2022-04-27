@@ -11,7 +11,7 @@
         &quot;uuid&quot;: [&quot;00000000-0000-0000-0000-ffffff000021&quot;],
         &quot;description&quot;: [&quot;Builtin IDM Control for self write - required for people to update their own identities and credentials in line with best practices.&quot;],
         &quot;acp_receiver&quot;: [
-            &quot;{\&quot;and\&quot;: [\&quot;self\&quot;, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}, {\&quot;eq\&quot;: [\&quot;uuid\&quot;, \&quot;00000000-0000-0000-0000-ffffffffffff\&quot;]}]}}]}&quot;
+            &quot;{\&quot;and\&quot;: [\&quot;self\&quot;, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;account\&quot;]}, {\&quot;andnot\&quot;: {\&quot;or\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;tombstone\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;, \&quot;recycled\&quot;]}, {\&quot;eq\&quot;: [\&quot;uuid\&quot;, \&quot;00000000-0000-0000-0000-ffffffffffff\&quot;]}]}}]}&quot;
         ],
         &quot;acp_targetscope&quot;: [
             &quot;{\&quot;and\&quot;: [{\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;person\&quot;]}, {\&quot;eq\&quot;: [\&quot;class\&quot;,\&quot;account\&quot;]}, \&quot;self\&quot;]}&quot;

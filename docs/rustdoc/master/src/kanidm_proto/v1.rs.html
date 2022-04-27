@@ -894,6 +894,42 @@
 <span id="889">889</span>
 <span id="890">890</span>
 <span id="891">891</span>
+<span id="892">892</span>
+<span id="893">893</span>
+<span id="894">894</span>
+<span id="895">895</span>
+<span id="896">896</span>
+<span id="897">897</span>
+<span id="898">898</span>
+<span id="899">899</span>
+<span id="900">900</span>
+<span id="901">901</span>
+<span id="902">902</span>
+<span id="903">903</span>
+<span id="904">904</span>
+<span id="905">905</span>
+<span id="906">906</span>
+<span id="907">907</span>
+<span id="908">908</span>
+<span id="909">909</span>
+<span id="910">910</span>
+<span id="911">911</span>
+<span id="912">912</span>
+<span id="913">913</span>
+<span id="914">914</span>
+<span id="915">915</span>
+<span id="916">916</span>
+<span id="917">917</span>
+<span id="918">918</span>
+<span id="919">919</span>
+<span id="920">920</span>
+<span id="921">921</span>
+<span id="922">922</span>
+<span id="923">923</span>
+<span id="924">924</span>
+<span id="925">925</span>
+<span id="926">926</span>
+<span id="927">927</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -956,6 +992,43 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">PasswordFeedback</span> {
+    <span class="comment">// https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Suggestion.html</span>
+    <span class="ident">UseAFewWordsAvoidCommonPhrases</span>,
+    <span class="ident">NoNeedForSymbolsDigitsOrUppercaseLetters</span>,
+    <span class="ident">AddAnotherWordOrTwo</span>,
+    <span class="ident">CapitalizationDoesntHelpVeryMuch</span>,
+    <span class="ident">AllUppercaseIsAlmostAsEasyToGuessAsAllLowercase</span>,
+    <span class="ident">ReversedWordsArentMuchHarderToGuess</span>,
+    <span class="ident">PredictableSubstitutionsDontHelpVeryMuch</span>,
+    <span class="ident">UseALongerKeyboardPatternWithMoreTurns</span>,
+    <span class="ident">AvoidRepeatedWordsAndCharacters</span>,
+    <span class="ident">AvoidSequences</span>,
+    <span class="ident">AvoidRecentYears</span>,
+    <span class="ident">AvoidYearsThatAreAssociatedWithYou</span>,
+    <span class="ident">AvoidDatesAndYearsThatAreAssociatedWithYou</span>,
+    <span class="comment">// https://docs.rs/zxcvbn/latest/zxcvbn/feedback/enum.Warning.html</span>
+    <span class="ident">StraightRowsOfKeysAreEasyToGuess</span>,
+    <span class="ident">ShortKeyboardPatternsAreEasyToGuess</span>,
+    <span class="ident">RepeatsLikeAaaAreEasyToGuess</span>,
+    <span class="ident">RepeatsLikeAbcAbcAreOnlySlightlyHarderToGuess</span>,
+    <span class="ident">ThisIsATop10Password</span>,
+    <span class="ident">ThisIsATop100Password</span>,
+    <span class="ident">ThisIsACommonPassword</span>,
+    <span class="ident">ThisIsSimilarToACommonlyUsedPassword</span>,
+    <span class="ident">SequencesLikeAbcAreEasyToGuess</span>,
+    <span class="ident">RecentYearsAreEasyToGuess</span>,
+    <span class="ident">AWordByItselfIsEasyToGuess</span>,
+    <span class="ident">DatesAreOftenEasyToGuess</span>,
+    <span class="ident">NamesAndSurnamesByThemselvesAreEasyToGuess</span>,
+    <span class="ident">CommonNamesAndSurnamesAreEasyToGuess</span>,
+    <span class="comment">// Custom</span>
+    <span class="ident">TooShort</span>(<span class="ident">usize</span>),
+    <span class="ident">BadListed</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">OperationError</span> {
     <span class="ident">SessionExpired</span>,
     <span class="ident">EmptyRequest</span>,
@@ -990,18 +1063,17 @@
     <span class="ident">SerdeCborError</span>,
     <span class="ident">AccessDenied</span>,
     <span class="ident">NotAuthenticated</span>,
+    <span class="ident">NotAuthorised</span>,
     <span class="ident">InvalidAuthState</span>(<span class="ident">String</span>),
     <span class="ident">InvalidSessionState</span>,
     <span class="ident">SystemProtectedObject</span>,
     <span class="ident">SystemProtectedAttribute</span>,
-    <span class="ident">PasswordTooWeak</span>,
-    <span class="ident">PasswordTooShort</span>(<span class="ident">usize</span>),
-    <span class="ident">PasswordEmpty</span>,
-    <span class="ident">PasswordBadListed</span>,
+    <span class="ident">PasswordQuality</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PasswordFeedback</span><span class="op">&gt;</span>),
     <span class="ident">CryptographyError</span>,
     <span class="ident">ResourceLimit</span>,
     <span class="ident">QueueDisconnected</span>,
     <span class="ident">Webauthn</span>,
+    <span class="ident">Wait</span>(<span class="ident">time::OffsetDateTime</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">PartialEq</span> <span class="kw">for</span> <span class="ident">OperationError</span> {
