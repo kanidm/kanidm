@@ -4,11 +4,8 @@ name: Rust
 on: [push, pull_request]
 
 jobs:
-  # TODO clippy
-
-
-  build:
-    runs-on: ubuntu-20.04
+  clippy:
+    runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
 
@@ -23,9 +20,14 @@ jobs:
           libssl-dev \
           libsqlite3-dev
 
-    - name: Build
-      run: cargo build --verbose
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
 
-    - name: Run tests
-      run: cargo test --verbose
-
+    - name: Run clippy
+      uses: actions-rs/cargo@v1
+      with:
+        command: clippy
+        args: --no-deps
+      continue-on-error: true
