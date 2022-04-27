@@ -19,36 +19,36 @@ impl Oauth2Opt {
         }
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
             Oauth2Opt::List(copt) => {
-                let client = copt.to_client();
-                match client.idm_oauth2_rs_list() {
+                let client = copt.to_client().await;
+                match client.idm_oauth2_rs_list().await {
                     Ok(r) => r.iter().for_each(|ent| println!("{}", ent)),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::Get(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.idm_oauth2_rs_get(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.idm_oauth2_rs_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::CreateBasic(cbopt) => {
-                let client = cbopt.nopt.copt.to_client();
+                let client = cbopt.nopt.copt.to_client().await;
                 match client.idm_oauth2_rs_basic_create(
                     cbopt.nopt.name.as_str(),
                     cbopt.displayname.as_str(),
                     cbopt.origin.as_str(),
-                ) {
+                ).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::SetImplictScopes(cbopt) => {
-                let client = cbopt.nopt.copt.to_client();
+                let client = cbopt.nopt.copt.to_client().await;
                 match client.idm_oauth2_rs_update(
                     cbopt.nopt.name.as_str(),
                     None,
@@ -58,33 +58,34 @@ impl Oauth2Opt {
                     false,
                     false,
                     false,
-                ) {
+                ).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::CreateScopeMap(cbopt) => {
-                let client = cbopt.nopt.copt.to_client();
+                let client = cbopt.nopt.copt.to_client().await;
                 match client.idm_oauth2_rs_create_scope_map(
                     cbopt.nopt.name.as_str(),
                     cbopt.group.as_str(),
                     cbopt.scopes.iter().map(|s| s.as_str()).collect(),
-                ) {
+                ).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::DeleteScopeMap(cbopt) => {
-                let client = cbopt.nopt.copt.to_client();
+                let client = cbopt.nopt.copt.to_client().await;
                 match client
                     .idm_oauth2_rs_delete_scope_map(cbopt.nopt.name.as_str(), cbopt.group.as_str())
+                    .await
                 {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::ResetSecrets(cbopt) => {
-                let client = cbopt.copt.to_client();
+                let client = cbopt.copt.to_client().await;
                 match client.idm_oauth2_rs_update(
                     cbopt.name.as_str(),
                     None,
@@ -94,20 +95,20 @@ impl Oauth2Opt {
                     true,
                     true,
                     true,
-                ) {
+                ).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::Delete(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.idm_oauth2_rs_delete(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.idm_oauth2_rs_delete(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::SetDisplayname(cbopt) => {
-                let client = cbopt.nopt.copt.to_client();
+                let client = cbopt.nopt.copt.to_client().await;
                 match client.idm_oauth2_rs_update(
                     cbopt.nopt.name.as_str(),
                     None,
@@ -117,35 +118,35 @@ impl Oauth2Opt {
                     false,
                     false,
                     false,
-                ) {
+                ).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::EnablePkce(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.idm_oauth2_rs_enable_pkce(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.idm_oauth2_rs_enable_pkce(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::DisablePkce(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.idm_oauth2_rs_disable_pkce(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.idm_oauth2_rs_disable_pkce(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::EnableLegacyCrypto(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.idm_oauth2_rs_enable_legacy_crypto(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.idm_oauth2_rs_enable_legacy_crypto(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             Oauth2Opt::DisableLegacyCrypto(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.idm_oauth2_rs_disable_legacy_crypto(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.idm_oauth2_rs_disable_legacy_crypto(nopt.name.as_str()).await {
                     Ok(_) => println!("Success"),
                     Err(e) => error!("Error -> {:?}", e),
                 }

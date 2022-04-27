@@ -1,7 +1,7 @@
 use crate::common::prompt_for_username_get_username;
 use crate::{LoginOpt, LogoutOpt, SessionOpt};
 
-use kanidm_client::{ClientError, KanidmClient};
+use kanidm_client::{ClientError, KanidmAsyncClient};
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
 #[cfg(target_family = "unix")]
 use libc::umask;
@@ -142,15 +142,15 @@ impl LoginOpt {
         self.copt.debug
     }
 
-    fn do_password(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+    async fn do_password(&self, client: &mut KanidmAsyncClient) -> Result<AuthResponse, ClientError> {
         let password = rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
             error!("Failed to create password prompt -- {:?}", e);
             std::process::exit(1);
         });
-        client.auth_step_password(password.as_str())
+        client.auth_step_password(password.as_str()).await
     }
 
-    fn do_backup_code(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+    async fn do_backup_code(&self, client: &mut KanidmAsyncClient) -> Result<AuthResponse, ClientError> {
         print!("Enter Backup Code: ");
         // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
         #[allow(clippy::unwrap_used)]
@@ -165,10 +165,10 @@ impl LoginOpt {
                 break;
             };
         }
-        client.auth_step_backup_code(backup_code.trim())
+        client.auth_step_backup_code(backup_code.trim()).await
     }
 
-    fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
+    async fn do_totp(&self, client: &mut KanidmAsyncClient) -> Result<AuthResponse, ClientError> {
         let totp = loop {
             print!("Enter TOTP: ");
             // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
@@ -187,12 +187,12 @@ impl LoginOpt {
                 Err(_) => eprintln!("Invalid Number"),
             };
         };
-        client.auth_step_totp(totp)
+        client.auth_step_totp(totp).await
     }
 
-    fn do_webauthn(
+    async fn do_webauthn(
         &self,
-        client: &mut KanidmClient,
+        client: &mut KanidmAsyncClient,
         pkr: RequestChallengeResponse,
     ) -> Result<AuthResponse, ClientError> {
         let mut wa = WebauthnAuthenticator::new(U2FHid::new());
@@ -204,10 +204,10 @@ impl LoginOpt {
                 std::process::exit(1);
             });
 
-        client.auth_step_webauthn_complete(auth)
+        client.auth_step_webauthn_complete(auth).await
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         let mut client = self.copt.to_unauth_client();
 
         // TODO: remove this anon, nobody should do default anonymous
@@ -216,6 +216,7 @@ impl LoginOpt {
         // What auth mechanisms exist?
         let mechs: Vec<_> = client
             .auth_step_init(username)
+            .await
             .unwrap_or_else(|e| {
                 error!("Error during authentication init phase: {:?}", e);
                 std::process::exit(1);
@@ -250,7 +251,7 @@ impl LoginOpt {
             }
         };
 
-        let mut allowed = client.auth_step_begin((*mech).clone()).unwrap_or_else(|e| {
+        let mut allowed = client.auth_step_begin((*mech).clone()).await.unwrap_or_else(|e| {
             error!("Error during authentication begin phase: {:?}", e);
             std::process::exit(1);
         });
@@ -289,11 +290,11 @@ impl LoginOpt {
             };
 
             let res = match choice {
-                AuthAllowed::Anonymous => client.auth_step_anonymous(),
-                AuthAllowed::Password => self.do_password(&mut client),
-                AuthAllowed::BackupCode => self.do_backup_code(&mut client),
-                AuthAllowed::Totp => self.do_totp(&mut client),
-                AuthAllowed::Webauthn(chal) => self.do_webauthn(&mut client, chal.clone()),
+                AuthAllowed::Anonymous => client.auth_step_anonymous().await,
+                AuthAllowed::Password => self.do_password(&mut client).await,
+                AuthAllowed::BackupCode => self.do_backup_code(&mut client).await,
+                AuthAllowed::Totp => self.do_totp(&mut client).await,
+                AuthAllowed::Webauthn(chal) => self.do_webauthn(&mut client, chal.clone()).await,
             };
 
             // Now update state.
@@ -326,7 +327,7 @@ impl LoginOpt {
             std::process::exit(1);
         });
         // Add our new one
-        match client.get_token() {
+        match client.get_token().await {
             Some(t) => tokens.insert(username.to_string(), t),
             None => {
                 error!("Error retrieving client session");
@@ -350,7 +351,7 @@ impl LogoutOpt {
         self.debug
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         // For now we just remove this from the token store.
 
         let mut _tmp_username = String::new();
@@ -420,7 +421,7 @@ impl SessionOpt {
             .collect()
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
             SessionOpt::List(_) => {
                 let tokens = Self::read_valid_tokens();
