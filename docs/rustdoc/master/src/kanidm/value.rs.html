@@ -2492,7 +2492,7 @@
             <span class="op">|</span> <span class="ident">PartialValue::Nsuniqueid</span>(<span class="ident">s</span>)
             <span class="op">|</span> <span class="ident">PartialValue::EmailAddress</span>(<span class="ident">s</span>)
             <span class="op">|</span> <span class="ident">PartialValue::RestrictedString</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">clone</span>(),
-            <span class="ident">PartialValue::Refer</span>(<span class="ident">u</span>) <span class="op">|</span> <span class="ident">PartialValue::Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">PartialValue::Refer</span>(<span class="ident">u</span>) <span class="op">|</span> <span class="ident">PartialValue::Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::Bool</span>(<span class="ident">b</span>) =&gt; <span class="ident">b</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::Syntax</span>(<span class="ident">syn</span>) =&gt; <span class="ident">syn</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::Index</span>(<span class="ident">it</span>) =&gt; <span class="ident">it</span>.<span class="ident">to_string</span>(),
@@ -2516,12 +2516,12 @@
             }
             <span class="ident">PartialValue::Url</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::OauthScope</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::OauthScopeMap</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">PartialValue::OauthScopeMap</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::Address</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">to_string</span>(),
             <span class="ident">PartialValue::PhoneNumber</span>(<span class="ident">a</span>) =&gt; <span class="ident">a</span>.<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::TrustedDeviceEnrollment</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
-            <span class="ident">PartialValue::AuthSession</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
+            <span class="ident">PartialValue::TrustedDeviceEnrollment</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
+            <span class="ident">PartialValue::AuthSession</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
         }
     }
 
@@ -3287,7 +3287,7 @@
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">to_proto_string_clone</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">String</span> {
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span> {
             <span class="ident">Value::Iname</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">clone</span>(),
-            <span class="ident">Value::Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">Value::Uuid</span>(<span class="ident">u</span>) =&gt; <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
             <span class="comment">// We display the tag and fingerprint.</span>
             <span class="ident">Value::SshKey</span>(<span class="ident">tag</span>, <span class="ident">key</span>) =&gt;
             <span class="comment">// Check it&#39;s really an sshkey in the</span>

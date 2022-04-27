@@ -609,7 +609,7 @@
             <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
             <span class="ident">displayname</span>: <span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
             <span class="ident">gidnumber</span>: <span class="self">self</span>.<span class="ident">gidnumber</span>,
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
             <span class="ident">shell</span>: <span class="self">self</span>.<span class="ident">shell</span>.<span class="ident">clone</span>(),
             <span class="ident">groups</span>,
             <span class="ident">sshkeys</span>: <span class="self">self</span>.<span class="ident">sshkeys</span>.<span class="ident">clone</span>(),
@@ -890,7 +890,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">UnixGroupToken</span> {
             <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
             <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
             <span class="ident">gidnumber</span>: <span class="self">self</span>.<span class="ident">gidnumber</span>,
         })
     }

@@ -4492,7 +4492,7 @@
         <span class="comment">// If we have a some, pass it on, else unwrap into a default.</span>
         <span class="self">self</span>.<span class="ident">get_be_txn</span>()
             .<span class="ident">uuid2rdn</span>(<span class="ident">uuid</span>)
-            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>())))
+            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="ident">v</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>())))
     }
 
     <span class="comment">// From internal, generate an exists event and dispatch</span>

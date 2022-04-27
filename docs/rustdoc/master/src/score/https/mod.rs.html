@@ -756,7 +756,7 @@
 
     <span class="kw">fn</span> <span class="ident">new_eventid</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; (<span class="ident">Uuid</span>, <span class="ident">String</span>) {
         <span class="kw">let</span> <span class="ident">eventid</span> <span class="op">=</span> <span class="ident">kanidm::tracing_tree::operation_id</span>().<span class="ident">unwrap</span>();
-        <span class="kw">let</span> <span class="ident">hv</span> <span class="op">=</span> <span class="ident">eventid</span>.<span class="ident">to_hyphenated</span>().<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">hv</span> <span class="op">=</span> <span class="ident">eventid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
         (<span class="ident">eventid</span>, <span class="ident">hv</span>)
     }
 }

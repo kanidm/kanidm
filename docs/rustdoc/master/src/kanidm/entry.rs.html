@@ -3597,7 +3597,7 @@
                     .<span class="ident">get</span>(<span class="string">&quot;name&quot;</span>)
                     .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">to_proto_string_single</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">v</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;name={}&quot;</span>, <span class="ident">v</span>)))
             })
-            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="self">self</span>.<span class="ident">get_uuid</span>().<span class="ident">to_hyphenated_ref</span>()))
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="macro">format!</span>(<span class="string">&quot;uuid={}&quot;</span>, <span class="self">self</span>.<span class="ident">get_uuid</span>().<span class="ident">as_hyphenated</span>()))
     }
 
     <span class="attribute">#[<span class="ident">inline</span>]</span>

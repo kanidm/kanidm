@@ -609,7 +609,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">do_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password_stderr</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to create password prompt -- {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         });

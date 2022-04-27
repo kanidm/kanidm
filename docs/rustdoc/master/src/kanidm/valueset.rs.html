@@ -2936,7 +2936,7 @@
 
 <span class="kw">impl</span> <span class="ident">ValueSet</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">uuid_to_proto_string</span>(<span class="ident">u</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="ident">String</span> {
-        <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>()
+        <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>()
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">new</span>(<span class="ident">value</span>: <span class="ident">Value</span>) -&gt; <span class="self">Self</span> {
@@ -3752,14 +3752,14 @@
             <span class="ident">I::Iname</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
             <span class="ident">I::Uuid</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
                 .<span class="ident">collect</span>(),
             <span class="ident">I::Bool</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>(),
             <span class="ident">I::Syntax</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>(),
             <span class="ident">I::Index</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_string</span>()).<span class="ident">collect</span>(),
             <span class="ident">I::Refer</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>
                 .<span class="ident">iter</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
                 .<span class="ident">collect</span>(),
             <span class="ident">I::JsonFilt</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>
                 .<span class="ident">iter</span>()
@@ -3794,22 +3794,22 @@
             <span class="ident">I::OauthScope</span>(<span class="ident">_set</span>) =&gt; <span class="macro">vec!</span>[],
             <span class="ident">I::OauthScopeMap</span>(<span class="ident">map</span>) =&gt; <span class="ident">map</span>
                 .<span class="ident">keys</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
                 .<span class="ident">collect</span>(),
             <span class="ident">I::PrivateBinary</span>(<span class="ident">_set</span>) =&gt; <span class="macro">vec!</span>[],
             <span class="ident">I::PublicBinary</span>(<span class="ident">map</span>) =&gt; <span class="ident">map</span>.<span class="ident">keys</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
             <span class="ident">I::RestrictedString</span>(<span class="ident">set</span>) =&gt; <span class="ident">set</span>.<span class="ident">iter</span>().<span class="ident">cloned</span>().<span class="ident">collect</span>(),
             <span class="ident">I::IntentToken</span>(<span class="ident">map</span>) =&gt; <span class="ident">map</span>
                 .<span class="ident">keys</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
                 .<span class="ident">collect</span>(),
             <span class="ident">I::TrustedDeviceEnrollment</span>(<span class="ident">map</span>) =&gt; <span class="ident">map</span>
                 .<span class="ident">keys</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
                 .<span class="ident">collect</span>(),
             <span class="ident">I::AuthSession</span>(<span class="ident">map</span>) =&gt; <span class="ident">map</span>
                 .<span class="ident">keys</span>()
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>())
+                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>())
                 .<span class="ident">collect</span>(),
         }
     }

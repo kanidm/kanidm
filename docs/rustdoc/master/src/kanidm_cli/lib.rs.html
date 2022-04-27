@@ -204,7 +204,7 @@
             <span class="ident">SelfOpt::SetPassword</span>(<span class="ident">copt</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>();
 
-                <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">rpassword::prompt_password_stderr</span>(<span class="string">&quot;Enter new password: &quot;</span>) {
+                <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter new password: &quot;</span>) {
                     <span class="prelude-val">Ok</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>,
                     <span class="prelude-val">Err</span>(<span class="ident">e</span>) =&gt; {
                         <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
@@ -268,10 +268,10 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn</span> <span class="ident">password_prompt</span>(<span class="ident">prompt</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
     <span class="kw">for</span> <span class="kw">_</span> <span class="kw">in</span> <span class="number">0</span>..<span class="number">3</span> {
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password_stderr</span>(<span class="ident">prompt</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="ident">prompt</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">password_confirm</span> <span class="op">=</span>
-            <span class="ident">rpassword::prompt_password_stderr</span>(<span class="string">&quot;Retype the new password to confirm: &quot;</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
+            <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Retype the new password to confirm: &quot;</span>).<span class="ident">ok</span>()<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="ident">password</span> <span class="op">==</span> <span class="ident">password_confirm</span> {
             <span class="kw">return</span> <span class="prelude-val">Some</span>(<span class="ident">password</span>);

@@ -266,7 +266,7 @@
     <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
     <span class="ident">Builder::from_slice</span>(<span class="ident">v</span>.<span class="ident">as_slice</span>())
         .<span class="ident">expect</span>(<span class="string">&quot;invalid slice for uuid builder&quot;</span>)
-        .<span class="ident">build</span>()
+        .<span class="ident">into_uuid</span>()
 }
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">uuid_from_duration</span>(<span class="ident">d</span>: <span class="ident">Duration</span>, <span class="ident">sid</span>: <span class="ident">Sid</span>) -&gt; <span class="ident">Uuid</span> {
@@ -418,13 +418,13 @@ pub fn uuid_from_now(sid: Sid) -&gt; Uuid {
         <span class="kw">let</span> <span class="ident">u1</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1</span>), [<span class="number">0xff</span>; <span class="number">4</span>]);
         <span class="macro">assert_eq!</span>(
             <span class="string">&quot;00000000-0000-0001-0000-0000ffffffff&quot;</span>,
-            <span class="ident">u1</span>.<span class="ident">to_hyphenated</span>().<span class="ident">to_string</span>()
+            <span class="ident">u1</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>()
         );
 
         <span class="kw">let</span> <span class="ident">u2</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">Duration::from_secs</span>(<span class="number">1000</span>), [<span class="number">0xff</span>; <span class="number">4</span>]);
         <span class="macro">assert_eq!</span>(
             <span class="string">&quot;00000000-0000-03e8-0000-0000ffffffff&quot;</span>,
-            <span class="ident">u2</span>.<span class="ident">to_hyphenated</span>().<span class="ident">to_string</span>()
+            <span class="ident">u2</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>()
         );
     }
 

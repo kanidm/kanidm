@@ -158,7 +158,7 @@
     <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">username</span> <span class="op">==</span> <span class="string">&quot;anonymous&quot;</span> {
         <span class="ident">client</span>.<span class="ident">auth_anonymous</span>()
     } <span class="kw">else</span> {
-        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password_stderr</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to retrieve password - {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         });

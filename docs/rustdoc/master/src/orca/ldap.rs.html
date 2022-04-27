@@ -378,8 +378,8 @@
 <span class="kw">use</span> <span class="ident">tokio_openssl::SslStream</span>;
 <span class="kw">use</span> <span class="ident">tokio_util::codec::Framed</span>;
 
-<span class="kw">use</span> <span class="ident">ldap3_server::proto</span>::<span class="kw-2">*</span>;
-<span class="kw">use</span> <span class="ident">ldap3_server::LdapCodec</span>;
+<span class="kw">use</span> <span class="ident">ldap3_proto::proto</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident">ldap3_proto::LdapCodec</span>;
 
 <span class="kw">struct</span> <span class="ident">LdapInner</span> {
     <span class="kw">pub</span> <span class="ident">framed</span>: <span class="ident">Framed</span><span class="op">&lt;</span><span class="ident">SslStream</span><span class="op">&lt;</span><span class="ident">TcpStream</span><span class="op">&gt;</span>, <span class="ident">LdapCodec</span><span class="op">&gt;</span>,

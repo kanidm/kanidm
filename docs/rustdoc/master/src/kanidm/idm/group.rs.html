@@ -231,7 +231,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_proto</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">ProtoGroup</span> {
         <span class="ident">ProtoGroup</span> {
             <span class="ident">name</span>: <span class="self">self</span>.<span class="ident">name</span>.<span class="ident">clone</span>(),
-            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>(),
+            <span class="ident">uuid</span>: <span class="self">self</span>.<span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(),
         }
     }
 }

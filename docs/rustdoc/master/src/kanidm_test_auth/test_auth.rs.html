@@ -118,7 +118,7 @@
         .<span class="ident">read_options_from_optional_config</span>(<span class="string">&quot;/etc/kanidm/unixd&quot;</span>)
         .<span class="ident">expect</span>(<span class="string">&quot;Failed to parse /etc/kanidm/unixd&quot;</span>);
 
-    <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password_stderr</span>(<span class="string">&quot;Enter unix password: &quot;</span>).<span class="ident">unwrap</span>();
+    <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter unix password: &quot;</span>).<span class="ident">unwrap</span>();
 
     <span class="kw">let</span> <span class="ident">req</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAuthenticate</span>(<span class="ident">opt</span>.<span class="ident">account_id</span>.<span class="ident">clone</span>(), <span class="ident">password</span>);
     <span class="kw">let</span> <span class="ident">sereq</span> <span class="op">=</span> <span class="ident">ClientRequest::PamAccountAllowed</span>(<span class="ident">opt</span>.<span class="ident">account_id</span>);

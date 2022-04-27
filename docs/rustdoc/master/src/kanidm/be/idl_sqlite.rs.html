@@ -1651,7 +1651,7 @@
 
     <span class="kw">fn</span> <span class="ident">uuid2spn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::uuid2spn&quot;</span>, {
-            <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+            <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
             <span class="comment">// The table exists - lets now get the actual index itself.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">get_conn</span>()
@@ -1682,7 +1682,7 @@
 
     <span class="kw">fn</span> <span class="ident">uuid2rdn</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;be::idl_sqlite::uuid2rdn&quot;</span>, {
-            <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+            <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
             <span class="comment">// The table exists - lets now get the actual index itself.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">stmt</span> <span class="op">=</span> <span class="self">self</span>
                 .<span class="ident">get_conn</span>()
@@ -2155,7 +2155,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_name2uuid_add</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
 
         <span class="self">self</span>.<span class="ident">conn</span>
             .<span class="ident">prepare</span>(<span class="string">&quot;INSERT OR REPLACE INTO idx_name2uuid (name, uuid) VALUES(:name, :uuid)&quot;</span>)
@@ -2188,7 +2188,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">Value</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
         <span class="kw">match</span> <span class="ident">k</span> {
             <span class="prelude-val">Some</span>(<span class="ident">k</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">dbv1</span> <span class="op">=</span> <span class="ident">k</span>.<span class="ident">to_supplementary_db_valuev1</span>();
@@ -2224,7 +2224,7 @@
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">write_uuid2rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>, <span class="ident">k</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">String</span><span class="op">&gt;</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">to_hyphenated_ref</span>().<span class="ident">to_string</span>();
+        <span class="kw">let</span> <span class="ident">uuids</span> <span class="op">=</span> <span class="ident">uuid</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>();
         <span class="kw">match</span> <span class="ident">k</span> {
             <span class="prelude-val">Some</span>(<span class="ident">k</span>) =&gt; <span class="self">self</span>
                 .<span class="ident">conn</span>
