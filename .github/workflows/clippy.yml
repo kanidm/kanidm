@@ -1,4 +1,4 @@
-name: Rust
+name: Clippy
 
 # Trigger the workflow on push or pull request
 on: [push, pull_request]

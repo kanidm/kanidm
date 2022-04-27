@@ -1,7 +1,7 @@
-name: Rust Test
+name: "Rust Test"
 
 # Trigger the workflow on push to master or pull request
-on:
+"on":
   push:
     - master
   pull_request:
