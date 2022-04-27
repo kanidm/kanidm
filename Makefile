@@ -82,7 +82,7 @@ book:
 book_versioned:
 	echo "Book version: ${BOOK_VERSION}"
 	rm -rf ./target/doc
-	git switch "${BOOK_VERSION}"
+	git switch -c "${BOOK_VERSION}"
 	git pull
 	cargo doc --no-deps --quiet
 	mdbook build kanidm_book
