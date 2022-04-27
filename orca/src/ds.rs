@@ -2,7 +2,7 @@ use crate::data::*;
 use crate::ldap::{LdapClient, LdapSchema};
 use crate::profile::DsConfig;
 use crate::{TargetServer, TargetServerBuilder};
-use ldap3_server::proto::*;
+use ldap3_proto::proto::*;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
 use uuid::Uuid;

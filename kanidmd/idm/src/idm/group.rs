@@ -110,7 +110,7 @@ impl Group {
     pub fn to_proto(&self) -> ProtoGroup {
         ProtoGroup {
             name: self.name.clone(),
-            uuid: self.uuid.to_hyphenated_ref().to_string(),
+            uuid: self.uuid.as_hyphenated().to_string(),
         }
     }
 }

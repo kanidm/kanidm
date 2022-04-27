@@ -60,7 +60,7 @@ impl SelfOpt {
             SelfOpt::SetPassword(copt) => {
                 let client = copt.to_client();
 
-                let password = match rpassword::prompt_password_stderr("Enter new password: ") {
+                let password = match rpassword::prompt_password("Enter new password: ") {
                     Ok(p) => p,
                     Err(e) => {
                         error!("Error -> {:?}", e);
@@ -124,10 +124,10 @@ impl KanidmClientOpt {
 
 pub(crate) fn password_prompt(prompt: &str) -> Option<String> {
     for _ in 0..3 {
-        let password = rpassword::prompt_password_stderr(prompt).ok()?;
+        let password = rpassword::prompt_password(prompt).ok()?;
 
         let password_confirm =
-            rpassword::prompt_password_stderr("Retype the new password to confirm: ").ok()?;
+            rpassword::prompt_password("Retype the new password to confirm: ").ok()?;
 
         if password == password_confirm {
             return Some(password);

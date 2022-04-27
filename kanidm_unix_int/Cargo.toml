@@ -43,38 +43,38 @@ name = "kanidm_test_auth"
 path =  "src/test_auth.rs"
 
 [dependencies]
-kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
-kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
-kanidm = { path = "../kanidmd/idm", version = "1.1.0-alpha" }
+kanidm_client = { path = "../kanidm_client" }
+kanidm_proto = { path = "../kanidm_proto" }
+kanidm = { path = "../kanidmd/idm" }
 
-tracing = "0.1"
-tracing-subscriber = "0.3"
+tracing = "^0.1.34"
+tracing-subscriber = "^0.3.11"
 
-toml = "0.5"
-rpassword = "5.0"
-tokio = { version = "1", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
-tokio-util = { version = "0.6", features = ["codec"] }
+toml = "^0.5.9"
+rpassword = "^6.0.1"
+tokio = { version = "^1.17.0", features = ["rt", "macros", "sync", "time", "net", "io-util"] }
+tokio-util = { version = "^0.7.1", features = ["codec"] }
 
-futures = "0.3"
-bytes = "1.0"
+futures = "^0.3.21"
+bytes = "^1.1.0"
 
-libc = "0.2"
-serde = { version = "1", features = ["derive"] }
-serde_cbor = "0.11"
-structopt = { version = "0.3", default-features = false }
+libc = "^0.2.124"
+serde = { version = "^1.0.136", features = ["derive"] }
+serde_cbor = "^0.11.2"
+structopt = { version = "0.3.26", default-features = false }
 
 libsqlite3-sys = { version = "0.23" }
 rusqlite = { version = "0.26", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.19"
 
-reqwest = { version = "0.11" }
+reqwest = { version = "^0.11.10" }
 
-users = "0.11"
-async-std = { version = "1.6", features = ["tokio1"] }
+users = "^0.11.0"
+async-std = { version = "^1.11.0", features = ["tokio1"] }
 
 
-lru = "0.7"
+lru = "^0.7.5"
 
 [features]
 # default = [ "libsqlite3-sys/bundled" ]
@@ -84,6 +84,6 @@ lru = "0.7"
 score = { path = "../kanidmd/score" }
 
 [build-dependencies]
-structopt = { version = "0.3", default-features = false }
+structopt = { version = "^0.3.26", default-features = false }
 profiles = { path = "../profiles" }
 

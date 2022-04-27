@@ -12,8 +12,8 @@ crate-type = [ "cdylib" ]
 path =  "src/lib.rs"
 
 [dependencies]
-kanidm_unix_int = { path = "../", version = "1.1.0-alpha" }
-libc = "0.2"
+kanidm_unix_int = { path = "../" }
+libc = "^0.2.124"
 
 [build-dependencies]
-pkg-config = "0.3.25"
+pkg-config = "^0.3.25"

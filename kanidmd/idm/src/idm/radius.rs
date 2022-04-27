@@ -112,7 +112,7 @@ impl RadiusAccount {
         Ok(RadiusAuthToken {
             name: self.name.clone(),
             displayname: self.displayname.clone(),
-            uuid: self.uuid.to_hyphenated_ref().to_string(),
+            uuid: self.uuid.as_hyphenated().to_string(),
             secret: self.radius_secret.clone(),
             groups: self.groups.iter().map(|g| g.to_proto()).collect(),
         })

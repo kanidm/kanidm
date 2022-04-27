@@ -273,7 +273,7 @@ pub trait IdlSqliteTransaction {
 
     fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
         spanned!("be::idl_sqlite::uuid2spn", {
-            let uuids = uuid.to_hyphenated_ref().to_string();
+            let uuids = uuid.as_hyphenated().to_string();
             // The table exists - lets now get the actual index itself.
             let mut stmt = self
                 .get_conn()
@@ -304,7 +304,7 @@ pub trait IdlSqliteTransaction {
 
     fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
         spanned!("be::idl_sqlite::uuid2rdn", {
-            let uuids = uuid.to_hyphenated_ref().to_string();
+            let uuids = uuid.as_hyphenated().to_string();
             // The table exists - lets now get the actual index itself.
             let mut stmt = self
                 .get_conn()
@@ -777,7 +777,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_name2uuid_add(&self, name: &str, uuid: &Uuid) -> Result<(), OperationError> {
-        let uuids = uuid.to_hyphenated_ref().to_string();
+        let uuids = uuid.as_hyphenated().to_string();
 
         self.conn
             .prepare("INSERT OR REPLACE INTO idx_name2uuid (name, uuid) VALUES(:name, :uuid)")
@@ -810,7 +810,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_uuid2spn(&self, uuid: &Uuid, k: Option<&Value>) -> Result<(), OperationError> {
-        let uuids = uuid.to_hyphenated_ref().to_string();
+        let uuids = uuid.as_hyphenated().to_string();
         match k {
             Some(k) => {
                 let dbv1 = k.to_supplementary_db_valuev1();
@@ -846,7 +846,7 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_uuid2rdn(&self, uuid: &Uuid, k: Option<&String>) -> Result<(), OperationError> {
-        let uuids = uuid.to_hyphenated_ref().to_string();
+        let uuids = uuid.as_hyphenated().to_string();
         match k {
             Some(k) => self
                 .conn

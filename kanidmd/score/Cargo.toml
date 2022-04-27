@@ -15,43 +15,42 @@ repository = "https://github.com/kanidm/kanidm/"
 [dependencies]
 kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
-libc = "0.2"
+libc = "^0.2.124"
 
-uuid = { version = "0.8", features = ["serde", "v4" ] }
+uuid = { version = "^1.0.0", features = ["serde", "v4" ] }
 
-tide = "0.16"
+tide = "^0.16.0"
 tide-openssl = "^0.1.1"
 
-futures-util = "0.3"
-tokio = { version = "1", features = ["full"] }
-tokio-util = { version = "0.6", features = ["codec"] }
-tokio-openssl = "0.6"
-openssl = "0.10"
-ldap3_proto = "0.2.2"
+futures-util = "^0.3.21"
+tokio = { version = "^1.17.0", features = ["net", "sync"] }
+tokio-util = { version = "^0.7.1", features = ["codec"] }
+tokio-openssl = "^0.6.3"
+openssl = "^0.10.38"
+ldap3_proto = "^0.2.3"
 
-tracing = { version = "0.1", features = ["attributes"] }
-serde = { version = "1", features = ["derive"] }
-async-trait = "0.1"
-async-std = { version = "1.6", features = ["tokio1"] }
-compact_jwt = "^0.2.0"
+tracing = { version = "^0.1.34", features = ["attributes"] }
+serde = { version = "^1.0.136", features = ["derive"] }
+async-trait = "^0.1.53"
+async-std = { version = "^1.11.0", features = ["tokio1"] }
+compact_jwt = "^0.2.1"
 
 [build-dependencies]
 profiles = { path = "../../profiles" }
 
 [dev-dependencies]
-tracing-subscriber = "0.3"
+tracing-subscriber = "^0.3.11"
 # tokio = { version = "1", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 # kanidm = { path = "../kanidmd" }
 # score = { path = "../kanidmd/score" }
-futures = "0.3"
-serde_json = "1.0"
+futures = "^0.3.21"
+serde_json = "^1.0.79"
 # async-std = { version = "1.6", features = ["tokio1"] }
 
-webauthn-authenticator-rs = "0.3.0-alpha.12"
-oauth2_ext = { package = "oauth2", version = "4.0", default-features = false }
-base64 = "0.13"
-# compact_jwt = "^0.1.5"
+webauthn-authenticator-rs = "^0.3.2"
+oauth2_ext = { package = "oauth2", version = "^4.1.0", default-features = false }
+base64 = "^0.13.0"
 
 kanidm_client = { path = "../../kanidm_client" }
-url = { version = "2", features = ["serde"] }
-reqwest = { version = "0.11", features=["cookies", "json", "native-tls"] }
+url = { version = "^2.2.2", features = ["serde"] }
+reqwest = { version = "0.11.10", features=["cookies", "json", "native-tls"] }

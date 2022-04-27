@@ -91,7 +91,7 @@ impl std::fmt::Display for Identity {
                     f,
                     "User( {}, {} ) ",
                     nv.to_proto_string_clone(),
-                    u.entry.get_uuid().to_hyphenated_ref()
+                    u.entry.get_uuid().as_hyphenated()
                 )
             }
         }

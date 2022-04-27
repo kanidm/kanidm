@@ -11,8 +11,8 @@ use tokio::sync::Mutex;
 use tokio_openssl::SslStream;
 use tokio_util::codec::Framed;
 
-use ldap3_server::proto::*;
-use ldap3_server::LdapCodec;
+use ldap3_proto::proto::*;
+use ldap3_proto::LdapCodec;
 
 struct LdapInner {
     pub framed: Framed<SslStream<TcpStream>, LdapCodec>,

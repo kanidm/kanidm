@@ -143,7 +143,7 @@ impl LoginOpt {
     }
 
     fn do_password(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
-        let password = rpassword::prompt_password_stderr("Enter password: ").unwrap_or_else(|e| {
+        let password = rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
             error!("Failed to create password prompt -- {:?}", e);
             std::process::exit(1);
         });

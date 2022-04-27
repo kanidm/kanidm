@@ -65,7 +65,7 @@ fn main() {
     let r = if opt.username == "anonymous" {
         client.auth_anonymous()
     } else {
-        let password = rpassword::prompt_password_stderr("Enter password: ").unwrap_or_else(|e| {
+        let password = rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
             error!("Failed to retrieve password - {:?}", e);
             std::process::exit(1);
         });
