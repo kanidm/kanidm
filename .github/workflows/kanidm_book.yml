@@ -35,11 +35,13 @@ jobs:
       - uses: actions-rs/cargo@v1
 
       - name: Make all the books
-        run: ./build_all_the_docs.sh
+        run: |
+          export
+          ./build_all_the_docs.sh
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ${TMPDIR}/docs
+          publish_dir: ./docs
           destination_dir: ./docs

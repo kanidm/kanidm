@@ -1,7 +1,10 @@
 #!/bin/bash
 
 export CARGO_TARGET_DIR="${TMPDIR}cargo_target"
-DOCS_DIR="${TMPDIR}docs"
+DOCS_DIR="/tmp/kanidm_docs"
+
+echo "DOCS DIR: ${DOCS_DIR}"
+echo "PWD: $(pwd)"
 
 function build_version() {
     BOOK_VERSION=$1
