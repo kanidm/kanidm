@@ -11,6 +11,7 @@ jobs:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
       - uses: actions/checkout@v3
+        with:
           fetch-depth: 0
           clean: false
 
