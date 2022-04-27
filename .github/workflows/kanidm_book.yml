@@ -38,7 +38,7 @@ jobs:
         # run: make book
       - name: Make all the books
         run: |
-          git tag -l | grep -E '^v' | xargs -n1 -I{} bash -c 'BOOK_VERSION="{}" make book'
+          git tag -l | grep -E '^v' | xargs -n1 -I{} bash -c 'BOOK_VERSION="{}" make book_versioned'
           ls -la
 
       - name: Deploy

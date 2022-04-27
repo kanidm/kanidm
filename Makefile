@@ -73,15 +73,23 @@ doc:
 	cargo doc --document-private-items
 
 book:
-	echo "Book version: ${BOOK_VERSION}"
-	git switch -c "${BOOK_VERSION}"
 	cargo doc --no-deps
 	mdbook build kanidm_book
 	mv ./kanidm_book/book/ ./docs/
 	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
 	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
+
+book_versioned:
+	echo "Book version: ${BOOK_VERSION}"
+	rm -rf ./target/doc
+	git switch "${BOOK_VERSION}"
+	git pull
+	cargo doc --no-deps --quiet
+	mdbook build kanidm_book
+	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
+	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
+	mv ./target/doc/* ./docs/${BOOK_VERSION}/rustdoc/
 	git switch master
-	exit 1
 
 clean_book:
 	rm -rf ./docs
