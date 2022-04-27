@@ -26,5 +26,5 @@ jobs:
         toolchain: stable
 
     - name: "Run clippy (ignores errors, this is just a check)"
-      command: cargo clippy --no-deps
+      run: cargo clippy --no-deps
       continue-on-error: true
