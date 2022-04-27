@@ -17,6 +17,6 @@ uuid = { version = "^1.0.0", features = ["serde"] }
 base32 = "^0.4.0"
 webauthn-rs = { version = "^0.3.2", default-features = false, features = ["wasm"] }
 # Can not upgrade due to breaking timezone apis.
-time = { version = "=0.2.27", features = ["serde", "std"] }
+time = { version = "=0.3.9", features = ["serde", "std"] }
 url = { version = "^2.2.2", features = ["serde"] }
 
