@@ -26,7 +26,6 @@ either = "^1.6.1"
 url = { version = "^2.2.2", features = ["serde"] }
 tide = "^0.16.0"
 async-trait = "^0.1.53"
-async-h1 = "^2.3.3"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 compact_jwt = "^0.2.1"
 
@@ -85,7 +84,6 @@ touch = "^0.0.1"
 filetime = "^0.2.16"
 
 num_enum = "^0.5.7"
-
 
 [features]
 # default = [ "libsqlite3-sys/bundled", "openssl/vendored" ]
