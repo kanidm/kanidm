@@ -45,7 +45,7 @@ path =  "src/test_auth.rs"
 [dependencies]
 kanidm_client = { path = "../kanidm_client", version = "1.1.0-alpha" }
 kanidm_proto = { path = "../kanidm_proto", version = "1.1.0-alpha" }
-kanidm = { path = "../kanidmd", version = "1.1.0-alpha" }
+kanidm = { path = "../kanidmd/idm", version = "1.1.0-alpha" }
 
 tracing = "0.1"
 tracing-subscriber = "0.3"
@@ -80,7 +80,7 @@ lru = "0.7"
 # default = [ "libsqlite3-sys/bundled" ]
 
 [dev-dependencies]
-kanidm = { path = "../kanidmd" }
+# kanidm = { path = "../kanidmd/idm" }
 score = { path = "../kanidmd/score" }
 
 [build-dependencies]
