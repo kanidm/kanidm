@@ -32,6 +32,13 @@ cat > "${DOCS_DIR}/index.html" <<-'EOM'
 <ul>
 EOM
 
+
+LATEST="$(git tag -l 'v*' --sort "-version:refname" | grep -v '1.1.0alpha' | head -n1)"
+{
+    echo "<li><strong><a href=\"/kanidm/master/\">Latest Dev Version</a></strong></li>"
+    echo "<li><strong><a href=\"/kanidm/stable/\">Latest Stable Version (${LATEST})</a></strong></li>"
+} >> "${DOCS_DIR}/index.html"
+
 # build the current head
 build_version master
 
@@ -41,14 +48,7 @@ for version in $(git tag -l 'v*' --sort "-version:refname" | grep -v '1.1.0alpha
     build_version "${version}"
 done
 
-
-LATEST="$(git tag -l 'v*' --sort "-version:refname" | grep -v '1.1.0alpha' | head -n1)"
-{
-    echo "<li><strong><a href=\"/kanidm/master/\">Latest Dev Version</a></strong></li>"
-    echo "<li><strong><a href=\"/kanidm/stable/\">Latest Stable Version (${LATEST})</a></strong></li>"
-} >> "${DOCS_DIR}/index.html"
 cat >> "${DOCS_DIR}/index.html" <<-'EOM'
-
 </ul>
 </body>
 </html>
