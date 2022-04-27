@@ -1,0 +1,30 @@
+name: "Rust Test"
+
+# Trigger the workflow on push to master or pull request
+"on":
+  push:
+    branches:
+    - master
+  pull_request:
+
+
+jobs:
+  rust_test:
+    runs-on: ubuntu-20.04
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Update package manager
+      run: sudo apt-get update
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y \
+          libpam0g-dev \
+          libudev-dev \
+          libssl-dev \
+          libsqlite3-dev
+
+    - name: Run tests
+      run: cargo test --verbose
+
