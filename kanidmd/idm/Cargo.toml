@@ -42,7 +42,7 @@ lazy_static = "^1.4.0"
 
 futures = "^0.3.21"
 futures-util = "^0.3.21"
-tokio = { version = "^1.17.0", features = ["net", "sync"] }
+tokio = { version = "^1.17.0", features = ["net", "sync", "time"] }
 tokio-util = { version = "^0.7.1", features = ["codec"] }
 openssl = "^0.10.38"
 
@@ -52,10 +52,10 @@ serde = { version = "^1.0.136", features = ["derive"] }
 serde_cbor = "^0.11.2"
 serde_json = "^1.0.79"
 
-libsqlite3-sys = { version = "^0.23.2" }
-rusqlite = { version = "^0.26.3", features = ["backup"] }
+libsqlite3-sys = "0.24.2"
+rusqlite = "^0.27.0"
 r2d2 = "^0.8.9"
-r2d2_sqlite = "^0.19.0"
+r2d2_sqlite = "^0.20.0"
 
 time = { version = "=0.2.27", features = ["serde", "std"] }
 
