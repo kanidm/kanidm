@@ -42,7 +42,7 @@ ldap3_server = "^0.1.7"
 # ldap3_server = { version = "0.1", path = "../../ldap3_server" }
 
 crossbeam = "0.8"
-async-std = { version = "1.6", features = ["tokio1"] }
+async-std = { version = "1.11", features = ["tokio1"] }
 
 mathru = "0.11"
 
