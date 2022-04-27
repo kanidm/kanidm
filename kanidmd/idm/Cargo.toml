@@ -65,7 +65,7 @@ smolset = "1.3"
 
 sshkeys = "^0.3.1"
 
-zxcvbn = "2.0"
+zxcvbn = "2.2"
 base64 = "0.13"
 
 idlset = { version = "^0.2" }

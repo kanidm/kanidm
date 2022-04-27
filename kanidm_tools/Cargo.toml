@@ -44,7 +44,7 @@ time = { version = "0.2", features = ["serde", "std"] }
 qrcode = { version = "0.12", default-features = false }
 compact_jwt = "^0.2.0"
 
-zxcvbn = "2.0"
+zxcvbn = "2.2"
 
 dialoguer =  "0.9"
 
