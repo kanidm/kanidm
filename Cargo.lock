@@ -1909,7 +1909,7 @@ dependencies = [
  "smolset",
  "sshkeys",
  "tide",
- "time 0.2.27",
+ "time 0.3.7",
  "tokio",
  "tokio-util",
  "toml",
@@ -1949,7 +1949,7 @@ dependencies = [
  "base32",
  "serde",
  "serde_json",
- "time 0.2.27",
+ "time 0.3.7",
  "url",
  "uuid",
  "webauthn-rs",
@@ -1971,7 +1971,7 @@ dependencies = [
  "serde_json",
  "shellexpand",
  "structopt",
- "time 0.2.27",
+ "time 0.3.7",
  "tracing",
  "tracing-subscriber",
  "webauthn-authenticator-rs",
@@ -3714,7 +3714,6 @@ checksum = "4752a97f8eebd6854ff91f1c1824cd6160626ac4bd44287f7f4ea2035a02a242"
 dependencies = [
  "const_fn",
  "libc",
- "serde",
  "standback",
  "stdweb",
  "time-macros",
@@ -3730,6 +3729,7 @@ checksum = "004cbc98f30fa233c61a38bc77e96a9106e65c88f2d3bef182ae952027e5753d"
 dependencies = [
  "libc",
  "num_threads",
+ "serde",
 ]
 
 [[package]]

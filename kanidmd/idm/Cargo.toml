@@ -57,7 +57,7 @@ rusqlite = { version = "0.26", features = ["backup"] }
 r2d2 = "0.8"
 r2d2_sqlite = "0.19"
 
-time = { version = "0.2", features = ["serde", "std"] }
+time = { version = "0.3", features = ["serde", "std"] }
 
 hashbrown = { version = "0.11", features = ["serde", "inline-more", "ahash"] }
 concread = "^0.3"
