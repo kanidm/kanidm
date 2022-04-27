@@ -1547,7 +1547,7 @@ dependencies = [
  "indexmap",
  "slab",
  "tokio",
- "tokio-util",
+ "tokio-util 0.6.9",
  "tracing",
 ]
 
@@ -1911,7 +1911,7 @@ dependencies = [
  "tide",
  "time 0.2.27",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.1",
  "toml",
  "touch",
  "tracing",
@@ -2002,7 +2002,7 @@ dependencies = [
  "serde_cbor",
  "structopt",
  "tokio",
- "tokio-util",
+ "tokio-util 0.7.1",
  "toml",
  "tracing",
  "tracing-subscriber",
@@ -2060,7 +2060,7 @@ checksum = "38792e250a5442c1af9a13c3e979796e96b494862d751a4172300b6f668d449c"
 dependencies = [
  "bytes",
  "lber",
- "tokio-util",
+ "tokio-util 0.6.9",
 ]
 
 [[package]]
@@ -2071,7 +2071,7 @@ checksum = "7873d5bd5baabdb77aa2d8a762bf8b1136f9f90cc90f44639b4c0d4486281dcb"
 dependencies = [
  "bytes",
  "lber",
- "tokio-util",
+ "tokio-util 0.6.9",
 ]
 
 [[package]]
@@ -2491,7 +2491,7 @@ dependencies = [
  "structopt",
  "tokio",
  "tokio-openssl",
- "tokio-util",
+ "tokio-util 0.7.1",
  "toml",
  "tracing",
  "tracing-subscriber",
@@ -3188,7 +3188,7 @@ dependencies = [
  "tide-openssl",
  "tokio",
  "tokio-openssl",
- "tokio-util",
+ "tokio-util 0.7.1",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -3845,6 +3845,20 @@ dependencies = [
  "log",
  "pin-project-lite 0.2.8",
  "tokio",
+]
+
+[[package]]
+name = "tokio-util"
+version = "0.7.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0edfdeb067411dba2044da6d1cb2df793dd35add7888d73c16e3381ded401764"
+dependencies = [
+ "bytes",
+ "futures-core",
+ "futures-sink",
+ "pin-project-lite 0.2.8",
+ "tokio",
+ "tracing",
 ]
 
 [[package]]
