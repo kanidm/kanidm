@@ -1,7 +1,6 @@
 #!/bin/bash
 
 git config --global pull.ff only
-export CARGO_TARGET_DIR="${TMPDIR}cargo_target"
 DOCS_DIR="/tmp/kanidm_docs"
 
 echo "DOCS DIR: ${DOCS_DIR}"
@@ -11,15 +10,22 @@ function build_version() {
     BOOK_VERSION=$1
     echo "Book version: ${BOOK_VERSION}"
     echo "<li><a href=\"/kanidm/${BOOK_VERSION}\">${BOOK_VERSION}</a></li>" >> "${DOCS_DIR}/index.html"
-	git switch -c "${BOOK_VERSION}"
+
+    git switch -c "${BOOK_VERSION}" || git switch "${BOOK_VERSION}"
 	git pull origin "${BOOK_VERSION}"
-	RUSTFLAGS=-Awarnings cargo doc --quiet --no-deps
+    echo "Running mdbook build"
 	mdbook build kanidm_book
-	mv ./kanidm_book/book/ "${DOCS_DIR}/${BOOK_VERSION}/"
-	mkdir -p "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
-	mv ./target/doc/* "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
+    echo "Running cargo doc"
+    cargo doc --quiet --no-deps
+    echo "Moving book to ${DOCS_DIR}/${BOOK_VERSION}/"
+    mv ./kanidm_book/book/ "${DOCS_DIR}/${BOOK_VERSION}/"
+	echo "Moving rustdoc to ${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
+    mkdir -p "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
+    mv ./target/doc/* "${DOCS_DIR}/${BOOK_VERSION}/rustdoc/"
 }
 
+echo "Cleaning old docs dir"
+rm -rf "${DOCS_DIR}"
 mkdir -p "${DOCS_DIR}"
 
 cat > "${DOCS_DIR}/index.html" <<-'EOM'
