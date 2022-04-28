@@ -113,7 +113,10 @@ impl LoginApp {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
             unsafe {
-                console_log(format!("User not found: {:?}. Operation ID: {:?}", text, kopid));
+                console_log(format!(
+                    "User not found: {:?}. Operation ID: {:?}",
+                    text, kopid
+                ));
             }
             Ok(LoginAppMsg::UnknownUser)
         } else {
@@ -156,8 +159,7 @@ impl LoginApp {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthResponse = jsval.into_serde()
-                .expect_throw("Invalid response type.");
+            let state: AuthResponse = jsval.into_serde().expect_throw("Invalid response type.");
             Ok(LoginAppMsg::Next(state))
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
@@ -453,7 +455,6 @@ impl LoginApp {
     }
 }
 
-
 unsafe fn console_log(message: String) {
     // herp derp this allows you to log things.
     console::log!(message);
@@ -462,7 +463,6 @@ unsafe fn console_log(message: String) {
 impl Component for LoginApp {
     type Message = LoginAppMsg;
     type Properties = ();
-
 
     fn create(_ctx: &Context<Self>) -> Self {
         unsafe {
@@ -490,7 +490,7 @@ impl Component for LoginApp {
         // startConfetti();
 
         if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
-            unsafe{
+            unsafe {
                 console_log(format!("class_list add error -> {:?}", e));
             }
         };
@@ -717,7 +717,7 @@ impl Component for LoginApp {
                             }
                         } else {
                             // Else, present the options in a choice.
-                            unsafe{
+                            unsafe {
                                 console_log("multiple choices exist".to_string());
                             }
                             self.state = LoginState::Continue(allowed);

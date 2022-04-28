@@ -1058,17 +1058,11 @@ impl ValueSet {
             I::Utf8(set) => set.iter().cloned().collect(),
             I::Iutf8(set) => set.iter().cloned().collect(),
             I::Iname(set) => set.iter().cloned().collect(),
-            I::Uuid(set) => set
-                .iter()
-                .map(|u| u.as_hyphenated().to_string())
-                .collect(),
+            I::Uuid(set) => set.iter().map(|u| u.as_hyphenated().to_string()).collect(),
             I::Bool(set) => set.iter().map(|u| u.to_string()).collect(),
             I::Syntax(set) => set.iter().map(|u| u.to_string()).collect(),
             I::Index(set) => set.iter().map(|u| u.to_string()).collect(),
-            I::Refer(set) => set
-                .iter()
-                .map(|u| u.as_hyphenated().to_string())
-                .collect(),
+            I::Refer(set) => set.iter().map(|u| u.as_hyphenated().to_string()).collect(),
             I::JsonFilt(set) => set
                 .iter()
                 .map(|s| {
@@ -1100,25 +1094,15 @@ impl ValueSet {
             // Should we index this?
             // I::OauthScope(set) => set.iter().map(|u| u.to_string()).collect(),
             I::OauthScope(_set) => vec![],
-            I::OauthScopeMap(map) => map
-                .keys()
-                .map(|u| u.as_hyphenated().to_string())
-                .collect(),
+            I::OauthScopeMap(map) => map.keys().map(|u| u.as_hyphenated().to_string()).collect(),
             I::PrivateBinary(_set) => vec![],
             I::PublicBinary(map) => map.keys().cloned().collect(),
             I::RestrictedString(set) => set.iter().cloned().collect(),
-            I::IntentToken(map) => map
-                .keys()
-                .map(|u| u.as_hyphenated().to_string())
-                .collect(),
-            I::TrustedDeviceEnrollment(map) => map
-                .keys()
-                .map(|u| u.as_hyphenated().to_string())
-                .collect(),
-            I::AuthSession(map) => map
-                .keys()
-                .map(|u| u.as_hyphenated().to_string())
-                .collect(),
+            I::IntentToken(map) => map.keys().map(|u| u.as_hyphenated().to_string()).collect(),
+            I::TrustedDeviceEnrollment(map) => {
+                map.keys().map(|u| u.as_hyphenated().to_string()).collect()
+            }
+            I::AuthSession(map) => map.keys().map(|u| u.as_hyphenated().to_string()).collect(),
         }
     }
 
