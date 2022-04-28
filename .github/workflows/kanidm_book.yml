@@ -1,9 +1,10 @@
 name: GitHub Pages
 
-on:
+"on":
   push:
     branches:
       - master
+
 
 jobs:
   deploy_book:
@@ -11,7 +12,10 @@ jobs:
     concurrency:
       group: ${{ github.workflow }}-${{ github.ref }}
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+          clean: false
 
       - name: Install deps
         run: |
@@ -32,8 +36,10 @@ jobs:
 
       - uses: actions-rs/cargo@v1
 
-      - name: Run make book
-        run: make book
+      - name: Make all the books
+        run: |
+          export
+          ./build_all_the_docs.sh
 
       - name: Deploy
         uses: peaceiris/actions-gh-pages@v3

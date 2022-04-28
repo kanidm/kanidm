@@ -79,6 +79,19 @@ book:
 	mkdir -p ./docs/rustdoc/${BOOK_VERSION}
 	mv ./target/doc/* ./docs/rustdoc/${BOOK_VERSION}/
 
+book_versioned:
+	echo "Book version: ${BOOK_VERSION}"
+	rm -rf ./target/doc
+	git switch -c "${BOOK_VERSION}"
+	git pull origin "${BOOK_VERSION}"
+	cargo doc --no-deps --quiet
+	mdbook build kanidm_book
+	mkdir -p ./docs
+	mv ./kanidm_book/book/ ./docs/${BOOK_VERSION}/
+	mkdir -p ./docs/${BOOK_VERSION}/rustdoc/
+	mv ./target/doc/* ./docs/${BOOK_VERSION}/rustdoc/
+	git switch master
+
 clean_book:
 	rm -rf ./docs
 
