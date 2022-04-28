@@ -1,0 +1,1 @@
+initSidebarItems({"enum":[["EventTag",""],["Modify",""],["OperationError",""]],"fn":[["m_pres",""],["m_purge",""],["m_remove",""]],"struct":[["ModifyList",""],["Url","A parsed URL record."],["Uuid","A Universally Unique Identifier (UUID)."]],"type":[["AttrString","A convenience alias for a [`LazyCompact`] layout [`SmartString`]."]]});
