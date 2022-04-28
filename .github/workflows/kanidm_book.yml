@@ -47,3 +47,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./docs
           destination_dir: ./docs
+
+      - name: Dump file list
+        run:
+          find ./docs
