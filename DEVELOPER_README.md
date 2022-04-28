@@ -122,6 +122,8 @@ Record the password above, then run the server start command:
     cd kanidmd/daemon
     cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
 
+(The server start command is also a script in `kanidmd/daemon/run_insecure_dev_server.sh`)
+
 In a new terminal, you can now build and run the client tools with:
 
     cargo run --bin kanidm -- --help

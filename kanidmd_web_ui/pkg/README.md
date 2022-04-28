@@ -18,12 +18,13 @@ treated as such.
 
 ## Documentation / Getting Started / Install
 
-If you want to deploy Kanidm to see what it can do, you should read the [kanidm book]
+If you want to deploy Kanidm to see what it can do, you should read the kanidm book.
 
-We also publish limited [support guidelines].
+- [Kanidm book (Latest commit)](https://kanidm.github.io/kanidm/master/)
+- [Kanidm book (Latest stable)](https://kanidm.github.io/kanidm/stable/)
 
-[kanidm book]: https://kanidm.github.io/kanidm/
-[support guidelines]: https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md
+
+We also publish limited [support guidelines](https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md)).
 
 ## Code of Conduct / Ethics
 
@@ -47,14 +48,14 @@ If you want to develop on the server, there is a getting started [guide for deve
 is a diverse topic and we encourage contributions of many kinds in the project, from people of
 all backgrounds.
 
-[guide for developers]: https://github.com/kanidm/kanidm/blob/master/DEVELOPER_README.md
+[guide for developers]: https://kanidm.github.io/kanidm/master/DEVELOPER_README.html
 
 ## Features
 
 ### Implemented
 
 * SSH key distribution for servers
-* Pam/nsswitch clients (with limited offline auth)
+* PAM/nsswitch clients (with limited offline auth)
 * MFA - TOTP
 * Highly concurrent design (MVCC, COW)
 * RADIUS integration
