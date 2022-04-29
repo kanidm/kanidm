@@ -173,7 +173,7 @@ impl InitCredentialUpdateIntentEvent {
         InitCredentialUpdateIntentEvent {
             ident,
             target,
-            max_ttl: Some(Duration),
+            max_ttl: Some(max_ttl),
         }
     }
 }
@@ -426,13 +426,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Need to change this to the expiry time, so we can purge up to.
         let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
-        let modlist = ModifyList::new_append(
-            "credential_update_intent_token",
+        let mut modlist = ModifyList::new();
+
+        modlist.push_mod(Modify::Removed(
+            AttrString::from("credential_update_intent_token"),
+            PartialValue::IntentToken(token.sessionid),
+        ));
+        modlist.push_mod(Modify::Present(
+            AttrString::from("credential_update_intent_token"),
             Value::IntentToken(
                 token.sessionid,
                 IntentTokenState::InProgress(sessionid, ct + MAXIMUM_CRED_UPDATE_TTL),
             ),
-        );
+        ));
 
         self.qs_write
             .internal_modify(
@@ -1414,7 +1420,8 @@ mod tests {
             // Get the credential status - this should tell
             // us the details of the credentials, as well as
             // if they are ready and valid to commit?
-            let c_status = task::block_on(cutxn.credential_update_status(&cust, ct))
+            let c_status = cutxn
+                .credential_update_status(&cust, ct)
                 .expect("Failed to get the current session status.");
 
             trace!(?c_status);
@@ -1423,9 +1430,9 @@ mod tests {
 
             // Test initially creating a credential.
             //   - pw first
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                    .expect("Failed to update the primary cred password");
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
 
             assert!(c_status.can_commit);
 
@@ -1439,12 +1446,14 @@ mod tests {
             let cust = renew_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
-            let c_status = task::block_on(cutxn.credential_update_status(&cust, ct))
+            let c_status = cutxn
+                .credential_update_status(&cust, ct)
                 .expect("Failed to get the current session status.");
             trace!(?c_status);
             assert!(c_status.primary.is_some());
 
-            let c_status = task::block_on(cutxn.credential_primary_delete(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_delete(&cust, ct)
                 .expect("Failed to delete the primary cred");
             trace!(?c_status);
             assert!(c_status.primary.is_none());
@@ -1474,15 +1483,16 @@ mod tests {
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                    .expect("Failed to update the primary cred password");
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
 
             // Since it's pw only.
             assert!(c_status.can_commit);
 
             //
-            let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_init_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             // Check the status has the token.
@@ -1499,7 +1509,8 @@ mod tests {
                 .expect("Failed to perform totp step");
 
             // Intentionally get it wrong.
-            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal + 1))
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal + 1)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(
@@ -1507,7 +1518,8 @@ mod tests {
                 MfaRegStateStatus::TotpTryAgain
             ));
 
-            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1529,7 +1541,8 @@ mod tests {
             let cust = renew_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
-            let c_status = task::block_on(cutxn.credential_primary_remove_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_remove_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1559,15 +1572,16 @@ mod tests {
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                    .expect("Failed to update the primary cred password");
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
 
             // Since it's pw only.
             assert!(c_status.can_commit);
 
             //
-            let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_init_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             // Check the status has the token.
@@ -1586,7 +1600,8 @@ mod tests {
                 .expect("Failed to perform totp step");
 
             // Should getn the warn that it's sha1
-            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(
@@ -1595,7 +1610,8 @@ mod tests {
             ));
 
             // Accept it
-            let c_status = task::block_on(cutxn.credential_primary_accept_sha1_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_accept_sha1_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1627,17 +1643,18 @@ mod tests {
                 let cutxn = idms.cred_update_transaction();
 
                 // Setup the PW
-                let _c_status =
-                    task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                        .expect("Failed to update the primary cred password");
+                let _c_status = cutxn
+                    .credential_primary_set_password(&cust, ct, test_pw)
+                    .expect("Failed to update the primary cred password");
 
                 // Backup codes are refused to be added because we don't have mfa yet.
                 assert!(matches!(
-                    task::block_on(cutxn.credential_primary_init_backup_codes(&cust, ct)),
+                    cutxn.credential_primary_init_backup_codes(&cust, ct),
                     Err(OperationError::InvalidState)
                 ));
 
-                let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+                let c_status = cutxn
+                    .credential_primary_init_totp(&cust, ct)
                     .expect("Failed to update the primary cred password");
 
                 let totp_token: Totp = match c_status.mfaregstate {
@@ -1652,7 +1669,8 @@ mod tests {
                     .do_totp_duration_from_epoch(&ct)
                     .expect("Failed to perform totp step");
 
-                let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+                let c_status = cutxn
+                    .credential_primary_check_totp(&cust, ct, chal)
                     .expect("Failed to update the primary cred password");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1663,9 +1681,9 @@ mod tests {
 
                 // Now good to go, we need to now add our backup codes.
                 // Whats the right way to get these back?
-                let c_status =
-                    task::block_on(cutxn.credential_primary_init_backup_codes(&cust, ct))
-                        .expect("Failed to update the primary cred password");
+                let c_status = cutxn
+                    .credential_primary_init_backup_codes(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
                 let codes = match c_status.mfaregstate {
                     MfaRegStateStatus::BackupCodes(codes) => Some(codes),
@@ -1701,7 +1719,8 @@ mod tests {
                 let cutxn = idms.cred_update_transaction();
 
                 // Only 7 codes left.
-                let c_status = task::block_on(cutxn.credential_update_status(&cust, ct))
+                let c_status = cutxn
+                    .credential_update_status(&cust, ct)
                     .expect("Failed to get the current session status.");
 
                 assert!(matches!(
@@ -1710,9 +1729,9 @@ mod tests {
                 ));
 
                 // If we remove codes, it leaves totp.
-                let c_status =
-                    task::block_on(cutxn.credential_primary_remove_backup_codes(&cust, ct))
-                        .expect("Failed to update the primary cred password");
+                let c_status = cutxn
+                    .credential_primary_remove_backup_codes(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
                 assert!(matches!(
@@ -1721,9 +1740,9 @@ mod tests {
                 ));
 
                 // Re-add the codes.
-                let c_status =
-                    task::block_on(cutxn.credential_primary_init_backup_codes(&cust, ct))
-                        .expect("Failed to update the primary cred password");
+                let c_status = cutxn
+                    .credential_primary_init_backup_codes(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
                 assert!(matches!(
                     c_status.mfaregstate,
@@ -1735,7 +1754,8 @@ mod tests {
                 ));
 
                 // If we remove totp, it removes codes.
-                let c_status = task::block_on(cutxn.credential_primary_remove_totp(&cust, ct))
+                let c_status = cutxn
+                    .credential_primary_remove_totp(&cust, ct)
                     .expect("Failed to update the primary cred password");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
