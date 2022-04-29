@@ -216,12 +216,12 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::CommonOpt</span>;
 <span class="kw">use</span> <span class="ident">compact_jwt</span>::{<span class="ident">Jws</span>, <span class="ident">JwsUnverified</span>};
 <span class="kw">use</span> <span class="ident">dialoguer</span>::{<span class="ident">theme::ColorfulTheme</span>, <span class="ident">Select</span>};
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">KanidmClient</span>, <span class="ident">KanidmClientBuilder</span>};
+<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">KanidmAsyncClient</span>, <span class="ident">KanidmClientBuilder</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::UserAuthToken</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
 <span class="kw">impl</span> <span class="ident">CommonOpt</span> {
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_unauth_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">KanidmClient</span> {
+    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_unauth_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">KanidmAsyncClient</span> {
         <span class="kw">let</span> <span class="ident">config_path</span>: <span class="ident">String</span> <span class="op">=</span> <span class="ident">shellexpand::tilde</span>(<span class="string">&quot;~/.config/kanidm&quot;</span>).<span class="ident">into_owned</span>();
 
         <span class="kw">let</span> <span class="ident">client_builder</span> <span class="op">=</span> <span class="ident">KanidmClientBuilder::new</span>()
@@ -260,13 +260,13 @@
             <span class="ident">client_builder</span>
         );
 
-        <span class="ident">client_builder</span>.<span class="ident">build</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+        <span class="ident">client_builder</span>.<span class="ident">build_async</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to build client instance -- {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         })
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">to_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">KanidmClient</span> {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">to_client</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">KanidmAsyncClient</span> {
         <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">to_unauth_client</span>();
         <span class="comment">// Read the token file.</span>
         <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">read_tokens</span>() {
@@ -346,7 +346,7 @@
         };
 
         <span class="comment">// Set it into the client</span>
-        <span class="ident">client</span>.<span class="ident">set_token</span>(<span class="ident">token</span>);
+        <span class="ident">client</span>.<span class="ident">set_token</span>(<span class="ident">token</span>).<span class="kw">await</span>;
 
         <span class="ident">client</span>
     }

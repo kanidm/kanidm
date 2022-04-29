@@ -4192,6 +4192,10 @@
 <span id="4187">4187</span>
 <span id="4188">4188</span>
 <span id="4189">4189</span>
+<span id="4190">4190</span>
+<span id="4191">4191</span>
+<span id="4192">4192</span>
+<span id="4193">4193</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4277,6 +4281,10 @@
     <span class="ident">resolve_filter_cache</span>:
         <span class="ident">Cell</span><span class="op">&lt;</span><span class="ident">ARCacheReadTxn</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span>, (<span class="ident">IdentityId</span>, <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValid</span><span class="op">&gt;</span>), <span class="ident">Filter</span><span class="op">&lt;</span><span class="ident">FilterValidResolved</span><span class="op">&gt;</span><span class="op">&gt;</span><span class="op">&gt;</span>,
 }
+
+<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Sync</span> <span class="kw">for</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {}
+
+<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">QueryServerReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {}
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">QueryServerWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">committed</span>: <span class="ident">bool</span>,

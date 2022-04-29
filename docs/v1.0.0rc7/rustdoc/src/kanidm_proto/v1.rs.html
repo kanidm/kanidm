@@ -930,6 +930,46 @@
 <span id="925">925</span>
 <span id="926">926</span>
 <span id="927">927</span>
+<span id="928">928</span>
+<span id="929">929</span>
+<span id="930">930</span>
+<span id="931">931</span>
+<span id="932">932</span>
+<span id="933">933</span>
+<span id="934">934</span>
+<span id="935">935</span>
+<span id="936">936</span>
+<span id="937">937</span>
+<span id="938">938</span>
+<span id="939">939</span>
+<span id="940">940</span>
+<span id="941">941</span>
+<span id="942">942</span>
+<span id="943">943</span>
+<span id="944">944</span>
+<span id="945">945</span>
+<span id="946">946</span>
+<span id="947">947</span>
+<span id="948">948</span>
+<span id="949">949</span>
+<span id="950">950</span>
+<span id="951">951</span>
+<span id="952">952</span>
+<span id="953">953</span>
+<span id="954">954</span>
+<span id="955">955</span>
+<span id="956">956</span>
+<span id="957">957</span>
+<span id="958">958</span>
+<span id="959">959</span>
+<span id="960">960</span>
+<span id="961">961</span>
+<span id="962">962</span>
+<span id="963">963</span>
+<span id="964">964</span>
+<span id="965">965</span>
+<span id="966">966</span>
+<span id="967">967</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -1751,6 +1791,46 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">TotpInvalidSha1</span>(<span class="ident">Uuid</span>),
     <span class="ident">WebauthnCreateChallenge</span>(<span class="ident">Uuid</span>, <span class="ident">CreationChallengeResponse</span>),
     <span class="ident">BackupCodes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUIntentToken</span> {
+    <span class="kw">pub</span> <span class="ident">intent_token</span>: <span class="ident">String</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUSessionToken</span> {
+    <span class="kw">pub</span> <span class="ident">session_token</span>: <span class="ident">String</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CURequest</span> {
+    <span class="ident">PrimaryRemove</span>,
+    <span class="ident">Password</span>(<span class="ident">String</span>),
+    <span class="ident">TotpGenerate</span>,
+    <span class="ident">TotpVerify</span>(<span class="ident">u32</span>),
+    <span class="ident">TotpAcceptSha1</span>,
+    <span class="ident">TotpRemove</span>,
+    <span class="ident">BackupCodeGenerate</span>,
+    <span class="ident">BackupCodeRemove</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CURegState</span> {
+    <span class="comment">// Nothing in progress.</span>
+    <span class="prelude-val">None</span>,
+    <span class="ident">TotpCheck</span>(<span class="ident">TotpSecret</span>),
+    <span class="ident">TotpTryAgain</span>,
+    <span class="ident">TotpInvalidSha1</span>,
+    <span class="ident">BackupCodes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUStatus</span> {
+    <span class="kw">pub</span> <span class="ident">can_commit</span>: <span class="ident">bool</span>,
+    <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CredentialDetail</span><span class="op">&gt;</span>,
+    <span class="kw">pub</span> <span class="ident">mfaregstate</span>: <span class="ident">CURegState</span>,
 }
 
 <span class="comment">/* Recycle Requests area */</span>

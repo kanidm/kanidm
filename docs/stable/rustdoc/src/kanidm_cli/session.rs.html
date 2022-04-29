@@ -464,10 +464,20 @@
 <span id="459">459</span>
 <span id="460">460</span>
 <span id="461">461</span>
+<span id="462">462</span>
+<span id="463">463</span>
+<span id="464">464</span>
+<span id="465">465</span>
+<span id="466">466</span>
+<span id="467">467</span>
+<span id="468">468</span>
+<span id="469">469</span>
+<span id="470">470</span>
+<span id="471">471</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::common::prompt_for_username_get_username</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">LoginOpt</span>, <span class="ident">LogoutOpt</span>, <span class="ident">SessionOpt</span>};
 
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClient</span>};
+<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmAsyncClient</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span>, <span class="ident">UserAuthToken</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">libc::umask</span>;
@@ -608,15 +618,21 @@
         <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">debug</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">do_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_password</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to create password prompt -- {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         });
-        <span class="ident">client</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>.<span class="ident">as_str</span>())
+        <span class="ident">client</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>.<span class="ident">as_str</span>()).<span class="kw">await</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">do_backup_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_backup_code</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="macro">print!</span>(<span class="string">&quot;Enter Backup Code: &quot;</span>);
         <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -631,10 +647,10 @@
                 <span class="kw">break</span>;
             };
         }
-        <span class="ident">client</span>.<span class="ident">auth_step_backup_code</span>(<span class="ident">backup_code</span>.<span class="ident">trim</span>())
+        <span class="ident">client</span>.<span class="ident">auth_step_backup_code</span>(<span class="ident">backup_code</span>.<span class="ident">trim</span>()).<span class="kw">await</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">do_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="kw">loop</span> {
             <span class="macro">print!</span>(<span class="string">&quot;Enter TOTP: &quot;</span>);
             <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
@@ -653,12 +669,12 @@
                 <span class="prelude-val">Err</span>(<span class="kw">_</span>) =&gt; <span class="macro">eprintln!</span>(<span class="string">&quot;Invalid Number&quot;</span>),
             };
         };
-        <span class="ident">client</span>.<span class="ident">auth_step_totp</span>(<span class="ident">totp</span>)
+        <span class="ident">client</span>.<span class="ident">auth_step_totp</span>(<span class="ident">totp</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">fn</span> <span class="ident">do_webauthn</span>(
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_webauthn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>,
+        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>,
         <span class="ident">pkr</span>: <span class="ident">RequestChallengeResponse</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
@@ -670,10 +686,10 @@
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
             });
 
-        <span class="ident">client</span>.<span class="ident">auth_step_webauthn_complete</span>(<span class="ident">auth</span>)
+        <span class="ident">client</span>.<span class="ident">auth_step_webauthn_complete</span>(<span class="ident">auth</span>).<span class="kw">await</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">client</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">to_unauth_client</span>();
 
         <span class="comment">// TODO: remove this anon, nobody should do default anonymous</span>
@@ -682,6 +698,7 @@
         <span class="comment">// What auth mechanisms exist?</span>
         <span class="kw">let</span> <span class="ident">mechs</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">client</span>
             .<span class="ident">auth_step_init</span>(<span class="ident">username</span>)
+            .<span class="kw">await</span>
             .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">error!</span>(<span class="string">&quot;Error during authentication init phase: {:?}&quot;</span>, <span class="ident">e</span>);
                 <span class="ident">std::process::exit</span>(<span class="number">1</span>);
@@ -716,10 +733,13 @@
             }
         };
 
-        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">allowed</span> <span class="op">=</span> <span class="ident">client</span>.<span class="ident">auth_step_begin</span>((<span class="kw-2">*</span><span class="ident">mech</span>).<span class="ident">clone</span>()).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="macro">error!</span>(<span class="string">&quot;Error during authentication begin phase: {:?}&quot;</span>, <span class="ident">e</span>);
-            <span class="ident">std::process::exit</span>(<span class="number">1</span>);
-        });
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">allowed</span> <span class="op">=</span> <span class="ident">client</span>
+            .<span class="ident">auth_step_begin</span>((<span class="kw-2">*</span><span class="ident">mech</span>).<span class="ident">clone</span>())
+            .<span class="kw">await</span>
+            .<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+                <span class="macro">error!</span>(<span class="string">&quot;Error during authentication begin phase: {:?}&quot;</span>, <span class="ident">e</span>);
+                <span class="ident">std::process::exit</span>(<span class="number">1</span>);
+            });
 
         <span class="comment">// We now have the first auth state, so we can proceed until complete.</span>
         <span class="kw">loop</span> {
@@ -755,11 +775,11 @@
             };
 
             <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">choice</span> {
-                <span class="ident">AuthAllowed::Anonymous</span> =&gt; <span class="ident">client</span>.<span class="ident">auth_step_anonymous</span>(),
-                <span class="ident">AuthAllowed::Password</span> =&gt; <span class="self">self</span>.<span class="ident">do_password</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>),
-                <span class="ident">AuthAllowed::BackupCode</span> =&gt; <span class="self">self</span>.<span class="ident">do_backup_code</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>),
-                <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="self">self</span>.<span class="ident">do_totp</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>),
-                <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) =&gt; <span class="self">self</span>.<span class="ident">do_webauthn</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()),
+                <span class="ident">AuthAllowed::Anonymous</span> =&gt; <span class="ident">client</span>.<span class="ident">auth_step_anonymous</span>().<span class="kw">await</span>,
+                <span class="ident">AuthAllowed::Password</span> =&gt; <span class="self">self</span>.<span class="ident">do_password</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
+                <span class="ident">AuthAllowed::BackupCode</span> =&gt; <span class="self">self</span>.<span class="ident">do_backup_code</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
+                <span class="ident">AuthAllowed::Totp</span> =&gt; <span class="self">self</span>.<span class="ident">do_totp</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>).<span class="kw">await</span>,
+                <span class="ident">AuthAllowed::Webauthn</span>(<span class="ident">chal</span>) =&gt; <span class="self">self</span>.<span class="ident">do_webauthn</span>(<span class="kw-2">&amp;mut</span> <span class="ident">client</span>, <span class="ident">chal</span>.<span class="ident">clone</span>()).<span class="kw">await</span>,
             };
 
             <span class="comment">// Now update state.</span>
@@ -792,7 +812,7 @@
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         });
         <span class="comment">// Add our new one</span>
-        <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">get_token</span>() {
+        <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">get_token</span>().<span class="kw">await</span> {
             <span class="prelude-val">Some</span>(<span class="ident">t</span>) =&gt; <span class="ident">tokens</span>.<span class="ident">insert</span>(<span class="ident">username</span>.<span class="ident">to_string</span>(), <span class="ident">t</span>),
             <span class="prelude-val">None</span> =&gt; {
                 <span class="macro">error!</span>(<span class="string">&quot;Error retrieving client session&quot;</span>);
@@ -816,7 +836,7 @@
         <span class="self">self</span>.<span class="ident">debug</span>
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="comment">// For now we just remove this from the token store.</span>
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">_tmp_username</span> <span class="op">=</span> <span class="ident">String::new</span>();
@@ -886,7 +906,7 @@
             .<span class="ident">collect</span>()
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">SessionOpt::List</span>(<span class="kw">_</span>) =&gt; {
                 <span class="kw">let</span> <span class="ident">tokens</span> <span class="op">=</span> <span class="ident"><span class="self">Self</span>::read_valid_tokens</span>();

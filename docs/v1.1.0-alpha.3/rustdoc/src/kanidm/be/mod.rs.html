@@ -2878,6 +2878,10 @@
 <span id="2873">2873</span>
 <span id="2874">2874</span>
 <span id="2875">2875</span>
+<span id="2876">2876</span>
+<span id="2877">2877</span>
+<span id="2878">2878</span>
+<span id="2879">2879</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The backend. This contains the &quot;low level&quot; storage and query code, which is</span>
 <span class="doccomment">//! implemented as a json-like kv document database. This has no rules about content</span>
 <span class="doccomment">//! of the server, which are all enforced at higher levels. The role of the backend</span>
@@ -2996,6 +3000,10 @@
     <span class="ident">idlayer</span>: <span class="ident">UnsafeCell</span><span class="op">&lt;</span><span class="ident">IdlArcSqliteReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,
     <span class="ident">idxmeta</span>: <span class="ident">CowCellReadTxn</span><span class="op">&lt;</span><span class="ident">IdxMeta</span><span class="op">&gt;</span>,
 }
+
+<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Sync</span> <span class="kw">for</span> <span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {}
+
+<span class="kw">unsafe</span> <span class="kw">impl</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> <span class="ident">Send</span> <span class="kw">for</span> <span class="ident">BackendReadTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {}
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">BackendWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span> {
     <span class="ident">idlayer</span>: <span class="ident">UnsafeCell</span><span class="op">&lt;</span><span class="ident">IdlArcSqliteWriteTransaction</span><span class="op">&lt;</span><span class="lifetime">&#39;a</span><span class="op">&gt;</span><span class="op">&gt;</span>,

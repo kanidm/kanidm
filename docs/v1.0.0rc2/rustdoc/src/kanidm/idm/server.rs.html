@@ -4024,6 +4024,7 @@
 <span id="4019">4019</span>
 <span id="4020">4020</span>
 <span id="4021">4021</span>
+<span id="4022">4022</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -6138,6 +6139,7 @@
             <span class="self">self</span>.<span class="ident">pw_badlist_cache</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">mfareg_sessions</span>.<span class="ident">commit</span>();
             <span class="self">self</span>.<span class="ident">cred_update_sessions</span>.<span class="ident">commit</span>();
+            <span class="macro">trace!</span>(<span class="string">&quot;cred_update_session.commit&quot;</span>);
             <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">commit</span>()
         })
     }

@@ -179,12 +179,12 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="ident">SelfOpt::Whoami</span>(<span class="ident">copt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>();
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 
-                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">whoami</span>() {
+                <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">whoami</span>().<span class="kw">await</span> {
                     <span class="prelude-val">Ok</span>(<span class="ident">o_ent</span>) =&gt; {
                         <span class="kw">match</span> <span class="ident">o_ent</span> {
                             <span class="prelude-val">Some</span>((<span class="ident">ent</span>, <span class="ident">uat</span>)) =&gt; {
@@ -202,7 +202,7 @@
             }
 
             <span class="ident">SelfOpt::SetPassword</span>(<span class="ident">copt</span>) =&gt; {
-                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>();
+                <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 
                 <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter new password: &quot;</span>) {
                     <span class="prelude-val">Ok</span>(<span class="ident">p</span>) =&gt; <span class="ident">p</span>,
@@ -212,7 +212,7 @@
                     }
                 };
 
-                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">idm_account_set_password</span>(<span class="ident">password</span>) {
+                <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>.<span class="ident">idm_account_set_password</span>(<span class="ident">password</span>).<span class="kw">await</span> {
                     <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
                 }
             }
@@ -228,10 +228,10 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">SystemOpt::Oauth2</span>(<span class="ident">oopt</span>) =&gt; <span class="ident">oopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">SystemOpt::Domain</span>(<span class="ident">dopt</span>) =&gt; <span class="ident">dopt</span>.<span class="ident">exec</span>(),
+            <span class="ident">SystemOpt::Oauth2</span>(<span class="ident">oopt</span>) =&gt; <span class="ident">oopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">SystemOpt::Domain</span>(<span class="ident">dopt</span>) =&gt; <span class="ident">dopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
         }
     }
 }
@@ -251,17 +251,17 @@
         }
     }
 
-    <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">KanidmClientOpt::Raw</span>(<span class="ident">ropt</span>) =&gt; <span class="ident">ropt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::Login</span>(<span class="ident">lopt</span>) =&gt; <span class="ident">lopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::Logout</span>(<span class="ident">lopt</span>) =&gt; <span class="ident">lopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::Session</span>(<span class="ident">sopt</span>) =&gt; <span class="ident">sopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::CSelf</span>(<span class="ident">csopt</span>) =&gt; <span class="ident">csopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::Account</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::Group</span>(<span class="ident">gopt</span>) =&gt; <span class="ident">gopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::System</span>(<span class="ident">sopt</span>) =&gt; <span class="ident">sopt</span>.<span class="ident">exec</span>(),
-            <span class="ident">KanidmClientOpt::Recycle</span>(<span class="ident">ropt</span>) =&gt; <span class="ident">ropt</span>.<span class="ident">exec</span>(),
+            <span class="ident">KanidmClientOpt::Raw</span>(<span class="ident">ropt</span>) =&gt; <span class="ident">ropt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::Login</span>(<span class="ident">lopt</span>) =&gt; <span class="ident">lopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::Logout</span>(<span class="ident">lopt</span>) =&gt; <span class="ident">lopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::Session</span>(<span class="ident">sopt</span>) =&gt; <span class="ident">sopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::CSelf</span>(<span class="ident">csopt</span>) =&gt; <span class="ident">csopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::Account</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::Group</span>(<span class="ident">gopt</span>) =&gt; <span class="ident">gopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::System</span>(<span class="ident">sopt</span>) =&gt; <span class="ident">sopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">KanidmClientOpt::Recycle</span>(<span class="ident">ropt</span>) =&gt; <span class="ident">ropt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
         }
     }
 }
