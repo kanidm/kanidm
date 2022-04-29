@@ -2058,6 +2058,7 @@ Success - password reset to -&gt; Et8QRJgQkMJu3v1AQxcbxRWW44qRUZPpr6BJ9fCGapAB9c
 <pre><code>cd kanidmd/daemon
 cargo run --bin kanidmd server -c ../../examples/insecure_server.toml
 </code></pre>
+<p>(The server start command is also a script in <code>kanidmd/daemon/run_insecure_dev_server.sh</code>)</p>
 <p>In a new terminal, you can now build and run the client tools with:</p>
 <pre><code>cargo run --bin kanidm -- --help
 cargo run --bin kanidm -- login -H https://localhost:8443 -D anonymous -C /tmp/kanidm/ca.pem
