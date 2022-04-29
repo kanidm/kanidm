@@ -93,9 +93,10 @@ impl RequestExtensions for tide::Request<AppState> {
     }
 
     fn get_url_param(&self, param: &str) -> Result<String, tide::Error> {
-        self.param(param)
-            .map(str::to_string)
-            .map_err(|_| tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot"))
+        self.param(param).map(str::to_string).map_err(|e| {
+            error!(?e);
+            tide::Error::from_str(tide::StatusCode::ImATeapot, "teapot")
+        })
     }
 
     fn new_eventid(&self) -> (Uuid, String) {
@@ -544,6 +545,12 @@ pub fn create_https_server(
         .get(account_get_backup_code);
     // .post(account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
     // .delete(account_delete_backup_code); // same as above
+    account_route
+        .at("/:id/_credential/_update_intent")
+        .get(account_get_id_credential_update_intent);
+    account_route
+        .at("/:id/_credential/_update_intent/:ttl")
+        .get(account_get_id_credential_update_intent);
 
     account_route
         .at("/:id/_ssh_pubkeys")
@@ -569,6 +576,17 @@ pub fn create_https_server(
         .at("/:id/_unix/_credential")
         .put(account_put_id_unix_credential)
         .delete(account_delete_id_unix_credential);
+
+    let mut cred_route = appserver.at("/v1/credential");
+    cred_route
+        .at("/_exchange_intent")
+        .post(credential_update_exchange_intent);
+
+    cred_route.at("/_status").post(credential_update_status);
+
+    cred_route.at("/_update").post(credential_update_update);
+
+    cred_route.at("/_commit").post(credential_update_commit);
 
     let mut group_route = appserver.at("/v1/group");
     group_route.at("/").get(group_get).post(group_post);

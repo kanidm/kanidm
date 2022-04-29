@@ -35,12 +35,12 @@ impl SelfOpt {
         }
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
             SelfOpt::Whoami(copt) => {
-                let client = copt.to_client();
+                let client = copt.to_client().await;
 
-                match client.whoami() {
+                match client.whoami().await {
                     Ok(o_ent) => {
                         match o_ent {
                             Some((ent, uat)) => {
@@ -58,7 +58,7 @@ impl SelfOpt {
             }
 
             SelfOpt::SetPassword(copt) => {
-                let client = copt.to_client();
+                let client = copt.to_client().await;
 
                 let password = match rpassword::prompt_password("Enter new password: ") {
                     Ok(p) => p,
@@ -68,7 +68,7 @@ impl SelfOpt {
                     }
                 };
 
-                if let Err(e) = client.idm_account_set_password(password) {
+                if let Err(e) = client.idm_account_set_password(password).await {
                     error!("Error -> {:?}", e);
                 }
             }
@@ -84,10 +84,10 @@ impl SystemOpt {
         }
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
-            SystemOpt::Oauth2(oopt) => oopt.exec(),
-            SystemOpt::Domain(dopt) => dopt.exec(),
+            SystemOpt::Oauth2(oopt) => oopt.exec().await,
+            SystemOpt::Domain(dopt) => dopt.exec().await,
         }
     }
 }
@@ -107,17 +107,17 @@ impl KanidmClientOpt {
         }
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
-            KanidmClientOpt::Raw(ropt) => ropt.exec(),
-            KanidmClientOpt::Login(lopt) => lopt.exec(),
-            KanidmClientOpt::Logout(lopt) => lopt.exec(),
-            KanidmClientOpt::Session(sopt) => sopt.exec(),
-            KanidmClientOpt::CSelf(csopt) => csopt.exec(),
-            KanidmClientOpt::Account(aopt) => aopt.exec(),
-            KanidmClientOpt::Group(gopt) => gopt.exec(),
-            KanidmClientOpt::System(sopt) => sopt.exec(),
-            KanidmClientOpt::Recycle(ropt) => ropt.exec(),
+            KanidmClientOpt::Raw(ropt) => ropt.exec().await,
+            KanidmClientOpt::Login(lopt) => lopt.exec().await,
+            KanidmClientOpt::Logout(lopt) => lopt.exec().await,
+            KanidmClientOpt::Session(sopt) => sopt.exec().await,
+            KanidmClientOpt::CSelf(csopt) => csopt.exec().await,
+            KanidmClientOpt::Account(aopt) => aopt.exec().await,
+            KanidmClientOpt::Group(gopt) => gopt.exec().await,
+            KanidmClientOpt::System(sopt) => sopt.exec().await,
+            KanidmClientOpt::Recycle(ropt) => ropt.exec().await,
         }
     }
 }

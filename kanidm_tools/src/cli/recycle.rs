@@ -9,11 +9,11 @@ impl RecycleOpt {
         }
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
             RecycleOpt::List(copt) => {
-                let client = copt.to_client();
-                match client.recycle_bin_list() {
+                let client = copt.to_client().await;
+                match client.recycle_bin_list().await {
                     Ok(r) => r.iter().for_each(|e| println!("{}", e)),
                     Err(e) => {
                         error!("Error -> {:?}", e);
@@ -21,8 +21,8 @@ impl RecycleOpt {
                 }
             }
             RecycleOpt::Get(nopt) => {
-                let client = nopt.copt.to_client();
-                match client.recycle_bin_get(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                match client.recycle_bin_get(nopt.name.as_str()).await {
                     Ok(Some(e)) => println!("{}", e),
                     Ok(None) => println!("No matching entries"),
                     Err(e) => {
@@ -31,8 +31,8 @@ impl RecycleOpt {
                 }
             }
             RecycleOpt::Revive(nopt) => {
-                let client = nopt.copt.to_client();
-                if let Err(e) = client.recycle_bin_revive(nopt.name.as_str()) {
+                let client = nopt.copt.to_client().await;
+                if let Err(e) = client.recycle_bin_revive(nopt.name.as_str()).await {
                     error!("Error -> {:?}", e);
                 }
             }

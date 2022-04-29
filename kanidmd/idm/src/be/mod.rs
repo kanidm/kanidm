@@ -117,6 +117,10 @@ pub struct BackendReadTransaction<'a> {
     idxmeta: CowCellReadTxn<IdxMeta>,
 }
 
+unsafe impl<'a> Sync for BackendReadTransaction<'a> {}
+
+unsafe impl<'a> Send for BackendReadTransaction<'a> {}
+
 pub struct BackendWriteTransaction<'a> {
     idlayer: UnsafeCell<IdlArcSqliteWriteTransaction<'a>>,
     idxmeta: CowCellReadTxn<IdxMeta>,

@@ -697,17 +697,16 @@ impl<'a> Drop for DbTxn<'a> {
 mod tests {
     use super::Db;
     use crate::cache::Id;
-    use async_std::task;
     use kanidm_proto::v1::{UnixGroupToken, UnixUserToken};
 
     const TESTACCOUNT1_PASSWORD_A: &str = "password a for account1 test";
     const TESTACCOUNT1_PASSWORD_B: &str = "password b for account1 test";
 
-    #[test]
-    fn test_cache_db_account_basic() {
+    #[tokio::test]
+    async fn test_cache_db_account_basic() {
         let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = task::block_on(db.write());
+        let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UnixUserToken {
@@ -787,11 +786,11 @@ mod tests {
         assert!(dbtxn.commit().is_ok());
     }
 
-    #[test]
-    fn test_cache_db_group_basic() {
+    #[tokio::test]
+    async fn test_cache_db_group_basic() {
         let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = task::block_on(db.write());
+        let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = UnixGroupToken {
@@ -862,11 +861,11 @@ mod tests {
         assert!(dbtxn.commit().is_ok());
     }
 
-    #[test]
-    fn test_cache_db_account_group_update() {
+    #[tokio::test]
+    async fn test_cache_db_account_group_update() {
         let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = task::block_on(db.write());
+        let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
         let gt1 = UnixGroupToken {
@@ -930,11 +929,11 @@ mod tests {
         assert!(dbtxn.commit().is_ok());
     }
 
-    #[test]
-    fn test_cache_db_account_password() {
+    #[tokio::test]
+    async fn test_cache_db_account_password() {
         let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = task::block_on(db.write());
+        let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
         let uuid1 = "0302b99c-f0f6-41ab-9492-852692b0fd16";
@@ -979,11 +978,11 @@ mod tests {
         assert!(dbtxn.commit().is_ok());
     }
 
-    #[test]
-    fn test_cache_db_group_rename_duplicate() {
+    #[tokio::test]
+    async fn test_cache_db_group_rename_duplicate() {
         let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = task::block_on(db.write());
+        let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
         let mut gt1 = UnixGroupToken {
@@ -1034,11 +1033,11 @@ mod tests {
         assert!(dbtxn.commit().is_ok());
     }
 
-    #[test]
-    fn test_cache_db_account_rename_duplicate() {
+    #[tokio::test]
+    async fn test_cache_db_account_rename_duplicate() {
         let _ = tracing_subscriber::fmt::try_init();
         let db = Db::new("").expect("failed to create.");
-        let dbtxn = task::block_on(db.write());
+        let dbtxn = db.write().await;
         assert!(dbtxn.migrate().is_ok());
 
         let mut ut1 = UnixUserToken {

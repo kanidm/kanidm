@@ -26,10 +26,10 @@ impl RawOpt {
         }
     }
 
-    pub fn exec(&self) {
+    pub async fn exec(&self) {
         match self {
             RawOpt::Search(sopt) => {
-                let client = sopt.commonopts.to_client();
+                let client = sopt.commonopts.to_client().await;
 
                 let filter: Filter = match serde_json::from_str(sopt.filter.as_str()) {
                     Ok(f) => f,
@@ -39,13 +39,13 @@ impl RawOpt {
                     }
                 };
 
-                match client.search(filter) {
+                match client.search(filter).await {
                     Ok(rset) => rset.iter().for_each(|e| println!("{}", e)),
                     Err(e) => error!("Error -> {:?}", e),
                 }
             }
             RawOpt::Create(copt) => {
-                let client = copt.commonopts.to_client();
+                let client = copt.commonopts.to_client().await;
                 // Read the file?
                 let r_entries: Vec<BTreeMap<String, Vec<String>>> = match read_file(&copt.file) {
                     Ok(r) => r,
@@ -57,12 +57,12 @@ impl RawOpt {
 
                 let entries = r_entries.into_iter().map(|b| Entry { attrs: b }).collect();
 
-                if let Err(e) = client.create(entries) {
+                if let Err(e) = client.create(entries).await {
                     error!("Error -> {:?}", e);
                 }
             }
             RawOpt::Modify(mopt) => {
-                let client = mopt.commonopts.to_client();
+                let client = mopt.commonopts.to_client().await;
                 // Read the file?
                 let filter: Filter = match serde_json::from_str(mopt.filter.as_str()) {
                     Ok(f) => f,
@@ -81,12 +81,12 @@ impl RawOpt {
                 };
 
                 let modlist = ModifyList::new_list(r_list);
-                if let Err(e) = client.modify(filter, modlist) {
+                if let Err(e) = client.modify(filter, modlist).await {
                     error!("Error -> {:?}", e);
                 }
             }
             RawOpt::Delete(dopt) => {
-                let client = dopt.commonopts.to_client();
+                let client = dopt.commonopts.to_client().await;
                 let filter: Filter = match serde_json::from_str(dopt.filter.as_str()) {
                     Ok(f) => f,
                     Err(e) => {
@@ -95,7 +95,7 @@ impl RawOpt {
                     }
                 };
 
-                if let Err(e) = client.delete(filter) {
+                if let Err(e) = client.delete(filter).await {
                     error!("Error -> {:?}", e);
                 }
             }

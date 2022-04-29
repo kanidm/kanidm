@@ -21,7 +21,8 @@ include!("opt/ssh_authorizedkeys.rs");
 //
 // usage: AuthorizedKeysCommand /usr/sbin/kanidm_ssh_authorizedkeys %u -H URL -D anonymous -C /etc/kanidm/ca.pem
 //
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     let opt = SshAuthorizedOpt::from_args();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
@@ -57,19 +58,21 @@ fn main() {
         None => client_builder,
     };
 
-    let client = client_builder.build().unwrap_or_else(|e| {
+    let client = client_builder.build_async().unwrap_or_else(|e| {
         error!("Failed to build client instance -- {:?}", e);
         std::process::exit(1);
     });
 
     let r = if opt.username == "anonymous" {
-        client.auth_anonymous()
+        client.auth_anonymous().await
     } else {
         let password = rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
             error!("Failed to retrieve password - {:?}", e);
             std::process::exit(1);
         });
-        client.auth_simple_password(opt.username.as_str(), password.as_str())
+        client
+            .auth_simple_password(opt.username.as_str(), password.as_str())
+            .await
     };
     if r.is_err() {
         match r {
@@ -81,7 +84,10 @@ fn main() {
         std::process::exit(1);
     }
 
-    match client.idm_account_get_ssh_pubkeys(opt.account_id.as_str()) {
+    match client
+        .idm_account_get_ssh_pubkeys(opt.account_id.as_str())
+        .await
+    {
         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
         Err(e) => error!("Failed to retrieve pubkeys - {:?}", e),
     }

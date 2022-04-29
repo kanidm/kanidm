@@ -1,15 +1,12 @@
 use std::net::TcpStream;
 use std::sync::atomic::{AtomicU16, Ordering};
-use std::thread;
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm::tracing_tree;
-use kanidm_client::{KanidmClient, KanidmClientBuilder};
+use kanidm_client::{asynchronous::KanidmAsyncClient, KanidmClientBuilder};
 use score::create_server_core;
-
-use async_std::task;
-use tokio::sync::mpsc;
+use tokio::task;
 
 pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
@@ -24,12 +21,8 @@ fn is_free_port(port: u16) -> bool {
 }
 
 // Test external behaviours of the service.
-
-pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
+pub async fn setup_async_test() -> KanidmAsyncClient {
     let _ = tracing_tree::test_init();
-
-    let (ready_tx, mut ready_rx) = mpsc::channel(1);
-    let (finish_tx, mut finish_rx) = mpsc::channel(1);
 
     let mut counter = 0;
     let port = loop {
@@ -60,46 +53,18 @@ pub fn run_test(test_fn: fn(KanidmClient) -> ()) {
     // config.log_level = Some(LogLevel::FullTrace as u32);
     config.threads = 1;
 
-    let t_handle = thread::spawn(move || {
-        // Spawn a thread for the test runner, this should have a unique
-        // port....
-        let rt = tokio::runtime::Builder::new_current_thread()
-            .enable_all()
-            .build()
-            .expect("failed to start tokio");
-        rt.block_on(async {
-            create_server_core(config, false)
-                .await
-                .expect("failed to start server core");
-            // We have to yield now to guarantee that the tide elements are setup.
-            task::yield_now().await;
-            ready_tx
-                .send(())
-                .await
-                .expect("failed in indicate readiness");
-            finish_rx.recv().await;
-        });
-    });
+    create_server_core(config, false)
+        .await
+        .expect("failed to start server core");
+    // We have to yield now to guarantee that the tide elements are setup.
+    task::yield_now().await;
 
-    let _ = task::block_on(ready_rx.recv()).expect("failed to start ctx");
-    // Do we need any fixtures?
-    // Yes probably, but they'll need to be futures as well ...
-    // later we could accept fixture as it's own future for re-use
-
-    // Setup the client, and the address we selected.
     let addr = format!("http://127.0.0.1:{}", port);
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
         .no_proxy()
-        .build()
+        .build_async()
         .expect("Failed to build client");
 
-    test_fn(rsclient);
-
-    // We DO NOT need teardown, as sqlite is in mem
-    // let the tables hit the floor
-
-    // At this point, when the channel drops, it drops the thread too.
-    task::block_on(finish_tx.send(())).expect("unable to send to ctx");
-    t_handle.join().expect("failed to join thread");
+    rsclient
 }

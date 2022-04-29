@@ -16,7 +16,8 @@ use structopt::StructOpt;
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
-fn main() {
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
     let opt = KanidmClientOpt::from_args();
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
@@ -42,5 +43,5 @@ fn main() {
         .with(fmt_layer)
         .init();
 
-    opt.exec()
+    opt.exec().await
 }

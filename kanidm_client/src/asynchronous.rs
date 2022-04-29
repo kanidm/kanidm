@@ -54,6 +54,48 @@ impl KanidmAsyncClient {
         *tguard = None;
     }
 
+    async fn perform_simple_post_request<R: Serialize, T: DeserializeOwned>(
+        &self,
+        dest: &str,
+        request: &R,
+    ) -> Result<T, ClientError> {
+        let dest = format!("{}{}", self.get_url(), dest);
+
+        let req_string = serde_json::to_string(request).map_err(ClientError::JsonEncode)?;
+
+        let response = self
+            .client
+            .post(dest.as_str())
+            .body(req_string)
+            .header(CONTENT_TYPE, APPLICATION_JSON);
+
+        let response = response.send().await.map_err(ClientError::Transport)?;
+
+        let opid = response
+            .headers()
+            .get(KOPID)
+            .and_then(|hv| hv.to_str().ok())
+            .unwrap_or("missing_kopid")
+            .to_string();
+        debug!("opid -> {:?}", opid);
+
+        match response.status() {
+            reqwest::StatusCode::OK => {}
+            unexpect => {
+                return Err(ClientError::Http(
+                    unexpect,
+                    response.json().await.ok(),
+                    opid,
+                ))
+            }
+        }
+
+        response
+            .json()
+            .await
+            .map_err(|e| ClientError::JsonDecode(e, opid))
+    }
+
     async fn perform_auth_post_request<R: Serialize, T: DeserializeOwned>(
         &self,
         dest: &str,
@@ -1205,6 +1247,50 @@ impl KanidmAsyncClient {
                 Ok(cs)
             }
         })
+    }
+
+    // == new credential update session code.
+    pub async fn idm_account_credential_update_intent(
+        &self,
+        id: &str,
+    ) -> Result<CUIntentToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_credential/_update_intent", id).as_str())
+            .await
+    }
+
+    pub async fn idm_account_credential_update_exchange(
+        &self,
+        intent_token: CUIntentToken,
+    ) -> Result<CUSessionToken, ClientError> {
+        // We don't need to send the UAT with these, which is why we use the different path.
+        self.perform_simple_post_request("/v1/credential/_exchange_intent", &intent_token)
+            .await
+    }
+
+    pub async fn idm_account_credential_update_status(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        self.perform_simple_post_request("/v1/credential/_status", &session_token)
+            .await
+    }
+
+    pub async fn idm_account_credential_update_set_password(
+        &self,
+        session_token: &CUSessionToken,
+        pw: &str,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = SetCredentialRequest::Password(pw.to_string());
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_commit(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<(), ClientError> {
+        self.perform_simple_post_request("/v1/credential/_commit", &session_token)
+            .await
     }
 
     pub async fn idm_account_radius_credential_get(

@@ -29,7 +29,7 @@ struct CsvRow {
     count: usize,
 }
 
-fn basic_arbiter(
+async fn basic_arbiter(
     mut broadcast_rx: tokio::sync::broadcast::Receiver<TestPhase>,
     raw_results_rx: &crossbeam::channel::Receiver<(Duration, Duration, usize)>,
     warmup_seconds: u32,
@@ -37,7 +37,7 @@ fn basic_arbiter(
     info!("Starting test arbiter ...");
 
     // Wait on the message that the workers have started the warm up.
-    let bcast_msg = async_std::task::block_on(broadcast_rx.recv()).unwrap();
+    let bcast_msg = broadcast_rx.recv().await.unwrap();
 
     if !matches!(bcast_msg, TestPhase::WarmUp) {
         error!("Invalid broadcast state to arbiter");
@@ -207,7 +207,9 @@ pub(crate) async fn basic(
     // This should use spawn blocking.
     let warmup_seconds = profile.search_basic_config.warmup_seconds;
     let arbiter_join_handle =
-        task::spawn_blocking(move || basic_arbiter(broadcast_rx, &raw_results_rx, warmup_seconds));
+        task::spawn(
+            async move { basic_arbiter(broadcast_rx, &raw_results_rx, warmup_seconds).await },
+        );
 
     // Get out our conn details
     let mut rng = rand::thread_rng();

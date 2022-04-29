@@ -9,17 +9,18 @@ use hashbrown::HashSet;
 
 use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 
-use kanidm_proto::v1::{CredentialDetail, PasswordFeedback, TotpSecret};
+use kanidm_proto::v1::{CURegState, CUStatus, CredentialDetail, PasswordFeedback, TotpSecret};
 
 use crate::utils::{backup_code_from_random, uuid_from_duration};
 
 use serde::{Deserialize, Serialize};
 
 use std::sync::Arc;
+use std::sync::Mutex;
 use std::time::Duration;
 use time::OffsetDateTime;
 
-use tokio::sync::Mutex;
+// use tokio::sync::Mutex;
 
 use core::ops::Deref;
 
@@ -47,7 +48,7 @@ struct CredentialUpdateIntentTokenInner {
 
 #[derive(Clone, Debug)]
 pub struct CredentialUpdateIntentToken {
-    token_enc: String,
+    pub token_enc: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -58,7 +59,7 @@ struct CredentialUpdateSessionTokenInner {
 }
 
 pub struct CredentialUpdateSessionToken {
-    token_enc: String,
+    pub token_enc: String,
 }
 
 #[derive(Debug)]
@@ -107,6 +108,24 @@ pub(crate) struct CredentialUpdateSessionStatus {
     mfaregstate: MfaRegStateStatus,
 }
 
+impl Into<CUStatus> for CredentialUpdateSessionStatus {
+    fn into(self) -> CUStatus {
+        CUStatus {
+            can_commit: self.can_commit,
+            primary: self.primary,
+            mfaregstate: match self.mfaregstate {
+                MfaRegStateStatus::None => CURegState::None,
+                MfaRegStateStatus::TotpCheck(c) => CURegState::TotpCheck(c),
+                MfaRegStateStatus::TotpTryAgain => CURegState::TotpTryAgain,
+                MfaRegStateStatus::TotpInvalidSha1 => CURegState::TotpInvalidSha1,
+                MfaRegStateStatus::BackupCodes(s) => {
+                    CURegState::BackupCodes(s.into_iter().collect())
+                }
+            },
+        }
+    }
+}
+
 impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
     fn from(session: &CredentialUpdateSession) -> Self {
         CredentialUpdateSessionStatus {
@@ -132,10 +151,18 @@ pub struct InitCredentialUpdateIntentEvent {
     // Who is it targetting?
     pub target: Uuid,
     // How long is it valid for?
-    pub max_ttl: Duration,
+    pub max_ttl: Option<Duration>,
 }
 
 impl InitCredentialUpdateIntentEvent {
+    pub fn new(ident: Identity, target: Uuid, max_ttl: Option<Duration>) -> Self {
+        InitCredentialUpdateIntentEvent {
+            ident,
+            target,
+            max_ttl,
+        }
+    }
+
     #[cfg(test)]
     pub fn new_impersonate_entry(
         e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>,
@@ -146,7 +173,7 @@ impl InitCredentialUpdateIntentEvent {
         InitCredentialUpdateIntentEvent {
             ident,
             target,
-            max_ttl,
+            max_ttl: Some(max_ttl),
         }
     }
 }
@@ -255,6 +282,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Store the update session into the map.
         self.cred_update_sessions.insert(sessionid, session);
+        trace!("cred_update_sessions.insert - {}", sessionid);
 
         // - issue the CredentialUpdateToken (enc)
         Ok(CredentialUpdateSessionToken { token_enc })
@@ -266,21 +294,13 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         ct: Duration,
     ) -> Result<CredentialUpdateIntentToken, OperationError> {
         spanned!("idm::server::credupdatesession<Init>", {
-            let _account = self.validate_init_credential_update(event.target, &event.ident)?;
+            let account = self.validate_init_credential_update(event.target, &event.ident)?;
 
             // ==== AUTHORISATION CHECKED ===
 
             // Build the intent token.
-
-            // States For the user record
-            //   - Initial (Valid)
-            //   - Processing (Uuid of in flight req, plus the expiry time of the in flight)
-            //   - Canceled (Back to Valid)
-            //   - Complete (The credential was updatded).
-
-            // We need to actually submit a mod to the user.
-
-            let max_ttl = ct + event.max_ttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
+            let mttl = event.max_ttl.unwrap_or_else(|| Duration::new(0, 0));
+            let max_ttl = ct + mttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
             let sessionid = uuid_from_duration(max_ttl, self.sid);
             let uuid = Uuid::new_v4();
 
@@ -301,6 +321,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let token_enc = self
                 .token_enc_key
                 .encrypt_at_time(&token_data, ct.as_secs());
+
+            // Mark that we have created an intent token on the user.
+            let modlist = ModifyList::new_append(
+                "credential_update_intent_token",
+                Value::IntentToken(token.sessionid, IntentTokenState::Valid),
+            );
+
+            self.qs_write
+                .internal_modify(
+                    // Filter as executed
+                    &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                    &modlist,
+                )
+                .map_err(|e| {
+                    request_error!(error = ?e);
+                    e
+                })?;
 
             Ok(CredentialUpdateIntentToken { token_enc })
         })
@@ -389,13 +426,19 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Need to change this to the expiry time, so we can purge up to.
         let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
-        let modlist = ModifyList::new_append(
-            "credential_update_intent_token",
+        let mut modlist = ModifyList::new();
+
+        modlist.push_mod(Modify::Removed(
+            AttrString::from("credential_update_intent_token"),
+            PartialValue::IntentToken(token.sessionid),
+        ));
+        modlist.push_mod(Modify::Present(
+            AttrString::from("credential_update_intent_token"),
             Value::IntentToken(
                 token.sessionid,
                 IntentTokenState::InProgress(sessionid, ct + MAXIMUM_CRED_UPDATE_TTL),
             ),
-        );
+        ));
 
         self.qs_write
             .internal_modify(
@@ -464,7 +507,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         let session_handle = self.cred_update_sessions.remove(&session_token.sessionid)
             .ok_or_else(|| {
-                admin_error!("No such sessionid exists on this server - may be due to a load balancer failover or replay?");
+                admin_error!("No such sessionid exists on this server - may be due to a load balancer failover or replay? {:?}", session_token.sessionid);
                 OperationError::InvalidState
             })?;
 
@@ -552,19 +595,24 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         self.cred_update_sessions.get(&session_token.sessionid)
             .ok_or_else(|| {
-                admin_error!("No such sessionid exists on this server - may be due to a load balancer failover or token replay?");
+                admin_error!("No such sessionid exists on this server - may be due to a load balancer failover or token replay? {}", session_token.sessionid);
                 OperationError::InvalidState
             })
             .cloned()
     }
 
-    pub async fn credential_status(
+    // I think I need this to be a try lock instead, and fail on error, because
+    // of the nature of the async bits.
+    pub fn credential_update_status(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let session = session_handle.lock().await;
+        let session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         let status: CredentialUpdateSessionStatus = session.deref().into();
@@ -715,14 +763,17 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         }
     }
 
-    pub async fn credential_primary_set_password(
+    pub fn credential_primary_set_password(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
         pw: &str,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         // Check pw quality (future - acc policy applies).
@@ -749,13 +800,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
-    pub async fn credential_primary_init_totp(
+    pub fn credential_primary_init_totp(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         // Is there something else in progress?
@@ -773,14 +827,17 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
-    pub async fn credential_primary_check_totp(
+    pub fn credential_primary_check_totp(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
         totp_chal: u32,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         // Are we in a totp reg state?
@@ -824,13 +881,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         }
     }
 
-    pub async fn credential_primary_accept_sha1_totp(
+    pub fn credential_primary_accept_sha1_totp(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         // Are we in a totp reg state?
@@ -856,13 +916,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         }
     }
 
-    pub async fn credential_primary_remove_totp(
+    pub fn credential_primary_remove_totp(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         if !matches!(session.mfaregstate, MfaRegState::None) {
@@ -886,13 +949,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
-    pub async fn credential_primary_init_backup_codes(
+    pub fn credential_primary_init_backup_codes(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         // I think we override/map the status to inject the codes as a once-off state message.
@@ -923,13 +989,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         })
     }
 
-    pub async fn credential_primary_remove_backup_codes(
+    pub fn credential_primary_remove_backup_codes(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
 
         let ncred = session
@@ -953,13 +1022,16 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
-    pub async fn credential_primary_delete(
+    pub fn credential_primary_delete(
         &self,
         cust: &CredentialUpdateSessionToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionStatus, OperationError> {
         let session_handle = self.get_current_session(cust, ct)?;
-        let mut session = session_handle.lock().await;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
         trace!(?session);
         session.primary = None;
         Ok(session.deref().into())
@@ -1348,7 +1420,8 @@ mod tests {
             // Get the credential status - this should tell
             // us the details of the credentials, as well as
             // if they are ready and valid to commit?
-            let c_status = task::block_on(cutxn.credential_status(&cust, ct))
+            let c_status = cutxn
+                .credential_update_status(&cust, ct)
                 .expect("Failed to get the current session status.");
 
             trace!(?c_status);
@@ -1357,9 +1430,9 @@ mod tests {
 
             // Test initially creating a credential.
             //   - pw first
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                    .expect("Failed to update the primary cred password");
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
 
             assert!(c_status.can_commit);
 
@@ -1373,12 +1446,14 @@ mod tests {
             let cust = renew_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
-            let c_status = task::block_on(cutxn.credential_status(&cust, ct))
+            let c_status = cutxn
+                .credential_update_status(&cust, ct)
                 .expect("Failed to get the current session status.");
             trace!(?c_status);
             assert!(c_status.primary.is_some());
 
-            let c_status = task::block_on(cutxn.credential_primary_delete(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_delete(&cust, ct)
                 .expect("Failed to delete the primary cred");
             trace!(?c_status);
             assert!(c_status.primary.is_none());
@@ -1408,15 +1483,16 @@ mod tests {
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                    .expect("Failed to update the primary cred password");
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
 
             // Since it's pw only.
             assert!(c_status.can_commit);
 
             //
-            let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_init_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             // Check the status has the token.
@@ -1433,7 +1509,8 @@ mod tests {
                 .expect("Failed to perform totp step");
 
             // Intentionally get it wrong.
-            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal + 1))
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal + 1)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(
@@ -1441,7 +1518,8 @@ mod tests {
                 MfaRegStateStatus::TotpTryAgain
             ));
 
-            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1463,7 +1541,8 @@ mod tests {
             let cust = renew_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
-            let c_status = task::block_on(cutxn.credential_primary_remove_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_remove_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1493,15 +1572,16 @@ mod tests {
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
-            let c_status =
-                task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                    .expect("Failed to update the primary cred password");
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
 
             // Since it's pw only.
             assert!(c_status.can_commit);
 
             //
-            let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_init_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             // Check the status has the token.
@@ -1520,7 +1600,8 @@ mod tests {
                 .expect("Failed to perform totp step");
 
             // Should getn the warn that it's sha1
-            let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+            let c_status = cutxn
+                .credential_primary_check_totp(&cust, ct, chal)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(
@@ -1529,7 +1610,8 @@ mod tests {
             ));
 
             // Accept it
-            let c_status = task::block_on(cutxn.credential_primary_accept_sha1_totp(&cust, ct))
+            let c_status = cutxn
+                .credential_primary_accept_sha1_totp(&cust, ct)
                 .expect("Failed to update the primary cred password");
 
             assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1561,17 +1643,18 @@ mod tests {
                 let cutxn = idms.cred_update_transaction();
 
                 // Setup the PW
-                let _c_status =
-                    task::block_on(cutxn.credential_primary_set_password(&cust, ct, test_pw))
-                        .expect("Failed to update the primary cred password");
+                let _c_status = cutxn
+                    .credential_primary_set_password(&cust, ct, test_pw)
+                    .expect("Failed to update the primary cred password");
 
                 // Backup codes are refused to be added because we don't have mfa yet.
                 assert!(matches!(
-                    task::block_on(cutxn.credential_primary_init_backup_codes(&cust, ct)),
+                    cutxn.credential_primary_init_backup_codes(&cust, ct),
                     Err(OperationError::InvalidState)
                 ));
 
-                let c_status = task::block_on(cutxn.credential_primary_init_totp(&cust, ct))
+                let c_status = cutxn
+                    .credential_primary_init_totp(&cust, ct)
                     .expect("Failed to update the primary cred password");
 
                 let totp_token: Totp = match c_status.mfaregstate {
@@ -1586,7 +1669,8 @@ mod tests {
                     .do_totp_duration_from_epoch(&ct)
                     .expect("Failed to perform totp step");
 
-                let c_status = task::block_on(cutxn.credential_primary_check_totp(&cust, ct, chal))
+                let c_status = cutxn
+                    .credential_primary_check_totp(&cust, ct, chal)
                     .expect("Failed to update the primary cred password");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
@@ -1597,9 +1681,9 @@ mod tests {
 
                 // Now good to go, we need to now add our backup codes.
                 // Whats the right way to get these back?
-                let c_status =
-                    task::block_on(cutxn.credential_primary_init_backup_codes(&cust, ct))
-                        .expect("Failed to update the primary cred password");
+                let c_status = cutxn
+                    .credential_primary_init_backup_codes(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
                 let codes = match c_status.mfaregstate {
                     MfaRegStateStatus::BackupCodes(codes) => Some(codes),
@@ -1635,7 +1719,8 @@ mod tests {
                 let cutxn = idms.cred_update_transaction();
 
                 // Only 7 codes left.
-                let c_status = task::block_on(cutxn.credential_status(&cust, ct))
+                let c_status = cutxn
+                    .credential_update_status(&cust, ct)
                     .expect("Failed to get the current session status.");
 
                 assert!(matches!(
@@ -1644,9 +1729,9 @@ mod tests {
                 ));
 
                 // If we remove codes, it leaves totp.
-                let c_status =
-                    task::block_on(cutxn.credential_primary_remove_backup_codes(&cust, ct))
-                        .expect("Failed to update the primary cred password");
+                let c_status = cutxn
+                    .credential_primary_remove_backup_codes(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
                 assert!(matches!(
@@ -1655,9 +1740,9 @@ mod tests {
                 ));
 
                 // Re-add the codes.
-                let c_status =
-                    task::block_on(cutxn.credential_primary_init_backup_codes(&cust, ct))
-                        .expect("Failed to update the primary cred password");
+                let c_status = cutxn
+                    .credential_primary_init_backup_codes(&cust, ct)
+                    .expect("Failed to update the primary cred password");
 
                 assert!(matches!(
                     c_status.mfaregstate,
@@ -1669,7 +1754,8 @@ mod tests {
                 ));
 
                 // If we remove totp, it removes codes.
-                let c_status = task::block_on(cutxn.credential_primary_remove_totp(&cust, ct))
+                let c_status = cutxn
+                    .credential_primary_remove_totp(&cust, ct)
                     .expect("Failed to update the primary cred password");
 
                 assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
