@@ -974,8 +974,8 @@
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::db::Db</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::unix_config</span>::{<span class="ident">HomeAttr</span>, <span class="ident">UidAttr</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::unix_proto</span>::{<span class="ident">HomeDirectoryInfo</span>, <span class="ident">NssGroup</span>, <span class="ident">NssUser</span>};
-<span class="kw">use</span> <span class="ident">kanidm_client::asynchronous::KanidmAsyncClient</span>;
 <span class="kw">use</span> <span class="ident">kanidm_client::ClientError</span>;
+<span class="kw">use</span> <span class="ident">kanidm_client::KanidmClient</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">OperationError</span>, <span class="ident">UnixGroupToken</span>, <span class="ident">UnixUserToken</span>};
 <span class="kw">use</span> <span class="ident">lru::LruCache</span>;
 <span class="kw">use</span> <span class="ident">reqwest::StatusCode</span>;
@@ -1004,7 +1004,7 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CacheLayer</span> {
     <span class="ident">db</span>: <span class="ident">Db</span>,
-    <span class="ident">client</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">KanidmAsyncClient</span><span class="op">&gt;</span>,
+    <span class="ident">client</span>: <span class="ident">RwLock</span><span class="op">&lt;</span><span class="ident">KanidmClient</span><span class="op">&gt;</span>,
     <span class="ident">state</span>: <span class="ident">Mutex</span><span class="op">&lt;</span><span class="ident">CacheState</span><span class="op">&gt;</span>,
     <span class="ident">pam_allow_groups</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="ident">timeout_seconds</span>: <span class="ident">u64</span>,
@@ -1035,7 +1035,7 @@
         <span class="comment">// cache timeout</span>
         <span class="ident">timeout_seconds</span>: <span class="ident">u64</span>,
         <span class="comment">//</span>
-        <span class="ident">client</span>: <span class="ident">KanidmAsyncClient</span>,
+        <span class="ident">client</span>: <span class="ident">KanidmClient</span>,
         <span class="ident">pam_allow_groups</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">default_shell</span>: <span class="ident">String</span>,
         <span class="ident">home_prefix</span>: <span class="ident">String</span>,

@@ -423,15 +423,11 @@
 <span id="418">418</span>
 <span id="419">419</span>
 <span id="420">420</span>
-<span id="421">421</span>
-<span id="422">422</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::data</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ldap</span>::{<span class="ident">LdapClient</span>, <span class="ident">LdapSchema</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::profile</span>::{<span class="ident">KaniHttpConfig</span>, <span class="ident">KaniLdapConfig</span>};
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">TargetServer</span>, <span class="ident">TargetServerBuilder</span>};
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{
-    <span class="ident">asynchronous::KanidmAsyncClient</span>, <span class="ident">ClientError</span>, <span class="ident">KanidmClientBuilder</span>, <span class="ident">StatusCode</span>,
-};
+<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClient</span>, <span class="ident">KanidmClientBuilder</span>, <span class="ident">StatusCode</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
@@ -441,7 +437,7 @@
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KaniHttpServer</span> {
     <span class="ident">uri</span>: <span class="ident">String</span>,
     <span class="ident">admin_pw</span>: <span class="ident">String</span>,
-    <span class="ident">client</span>: <span class="ident">KanidmAsyncClient</span>,
+    <span class="ident">client</span>: <span class="ident">KanidmClient</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
@@ -456,7 +452,7 @@
             .<span class="ident">address</span>(<span class="ident">uri</span>.<span class="ident">clone</span>())
             .<span class="ident">danger_accept_invalid_hostnames</span>(<span class="bool-val">true</span>)
             .<span class="ident">danger_accept_invalid_certs</span>(<span class="bool-val">true</span>)
-            .<span class="ident">build_async</span>()
+            .<span class="ident">build</span>()
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
                 <span class="macro">error!</span>(<span class="string">&quot;Unable to create kanidm client {:?}&quot;</span>, <span class="ident">e</span>);
             })<span class="question-mark">?</span>;

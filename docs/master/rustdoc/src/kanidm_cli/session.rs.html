@@ -468,16 +468,10 @@
 <span id="463">463</span>
 <span id="464">464</span>
 <span id="465">465</span>
-<span id="466">466</span>
-<span id="467">467</span>
-<span id="468">468</span>
-<span id="469">469</span>
-<span id="470">470</span>
-<span id="471">471</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::common::prompt_for_username_get_username</span>;
 <span class="kw">use</span> <span class="kw">crate</span>::{<span class="ident">LoginOpt</span>, <span class="ident">LogoutOpt</span>, <span class="ident">SessionOpt</span>};
 
-<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmAsyncClient</span>};
+<span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClient</span>};
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">AuthAllowed</span>, <span class="ident">AuthResponse</span>, <span class="ident">AuthState</span>, <span class="ident">UserAuthToken</span>};
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
 <span class="kw">use</span> <span class="ident">libc::umask</span>;
@@ -618,10 +612,7 @@
         <span class="self">self</span>.<span class="ident">copt</span>.<span class="ident">debug</span>
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_password</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_password</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">password</span> <span class="op">=</span> <span class="ident">rpassword::prompt_password</span>(<span class="string">&quot;Enter password: &quot;</span>).<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="string">&quot;Failed to create password prompt -- {:?}&quot;</span>, <span class="ident">e</span>);
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
@@ -629,10 +620,7 @@
         <span class="ident">client</span>.<span class="ident">auth_step_password</span>(<span class="ident">password</span>.<span class="ident">as_str</span>()).<span class="kw">await</span>
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_backup_code</span>(
-        <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_backup_code</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="macro">print!</span>(<span class="string">&quot;Enter Backup Code: &quot;</span>);
         <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::unwrap_used</span>)]</span>
@@ -650,7 +638,7 @@
         <span class="ident">client</span>.<span class="ident">auth_step_backup_code</span>(<span class="ident">backup_code</span>.<span class="ident">trim</span>()).<span class="kw">await</span>
     }
 
-    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_totp</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">totp</span> <span class="op">=</span> <span class="kw">loop</span> {
             <span class="macro">print!</span>(<span class="string">&quot;Enter TOTP: &quot;</span>);
             <span class="comment">// We flush stdout so it&#39;ll write the buffer to screen, continuing operation. Without it, the application halts.</span>
@@ -674,7 +662,7 @@
 
     <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">do_webauthn</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmAsyncClient</span>,
+        <span class="ident">client</span>: <span class="kw-2">&amp;mut</span> <span class="ident">KanidmClient</span>,
         <span class="ident">pkr</span>: <span class="ident">RequestChallengeResponse</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">AuthResponse</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">wa</span> <span class="op">=</span> <span class="ident">WebauthnAuthenticator::new</span>(<span class="ident">U2FHid::new</span>());
