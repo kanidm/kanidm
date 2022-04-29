@@ -1,8 +1,8 @@
 use crate::db::Db;
 use crate::unix_config::{HomeAttr, UidAttr};
 use crate::unix_proto::{HomeDirectoryInfo, NssGroup, NssUser};
-use kanidm_client::asynchronous::KanidmAsyncClient;
 use kanidm_client::ClientError;
+use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{OperationError, UnixGroupToken, UnixUserToken};
 use lru::LruCache;
 use reqwest::StatusCode;
@@ -31,7 +31,7 @@ enum CacheState {
 #[derive(Debug)]
 pub struct CacheLayer {
     db: Db,
-    client: RwLock<KanidmAsyncClient>,
+    client: RwLock<KanidmClient>,
     state: Mutex<CacheState>,
     pam_allow_groups: BTreeSet<String>,
     timeout_seconds: u64,
@@ -62,7 +62,7 @@ impl CacheLayer {
         // cache timeout
         timeout_seconds: u64,
         //
-        client: KanidmAsyncClient,
+        client: KanidmClient,
         pam_allow_groups: Vec<String>,
         default_shell: String,
         home_prefix: String,

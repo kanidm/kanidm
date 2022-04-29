@@ -1,7 +1,7 @@
 #![deny(warnings)]
 use std::collections::HashSet;
 
-use kanidm_client::asynchronous::KanidmAsyncClient;
+use kanidm_client::KanidmClient;
 use kanidm_proto::v1::{Filter, Modify, ModifyList};
 
 mod common;
@@ -56,7 +56,7 @@ static DEFAULT_HP_GROUP_NAMES: [&str; 24] = [
 static DEFAULT_NOT_HP_GROUP_NAMES: [&str; 2] =
     ["idm_account_unix_extend_priv", "idm_group_unix_extend_priv"];
 
-async fn create_user(rsclient: &KanidmAsyncClient, id: &str, group_name: &str) -> () {
+async fn create_user(rsclient: &KanidmClient, id: &str, group_name: &str) -> () {
     rsclient.idm_account_create(id, id).await.unwrap();
 
     // Create group and add to user to test read attr: member_of
@@ -70,7 +70,7 @@ async fn create_user(rsclient: &KanidmAsyncClient, id: &str, group_name: &str) -
         .unwrap();
 }
 
-async fn is_attr_writable(rsclient: &KanidmAsyncClient, id: &str, attr: &str) -> Option<bool> {
+async fn is_attr_writable(rsclient: &KanidmClient, id: &str, attr: &str) -> Option<bool> {
     println!("writing to attribute: {}", attr);
     match attr {
         "radius_secret" => Some(
@@ -130,7 +130,7 @@ async fn is_attr_writable(rsclient: &KanidmAsyncClient, id: &str, attr: &str) ->
     }
 }
 
-async fn add_all_attrs(rsclient: &KanidmAsyncClient, id: &str, group_name: &str) {
+async fn add_all_attrs(rsclient: &KanidmClient, id: &str, group_name: &str) {
     // Extend with posix attrs to test read attr: gidnumber and loginshell
     rsclient
         .idm_group_add_members("idm_admins", &[ADMIN_TEST_USER])
@@ -170,7 +170,7 @@ async fn add_all_attrs(rsclient: &KanidmAsyncClient, id: &str, group_name: &str)
 }
 
 async fn create_user_with_all_attrs(
-    rsclient: &KanidmAsyncClient,
+    rsclient: &KanidmClient,
     id: &str,
     optional_group: Option<&str>,
 ) -> () {
@@ -181,7 +181,7 @@ async fn create_user_with_all_attrs(
     add_all_attrs(&rsclient, id, group_name).await;
 }
 
-async fn login_account(rsclient: &KanidmAsyncClient, id: &str) -> () {
+async fn login_account(rsclient: &KanidmClient, id: &str) -> () {
     rsclient
         .idm_group_add_members(
             "idm_people_account_password_import_priv",
@@ -210,7 +210,7 @@ async fn login_account(rsclient: &KanidmAsyncClient, id: &str) -> () {
 // Login to the given account, but first login with default admin credentials.
 // This is necessary when switching between unprivileged accounts, but adds extra calls which
 // create extra debugging noise, so should be avoided when unnecessary.
-async fn login_account_via_admin(rsclient: &KanidmAsyncClient, id: &str) -> () {
+async fn login_account_via_admin(rsclient: &KanidmClient, id: &str) -> () {
     let _ = rsclient.logout();
     rsclient
         .auth_simple_password(ADMIN_TEST_USER, ADMIN_TEST_PASSWORD)
@@ -220,7 +220,7 @@ async fn login_account_via_admin(rsclient: &KanidmAsyncClient, id: &str) -> () {
 }
 
 async fn test_read_attrs(
-    rsclient: &KanidmAsyncClient,
+    rsclient: &KanidmClient,
     id: &str,
     attrs: &[&str],
     is_readable: bool,
@@ -247,7 +247,7 @@ async fn test_read_attrs(
 }
 
 async fn test_write_attrs(
-    rsclient: &KanidmAsyncClient,
+    rsclient: &KanidmClient,
     id: &str,
     attrs: &[&str],
     is_writeable: bool,
@@ -261,7 +261,7 @@ async fn test_write_attrs(
 }
 
 async fn test_modify_group(
-    rsclient: &KanidmAsyncClient,
+    rsclient: &KanidmClient,
     group_names: &[&str],
     is_modificable: bool,
 ) -> () {

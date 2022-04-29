@@ -58,7 +58,7 @@ async fn main() {
         None => client_builder,
     };
 
-    let client = client_builder.build_async().unwrap_or_else(|e| {
+    let client = client_builder.build().unwrap_or_else(|e| {
         error!("Failed to build client instance -- {:?}", e);
         std::process::exit(1);
     });

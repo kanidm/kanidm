@@ -1,7 +1,7 @@
 use crate::common::prompt_for_username_get_username;
 use crate::{LoginOpt, LogoutOpt, SessionOpt};
 
-use kanidm_client::{ClientError, KanidmAsyncClient};
+use kanidm_client::{ClientError, KanidmClient};
 use kanidm_proto::v1::{AuthAllowed, AuthResponse, AuthState, UserAuthToken};
 #[cfg(target_family = "unix")]
 use libc::umask;
@@ -142,10 +142,7 @@ impl LoginOpt {
         self.copt.debug
     }
 
-    async fn do_password(
-        &self,
-        client: &mut KanidmAsyncClient,
-    ) -> Result<AuthResponse, ClientError> {
+    async fn do_password(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         let password = rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
             error!("Failed to create password prompt -- {:?}", e);
             std::process::exit(1);
@@ -153,10 +150,7 @@ impl LoginOpt {
         client.auth_step_password(password.as_str()).await
     }
 
-    async fn do_backup_code(
-        &self,
-        client: &mut KanidmAsyncClient,
-    ) -> Result<AuthResponse, ClientError> {
+    async fn do_backup_code(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         print!("Enter Backup Code: ");
         // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
         #[allow(clippy::unwrap_used)]
@@ -174,7 +168,7 @@ impl LoginOpt {
         client.auth_step_backup_code(backup_code.trim()).await
     }
 
-    async fn do_totp(&self, client: &mut KanidmAsyncClient) -> Result<AuthResponse, ClientError> {
+    async fn do_totp(&self, client: &mut KanidmClient) -> Result<AuthResponse, ClientError> {
         let totp = loop {
             print!("Enter TOTP: ");
             // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
@@ -198,7 +192,7 @@ impl LoginOpt {
 
     async fn do_webauthn(
         &self,
-        client: &mut KanidmAsyncClient,
+        client: &mut KanidmClient,
         pkr: RequestChallengeResponse,
     ) -> Result<AuthResponse, ClientError> {
         let mut wa = WebauthnAuthenticator::new(U2FHid::new());

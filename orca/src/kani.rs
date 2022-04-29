@@ -2,9 +2,7 @@ use crate::data::*;
 use crate::ldap::{LdapClient, LdapSchema};
 use crate::profile::{KaniHttpConfig, KaniLdapConfig};
 use crate::{TargetServer, TargetServerBuilder};
-use kanidm_client::{
-    asynchronous::KanidmAsyncClient, ClientError, KanidmClientBuilder, StatusCode,
-};
+use kanidm_client::{ClientError, KanidmClient, KanidmClientBuilder, StatusCode};
 use kanidm_proto::v1::*;
 use std::collections::{HashMap, HashSet};
 use std::time::{Duration, Instant};
@@ -14,7 +12,7 @@ use uuid::Uuid;
 pub struct KaniHttpServer {
     uri: String,
     admin_pw: String,
-    client: KanidmAsyncClient,
+    client: KanidmClient,
 }
 
 #[derive(Debug)]
@@ -29,7 +27,7 @@ impl KaniHttpServer {
             .address(uri.clone())
             .danger_accept_invalid_hostnames(true)
             .danger_accept_invalid_certs(true)
-            .build_async()
+            .build()
             .map_err(|e| {
                 error!("Unable to create kanidm client {:?}", e);
             })?;
