@@ -142,7 +142,10 @@ impl LoginOpt {
         self.copt.debug
     }
 
-    async fn do_password(&self, client: &mut KanidmAsyncClient) -> Result<AuthResponse, ClientError> {
+    async fn do_password(
+        &self,
+        client: &mut KanidmAsyncClient,
+    ) -> Result<AuthResponse, ClientError> {
         let password = rpassword::prompt_password("Enter password: ").unwrap_or_else(|e| {
             error!("Failed to create password prompt -- {:?}", e);
             std::process::exit(1);
@@ -150,7 +153,10 @@ impl LoginOpt {
         client.auth_step_password(password.as_str()).await
     }
 
-    async fn do_backup_code(&self, client: &mut KanidmAsyncClient) -> Result<AuthResponse, ClientError> {
+    async fn do_backup_code(
+        &self,
+        client: &mut KanidmAsyncClient,
+    ) -> Result<AuthResponse, ClientError> {
         print!("Enter Backup Code: ");
         // We flush stdout so it'll write the buffer to screen, continuing operation. Without it, the application halts.
         #[allow(clippy::unwrap_used)]
@@ -251,10 +257,13 @@ impl LoginOpt {
             }
         };
 
-        let mut allowed = client.auth_step_begin((*mech).clone()).await.unwrap_or_else(|e| {
-            error!("Error during authentication begin phase: {:?}", e);
-            std::process::exit(1);
-        });
+        let mut allowed = client
+            .auth_step_begin((*mech).clone())
+            .await
+            .unwrap_or_else(|e| {
+                error!("Error during authentication begin phase: {:?}", e);
+                std::process::exit(1);
+            });
 
         // We now have the first auth state, so we can proceed until complete.
         loop {

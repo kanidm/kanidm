@@ -2112,6 +2112,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.pw_badlist_cache.commit();
             self.mfareg_sessions.commit();
             self.cred_update_sessions.commit();
+            trace!("cred_update_session.commit");
             self.qs_write.commit()
         })
     }

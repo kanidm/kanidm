@@ -821,6 +821,46 @@ pub enum SetCredentialResponse {
     BackupCodes(Vec<String>),
 }
 
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CUIntentToken {
+    pub intent_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CUSessionToken {
+    pub session_token: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum CURequest {
+    PrimaryRemove,
+    Password(String),
+    TotpGenerate,
+    TotpVerify(u32),
+    TotpAcceptSha1,
+    TotpRemove,
+    BackupCodeGenerate,
+    BackupCodeRemove,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum CURegState {
+    // Nothing in progress.
+    None,
+    TotpCheck(TotpSecret),
+    TotpTryAgain,
+    TotpInvalidSha1,
+    BackupCodes(Vec<String>),
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct CUStatus {
+    pub can_commit: bool,
+    pub primary: Option<CredentialDetail>,
+    pub mfaregstate: CURegState,
+}
+
 /* Recycle Requests area */
 
 // Only two actions on recycled is possible. Search and Revive.

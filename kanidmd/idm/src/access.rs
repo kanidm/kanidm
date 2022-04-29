@@ -1412,6 +1412,10 @@ pub struct AccessControlsReadTransaction<'a> {
         Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
+unsafe impl<'a> Sync for AccessControlsReadTransaction<'a> {}
+
+unsafe impl<'a> Send for AccessControlsReadTransaction<'a> {}
+
 impl<'a> AccessControlsTransaction<'a> for AccessControlsReadTransaction<'a> {
     fn get_search(&self) -> &Vec<AccessControlSearch> {
         &self.inner.acps_search

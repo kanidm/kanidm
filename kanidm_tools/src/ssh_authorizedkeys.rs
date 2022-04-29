@@ -70,7 +70,9 @@ async fn main() {
             error!("Failed to retrieve password - {:?}", e);
             std::process::exit(1);
         });
-        client.auth_simple_password(opt.username.as_str(), password.as_str()).await
+        client
+            .auth_simple_password(opt.username.as_str(), password.as_str())
+            .await
     };
     if r.is_err() {
         match r {
@@ -82,7 +84,10 @@ async fn main() {
         std::process::exit(1);
     }
 
-    match client.idm_account_get_ssh_pubkeys(opt.account_id.as_str()).await {
+    match client
+        .idm_account_get_ssh_pubkeys(opt.account_id.as_str())
+        .await
+    {
         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
         Err(e) => error!("Failed to retrieve pubkeys - {:?}", e),
     }

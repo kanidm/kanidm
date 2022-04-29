@@ -1367,5 +1367,59 @@ async fn test_server_rest_oauth2_basic_lifecycle() {
 
 #[tokio::test]
 async fn test_server_credential_update_session_pw() {
-    let _rsclient = setup_async_test().await;
+    let rsclient = setup_async_test().await;
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", &["admin"])
+        .await
+        .unwrap();
+
+    // Create an account
+    rsclient
+        .idm_account_create("demo_account", "Demo Account")
+        .await
+        .unwrap();
+
+    // Create an intent token for them
+    let intent_token = rsclient
+        .idm_account_credential_update_intent("demo_account")
+        .await
+        .unwrap();
+
+    // Logout, we don't need any auth now.
+    let _ = rsclient.logout();
+    // Exchange the intent token
+    let session_token = rsclient
+        .idm_account_credential_update_exchange(intent_token)
+        .await
+        .unwrap();
+
+    let _status = rsclient
+        .idm_account_credential_update_status(&session_token)
+        .await
+        .unwrap();
+
+    // Setup and update the password
+    let _status = rsclient
+        .idm_account_credential_update_set_password(&session_token, "eicieY7ahchaoCh0eeTa")
+        .await
+        .unwrap();
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .unwrap();
+
+    // Assert it now works.
+    let _ = rsclient.logout();
+    let res = rsclient
+        .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
+        .await;
+    assert!(res.is_ok());
 }

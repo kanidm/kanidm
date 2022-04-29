@@ -84,6 +84,10 @@ pub struct QueryServerReadTransaction<'a> {
         Cell<ARCacheReadTxn<'a, (IdentityId, Filter<FilterValid>), Filter<FilterValidResolved>>>,
 }
 
+unsafe impl<'a> Sync for QueryServerReadTransaction<'a> {}
+
+unsafe impl<'a> Send for QueryServerReadTransaction<'a> {}
+
 pub struct QueryServerWriteTransaction<'a> {
     committed: bool,
     d_info: CowCellWriteTxn<'a, DomainInfo>,

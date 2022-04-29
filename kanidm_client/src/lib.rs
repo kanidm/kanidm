@@ -370,4 +370,3 @@ impl KanidmClientBuilder {
         })
     }
 }
-

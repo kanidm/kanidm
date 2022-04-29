@@ -73,7 +73,10 @@ impl GroupOpt {
                 let client = gcopt.copt.to_client().await;
                 let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
-                match client.idm_group_add_members(gcopt.name.as_str(), &new_members).await {
+                match client
+                    .idm_group_add_members(gcopt.name.as_str(), &new_members)
+                    .await
+                {
                     Err(e) => error!("Error -> {:?}", e),
                     Ok(_) => warn!("Successfully added members to {}", gcopt.name.as_str()),
                 }
@@ -83,7 +86,10 @@ impl GroupOpt {
                 let client = gcopt.copt.to_client().await;
                 let remove_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
-                match client.idm_group_remove_members(gcopt.name.as_str(), &remove_members).await {
+                match client
+                    .idm_group_remove_members(gcopt.name.as_str(), &remove_members)
+                    .await
+                {
                     Err(e) => error!("Failed to remove members -> {:?}", e),
                     Ok(_) => println!("Successfully removed members from {}", gcopt.name.as_str()),
                 }
@@ -93,7 +99,10 @@ impl GroupOpt {
                 let client = gcopt.copt.to_client().await;
                 let new_members: Vec<&str> = gcopt.members.iter().map(String::as_str).collect();
 
-                match client.idm_group_set_members(gcopt.name.as_str(), &new_members).await {
+                match client
+                    .idm_group_set_members(gcopt.name.as_str(), &new_members)
+                    .await
+                {
                     Err(e) => error!("Error -> {:?}", e),
                     Ok(_) => println!("Successfully set members for group {}", gcopt.name.as_str()),
                 }
@@ -108,7 +117,10 @@ impl GroupOpt {
                 }
                 GroupPosix::Set(gcopt) => {
                     let client = gcopt.copt.to_client().await;
-                    match client.idm_group_unix_extend(gcopt.name.as_str(), gcopt.gidnumber).await {
+                    match client
+                        .idm_group_unix_extend(gcopt.name.as_str(), gcopt.gidnumber)
+                        .await
+                    {
                         Err(e) => error!("Error -> {:?}", e),
                         Ok(_) => println!(
                             "Success adding POSIX configuration for group {}",

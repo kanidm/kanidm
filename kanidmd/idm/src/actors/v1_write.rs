@@ -1,10 +1,15 @@
 use std::iter;
 use std::sync::Arc;
+use std::time::Duration;
 use tracing::{info, instrument, span, trace, Level};
 
 use crate::idm::event::GenerateBackupCodeEvent;
 use crate::idm::event::RemoveBackupCodeEvent;
 use crate::prelude::*;
+
+use crate::idm::credupdatesession::{
+    CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateIntentEvent,
+};
 
 use crate::event::{
     CreateEvent, DeleteEvent, ModifyEvent, PurgeRecycledEvent, PurgeTombstoneEvent,
@@ -28,8 +33,8 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
-    AccountPersonSet, AccountUnixExtend, CreateRequest, DeleteRequest, GroupUnixExtend,
-    ModifyRequest, SetCredentialRequest, SetCredentialResponse,
+    AccountPersonSet, AccountUnixExtend, CUIntentToken, CUSessionToken, CreateRequest,
+    DeleteRequest, GroupUnixExtend, ModifyRequest, SetCredentialRequest, SetCredentialResponse,
 };
 
 use uuid::Uuid;
@@ -646,6 +651,125 @@ impl QueryServerWriteV1 {
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
             }
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialupdateintent",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdateintent(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        ttl: Option<Duration>,
+        eventid: Uuid,
+    ) -> Result<CUIntentToken, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmCredentialUpdateIntent>", {
+            let ident = idms_prox_write
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
+
+            idms_prox_write
+                .init_credential_update_intent(
+                    &InitCredentialUpdateIntentEvent::new(ident, target_uuid, ttl),
+                    ct,
+                )
+                .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin init_credential_update_intent",
+                    );
+                    e
+                })
+                .map(|tok| CUIntentToken {
+                    intent_token: tok.token_enc,
+                })
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialexchangeintent",
+        skip(self, intent_token, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialexchangeintent(
+        &self,
+        intent_token: CUIntentToken,
+        eventid: Uuid,
+    ) -> Result<CUSessionToken, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmCredentialExchangeIntent>", {
+            let intent_token = CredentialUpdateIntentToken {
+                token_enc: intent_token.intent_token,
+            };
+
+            idms_prox_write
+                .exchange_intent_credential_update(intent_token, ct)
+                .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin exchange_intent_credential_update",
+                    );
+                    e
+                })
+                .map(|tok| CUSessionToken {
+                    session_token: tok.token_enc,
+                })
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialupdatecommit",
+        skip(self, session_token, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdatecommit(
+        &self,
+        session_token: CUSessionToken,
+        eventid: Uuid,
+    ) -> Result<(), OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmCredentialUpdateCommit>", {
+            let session_token = CredentialUpdateSessionToken {
+                token_enc: session_token.session_token,
+            };
+
+            idms_prox_write
+                .commit_credential_update(session_token, ct)
+                .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin commit_credential_update",
+                    );
+                    e
+                })
         });
         res
     }

@@ -7,13 +7,15 @@ use kanidm::status::StatusRequestEvent;
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
     AccountPersonSet, AccountUnixExtend, AuthRequest, AuthResponse, AuthState as ProtoAuthState,
-    CreateRequest, DeleteRequest, GroupUnixExtend, ModifyRequest, OperationError, SearchRequest,
-    SetCredentialRequest, SingleStringRequest,
+    CUIntentToken, CURequest, CUSessionToken, CreateRequest, DeleteRequest, GroupUnixExtend,
+    ModifyRequest, OperationError, SearchRequest, SetCredentialRequest, SingleStringRequest,
 };
 
 use super::{to_tide_response, AppState, RequestExtensions};
 use async_std::task;
 use compact_jwt::Jws;
+use std::str::FromStr;
+use std::time::Duration;
 
 use serde::{Deserialize, Serialize};
 
@@ -409,6 +411,79 @@ pub async fn account_id_delete(req: tide::Request<AppState>) -> tide::Result {
 
 pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> tide::Result {
     json_rest_event_credential_put(req).await
+}
+
+pub async fn account_get_id_credential_update_intent(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+    let ttl = req
+        .param("ttl")
+        .ok()
+        .and_then(|s| {
+            u64::from_str(s)
+                .map_err(|_e| {
+                    error!("Invalid TTL integer, ignoring.");
+                })
+                .ok()
+        })
+        .map(|s| Duration::from_secs(s));
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmcredentialupdateintent(uat, uuid_or_name, ttl, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn credential_update_exchange_intent(mut req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let intent_token: CUIntentToken = req.body_json().await?;
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmcredentialexchangeintent(intent_token, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn credential_update_status(mut req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let session_token: CUSessionToken = req.body_json().await?;
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_idmcredentialupdatestatus(session_token, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn credential_update_update(mut req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let (scr, session_token): (CURequest, CUSessionToken) = req.body_json().await?;
+
+    let res = req
+        .state()
+        .qe_r_ref
+        .handle_idmcredentialupdate(session_token, scr, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
+pub async fn credential_update_commit(mut req: tide::Request<AppState>) -> tide::Result {
+    let (eventid, hvalue) = req.new_eventid();
+    let session_token: CUSessionToken = req.body_json().await?;
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmcredentialupdatecommit(session_token, eventid)
+        .await;
+    to_tide_response(res, hvalue)
 }
 
 pub async fn account_get_id_credential_status(req: tide::Request<AppState>) -> tide::Result {

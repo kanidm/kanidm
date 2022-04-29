@@ -10,6 +10,7 @@ use crate::be::BackendTransaction;
 use crate::event::{
     AuthEvent, AuthResult, OnlineBackupEvent, SearchEvent, SearchResult, WhoamiResult,
 };
+use crate::idm::credupdatesession::CredentialUpdateSessionToken;
 use crate::idm::event::{
     CredentialStatusEvent, RadiusAuthTokenEvent, ReadBackupCodeEvent, UnixGroupTokenEvent,
     UnixUserAuthEvent, UnixUserTokenEvent,
@@ -27,8 +28,8 @@ use crate::ldap::{LdapBoundToken, LdapResponseState, LdapServer};
 
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::{
-    AuthRequest, CredentialStatus, SearchRequest, SearchResponse, UnixGroupToken, UnixUserToken,
-    WhoamiResponse,
+    AuthRequest, CURequest, CUSessionToken, CUStatus, CredentialStatus, SearchRequest,
+    SearchResponse, UnixGroupToken, UnixUserToken, WhoamiResponse,
 };
 
 use regex::Regex;
@@ -963,6 +964,136 @@ impl QueryServerReadV1 {
             trace!(?rbce, "Begin event");
 
             idms_prox_read.get_backup_codes(&rbce)
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialupdatestatus",
+        skip(self, session_token, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdatestatus(
+        &self,
+        session_token: CUSessionToken,
+        eventid: Uuid,
+    ) -> Result<CUStatus, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_cred_update = self.idms.cred_update_transaction_async().await;
+        let res = spanned!("actors::v1_read::handle<IdmCredentialUpdateStatus>", {
+            let session_token = CredentialUpdateSessionToken {
+                token_enc: session_token.session_token,
+            };
+
+            idms_cred_update
+                .credential_update_status(&session_token, ct)
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin credential_update_status",
+                    );
+                    e
+                })
+                .map(|sta| sta.into())
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialupdate",
+        skip(self, session_token, scr, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdate(
+        &self,
+        session_token: CUSessionToken,
+        scr: CURequest,
+        eventid: Uuid,
+    ) -> Result<CUStatus, OperationError> {
+        let ct = duration_from_epoch_now();
+        let idms_cred_update = self.idms.cred_update_transaction_async().await;
+        let res = spanned!("actors::v1_read::handle<IdmCredentialUpdate>", {
+            let session_token = CredentialUpdateSessionToken {
+                token_enc: session_token.session_token,
+            };
+
+            match scr {
+                CURequest::PrimaryRemove => idms_cred_update
+                    .credential_primary_delete(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_delete",
+                        );
+                        e
+                    }),
+                CURequest::Password(pw) => idms_cred_update
+                    .credential_primary_set_password(&session_token, ct, &pw)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_set_password",
+                        );
+                        e
+                    }),
+                CURequest::TotpGenerate => idms_cred_update
+                    .credential_primary_init_totp(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_init_totp",
+                        );
+                        e
+                    }),
+                CURequest::TotpVerify(totp_chal) => idms_cred_update
+                    .credential_primary_check_totp(&session_token, ct, totp_chal)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_check_totp",
+                        );
+                        e
+                    }),
+                CURequest::TotpAcceptSha1 => idms_cred_update
+                    .credential_primary_accept_sha1_totp(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_remove_totp",
+                        );
+                        e
+                    }),
+                CURequest::TotpRemove => idms_cred_update
+                    .credential_primary_remove_totp(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_remove_totp",
+                        );
+                        e
+                    }),
+                CURequest::BackupCodeGenerate => idms_cred_update
+                    .credential_primary_init_backup_codes(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_init_backup_codes",
+                        );
+                        e
+                    }),
+                CURequest::BackupCodeRemove => idms_cred_update
+                    .credential_primary_remove_backup_codes(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_primary_remove_backup_codes",
+                        );
+                        e
+                    }),
+            }
+            .map(|sta| sta.into())
         });
         res
     }

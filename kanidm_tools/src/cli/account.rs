@@ -75,10 +75,13 @@ impl AccountOpt {
                         }
                     };
 
-                    if let Err(e) = client.idm_account_primary_credential_set_password(
-                        acsopt.aopts.account_id.as_str(),
-                        password.as_str(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_primary_credential_set_password(
+                            acsopt.aopts.account_id.as_str(),
+                            password.as_str(),
+                        )
+                        .await
+                    {
                         match e {
                             // TODO: once the password length is configurable at a system level (#498), pull from the configuration.
                             ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
@@ -91,9 +94,12 @@ impl AccountOpt {
                 AccountCredential::GeneratePassword(acsopt) => {
                     let client = acsopt.copt.to_client().await;
 
-                    match client.idm_account_primary_credential_set_generated(
-                        acsopt.aopts.account_id.as_str(),
-                    ).await {
+                    match client
+                        .idm_account_primary_credential_set_generated(
+                            acsopt.aopts.account_id.as_str(),
+                        )
+                        .await
+                    {
                         Ok(npw) => {
                             println!(
                                 "Generated password for {}: {}",
@@ -112,7 +118,9 @@ impl AccountOpt {
                         .idm_account_primary_credential_register_webauthn(
                             acsopt.aopts.account_id.as_str(),
                             acsopt.tag.as_str(),
-                        ).await {
+                        )
+                        .await
+                    {
                         Ok(v) => v,
                         Err(e) => {
                             error!("Error Starting Registration -> {:?}", e);
@@ -132,11 +140,14 @@ impl AccountOpt {
                         }
                     };
 
-                    match client.idm_account_primary_credential_complete_webuthn_registration(
-                        acsopt.aopts.account_id.as_str(),
-                        rego,
-                        session,
-                    ).await {
+                    match client
+                        .idm_account_primary_credential_complete_webuthn_registration(
+                            acsopt.aopts.account_id.as_str(),
+                            rego,
+                            session,
+                        )
+                        .await
+                    {
                         Ok(()) => {
                             println!("Webauthn token registration success.");
                         }
@@ -147,10 +158,13 @@ impl AccountOpt {
                 }
                 AccountCredential::RemoveWebauthn(acsopt) => {
                     let client = acsopt.copt.to_client().await;
-                    match client.idm_account_primary_credential_remove_webauthn(
-                        acsopt.aopts.account_id.as_str(),
-                        acsopt.tag.as_str(),
-                    ).await {
+                    match client
+                        .idm_account_primary_credential_remove_webauthn(
+                            acsopt.aopts.account_id.as_str(),
+                            acsopt.tag.as_str(),
+                        )
+                        .await
+                    {
                         Ok(_) => {
                             println!("Webauthn removal success.");
                         }
@@ -161,9 +175,12 @@ impl AccountOpt {
                 }
                 AccountCredential::RegisterTotp(acsopt) => {
                     let client = acsopt.copt.to_client().await;
-                    let (session, tok) = match client.idm_account_primary_credential_generate_totp(
-                        acsopt.aopts.account_id.as_str(),
-                    ).await {
+                    let (session, tok) = match client
+                        .idm_account_primary_credential_generate_totp(
+                            acsopt.aopts.account_id.as_str(),
+                        )
+                        .await
+                    {
                         Ok(v) => v,
                         Err(e) => {
                             error!("Error Starting Registration -> {:?}", e);
@@ -221,11 +238,14 @@ impl AccountOpt {
                             }
                         };
 
-                        match client.idm_account_primary_credential_verify_totp(
-                            acsopt.aopts.account_id.as_str(),
-                            totp,
-                            session,
-                        ).await {
+                        match client
+                            .idm_account_primary_credential_verify_totp(
+                                acsopt.aopts.account_id.as_str(),
+                                totp,
+                                session,
+                            )
+                            .await
+                        {
                             Ok(_) => {
                                 println!("TOTP registration success.");
                                 break;
@@ -243,10 +263,13 @@ impl AccountOpt {
                                 };
 
                                 if confirm_input.to_lowercase().trim() == "i am sure" {
-                                    match client.idm_account_primary_credential_accept_sha1_totp(
-                                        acsopt.aopts.account_id.as_str(),
-                                        session,
-                                    ).await {
+                                    match client
+                                        .idm_account_primary_credential_accept_sha1_totp(
+                                            acsopt.aopts.account_id.as_str(),
+                                            session,
+                                        )
+                                        .await
+                                    {
                                         Ok(_) => {
                                             println!("TOTP registration success.");
                                         }
@@ -273,9 +296,12 @@ impl AccountOpt {
                 }
                 AccountCredential::RemoveTotp(acsopt) => {
                     let client = acsopt.copt.to_client().await;
-                    match client.idm_account_primary_credential_remove_totp(
-                        acsopt.aopts.account_id.as_str(),
-                    ).await {
+                    match client
+                        .idm_account_primary_credential_remove_totp(
+                            acsopt.aopts.account_id.as_str(),
+                        )
+                        .await
+                    {
                         Ok(_) => {
                             println!("TOTP removal success.");
                         }
@@ -286,9 +312,12 @@ impl AccountOpt {
                 }
                 AccountCredential::BackupCodeGenerate(acsopt) => {
                     let client = acsopt.copt.to_client().await;
-                    match client.idm_account_primary_credential_generate_backup_code(
-                        acsopt.aopts.account_id.as_str(),
-                    ).await {
+                    match client
+                        .idm_account_primary_credential_generate_backup_code(
+                            acsopt.aopts.account_id.as_str(),
+                        )
+                        .await
+                    {
                         Ok(s) => {
                             println!("Please store these Backup codes in a safe place");
                             println!("---");
@@ -302,9 +331,12 @@ impl AccountOpt {
                 }
                 AccountCredential::BackupCodeRemove(acsopt) => {
                     let client = acsopt.copt.to_client().await;
-                    match client.idm_account_primary_credential_remove_backup_code(
-                        acsopt.aopts.account_id.as_str(),
-                    ).await {
+                    match client
+                        .idm_account_primary_credential_remove_backup_code(
+                            acsopt.aopts.account_id.as_str(),
+                        )
+                        .await
+                    {
                         Ok(_) => {
                             println!("BackupCodeRemove success.");
                         }
@@ -315,7 +347,9 @@ impl AccountOpt {
                 }
                 AccountCredential::Status(acsopt) => {
                     let client = acsopt.copt.to_client().await;
-                    match client.idm_account_get_credential_status(acsopt.aopts.account_id.as_str()).await
+                    match client
+                        .idm_account_get_credential_status(acsopt.aopts.account_id.as_str())
+                        .await
                     {
                         Ok(status) => {
                             print!("{}", status);
@@ -330,8 +364,9 @@ impl AccountOpt {
                 AccountRadius::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
 
-                    let rcred =
-                        client.idm_account_radius_credential_get(aopt.aopts.account_id.as_str()).await;
+                    let rcred = client
+                        .idm_account_radius_credential_get(aopt.aopts.account_id.as_str())
+                        .await;
 
                     match rcred {
                         Ok(Some(s)) => println!("Radius secret: {}", s),
@@ -352,8 +387,8 @@ impl AccountOpt {
                 }
                 AccountRadius::Delete(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) =
-                        client.idm_account_radius_credential_delete(aopt.aopts.account_id.as_str())
+                    if let Err(e) = client
+                        .idm_account_radius_credential_delete(aopt.aopts.account_id.as_str())
                         .await
                     {
                         error!("Error -> {:?}", e);
@@ -363,7 +398,10 @@ impl AccountOpt {
             AccountOpt::Posix(apopt) => match apopt {
                 AccountPosix::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    match client.idm_account_unix_token_get(aopt.aopts.account_id.as_str()).await {
+                    match client
+                        .idm_account_unix_token_get(aopt.aopts.account_id.as_str())
+                        .await
+                    {
                         Ok(token) => println!("{}", token),
                         Err(e) => {
                             error!("Error -> {:?}", e);
@@ -372,11 +410,14 @@ impl AccountOpt {
                 }
                 AccountPosix::Set(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client.idm_account_unix_extend(
-                        aopt.aopts.account_id.as_str(),
-                        aopt.gidnumber,
-                        aopt.shell.as_deref(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_unix_extend(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.gidnumber,
+                            aopt.shell.as_deref(),
+                        )
+                        .await
+                    {
                         error!("Error -> {:?}", e);
                     }
                 }
@@ -390,10 +431,13 @@ impl AccountOpt {
                         }
                     };
 
-                    if let Err(e) = client.idm_account_unix_cred_put(
-                        aopt.aopts.account_id.as_str(),
-                        password.as_str(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_unix_cred_put(
+                            aopt.aopts.account_id.as_str(),
+                            password.as_str(),
+                        )
+                        .await
+                    {
                         error!("Error -> {:?}", e);
                     }
                 }
@@ -401,21 +445,27 @@ impl AccountOpt {
             AccountOpt::Person(apopt) => match apopt {
                 AccountPerson::Extend(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client.idm_account_person_extend(
-                        aopt.aopts.account_id.as_str(),
-                        aopt.mail.as_deref(),
-                        aopt.legalname.as_deref(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_person_extend(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.mail.as_deref(),
+                            aopt.legalname.as_deref(),
+                        )
+                        .await
+                    {
                         error!("Error -> {:?}", e);
                     }
                 }
                 AccountPerson::Set(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client.idm_account_person_set(
-                        aopt.aopts.account_id.as_str(),
-                        aopt.mail.as_deref(),
-                        aopt.legalname.as_deref(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_person_set(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.mail.as_deref(),
+                            aopt.legalname.as_deref(),
+                        )
+                        .await
+                    {
                         error!("Error -> {:?}", e);
                     }
                 }
@@ -424,7 +474,10 @@ impl AccountOpt {
                 AccountSsh::List(aopt) => {
                     let client = aopt.copt.to_client().await;
 
-                    match client.idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str()).await {
+                    match client
+                        .idm_account_get_ssh_pubkeys(aopt.aopts.account_id.as_str())
+                        .await
+                    {
                         Ok(pkeys) => pkeys.iter().for_each(|pkey| println!("{}", pkey)),
                         Err(e) => {
                             error!("Error -> {:?}", e);
@@ -433,20 +486,26 @@ impl AccountOpt {
                 }
                 AccountSsh::Add(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client.idm_account_post_ssh_pubkey(
-                        aopt.aopts.account_id.as_str(),
-                        aopt.tag.as_str(),
-                        aopt.pubkey.as_str(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_post_ssh_pubkey(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.tag.as_str(),
+                            aopt.pubkey.as_str(),
+                        )
+                        .await
+                    {
                         error!("Error -> {:?}", e);
                     }
                 }
                 AccountSsh::Delete(aopt) => {
                     let client = aopt.copt.to_client().await;
-                    if let Err(e) = client.idm_account_delete_ssh_pubkey(
-                        aopt.aopts.account_id.as_str(),
-                        aopt.tag.as_str(),
-                    ).await {
+                    if let Err(e) = client
+                        .idm_account_delete_ssh_pubkey(
+                            aopt.aopts.account_id.as_str(),
+                            aopt.tag.as_str(),
+                        )
+                        .await
+                    {
                         error!("Error -> {:?}", e);
                     }
                 }
@@ -468,16 +527,22 @@ impl AccountOpt {
             }
             AccountOpt::Delete(aopt) => {
                 let client = aopt.copt.to_client().await;
-                if let Err(e) = client.idm_account_delete(aopt.aopts.account_id.as_str()).await {
+                if let Err(e) = client
+                    .idm_account_delete(aopt.aopts.account_id.as_str())
+                    .await
+                {
                     error!("Error -> {:?}", e)
                 }
             }
             AccountOpt::Create(acopt) => {
                 let client = acopt.copt.to_client().await;
-                if let Err(e) = client.idm_account_create(
-                    acopt.aopts.account_id.as_str(),
-                    acopt.display_name.as_str(),
-                ).await {
+                if let Err(e) = client
+                    .idm_account_create(
+                        acopt.aopts.account_id.as_str(),
+                        acopt.display_name.as_str(),
+                    )
+                    .await
+                {
                     error!("Error -> {:?}", e)
                 }
             }
@@ -487,22 +552,22 @@ impl AccountOpt {
 
                     let ex = match client
                         .idm_account_get_attr(ano.aopts.account_id.as_str(), "account_expire")
-                        .await {
+                        .await
+                    {
                         Ok(v) => v,
-                        Err(e) => { error!("Error -> {:?}", e);
+                        Err(e) => {
+                            error!("Error -> {:?}", e);
                             return;
                         }
                     };
 
-                    let vf = match
-                            client
-                                .idm_account_get_attr(
-                                    ano.aopts.account_id.as_str(),
-                                    "account_valid_from",
-                                )
-                                .await {
+                    let vf = match client
+                        .idm_account_get_attr(ano.aopts.account_id.as_str(), "account_valid_from")
+                        .await
+                    {
                         Ok(v) => v,
-                        Err(e) => { error!("Error -> {:?}", e);
+                        Err(e) => {
+                            error!("Error -> {:?}", e);
                             return;
                         }
                     };
@@ -558,11 +623,14 @@ impl AccountOpt {
                             return;
                         }
 
-                        match client.idm_account_set_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_expire",
-                            &[ano.datetime.as_str()],
-                        ).await {
+                        match client
+                            .idm_account_set_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_expire",
+                                &[ano.datetime.as_str()],
+                            )
+                            .await
+                        {
                             Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
@@ -572,10 +640,13 @@ impl AccountOpt {
                     let client = ano.copt.to_client().await;
                     if matches!(ano.datetime.as_str(), "any" | "clear" | "whenever") {
                         // Unset the value
-                        match client.idm_account_purge_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_valid_from",
-                        ).await {
+                        match client
+                            .idm_account_purge_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_valid_from",
+                            )
+                            .await
+                        {
                             Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
@@ -588,11 +659,14 @@ impl AccountOpt {
                             return;
                         }
 
-                        match client.idm_account_set_attr(
-                            ano.aopts.account_id.as_str(),
-                            "account_valid_from",
-                            &[ano.datetime.as_str()],
-                        ).await {
+                        match client
+                            .idm_account_set_attr(
+                                ano.aopts.account_id.as_str(),
+                                "account_valid_from",
+                                &[ano.datetime.as_str()],
+                            )
+                            .await
+                        {
                             Err(e) => error!("Error -> {:?}", e),
                             _ => println!("Success"),
                         }
