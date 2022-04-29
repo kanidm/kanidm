@@ -2,12 +2,12 @@ use crate::session::read_tokens;
 use crate::CommonOpt;
 use compact_jwt::{Jws, JwsUnverified};
 use dialoguer::{theme::ColorfulTheme, Select};
-use kanidm_client::{KanidmAsyncClient, KanidmClientBuilder};
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use kanidm_proto::v1::UserAuthToken;
 use std::str::FromStr;
 
 impl CommonOpt {
-    pub fn to_unauth_client(&self) -> KanidmAsyncClient {
+    pub fn to_unauth_client(&self) -> KanidmClient {
         let config_path: String = shellexpand::tilde("~/.config/kanidm").into_owned();
 
         let client_builder = KanidmClientBuilder::new()
@@ -46,13 +46,13 @@ impl CommonOpt {
             client_builder
         );
 
-        client_builder.build_async().unwrap_or_else(|e| {
+        client_builder.build().unwrap_or_else(|e| {
             error!("Failed to build client instance -- {:?}", e);
             std::process::exit(1);
         })
     }
 
-    pub async fn to_client(&self) -> KanidmAsyncClient {
+    pub async fn to_client(&self) -> KanidmClient {
         let client = self.to_unauth_client();
         // Read the token file.
         let tokens = match read_tokens() {

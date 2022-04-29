@@ -14,7 +14,7 @@ use kanidm_unix_common::constants::{
     DEFAULT_SHELL, DEFAULT_UID_ATTR_MAP,
 };
 
-use kanidm_client::{KanidmAsyncClient, KanidmClientBuilder};
+use kanidm_client::{KanidmClient, KanidmClientBuilder};
 
 use std::future::Future;
 use std::pin::Pin;
@@ -36,16 +36,16 @@ fn is_free_port(port: u16) -> bool {
     }
 }
 
-type Fixture = Box<dyn FnOnce(KanidmAsyncClient) -> Pin<Box<dyn Future<Output = ()>>>>;
+type Fixture = Box<dyn FnOnce(KanidmClient) -> Pin<Box<dyn Future<Output = ()>>>>;
 
-fn fixture<T>(f: fn(KanidmAsyncClient) -> T) -> Fixture
+fn fixture<T>(f: fn(KanidmClient) -> T) -> Fixture
 where
     T: Future<Output = ()> + 'static,
 {
     Box::new(move |n| Box::pin(f(n)))
 }
 
-async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmAsyncClient) {
+async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmClient) {
     let _ = tracing_tree::test_init();
 
     let mut counter = 0;
@@ -89,7 +89,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmAsyncClient) {
     let adminclient = KanidmClientBuilder::new()
         .address(addr.clone())
         .no_proxy()
-        .build_async()
+        .build()
         .expect("Failed to build sync client");
 
     fix_fn(adminclient).await;
@@ -97,13 +97,13 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmAsyncClient) {
     let client = KanidmClientBuilder::new()
         .address(addr.clone())
         .no_proxy()
-        .build_async()
+        .build()
         .expect("Failed to build async admin client");
 
     let rsclient = KanidmClientBuilder::new()
         .address(addr)
         .no_proxy()
-        .build_async()
+        .build()
         .expect("Failed to build client");
 
     let cachelayer = CacheLayer::new(
@@ -127,7 +127,7 @@ async fn setup_test(fix_fn: Fixture) -> (CacheLayer, KanidmAsyncClient) {
     // let the tables hit the floor
 }
 
-async fn test_fixture(rsclient: KanidmAsyncClient) {
+async fn test_fixture(rsclient: KanidmClient) {
     let res = rsclient
         .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
         .await;

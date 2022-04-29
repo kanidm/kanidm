@@ -480,7 +480,7 @@ async fn main() {
 
     let cb = cb.connect_timeout(cfg.conn_timeout);
 
-    let rsclient = match cb.build_async() {
+    let rsclient = match cb.build() {
         Ok(rsc) => rsc,
         Err(_e) => {
             error!("Failed to build async client");
