@@ -25,7 +25,7 @@ exclude = [
 
 
 [patch.crates-io]
-concread = { path = "../concread" }
+# concread = { path = "../concread" }
 # concread = { git = "https://github.com/kanidm/concread.git" }
 
 # idlset = { path = "../idlset" }
