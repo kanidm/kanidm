@@ -13,10 +13,18 @@
 * cargo test
 
 * Update RELEASE_NOTES.md
+* git commit
 
 * cargo release --no-dev-version --skip-push --skip-publish --skip-tag  1.1.0-alpha.X
 * git rebase -i HEAD~X
 * git tag v1.1.0-alpha.x
+* git branch v1.1.0-alpha.x
+* git checkout v1.1.0-alpha.x
+
+// Check it
+
+* git push origin v1.1.0-alpha.x
+* git push origin master
 
 * release kanidm_proto
 * release kanidmd/kanidm
