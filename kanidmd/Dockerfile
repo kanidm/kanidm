@@ -60,7 +60,7 @@ RUN zypper ref && \
 COPY --from=builder /usr/src/kanidm/target/release/kanidmd /sbin/
 COPY --from=builder /usr/src/kanidm/kanidmd_web_ui/pkg /pkg
 
-EXPOSE 8443 3636
+EXPOSE 8443 3636 31292
 VOLUME /data
 
 ENV RUST_BACKTRACE 1

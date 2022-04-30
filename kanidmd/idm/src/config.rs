@@ -93,6 +93,7 @@ pub struct Configuration {
     pub domain: String,
     pub origin: String,
     pub role: ServerRole,
+    pub metrics_listener: Option<String>,
 }
 
 impl fmt::Display for Configuration {
@@ -123,9 +124,13 @@ impl fmt::Display for Configuration {
             .and_then(|_| {
                 write!(
                     f,
-                    "integration mode: {}",
+                    "integration mode: {}, ",
                     self.integration_test_config.is_some()
                 )
+            })
+            .and_then(|_| match &self.metrics_listener {
+                Some(val) => write!(f, "metrics listener is enabled at: {}, ", val.to_string()),
+                None => write!(f, "metrics listener is disabled, "),
             })
     }
 }
@@ -157,6 +162,7 @@ impl Configuration {
             domain: "idm.example.com".to_string(),
             origin: "https://idm.example.com".to_string(),
             role: ServerRole::WriteReplica,
+            metrics_listener: None,
         };
         let mut rng = StdRng::from_entropy();
         rng.fill(&mut c.cookie_key);
@@ -216,6 +222,9 @@ impl Configuration {
 
     pub fn update_role(&mut self, r: ServerRole) {
         self.role = r;
+    }
+    pub fn update_metrics_listener(&mut self, address: Option<String>) {
+        self.metrics_listener = address;
     }
 
     pub fn update_tls(&mut self, chain: &Option<String>, key: &Option<String>) {

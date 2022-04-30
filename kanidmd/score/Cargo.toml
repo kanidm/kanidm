@@ -1,7 +1,10 @@
 [package]
 name = "score"
 version = "0.1.0"
-authors = ["William Brown <william@blackhats.net.au>"]
+authors = [
+    "William Brown <william@blackhats.net.au>",
+    "James Hodgkinson <james@terminaloutcomes.com>",
+    ]
 rust-version = "1.59"
 edition = "2021"
 license = "MPL-2.0"
@@ -34,6 +37,9 @@ serde = { version = "^1.0.136", features = ["derive"] }
 async-trait = "^0.1.53"
 async-std = { version = "^1.11.0", features = ["tokio1"] }
 compact_jwt = "^0.2.1"
+
+# used for metrics
+tide-prometheus = { version = "0.1.0", features = ["process"] }
 
 [build-dependencies]
 profiles = { path = "../../profiles" }

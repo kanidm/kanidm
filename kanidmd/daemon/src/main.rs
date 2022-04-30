@@ -58,6 +58,7 @@ struct ServerConfig {
     pub origin: String,
     #[serde(default)]
     pub role: ServerRole,
+    pub metrics_listener: Option<String>,
 }
 
 impl ServerConfig {
@@ -205,12 +206,13 @@ async fn main() {
     }
 
     config.update_log_level(ll);
-    config.update_db_path(&sconfig.db_path.as_str());
     config.update_db_fs_type(&sconfig.db_fs_type);
+    config.update_db_path(&sconfig.db_path.as_str());
     config.update_origin(&sconfig.origin.as_str());
     config.update_domain(&sconfig.domain.as_str());
     config.update_db_arc_size(sconfig.db_arc_size);
     config.update_role(sconfig.role);
+    config.update_metrics_listener(sconfig.metrics_listener);
 
     // Apply any cli overrides, normally debug level.
     if let Some(dll) = opt.commonopt().debug.as_ref() {

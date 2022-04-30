@@ -301,6 +301,7 @@ pub fn create_https_server(
     status_ref: &'static StatusActor,
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
+    enable_metrics: bool,
 ) -> Result<(), ()> {
     info!("WEB_UI_PKG_PATH -> {}", env!("KANIDM_WEB_UI_PKG_PATH"));
 
@@ -319,7 +320,10 @@ pub fn create_https_server(
         jws_validator,
     });
 
-    // tide::log::with_level(tide::log::LevelFilter::Debug);
+    // metrics middleware
+    if enable_metrics {
+        tserver.with(tide_prometheus::Prometheus::new("tide"));
+    }
 
     // Add middleware?
     tserver.with(TreeMiddleware::with_stdout());

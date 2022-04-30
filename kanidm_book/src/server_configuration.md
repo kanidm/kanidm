@@ -68,6 +68,8 @@ You will also need a config file in the volume named `server.toml` (Within the c
     #   Defaults to "WriteReplica".
     # role = "WriteReplica"
     #
+    # Enable an OpenMetrics/Prometheus HTTP listener at http://127.0.0.1:31292/metrics
+    metrics_listener = "127.0.0.1:31292"
     # [online_backup]
     #   The path to the output folder for online backups
     # path = "/var/lib/kanidm/backups/"
