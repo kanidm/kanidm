@@ -118,7 +118,7 @@ pub(crate) struct ModifyPartial<'a> {
 
 // This is the core of the server. It implements all
 // the search and modify actions, applies access controls
-// and get's everything ready to push back to the fe code
+// and gets everything ready to push back to the fe code
 /// The `QueryServerTransaction` trait provides a set of common read only operations to be
 /// shared between [`QueryServerReadTransaction`] and [`QueryServerWriteTransaction`]s.
 ///

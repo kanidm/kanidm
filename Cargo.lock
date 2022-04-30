@@ -2003,6 +2003,7 @@ dependencies = [
  "smolset",
  "sshkeys",
  "tide",
+ "tide-prometheus",
  "time 0.2.27",
  "tokio",
  "tokio-util",

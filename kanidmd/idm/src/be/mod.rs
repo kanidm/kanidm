@@ -28,6 +28,9 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use uuid::Uuid;
 
+#[cfg(feature = "metrics")]
+use tide_prometheus::prometheus;
+
 pub mod dbentry;
 pub mod dbvalue;
 mod idl_arc_sqlite;
@@ -110,6 +113,9 @@ pub struct Backend {
     /// to consume.
     idxmeta: Arc<CowCell<IdxMeta>>,
     cfg: BackendConfig,
+
+    #[cfg(feature = "metrics")]
+    metrics: tide_prometheus::prometheus::IntCounterVec,
 }
 
 pub struct BackendReadTransaction<'a> {
@@ -1499,6 +1505,8 @@ impl Backend {
                 cfg,
                 idlayer,
                 idxmeta: Arc::new(CowCell::new(IdxMeta::new(idxkeys))),
+                #[cfg(feature = "metrics")]
+                metrics: Backend::metrics(),
             };
 
             // Now complete our setup with a txn
@@ -1529,6 +1537,13 @@ impl Backend {
     }
 
     pub fn read(&self) -> BackendReadTransaction {
+
+        #[cfg(feature = "metrics")]
+        self
+        .metrics
+        .with_label_values(&["read_transaction"])
+        .inc();
+
         BackendReadTransaction {
             idlayer: UnsafeCell::new(self.idlayer.read()),
             idxmeta: self.idxmeta.read(),
@@ -1536,6 +1551,13 @@ impl Backend {
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
+
+        #[cfg(feature = "metrics")]
+        self
+        .metrics
+        .with_label_values(&["write_transaction"])
+        .inc();
+
         BackendWriteTransaction {
             idlayer: UnsafeCell::new(self.idlayer.write()),
             idxmeta: self.idxmeta.read(),
@@ -1553,7 +1575,24 @@ impl Backend {
         #[allow(clippy::expect_used)]
         wr.commit()
             .expect("Unable to commit to backend, can not proceed");
+
+
+        #[cfg(feature = "metrics")]
+        self
+        .metrics
+        .with_label_values(&["reset_db_s_uuid"])
+        .inc();
+
         sid
+    }
+
+
+    /// Creates, registers and returns the metrics counter.
+    #[cfg(feature = "metrics")]
+    fn metrics() -> prometheus::IntCounterVec {
+        let name = "queryserver";
+        let opts = prometheus::Opts::new(name, "Counts query actions");
+        prometheus::register_int_counter_vec!(opts, &["action"]).unwrap()
     }
 
     /*

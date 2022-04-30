@@ -1,6 +1,6 @@
 use tide::Redirect;
 use kanidm::tracing_tree::TreeMiddleware;
-
+// TODO: look at the "push" functionality for prometheus
 
 /// Starts the metrics server - but this won't block the entire platform if it fails.
 pub fn create_metrics_server(
@@ -11,7 +11,7 @@ pub fn create_metrics_server(
     let mut metrics_server = tide::new();
     metrics_server.with(TreeMiddleware::with_stdout());
     // because it's just nice, y'know
-    metrics_server.at("/").get(Redirect::temporary("/metrics"));
+    metrics_server.at("/").get(Redirect::permanent("/metrics"));
     metrics_server.at("/metrics").get(tide_prometheus::metrics_endpoint);
 
     tokio::spawn(async move {
