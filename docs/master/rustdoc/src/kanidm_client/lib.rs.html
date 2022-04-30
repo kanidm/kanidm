@@ -2177,7 +2177,7 @@
             }
         }
 
-        <span class="comment">// TODO #253: Handle these errors better, or at least provide diagnostics?</span>
+        <span class="comment">// TODO #725: Handle these errors better, or at least provide diagnostics - this currently fails silently</span>
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">f</span> <span class="op">=</span> <span class="ident">File::open</span>(<span class="ident">ca_path</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
             <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
         })<span class="question-mark">?</span>;
