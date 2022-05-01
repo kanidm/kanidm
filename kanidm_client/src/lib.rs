@@ -132,7 +132,7 @@ impl KanidmClientBuilder {
 
             #[cfg(target_family = "unix")]
             if ca_meta.mode() != 0o644 {
-                warn!("permissions on {} may not be secure. Should be set to 0o644. This could be a security risk ...", ca_path);
+                warn!("permissions on {} may not be secure. Should be set to 0644. This could be a security risk ...", ca_path);
             }
         }
 
