@@ -151,6 +151,9 @@ Third, trigger the database domain rename process.
 
     docker run --rm -i -t -v kandimd:/data \
         kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml
+
+Finally, you can now start your instance again.
+
     docker start <container name>
 
 # Raw actions
