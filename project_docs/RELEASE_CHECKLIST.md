@@ -12,10 +12,10 @@
 
 * cargo test
 
-* Update RELEASE_NOTES.md
+* Update `RELEASE_NOTES.md`
 * git commit
 
-* cargo release --no-dev-version --skip-push --skip-publish --skip-tag  1.1.0-alpha.X
+* cargo release --no-dev-version --no-push --no-publish --no-tag  1.1.0-alpha.X
 * git rebase -i HEAD~X
 * git tag v1.1.0-alpha.x
 * git branch v1.1.0-alpha.x
@@ -26,13 +26,13 @@
 * git push origin v1.1.0-alpha.x
 * git push origin master
 
-* release kanidm_proto
-* release kanidmd/kanidm
-* release kanidm_client
-* release kanidm_tools
+* release `kanidm_proto`
+* release `kanidmd/kanidm`
+* release `kanidm_client`
+* release `kanidm_tools`
 
-* build kanidmd docker
-* build kanidm_radisud docker
+* build `kanidmd` docker
+* build `kanidm_radisud` docker
 
 * vendor and release to build.opensuse.org
     osc service ra; osc ci

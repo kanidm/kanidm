@@ -1,6 +1,6 @@
 [package]
 name = "orca"
-version = "1.1.0-alpha.7"
+version = "1.1.0-alpha.8"
 authors = ["William Brown <william@blackhats.net.au>"]
 rust-version = "1.59"
 edition = "2021"
@@ -32,7 +32,7 @@ toml = "^0.5.9"
 kanidm_proto = { path = "../kanidm_proto" }
 kanidm_client = { path = "../kanidm_client" }
 
-tokio = { version = "^1.17.0", features = ["rt-multi-thread"] }
+tokio = { version = "^1.18.0", features = ["rt-multi-thread"] }
 tokio-util = { version = "^0.7.1", features = ["codec"] }
 tokio-openssl = "^0.6.3"
 futures-util = { version = "^0.3.21", features = ["sink"] }

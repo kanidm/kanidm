@@ -16,6 +16,28 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 # Release Notes
 
+## 2022-05-01 - Kanidm 1.1.0-alpha8
+
+This is the eigth alpha series release of the Kanidm Identity Management
+project. Alpha releases are to help get feedback and ideas from the community
+on how we can continue to make this project better for a future supported release.
+
+### Release Highlights
+
+* Foundations for cryptographic trusted device authentication
+* Foundations for new user onboarding and credential reset
+* Improve acis for administration of radius secrets
+* Simplify initial server setup related to domain naming
+* Improve authentication performance during high load
+* Developer documentation improvements
+* Resolve issues with client tool outputs not being displayed
+* Show more errors on api failures
+* Extend the features of account person set
+* Link pam with pkg-config allowing more portable builds
+* Allow self-service email addresses to be delegated
+* Highlight that the WebUI is in alpha to prevent confusion
+* Remove sync only client paths
+
 ## 2022-01-01 - Kanidm 1.1.0-alpha7
 
 This is the seventh alpha series release of the Kanidm Identity Management
@@ -169,5 +191,5 @@ and help of many people. I would especially like to thank:
 [issue tracker]: https://github.com/kanidm/kanidm/issues
 [gitter community channel]: https://gitter.im/kanidm/community
 [code of conduct]: https://github.com/kanidm/kanidm/blob/master/CODE_OF_CONDUCT.md
-[kanidm book]: https://github.com/kanidm/kanidm/blob/master/kanidm_book/src/SUMMARY.md
+[kanidm book]: https://kanidm.github.io/kanidm/stable/
 

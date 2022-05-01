@@ -1,6 +1,6 @@
 [package]
 name = "kanidm_client"
-version = "1.1.0-alpha.7"
+version = "1.1.0-alpha.8"
 authors = ["William Brown <william@blackhats.net.au>"]
 rust-version = "1.59"
 edition = "2021"
@@ -20,5 +20,5 @@ toml = "^0.5.9"
 uuid = { version = "^1.0.0", features = ["serde", "v4"] }
 url = { version = "^2.2.2", features = ["serde"] }
 webauthn-rs = "^0.3.2"
-tokio = { version = "^1.17.0", features = ["rt", "net", "time", "macros", "sync", "signal"] }
+tokio = { version = "^1.18.0", features = ["rt", "net", "time", "macros", "sync", "signal"] }
 

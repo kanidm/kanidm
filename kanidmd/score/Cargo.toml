@@ -1,6 +1,6 @@
 [package]
 name = "score"
-version = "0.1.0"
+version = "1.1.0-alpha.8"
 authors = ["William Brown <william@blackhats.net.au>"]
 rust-version = "1.59"
 edition = "2021"
@@ -23,7 +23,7 @@ tide = "^0.16.0"
 tide-openssl = "^0.1.1"
 
 futures-util = "^0.3.21"
-tokio = { version = "^1.17.0", features = ["net", "sync", "io-util", "macros"] }
+tokio = { version = "^1.18.0", features = ["net", "sync", "io-util", "macros"] }
 tokio-util = { version = "^0.7.1", features = ["codec"] }
 tokio-openssl = "^0.6.3"
 openssl = "^0.10.38"

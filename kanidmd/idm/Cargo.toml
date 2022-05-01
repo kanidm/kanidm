@@ -1,6 +1,6 @@
 [package]
 name = "kanidm"
-version = "1.1.0-alpha.7"
+version = "1.1.0-alpha.8"
 authors = ["William Brown <william@blackhats.net.au>"]
 rust-version = "1.59"
 edition = "2021"
@@ -41,7 +41,7 @@ lazy_static = "^1.4.0"
 
 futures = "^0.3.21"
 futures-util = "^0.3.21"
-tokio = { version = "^1.17.0", features = ["net", "sync", "time"] }
+tokio = { version = "^1.18.0", features = ["net", "sync", "time"] }
 tokio-util = { version = "^0.7.1", features = ["codec"] }
 openssl = "^0.10.38"
 
