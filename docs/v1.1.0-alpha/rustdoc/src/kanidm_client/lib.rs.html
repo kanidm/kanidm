@@ -2040,6 +2040,7 @@
 <span id="2035">2035</span>
 <span id="2036">2036</span>
 <span id="2037">2037</span>
+<span id="2038">2038</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -2164,16 +2165,17 @@
             <span class="kw">let</span> <span class="ident">path</span> <span class="op">=</span> <span class="ident">Path::new</span>(<span class="ident">ca_path</span>);
             <span class="kw">let</span> <span class="ident">ca_meta</span> <span class="op">=</span> <span class="ident">read_file_metadata</span>(<span class="kw-2">&amp;</span><span class="ident">path</span>)<span class="question-mark">?</span>;
 
-            <span class="kw">if</span> <span class="op">!</span><span class="ident">ca_meta</span>.<span class="ident">permissions</span>().<span class="ident">readonly</span>() {
-                <span class="macro">warn!</span>(<span class="string">&quot;permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...&quot;</span>, <span class="ident">ca_path</span>);
-            }
-
             <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
             <span class="kw">if</span> <span class="ident">ca_meta</span>.<span class="ident">uid</span>() <span class="op">!</span><span class="op">=</span> <span class="number">0</span> <span class="op">|</span><span class="op">|</span> <span class="ident">ca_meta</span>.<span class="ident">gid</span>() <span class="op">!</span><span class="op">=</span> <span class="number">0</span> {
                 <span class="macro">warn!</span>(
                     <span class="string">&quot;{} should be owned be root:root to prevent tampering&quot;</span>,
                     <span class="ident">ca_path</span>
                 );
+            }
+
+            <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;unix&quot;</span>)]</span>
+            <span class="kw">if</span> <span class="ident">ca_meta</span>.<span class="ident">mode</span>() <span class="op">!</span><span class="op">=</span> <span class="number">0o644</span> {
+                <span class="macro">warn!</span>(<span class="string">&quot;permissions on {} may not be secure. Should be set to 0644. This could be a security risk ...&quot;</span>, <span class="ident">ca_path</span>);
             }
         }
 

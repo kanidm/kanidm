@@ -252,7 +252,9 @@ you can then rename the domain.</p>
 <p>Third, trigger the database domain rename process.</p>
 <pre><code>docker run --rm -i -t -v kandimd:/data \
     kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml
-docker start &lt;container name&gt;
+</code></pre>
+<p>Finally, you can now start your instance again.</p>
+<pre><code>docker start &lt;container name&gt;
 </code></pre>
 <h1 id="raw-actions"><a class="header" href="#raw-actions">Raw actions</a></h1>
 <p>The server has a low-level stateful API you can use for more complex or advanced tasks on large numbers

@@ -398,19 +398,19 @@ origin = &quot;https://idm.example.com:8443&quot;
 #
 </code></pre>
 <p>An example is located in <a href="../../examples/server.toml">examples/server.toml</a>.</p>
-<h3 id="domain-name"><a class="header" href="#domain-name">Domain Name</a></h3>
-<p>You then <em>MUST</em> set your domain name so that security principal names (spn's) are generated correctly.
-This domain name <em>must</em> match the url/origin of the server that you plan to use to interact with
-so that other features work correctly. It is possible to change this domain name later.</p>
-<pre><code>docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml -n idm.example.com
-</code></pre>
 <blockquote>
-<p><strong>WARNING</strong> You MUST set the domain name correctly, aligned with your origin, else the server
-may refuse to start, or some features may not work correctly!</p>
+<p><strong>WARNING</strong> You MUST set the <code>domain</code> name correctly, aligned with your <code>origin</code>, else the server
+may refuse to start, or some features (e.g. webauthn, oauth) may not work correctly!</p>
 </blockquote>
+<h3 id="check-the-configuration-is-valid"><a class="header" href="#check-the-configuration-is-valid">Check the configuration is valid.</a></h3>
+<p>You should test your configuration is valid before you proceed.</p>
+<pre><code>docker run --rm -i -t -v kandimd:/data \
+    kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
+</code></pre>
 <h3 id="default-admin-account"><a class="header" href="#default-admin-account">Default Admin Account</a></h3>
 <p>Then you can setup the initial admin account and initialise the database into your volume.</p>
-<pre><code>docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
+<pre><code>docker run --rm -i -t -v kanidmd:/data \
+    kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
 </code></pre>
 <h3 id="run-the-server"><a class="header" href="#run-the-server">Run the Server</a></h3>
 <p>Now we can run the server so that it can accept connections. This defaults to using <code>-c /data/server.toml</code></p>
@@ -881,7 +881,9 @@ you can then rename the domain.</p>
 <p>Third, trigger the database domain rename process.</p>
 <pre><code>docker run --rm -i -t -v kandimd:/data \
     kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml
-docker start &lt;container name&gt;
+</code></pre>
+<p>Finally, you can now start your instance again.</p>
+<pre><code>docker start &lt;container name&gt;
 </code></pre>
 <h1 id="raw-actions"><a class="header" href="#raw-actions">Raw actions</a></h1>
 <p>The server has a low-level stateful API you can use for more complex or advanced tasks on large numbers
