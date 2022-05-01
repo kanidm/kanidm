@@ -83,22 +83,22 @@ You will also need a config file in the volume named `server.toml` (Within the c
 
 An example is located in [examples/server.toml](../../examples/server.toml).
 
-### Domain Name
+> **WARNING** You MUST set the `domain` name correctly, aligned with your `origin`, else the server
+> may refuse to start, or some features (e.g. webauthn, oauth) may not work correctly!
 
-You then *MUST* set your domain name so that security principal names (spn's) are generated correctly.
-This domain name _must_ match the url/origin of the server that you plan to use to interact with
-so that other features work correctly. It is possible to change this domain name later.
+### Check the configuration is valid.
 
-    docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml -n idm.example.com
+You should test your configuration is valid before you proceed.
 
-> **WARNING** You MUST set the domain name correctly, aligned with your origin, else the server
-> may refuse to start, or some features may not work correctly!
+    docker run --rm -i -t -v kandimd:/data \
+        kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
 
 ### Default Admin Account
 
 Then you can setup the initial admin account and initialise the database into your volume.
 
-    docker run --rm -i -t -v kanidmd:/data kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
+    docker run --rm -i -t -v kanidmd:/data \
+        kanidm/server:latest /sbin/kanidmd recover_account -c /data/server.toml -n admin
 
 ### Run the Server
 
