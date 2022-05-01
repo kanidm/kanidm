@@ -18,7 +18,7 @@ can help. If you find a bug or issue, we'd love you to report it to our
 
 ## 2022-05-01 - Kanidm 1.1.0-alpha8
 
-This is the eigth alpha series release of the Kanidm Identity Management
+This is the eighth alpha series release of the Kanidm Identity Management
 project. Alpha releases are to help get feedback and ideas from the community
 on how we can continue to make this project better for a future supported release.
 
