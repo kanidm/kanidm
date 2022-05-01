@@ -122,16 +122,17 @@ impl KanidmClientBuilder {
             let path = Path::new(ca_path);
             let ca_meta = read_file_metadata(&path)?;
 
-            if !ca_meta.permissions().readonly() {
-                warn!("permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...", ca_path);
-            }
-
             #[cfg(target_family = "unix")]
             if ca_meta.uid() != 0 || ca_meta.gid() != 0 {
                 warn!(
                     "{} should be owned be root:root to prevent tampering",
                     ca_path
                 );
+            }
+
+            #[cfg(target_family = "unix")]
+            if ca_meta.mode() != 0o644 {
+                warn!("permissions on {} may not be secure. Should be set to 0o644. This could be a security risk ...", ca_path);
             }
         }
 
