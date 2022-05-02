@@ -13,7 +13,7 @@ path =  "src/lib.rs"
 
 [dependencies]
 kanidm_unix_int = { path = "../" }
-libc = "^0.2.124"
+libc = "^0.2.125"
 
 [build-dependencies]
 pkg-config = "^0.3.25"

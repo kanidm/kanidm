@@ -35,7 +35,7 @@ tracing = "^0.1.34"
 tracing-subscriber = { version = "^0.3.11", features = ["env-filter", "fmt"] }
 rpassword = "^6.0.1"
 structopt = { version = "^0.3.26", default-features = false }
-libc = "^0.2.124"
+libc = "^0.2.125"
 serde = { version = "^1.0.136", features = ["derive"] }
 serde_json = "^1.0.80"
 shellexpand = "^2.1.0"
