@@ -15,7 +15,7 @@ name = "profiles"
 path = "src/lib.rs"
 
 [dependencies]
-serde = { version = "^1.0.136", features = ["derive"] }
+serde = { version = "^1.0.137", features = ["derive"] }
 toml = "^0.5.9"
 base64 = "^0.13.0"
 
