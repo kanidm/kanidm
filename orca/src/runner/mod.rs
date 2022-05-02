@@ -1,7 +1,8 @@
 use crate::setup::config;
 use crate::{TargetOpt, TestTypeOpt};
 use std::path::{Path, PathBuf};
-
+use std::fs::create_dir_all;
+use dialoguer::Confirm;
 mod search;
 
 pub(crate) async fn doit(
@@ -21,6 +22,23 @@ pub(crate) async fn doit(
     debug!("Profile -> {:?}", profile);
 
     let result_path = PathBuf::from(&profile.results);
+    if !result_path.exists() {
+        error!("Couldn't find results directory from profile: {:#?}", result_path);
+
+        match Confirm::new().with_prompt("Would you like to create it?").interact() {
+            Ok(_) => match create_dir_all(result_path.as_path()) {
+                Ok(_) => info!("Successfully created {:#?}", result_path.canonicalize()),
+                Err(error) => {
+                    error!("{:#?}", error);
+                    return Err(())
+                    }
+                }
+            _ => {
+                println!("Ok, going to quit!");
+                return Err(());
+            }
+        }
+    }
     if !result_path.is_dir() {
         error!("Profile: results must be a directory");
         return Err(());
