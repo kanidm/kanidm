@@ -23,25 +23,16 @@ pub(crate) async fn doit(
 
     let result_path = PathBuf::from(&profile.results);
     if !result_path.exists() {
-        debug!(
-            "Couldn't find results directory from profile: {:#?}",
-            result_path
-        );
+        error!("Couldn't find results directory from profile: {:#?}", result_path);
 
-        match Confirm::new()
-            .with_prompt(
-                format!("I couldn't find the directory you told me to send results to ({:?}). Would you like to create it?",
-                result_path,)
-            )
-            .interact()
-        {
+        match Confirm::new().with_prompt("Would you like to create it?").interact() {
             Ok(_) => match create_dir_all(result_path.as_path()) {
                 Ok(_) => info!("Successfully created {:#?}", result_path.canonicalize()),
                 Err(error) => {
                     error!("{:#?}", error);
-                    return Err(());
+                    return Err(())
+                    }
                 }
-            },
             _ => {
                 println!("Ok, going to quit!");
                 return Err(());
