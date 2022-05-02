@@ -321,9 +321,11 @@ pub fn create_https_server(
     });
 
     // metrics middleware
-    if enable_metrics {
-        tserver.with(tide_prometheus::Prometheus::new("tide"));
-    }
+    // TODO: re-implement the tide metrics work this out
+    eprintln!("In tide, metrics enabled, but unimplemented: {}", enable_metrics);
+    // if enable_metrics {
+        // something
+    // }
 
     // Add middleware?
     tserver.with(TreeMiddleware::with_stdout());

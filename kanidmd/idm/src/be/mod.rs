@@ -11,7 +11,7 @@ use crate::value::IndexType;
 use hashbrown::HashMap as Map;
 use hashbrown::HashSet;
 use std::cell::UnsafeCell;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use tracing::{trace, trace_span};
 
 use crate::be::dbentry::DbEntry;
@@ -28,8 +28,10 @@ use std::ops::DerefMut;
 use std::time::Duration;
 use uuid::Uuid;
 
-#[cfg(feature = "metrics")]
-use tide_prometheus::prometheus;
+use prometheus_client::encoding::text::{encode, Encode};
+use prometheus_client::metrics::counter::Counter;
+use prometheus_client::metrics::family::Family;
+use prometheus_client::registry::Registry;
 
 pub mod dbentry;
 pub mod dbvalue;
@@ -50,6 +52,24 @@ pub use crate::be::idl_sqlite::FsType;
 // Currently disabled due to improvements in idlset for intersection handling.
 const FILTER_SEARCH_TEST_THRESHOLD: usize = 0;
 const FILTER_EXISTS_TEST_THRESHOLD: usize = 0;
+
+
+#[derive(Clone, Hash, PartialEq, Eq, Encode)]
+pub struct MetricsLabels {
+    pub http_method: HttpMethod,
+    pub path: String,
+}
+
+#[derive(Clone, Hash, PartialEq, Eq, Encode)]
+pub enum HttpMethod {
+    DELETE,
+    GET,
+    HEAD,
+    OPTIONS,
+    PATCH,
+    POST,
+    PUT,
+}
 
 #[derive(Debug, Clone)]
 pub enum IdList {
@@ -113,9 +133,7 @@ pub struct Backend {
     /// to consume.
     idxmeta: Arc<CowCell<IdxMeta>>,
     cfg: BackendConfig,
-
-    #[cfg(feature = "metrics")]
-    metrics: tide_prometheus::prometheus::IntCounterVec,
+    metrics_registry: Arc<Mutex<Registry>>,
 }
 
 pub struct BackendReadTransaction<'a> {
@@ -141,6 +159,7 @@ impl IdRawEntry {
                 OperationError::SerdeCborError
             })
             .map(|dbe| (self.id, dbe))
+
     }
 
     fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
@@ -1498,6 +1517,15 @@ impl Backend {
             })
             .collect();
 
+        let mut registry = <Registry>::default();
+
+        let http_requests_total = Family::<MetricsLabels, Counter>::default();
+        registry.register(
+            "http_requests_total",
+            "Number of HTTP(s) requests",
+            Box::new(http_requests_total.clone()),
+        );
+
         // this has a ::memory() type, but will path == "" work?
         spanned!("be::new", {
             let idlayer = Arc::new(IdlArcSqlite::new(&cfg, vacuum)?);
@@ -1505,8 +1533,8 @@ impl Backend {
                 cfg,
                 idlayer,
                 idxmeta: Arc::new(CowCell::new(IdxMeta::new(idxkeys))),
-                #[cfg(feature = "metrics")]
-                metrics: Backend::metrics(),
+                // TODO: likely remove this
+                metrics_registry: Arc::new(Mutex::new(registry)),
             };
 
             // Now complete our setup with a txn
@@ -1537,12 +1565,8 @@ impl Backend {
     }
 
     pub fn read(&self) -> BackendReadTransaction {
-
-        #[cfg(feature = "metrics")]
-        self
-        .metrics
-        .with_label_values(&["read_transaction"])
-        .inc();
+        // #[cfg(feature = "metrics")]
+        // self.metrics.get_metric_with_label_values(&["read_transaction"]).unwrap().inc();
 
         BackendReadTransaction {
             idlayer: UnsafeCell::new(self.idlayer.read()),
@@ -1551,12 +1575,9 @@ impl Backend {
     }
 
     pub fn write(&self) -> BackendWriteTransaction {
-
-        #[cfg(feature = "metrics")]
-        self
-        .metrics
-        .with_label_values(&["write_transaction"])
-        .inc();
+        // TODO: return this
+        // #[cfg(feature = "metrics")]
+        // self.metrics.get_metric_with_label_values(&["write_transaction"]).unwrap().inc();
 
         BackendWriteTransaction {
             idlayer: UnsafeCell::new(self.idlayer.write()),
@@ -1576,23 +1597,28 @@ impl Backend {
         wr.commit()
             .expect("Unable to commit to backend, can not proceed");
 
-
-        #[cfg(feature = "metrics")]
-        self
-        .metrics
-        .with_label_values(&["reset_db_s_uuid"])
-        .inc();
+        // TODO: return this
+        // #[cfg(feature = "metrics")]
+        // self.metrics.with_label_values(&["reset_db_s_uuid"]).inc();
 
         sid
     }
 
+    pub fn get_metrics_encoded(&self) -> Vec<u8> {
+        let mut buffer = vec![];
+        encode(
+            &mut buffer,
+            &self.metrics_registry.lock().unwrap()).unwrap();
+        buffer
+    }
 
-    /// Creates, registers and returns the metrics counter.
-    #[cfg(feature = "metrics")]
-    fn metrics() -> prometheus::IntCounterVec {
-        let name = "queryserver";
-        let opts = prometheus::Opts::new(name, "Counts query actions");
-        prometheus::register_int_counter_vec!(opts, &["action"]).unwrap()
+    pub fn metrics_sub_registry_with_prefix(&mut self, prefix: String) -> Result<String,String> {
+        /* registers a sub registry in the registry
+        */
+
+        eprintln!("Got a registry prefix of {}", prefix.to_string());
+
+        Ok("woot".to_string())
     }
 
     /*
@@ -1602,6 +1628,7 @@ impl Backend {
     }
     */
 }
+
 
 // What are the possible actions we'll recieve here?
 

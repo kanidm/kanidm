@@ -576,6 +576,18 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             return Err(());
         }
     };
+
+
+        // start the metrics server if it's enabled
+    match &config.metrics_listener {
+        Some(address) => {
+            self::metrics::create_metrics_server(be.clone(), address.to_string())?;
+        }
+        None => {
+            debug!("Metrics port not configured, skipping!");
+        }
+    };
+
     // Start the IDM server.
     let (_qs, idms, mut idms_delayed) = match setup_qs_idms(be, schema, &config) {
         Ok(t) => t,
@@ -687,12 +699,7 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
     if config_test {
         admin_info!("this config rocks! 🪨 ");
     } else {
-        let enable_metrics = match &config.metrics_listener {
-            Some(_) => {
-                true
-            },
-            None => false
-        };
+        let enable_metrics = config.metrics_listener.is_some();
 
         // ⚠️  only start the sockets and listeners in non-config-test modes.
         self::https::create_https_server(
@@ -705,18 +712,9 @@ pub async fn create_server_core(config: Configuration, config_test: bool) -> Res
             status_ref,
             server_write_ref,
             server_read_ref,
-            enable_metrics,
+            enable_metrics.clone(),
         )?;
 
-        // start the metrics server if it's enabled
-        match config.metrics_listener {
-            Some(address) => {
-                self::metrics::create_metrics_server(address)?;
-            }
-            None => {
-                debug!("Metrics port not configured, skipping!");
-            }
-        };
 
         admin_info!("ready to rock! 🪨 ");
     }
