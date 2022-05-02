@@ -19,4 +19,10 @@ if [ ! -f "/tmp/kanidm/key.pem" ]; then
     exit 1
 fi
 
-cargo run --bin kanidmd server -c "${CONFIG_FILE}"
+COMMAND="server"
+if [ -n "${1}" ]; then
+    COMMAND=$*
+fi
+
+#shellcheck disable=SC2086
+cargo run --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"
