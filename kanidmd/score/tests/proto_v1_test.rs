@@ -4,7 +4,7 @@ use std::time::SystemTime;
 use tracing::debug;
 
 use kanidm::credential::totp::Totp;
-use kanidm_proto::v1::{CredentialDetailType, Entry, Filter, Modify, ModifyList};
+use kanidm_proto::v1::{CURegState, CredentialDetailType, Entry, Filter, Modify, ModifyList};
 
 mod common;
 use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
@@ -1420,6 +1420,129 @@ async fn test_server_credential_update_session_pw() {
     let _ = rsclient.logout();
     let res = rsclient
         .auth_simple_password("demo_account", "eicieY7ahchaoCh0eeTa")
+        .await;
+    assert!(res.is_ok());
+}
+
+#[tokio::test]
+async fn test_server_credential_update_session_totp_pw() {
+    let rsclient = setup_async_test().await;
+    let res = rsclient
+        .auth_simple_password("admin", ADMIN_TEST_PASSWORD)
+        .await;
+    assert!(res.is_ok());
+
+    // Not recommended in production!
+    rsclient
+        .idm_group_add_members("idm_admins", &["admin"])
+        .await
+        .unwrap();
+
+    // Create an account
+    rsclient
+        .idm_account_create("demo_account", "Demo Account")
+        .await
+        .unwrap();
+
+    // Make them a person so they can self-modify credentials later in the test
+    rsclient
+        .idm_account_person_extend("demo_account", None, None)
+        .await
+        .unwrap();
+
+    let intent_token = rsclient
+        .idm_account_credential_update_intent("demo_account")
+        .await
+        .unwrap();
+
+    // Logout, we don't need any auth now, the intent tokens care for it.
+    let _ = rsclient.logout();
+    // Exchange the intent token
+    let session_token = rsclient
+        .idm_account_credential_update_exchange(intent_token)
+        .await
+        .unwrap();
+
+    let _status = rsclient
+        .idm_account_credential_update_status(&session_token)
+        .await
+        .unwrap();
+
+    // Set the password
+    let _status = rsclient
+        .idm_account_credential_update_set_password(&session_token, "sohdi3iuHo6mai7noh0a")
+        .await
+        .unwrap();
+
+    // Set the totp.
+    let status = rsclient
+        .idm_account_credential_update_init_totp(&session_token)
+        .await
+        .unwrap();
+
+    // Extract the totp from the status, and set it back
+    let totp: Totp = match status.mfaregstate {
+        CURegState::TotpCheck(totp_secret) => totp_secret.into(),
+        _ => unreachable!(),
+    };
+
+    let totp_chal = totp
+        .do_totp_duration_from_epoch(
+            &SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap(),
+        )
+        .expect("Failed to do totp?");
+
+    let _status = rsclient
+        .idm_account_credential_update_check_totp(&session_token, totp_chal)
+        .await
+        .unwrap();
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .unwrap();
+
+    let totp_chal = totp
+        .do_totp_duration_from_epoch(
+            &SystemTime::now()
+                .duration_since(SystemTime::UNIX_EPOCH)
+                .unwrap(),
+        )
+        .expect("Failed to do totp?");
+
+    // Assert it now works.
+    let _ = rsclient.logout();
+    let res = rsclient
+        .auth_password_totp("demo_account", "sohdi3iuHo6mai7noh0a", totp_chal)
+        .await;
+    assert!(res.is_ok());
+
+    // We are now authed as the demo_account
+
+    // Self create the session and remove the totp now.
+    let session_token = rsclient
+        .idm_account_credential_update_begin("demo_account")
+        .await
+        .unwrap();
+
+    let _status = rsclient
+        .idm_account_credential_update_remove_totp(&session_token)
+        .await
+        .unwrap();
+
+    // Commit it
+    rsclient
+        .idm_account_credential_update_commit(&session_token)
+        .await
+        .unwrap();
+
+    // Assert it now works.
+    let _ = rsclient.logout();
+    let res = rsclient
+        .auth_simple_password("demo_account", "sohdi3iuHo6mai7noh0a")
         .await;
     assert!(res.is_ok());
 }

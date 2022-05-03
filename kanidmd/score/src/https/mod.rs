@@ -546,6 +546,9 @@ pub fn create_https_server(
     // .post(account_post_backup_code_regenerate) // use "/:id/_credential/primary" instead
     // .delete(account_delete_backup_code); // same as above
     account_route
+        .at("/:id/_credential/_update")
+        .get(account_get_id_credential_update);
+    account_route
         .at("/:id/_credential/_update_intent")
         .get(account_get_id_credential_update_intent);
     account_route

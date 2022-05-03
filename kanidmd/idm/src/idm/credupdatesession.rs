@@ -184,6 +184,10 @@ pub struct InitCredentialUpdateEvent {
 }
 
 impl InitCredentialUpdateEvent {
+    pub fn new(ident: Identity, target: Uuid) -> Self {
+        InitCredentialUpdateEvent { ident, target }
+    }
+
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         let ident = Identity::from_impersonate_entry(e);

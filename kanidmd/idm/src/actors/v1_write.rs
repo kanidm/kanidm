@@ -8,7 +8,8 @@ use crate::idm::event::RemoveBackupCodeEvent;
 use crate::prelude::*;
 
 use crate::idm::credupdatesession::{
-    CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateIntentEvent,
+    CredentialUpdateIntentToken, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
+    InitCredentialUpdateIntentEvent,
 };
 
 use crate::event::{
@@ -651,6 +652,54 @@ impl QueryServerWriteV1 {
                         .and_then(|r| idms_prox_write.commit().map(|_| r))
                 }
             }
+        });
+        res
+    }
+
+    #[instrument(
+        level = "trace",
+        name = "idmcredentialupdate",
+        skip(self, uat, uuid_or_name, eventid)
+        fields(uuid = ?eventid)
+    )]
+    pub async fn handle_idmcredentialupdate(
+        &self,
+        uat: Option<String>,
+        uuid_or_name: String,
+        eventid: Uuid,
+    ) -> Result<CUSessionToken, OperationError> {
+        let ct = duration_from_epoch_now();
+        let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
+        let res = spanned!("actors::v1_write::handle<IdmCredentialUpdate>", {
+            let ident = idms_prox_write
+                .validate_and_parse_uat(uat.as_deref(), ct)
+                .and_then(|uat| idms_prox_write.process_uat_to_identity(&uat, ct))
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Invalid identity");
+                    e
+                })?;
+
+            let target_uuid = idms_prox_write
+                .qs_write
+                .name_to_uuid(uuid_or_name.as_str())
+                .map_err(|e| {
+                    admin_error!(err = ?e, "Error resolving id to target");
+                    e
+                })?;
+
+            idms_prox_write
+                .init_credential_update(&InitCredentialUpdateEvent::new(ident, target_uuid), ct)
+                .and_then(|tok| idms_prox_write.commit().map(|_| tok))
+                .map_err(|e| {
+                    admin_error!(
+                        err = ?e,
+                        "Failed to begin init_credential_update",
+                    );
+                    e
+                })
+                .map(|tok| CUSessionToken {
+                    session_token: tok.token_enc,
+                })
         });
         res
     }
