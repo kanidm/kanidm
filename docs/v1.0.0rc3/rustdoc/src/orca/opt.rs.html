@@ -133,6 +133,11 @@
 <span id="128">128</span>
 <span id="129">129</span>
 <span id="130">130</span>
+<span id="131">131</span>
+<span id="132">132</span>
+<span id="133">133</span>
+<span id="134">134</span>
+<span id="135">135</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
@@ -242,10 +247,15 @@
 
 Orca works in a few steps.
 
-1. (Optional) preprocess an anonymised 389-ds access log (created from an external tool) into an orca data set.
-Create an orca config which defines the targets you want to be able to setup and load test. See example_profiles/small/orca.toml
-2. &#39;orca setup&#39; the kanidm/389-ds instance from the orca data set. You can see an example of this in example_profiles/small/data.json. This will reset the database, and add tons of entries etc.
-3. &#39;orca run&#39; one of the metrics, based on that data set. For example:
+1. Create an orca config which defines the targets you want to be able to setup and load test. See example_profiles/small/orca.toml
+
+2. (Optional) preprocess an anonymised 389-ds access log (created from an external tool) into an orca data set.
+
+3. &#39;orca setup&#39; the kanidm/389-ds instance from the orca data set. You can see an example of this in example_profiles/small/data.json. This will reset the database, and add tons of entries etc. For example:
+
+    orca setup kanidm -p ./example_profiles/small/orca.toml
+
+4. &#39;orca run&#39; one of the metrics, based on that data set. For example:
 
     orca run -p example_profiles/small/orca.toml kanidm search-basic
 
