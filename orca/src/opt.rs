@@ -107,10 +107,15 @@ impl std::fmt::Display for TestTypeOpt {
 
 Orca works in a few steps.
 
-1. (Optional) preprocess an anonymised 389-ds access log (created from an external tool) into an orca data set.
-Create an orca config which defines the targets you want to be able to setup and load test. See example_profiles/small/orca.toml
-2. 'orca setup' the kanidm/389-ds instance from the orca data set. You can see an example of this in example_profiles/small/data.json. This will reset the database, and add tons of entries etc.
-3. 'orca run' one of the metrics, based on that data set. For example:
+1. Create an orca config which defines the targets you want to be able to setup and load test. See example_profiles/small/orca.toml
+
+2. (Optional) preprocess an anonymised 389-ds access log (created from an external tool) into an orca data set.
+
+3. 'orca setup' the kanidm/389-ds instance from the orca data set. You can see an example of this in example_profiles/small/data.json. This will reset the database, and add tons of entries etc. For example:
+
+    orca setup kanidm -p ./example_profiles/small/orca.toml
+
+4. 'orca run' one of the metrics, based on that data set. For example:
 
     orca run -p example_profiles/small/orca.toml kanidm search-basic
 
