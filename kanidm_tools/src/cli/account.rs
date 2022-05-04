@@ -434,72 +434,7 @@ impl AccountCredential {
                         error!("Error starting credential reset -> {:?}", e);
                     }
                 }
-            } /*
-                  AccountCredential::RegisterWebauthn(acsopt) => {
-                      let client = acsopt.copt.to_client().await;
-
-                      let (session, chal) = match client
-                          .idm_account_primary_credential_register_webauthn(
-                              acsopt.aopts.account_id.as_str(),
-                              acsopt.tag.as_str(),
-                          )
-                          .await
-                      {
-                          Ok(v) => v,
-                          Err(e) => {
-                              error!("Error Starting Registration -> {:?}", e);
-                              return;
-                          }
-                      };
-
-                      let mut wa = WebauthnAuthenticator::new(U2FHid::new());
-
-                      eprintln!("Your authenticator will now flash for you to interact with.");
-
-                      let rego = match wa.do_registration(client.get_origin(), chal) {
-                          Ok(rego) => rego,
-                          Err(e) => {
-                              error!("Error Signing -> {:?}", e);
-                              return;
-                          }
-                      };
-
-                      match client
-                          .idm_account_primary_credential_complete_webuthn_registration(
-                              acsopt.aopts.account_id.as_str(),
-                              rego,
-                              session,
-                          )
-                          .await
-                      {
-                          Ok(()) => {
-                              println!("Webauthn token registration success.");
-                          }
-                          Err(e) => {
-                              error!("Error Completing -> {:?}", e);
-                          }
-                      }
-                  }
-                  AccountCredential::BackupCodeGenerate(acsopt) => {
-                      let client = acsopt.copt.to_client().await;
-                      match client
-                          .idm_account_primary_credential_generate_backup_code(
-                              acsopt.aopts.account_id.as_str(),
-                          )
-                          .await
-                      {
-                          Ok(s) => {
-                              println!("Please store these Backup codes in a safe place");
-                              println!("---");
-                              println!("{}", s.join("\n"));
-                              println!("---");
-                          }
-                          Err(e) => {
-                              error!("Error generating Backup Codes for account -> {:?}", e);
-                          }
-                      }
-                  }
-              */
+            }
         }
     }
 }
@@ -716,6 +651,56 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     }
     // Done!
 }
+
+// For webauthn later
+
+/*
+    AccountCredential::RegisterWebauthn(acsopt) => {
+        let client = acsopt.copt.to_client().await;
+
+        let (session, chal) = match client
+            .idm_account_primary_credential_register_webauthn(
+                acsopt.aopts.account_id.as_str(),
+                acsopt.tag.as_str(),
+            )
+            .await
+        {
+            Ok(v) => v,
+            Err(e) => {
+                error!("Error Starting Registration -> {:?}", e);
+                return;
+            }
+        };
+
+        let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+
+        eprintln!("Your authenticator will now flash for you to interact with.");
+
+        let rego = match wa.do_registration(client.get_origin(), chal) {
+            Ok(rego) => rego,
+            Err(e) => {
+                error!("Error Signing -> {:?}", e);
+                return;
+            }
+        };
+
+        match client
+            .idm_account_primary_credential_complete_webuthn_registration(
+                acsopt.aopts.account_id.as_str(),
+                rego,
+                session,
+            )
+            .await
+        {
+            Ok(()) => {
+                println!("Webauthn token registration success.");
+            }
+            Err(e) => {
+                error!("Error Completing -> {:?}", e);
+            }
+        }
+    }
+*/
 
 async fn credential_update_exec(session_token: CUSessionToken, client: KanidmClient) {
     trace!("started credential update exec");
