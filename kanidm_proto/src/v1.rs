@@ -389,10 +389,12 @@ pub struct CredentialDetail {
 impl fmt::Display for CredentialDetail {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(f, "uuid: {}", self.uuid)?;
+        /*
         writeln!(f, "claims:")?;
         for claim in &self.claims {
             writeln!(f, " * {}", claim)?;
         }
+        */
         match &self.type_ {
             CredentialDetailType::Password => writeln!(f, "password: set"),
             CredentialDetailType::GeneratedPassword => writeln!(f, "generated password: set"),
@@ -831,17 +833,35 @@ pub struct CUSessionToken {
     pub session_token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
 pub enum CURequest {
     PrimaryRemove,
     Password(String),
+    CancelMFAReg,
     TotpGenerate,
     TotpVerify(u32),
     TotpAcceptSha1,
     TotpRemove,
     BackupCodeGenerate,
     BackupCodeRemove,
+}
+
+impl fmt::Debug for CURequest {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let t = match self {
+            CURequest::PrimaryRemove => "CURequest::PrimaryRemove",
+            CURequest::Password(_) => "CURequest::Password",
+            CURequest::CancelMFAReg => "CURequest::CancelMFAReg",
+            CURequest::TotpGenerate => "CURequest::TotpGenerate",
+            CURequest::TotpVerify(_) => "CURequest::TotpVerify",
+            CURequest::TotpAcceptSha1 => "CURequest::TotpAcceptSha1",
+            CURequest::TotpRemove => "CURequest::TotpRemove",
+            CURequest::BackupCodeGenerate => "CURequest::BackupCodeGenerate",
+            CURequest::BackupCodeRemove => "CURequest::BackupCodeRemove",
+        };
+        writeln!(f, "{}", t)
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize)]

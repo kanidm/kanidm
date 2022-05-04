@@ -2037,7 +2037,6 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "webauthn-authenticator-rs",
- "zxcvbn",
 ]
 
 [[package]]

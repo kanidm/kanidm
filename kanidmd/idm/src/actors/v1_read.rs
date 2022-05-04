@@ -1019,6 +1019,8 @@ impl QueryServerReadV1 {
                 token_enc: session_token.session_token,
             };
 
+            debug!(?scr);
+
             match scr {
                 CURequest::PrimaryRemove => idms_cred_update
                     .credential_primary_delete(&session_token, ct)
@@ -1035,6 +1037,15 @@ impl QueryServerReadV1 {
                         admin_error!(
                             err = ?e,
                             "Failed to begin credential_primary_set_password",
+                        );
+                        e
+                    }),
+                CURequest::CancelMFAReg => idms_cred_update
+                    .credential_update_cancel_mfareg(&session_token, ct)
+                    .map_err(|e| {
+                        admin_error!(
+                            err = ?e,
+                            "Failed to begin credential_update_cancel_mfareg",
                         );
                         e
                     }),
@@ -1061,7 +1072,7 @@ impl QueryServerReadV1 {
                     .map_err(|e| {
                         admin_error!(
                             err = ?e,
-                            "Failed to begin credential_primary_remove_totp",
+                            "Failed to begin credential_primary_accept_sha1_totp",
                         );
                         e
                     }),

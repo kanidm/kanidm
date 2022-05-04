@@ -3,31 +3,27 @@ use crate::{
     AccountCredential, AccountOpt, AccountPerson, AccountPosix, AccountRadius, AccountSsh,
     AccountValidity,
 };
-use qrcode::render::unicode;
-use qrcode::QrCode;
-use std::io;
+use qrcode::{render::unicode, QrCode};
+// use std::io;
+use kanidm_client::KanidmClient;
 use time::OffsetDateTime;
 
-use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
+use dialoguer::{theme::ColorfulTheme, Select};
+use dialoguer::{Confirm, Input, Password};
 
-use kanidm_client::ClientError;
+// use webauthn_authenticator_rs::{u2fhid::U2FHid, WebauthnAuthenticator};
+
+// use kanidm_client::ClientError;
 use kanidm_client::ClientError::Http as ClientErrorHttp;
 use kanidm_proto::v1::OperationError::PasswordQuality;
+use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
+use std::fmt;
+use std::str::FromStr;
 
 impl AccountOpt {
     pub fn debug(&self) -> bool {
         match self {
-            AccountOpt::Credential(acopt) => match acopt {
-                AccountCredential::SetPassword(acs) => acs.copt.debug,
-                AccountCredential::GeneratePassword(acs) => acs.copt.debug,
-                AccountCredential::RegisterWebauthn(acs) => acs.copt.debug,
-                AccountCredential::RemoveWebauthn(acs) => acs.copt.debug,
-                AccountCredential::RegisterTotp(acs) => acs.copt.debug,
-                AccountCredential::RemoveTotp(acs) => acs.copt.debug,
-                AccountCredential::BackupCodeGenerate(acs) => acs.copt.debug,
-                AccountCredential::BackupCodeRemove(acs) => acs.copt.debug,
-                AccountCredential::Status(acs) => acs.copt.debug,
-            },
+            AccountOpt::Credential(acopt) => acopt.debug(),
             AccountOpt::Radius(acopt) => match acopt {
                 AccountRadius::Show(aro) => aro.copt.debug,
                 AccountRadius::Generate(aro) => aro.copt.debug,
@@ -62,304 +58,7 @@ impl AccountOpt {
     pub async fn exec(&self) {
         match self {
             // id/cred/primary/set
-            AccountOpt::Credential(acopt) => match acopt {
-                AccountCredential::SetPassword(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    let password = match password_prompt(
-                        format!("Enter new password for {}: ", acsopt.aopts.account_id).as_str(),
-                    ) {
-                        Some(v) => v,
-                        None => {
-                            println!("Passwords do not match");
-                            return;
-                        }
-                    };
-
-                    if let Err(e) = client
-                        .idm_account_primary_credential_set_password(
-                            acsopt.aopts.account_id.as_str(),
-                            password.as_str(),
-                        )
-                        .await
-                    {
-                        match e {
-                            // TODO: once the password length is configurable at a system level (#498), pull from the configuration.
-                            ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
-                                error!("{:?}", feedback)
-                            }
-                            _ => error!("Error setting password -> {:?}", e),
-                        }
-                    }
-                }
-                AccountCredential::GeneratePassword(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-
-                    match client
-                        .idm_account_primary_credential_set_generated(
-                            acsopt.aopts.account_id.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(npw) => {
-                            println!(
-                                "Generated password for {}: {}",
-                                acsopt.aopts.account_id, npw
-                            );
-                        }
-                        Err(e) => {
-                            error!("Error -> {:?}", e);
-                        }
-                    }
-                }
-                AccountCredential::RegisterWebauthn(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-
-                    let (session, chal) = match client
-                        .idm_account_primary_credential_register_webauthn(
-                            acsopt.aopts.account_id.as_str(),
-                            acsopt.tag.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error Starting Registration -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    let mut wa = WebauthnAuthenticator::new(U2FHid::new());
-
-                    eprintln!("Your authenticator will now flash for you to interact with.");
-
-                    let rego = match wa.do_registration(client.get_origin(), chal) {
-                        Ok(rego) => rego,
-                        Err(e) => {
-                            error!("Error Signing -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    match client
-                        .idm_account_primary_credential_complete_webuthn_registration(
-                            acsopt.aopts.account_id.as_str(),
-                            rego,
-                            session,
-                        )
-                        .await
-                    {
-                        Ok(()) => {
-                            println!("Webauthn token registration success.");
-                        }
-                        Err(e) => {
-                            error!("Error Completing -> {:?}", e);
-                        }
-                    }
-                }
-                AccountCredential::RemoveWebauthn(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    match client
-                        .idm_account_primary_credential_remove_webauthn(
-                            acsopt.aopts.account_id.as_str(),
-                            acsopt.tag.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            println!("Webauthn removal success.");
-                        }
-                        Err(e) => {
-                            error!("Error Removing Webauthn from account -> {:?}", e);
-                        }
-                    }
-                }
-                AccountCredential::RegisterTotp(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    let (session, tok) = match client
-                        .idm_account_primary_credential_generate_totp(
-                            acsopt.aopts.account_id.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(v) => v,
-                        Err(e) => {
-                            error!("Error Starting Registration -> {:?}", e);
-                            return;
-                        }
-                    };
-
-                    // display the token.
-                    eprintln!("Scan the following QR code with your OTP app.");
-
-                    let code = match QrCode::new(tok.to_uri().as_str()) {
-                        Ok(c) => c,
-                        Err(e) => {
-                            error!("Failed to generate QR code -> {:?}", e);
-                            return;
-                        }
-                    };
-                    let image = code
-                        .render::<unicode::Dense1x2>()
-                        .dark_color(unicode::Dense1x2::Light)
-                        .light_color(unicode::Dense1x2::Dark)
-                        .build();
-                    eprintln!("{}", image);
-
-                    eprintln!("Alternatively, you can manually enter the following OTP details:");
-                    println!("Account Name: {}", tok.accountname);
-                    println!("Issuer: {}", tok.issuer);
-                    println!("Algorithm: {}", tok.algo);
-                    println!("Period/Step: {}", tok.step);
-                    println!("Secret: {}", tok.get_secret());
-
-                    // prompt for the totp.
-                    eprintln!("--------------------------------------------------------------");
-                    eprintln!("Enter a TOTP from your authenticator to complete registration:");
-
-                    let mut attempts = 3;
-                    while attempts > 0 {
-                        eprint!("TOTP: ");
-                        let mut totp_input = String::new();
-                        let input_result = io::stdin().read_line(&mut totp_input);
-                        // Finish the line?
-                        eprintln!();
-                        if let Err(e) = input_result {
-                            error!("Failed to read from stdin -> {:?}", e);
-                            break;
-                        };
-
-                        // Convert to a u32.
-                        let totp = match totp_input.trim().parse::<u32>() {
-                            Ok(v) => v,
-                            Err(e) => {
-                                error!("Invalid TOTP -> {:?}", e);
-                                // Try again.
-                                continue;
-                            }
-                        };
-
-                        match client
-                            .idm_account_primary_credential_verify_totp(
-                                acsopt.aopts.account_id.as_str(),
-                                totp,
-                                session,
-                            )
-                            .await
-                        {
-                            Ok(_) => {
-                                println!("TOTP registration success.");
-                                break;
-                            }
-                            Err(ClientError::TotpInvalidSha1(session)) => {
-                                eprintln!("⚠️  WARNING - It appears your authenticator app may be broken ⚠️  ");
-                                eprintln!(" The TOTP authenticator you are using is forcing the use of SHA1\n");
-                                eprintln!(" -- If you accept this risk, and wish to proceed, type 'I am sure' ");
-                                eprintln!(" -- Otherwise press ENTER to cancel this operation\n");
-                                eprint!("Are you sure: ");
-
-                                let mut confirm_input = String::new();
-                                if let Err(e) = io::stdin().read_line(&mut confirm_input) {
-                                    error!("Failed to read from stdin -> {:?}", e);
-                                };
-
-                                if confirm_input.to_lowercase().trim() == "i am sure" {
-                                    match client
-                                        .idm_account_primary_credential_accept_sha1_totp(
-                                            acsopt.aopts.account_id.as_str(),
-                                            session,
-                                        )
-                                        .await
-                                    {
-                                        Ok(_) => {
-                                            println!("TOTP registration success.");
-                                        }
-                                        Err(e) => {
-                                            error!("Error Completing -> {:?}", e);
-                                        }
-                                    };
-                                } else {
-                                    eprintln!("Cancelling TOTP registration");
-                                }
-                                break;
-                            }
-                            Err(ClientError::TotpVerifyFailed(_, _)) => {
-                                eprintln!("Incorrect TOTP code - try again");
-                                attempts -= 1;
-                                continue;
-                            }
-                            Err(e) => {
-                                error!("Error Completing -> {:?}", e);
-                                break;
-                            }
-                        }
-                    } // end loop
-                }
-                AccountCredential::RemoveTotp(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    match client
-                        .idm_account_primary_credential_remove_totp(
-                            acsopt.aopts.account_id.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            println!("TOTP removal success.");
-                        }
-                        Err(e) => {
-                            error!("Error Removing TOTP from account -> {:?}", e);
-                        }
-                    }
-                }
-                AccountCredential::BackupCodeGenerate(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    match client
-                        .idm_account_primary_credential_generate_backup_code(
-                            acsopt.aopts.account_id.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(s) => {
-                            println!("Please store these Backup codes in a safe place");
-                            println!("---");
-                            println!("{}", s.join("\n"));
-                            println!("---");
-                        }
-                        Err(e) => {
-                            error!("Error generating Backup Codes for account -> {:?}", e);
-                        }
-                    }
-                }
-                AccountCredential::BackupCodeRemove(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    match client
-                        .idm_account_primary_credential_remove_backup_code(
-                            acsopt.aopts.account_id.as_str(),
-                        )
-                        .await
-                    {
-                        Ok(_) => {
-                            println!("BackupCodeRemove success.");
-                        }
-                        Err(e) => {
-                            error!("Error BackupCodeRemove for account -> {:?}", e);
-                        }
-                    }
-                }
-                AccountCredential::Status(acsopt) => {
-                    let client = acsopt.copt.to_client().await;
-                    match client
-                        .idm_account_get_credential_status(acsopt.aopts.account_id.as_str())
-                        .await
-                    {
-                        Ok(status) => {
-                            print!("{}", status);
-                        }
-                        Err(e) => {
-                            error!("Error displaying credential status -> {:?}", e);
-                        }
-                    }
-                }
-            }, // end AccountOpt::Credential
+            AccountOpt::Credential(acopt) => acopt.exec().await,
             AccountOpt::Radius(aropt) => match aropt {
                 AccountRadius::Show(aopt) => {
                     let client = aopt.copt.to_client().await;
@@ -675,4 +374,517 @@ impl AccountOpt {
             }, // end AccountOpt::Validity
         }
     }
+}
+
+impl AccountCredential {
+    pub fn debug(&self) -> bool {
+        match self {
+            AccountCredential::Update(aopt) => aopt.copt.debug,
+            AccountCredential::Reset(aopt) => aopt.copt.debug,
+            AccountCredential::CreateResetLink(aopt) => aopt.copt.debug,
+        }
+    }
+
+    pub async fn exec(&self) {
+        match self {
+            AccountCredential::Update(aopt) => {
+                let client = aopt.copt.to_client().await;
+                match client
+                    .idm_account_credential_update_begin(aopt.aopts.account_id.as_str())
+                    .await
+                {
+                    Ok(cusession_token) => credential_update_exec(cusession_token, client).await,
+                    Err(e) => {
+                        error!("Error starting credential update -> {:?}", e);
+                    }
+                }
+            }
+            AccountCredential::Reset(aopt) => {
+                let client = aopt.copt.to_unauth_client();
+                let cuintent_token = CUIntentToken {
+                    intent_token: aopt.token.clone(),
+                };
+
+                match client
+                    .idm_account_credential_update_exchange(cuintent_token)
+                    .await
+                {
+                    Ok(cusession_token) => credential_update_exec(cusession_token, client).await,
+                    Err(e) => {
+                        error!("Error starting credential reset -> {:?}", e);
+                    }
+                }
+            }
+            AccountCredential::CreateResetLink(aopt) => {
+                let client = aopt.copt.to_client().await;
+                match client
+                    .idm_account_credential_update_intent(aopt.aopts.account_id.as_str())
+                    .await
+                {
+                    Ok(cuintent_token) => {
+                        println!("success!");
+                        println!("Send the person the following command");
+                        println!("");
+                        println!(
+                            "kanidm account credential reset link {}",
+                            cuintent_token.intent_token
+                        );
+                    }
+                    Err(e) => {
+                        error!("Error starting credential reset -> {:?}", e);
+                    }
+                }
+            } /*
+                  AccountCredential::RegisterWebauthn(acsopt) => {
+                      let client = acsopt.copt.to_client().await;
+
+                      let (session, chal) = match client
+                          .idm_account_primary_credential_register_webauthn(
+                              acsopt.aopts.account_id.as_str(),
+                              acsopt.tag.as_str(),
+                          )
+                          .await
+                      {
+                          Ok(v) => v,
+                          Err(e) => {
+                              error!("Error Starting Registration -> {:?}", e);
+                              return;
+                          }
+                      };
+
+                      let mut wa = WebauthnAuthenticator::new(U2FHid::new());
+
+                      eprintln!("Your authenticator will now flash for you to interact with.");
+
+                      let rego = match wa.do_registration(client.get_origin(), chal) {
+                          Ok(rego) => rego,
+                          Err(e) => {
+                              error!("Error Signing -> {:?}", e);
+                              return;
+                          }
+                      };
+
+                      match client
+                          .idm_account_primary_credential_complete_webuthn_registration(
+                              acsopt.aopts.account_id.as_str(),
+                              rego,
+                              session,
+                          )
+                          .await
+                      {
+                          Ok(()) => {
+                              println!("Webauthn token registration success.");
+                          }
+                          Err(e) => {
+                              error!("Error Completing -> {:?}", e);
+                          }
+                      }
+                  }
+                  AccountCredential::BackupCodeGenerate(acsopt) => {
+                      let client = acsopt.copt.to_client().await;
+                      match client
+                          .idm_account_primary_credential_generate_backup_code(
+                              acsopt.aopts.account_id.as_str(),
+                          )
+                          .await
+                      {
+                          Ok(s) => {
+                              println!("Please store these Backup codes in a safe place");
+                              println!("---");
+                              println!("{}", s.join("\n"));
+                              println!("---");
+                          }
+                          Err(e) => {
+                              error!("Error generating Backup Codes for account -> {:?}", e);
+                          }
+                      }
+                  }
+              */
+        }
+    }
+}
+
+#[derive(Debug)]
+enum CUAction {
+    Help,
+    Status,
+    Password,
+    Totp,
+    TotpRemove,
+    BackupCodes,
+    Remove,
+    End,
+    Commit,
+}
+
+impl fmt::Display for CUAction {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            r#"
+help (h, ?) - Display this help
+status (ls, st) - Show the status of the credential
+password (passwd, pass, pw) - Set a new password
+totp - Generate a new totp, requires a password to be set
+totp remove (totp rm, trm) - Remove the TOTP of this account
+backup codes (bcg, bcode) - (Re)generate backup codes for this account
+remove (rm) - Remove only the primary credential
+end (quit, exit, x, q) - End, without saving any changes
+commit (save) - Commit the changes to the credential
+"#
+        )
+    }
+}
+
+impl FromStr for CUAction {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let s = s.to_lowercase();
+        match s.as_str() {
+            "help" | "h" | "?" => Ok(CUAction::Help),
+            "status" | "ls" | "st" => Ok(CUAction::Status),
+            "password" | "passwd" | "pass" | "pw" => Ok(CUAction::Password),
+            "totp" => Ok(CUAction::Totp),
+            "totp remove" | "totp rm" | "trm" => Ok(CUAction::TotpRemove),
+            "backup codes" | "bcode" | "bcg" => Ok(CUAction::BackupCodes),
+            "remove" | "rm" => Ok(CUAction::Remove),
+            "end" | "quit" | "exit" | "x" | "q" => Ok(CUAction::End),
+            "commit" | "save" => Ok(CUAction::Commit),
+            _ => Err(()),
+        }
+    }
+}
+
+async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClient) {
+    // First, submit the server side gen.
+    let totp_secret = match client
+        .idm_account_credential_update_init_totp(session_token)
+        .await
+    {
+        Ok(CUStatus {
+            mfaregstate: CURegState::TotpCheck(totp_secret),
+            ..
+        }) => totp_secret,
+        Ok(status) => {
+            debug!(?status);
+            eprintln!("An error occured -> InvalidState");
+            return;
+        }
+        Err(e) => {
+            eprintln!("An error occured -> {:?}", e);
+            return;
+        }
+    };
+
+    // gen the qr
+    eprintln!("Scan the following QR code with your OTP app.");
+
+    let code = match QrCode::new(totp_secret.to_uri().as_str()) {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Failed to generate QR code -> {:?}", e);
+            return;
+        }
+    };
+    let image = code
+        .render::<unicode::Dense1x2>()
+        .dark_color(unicode::Dense1x2::Light)
+        .light_color(unicode::Dense1x2::Dark)
+        .build();
+    eprintln!("{}", image);
+
+    eprintln!("Alternatively, you can manually enter the following OTP details:");
+    println!("Account Name: {}", totp_secret.accountname);
+    println!("Issuer: {}", totp_secret.issuer);
+    println!("Algorithm: {}", totp_secret.algo);
+    println!("Period/Step: {}", totp_secret.step);
+    println!("Secret: {}", totp_secret.get_secret());
+
+    // prompt for the totp.
+    eprintln!("--------------------------------------------------------------");
+    eprintln!("Enter a TOTP from your authenticator to complete registration:");
+
+    // Up to three attempts
+    let mut attempts = 3;
+    while attempts > 0 {
+        attempts -= 1;
+        // prompt for it. OR cancel.
+        let input: String = Input::new()
+            .with_prompt("TOTP")
+            .validate_with(|input: &String| -> Result<(), &str> {
+                if input.to_lowercase().starts_with('c') || input.trim().parse::<u32>().is_ok() {
+                    Ok(())
+                } else {
+                    Err("Must be a number (123456) or cancel to end")
+                }
+            })
+            .interact_text()
+            .unwrap();
+
+        // cancel, submit the reg cancel.
+        let totp_chal = match input.trim().parse::<u32>() {
+            Ok(v) => v,
+            Err(_) => {
+                eprintln!("Cancelling TOTP registration ...");
+                if let Err(e) = client
+                    .idm_account_credential_update_cancel_mfareg(session_token)
+                    .await
+                {
+                    eprintln!("An error occured -> {:?}", e);
+                } else {
+                    println!("success");
+                }
+                return;
+            }
+        };
+        trace!(%totp_chal);
+
+        // Submit and see what we get.
+        match client
+            .idm_account_credential_update_check_totp(session_token, totp_chal)
+            .await
+        {
+            Ok(CUStatus {
+                mfaregstate: CURegState::None,
+                ..
+            }) => {
+                println!("success");
+                break;
+            }
+            Ok(CUStatus {
+                mfaregstate: CURegState::TotpTryAgain,
+                ..
+            }) => {
+                // Wrong code! Try again.
+                eprintln!("Incorrect TOTP code entered. Please try again.");
+                continue;
+            }
+            Ok(CUStatus {
+                mfaregstate: CURegState::TotpInvalidSha1,
+                ..
+            }) => {
+                // Sha 1 warning.
+                eprintln!("⚠️  WARNING - It appears your authenticator app may be broken ⚠️  ");
+                eprintln!(" The TOTP authenticator you are using is forcing the use of SHA1\n");
+                eprintln!(
+                    " SHA1 is a deprecated and potentially insecure cryptographic algorithm\n"
+                );
+
+                let items = vec!["Cancel", "I am sure"];
+                let selection = Select::with_theme(&ColorfulTheme::default())
+                    .items(&items)
+                    .default(0)
+                    .interact()
+                    .unwrap();
+
+                match selection {
+                    1 => {
+                        if let Err(e) = client
+                            .idm_account_credential_update_accept_sha1_totp(session_token)
+                            .await
+                        {
+                            eprintln!("An error occured -> {:?}", e);
+                        } else {
+                            println!("success");
+                        }
+                    }
+                    _ => {
+                        println!("Cancelling TOTP registration ...");
+                        if let Err(e) = client
+                            .idm_account_credential_update_cancel_mfareg(session_token)
+                            .await
+                        {
+                            eprintln!("An error occured -> {:?}", e);
+                        } else {
+                            println!("success");
+                        }
+                    }
+                }
+                return;
+            }
+            Ok(status) => {
+                debug!(?status);
+                eprintln!("An error occured -> InvalidState");
+                return;
+            }
+            Err(e) => {
+                eprintln!("An error occured -> {:?}", e);
+                return;
+            }
+        }
+    }
+    // Done!
+}
+
+async fn credential_update_exec(session_token: CUSessionToken, client: KanidmClient) {
+    trace!("started credential update exec");
+    loop {
+        // Display Prompt
+        let input: String = Input::new()
+            .with_prompt("\ncred update (? for help) # ")
+            .validate_with(|input: &String| -> Result<(), &str> {
+                if CUAction::from_str(input).is_ok() {
+                    Ok(())
+                } else {
+                    Err("This is not a valid command. See help for valid options (?)")
+                }
+            })
+            .interact_text()
+            .unwrap();
+
+        // Get action
+        let action = match CUAction::from_str(&input) {
+            Ok(a) => a,
+            Err(_) => continue,
+        };
+
+        trace!(?action);
+
+        match action {
+            CUAction::Help => {
+                print!("{}", action);
+            }
+            CUAction::Status => {
+                match client
+                    .idm_account_credential_update_status(&session_token)
+                    .await
+                {
+                    Ok(status) => {
+                        if let Some(cred_detail) = status.primary {
+                            println!("Primary Credential:");
+                            print!("{}", cred_detail);
+                        } else {
+                            println!("Primary Credential:");
+                            println!("  not set");
+                        }
+
+                        // We may need to be able to display if there are dangling
+                        // curegstates, but the cli ui statemachine can match the
+                        // server so it may not be needed?
+
+                        println!("Can Commit: {}", status.can_commit);
+                    }
+                    Err(e) => {
+                        eprintln!("An error occured -> {:?}", e);
+                    }
+                }
+            }
+            CUAction::Password => {
+                let password_a = Password::new()
+                    .with_prompt("New password")
+                    .interact()
+                    .unwrap();
+                let password_b = Password::new()
+                    .with_prompt("Confirm password")
+                    .interact()
+                    .unwrap();
+
+                if password_a != password_b {
+                    eprintln!("Passwords do not match");
+                } else {
+                    if let Err(e) = client
+                        .idm_account_credential_update_set_password(&session_token, &password_a)
+                        .await
+                    {
+                        match e {
+                            ClientErrorHttp(_, Some(PasswordQuality(feedback)), _) => {
+                                for fb_item in feedback.iter() {
+                                    eprintln!("{:?}", fb_item)
+                                }
+                            }
+                            _ => eprintln!("An error occured -> {:?}", e),
+                        }
+                    } else {
+                        println!("success");
+                    }
+                }
+            }
+            CUAction::Totp => totp_enroll_prompt(&session_token, &client).await,
+            CUAction::TotpRemove => {
+                if Confirm::new()
+                    .with_prompt("Do you want to remove your totp?")
+                    .interact()
+                    .unwrap()
+                {
+                    if let Err(e) = client
+                        .idm_account_credential_update_remove_totp(&session_token)
+                        .await
+                    {
+                        eprintln!("An error occured -> {:?}", e);
+                    } else {
+                        println!("success");
+                    }
+                } else {
+                    println!("Totp was NOT removed");
+                }
+            }
+            CUAction::BackupCodes => {
+                match client
+                    .idm_account_credential_update_backup_codes_generate(&session_token)
+                    .await
+                {
+                    Ok(CUStatus {
+                        mfaregstate: CURegState::BackupCodes(codes),
+                        ..
+                    }) => {
+                        println!("Please store these Backup codes in a safe place");
+                        println!("They will only be displayed ONCE");
+                        for code in codes {
+                            println!("  {}", code)
+                        }
+                    }
+                    Ok(status) => {
+                        debug!(?status);
+                        eprintln!("An error occured -> InvalidState");
+                    }
+                    Err(e) => {
+                        eprintln!("An error occured -> {:?}", e);
+                    }
+                }
+            }
+            CUAction::Remove => {
+                if Confirm::new()
+                    .with_prompt("Do you want to remove your primary credential?")
+                    .interact()
+                    .unwrap()
+                {
+                    if let Err(e) = client
+                        .idm_account_credential_update_primary_remove(&session_token)
+                        .await
+                    {
+                        eprintln!("An error occured -> {:?}", e);
+                    } else {
+                        println!("success");
+                    }
+                } else {
+                    println!("Primary credential was NOT removed");
+                }
+            }
+            CUAction::End => {
+                println!("Changes were NOT saved.");
+                break;
+            }
+            CUAction::Commit => {
+                if Confirm::new()
+                    .with_prompt("Do you want to commit your changes?")
+                    .interact()
+                    .unwrap()
+                {
+                    if let Err(e) = client
+                        .idm_account_credential_update_commit(&session_token)
+                        .await
+                    {
+                        eprintln!("An error occured -> {:?}", e);
+                    } else {
+                        println!("success");
+                    }
+                    break;
+                } else {
+                    println!("Changes have NOT been saved.");
+                }
+            }
+        }
+    }
+    trace!("ended credential update exec");
 }
