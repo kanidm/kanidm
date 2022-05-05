@@ -83,14 +83,6 @@ pub struct AccountCommonOpt {
 }
 
 #[derive(Debug, StructOpt)]
-pub struct AccountCredentialSet {
-    #[structopt(flatten)]
-    aopts: AccountCommonOpt,
-    #[structopt(flatten)]
-    copt: CommonOpt,
-}
-
-#[derive(Debug, StructOpt)]
 pub struct AccountNamedOpt {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
@@ -145,6 +137,14 @@ pub struct AccountNamedTagPkOpt {
 }
 
 #[derive(Debug, StructOpt)]
+pub struct AnonTokenOpt {
+    #[structopt(flatten)]
+    copt: CommonOpt,
+    #[structopt(name = "token")]
+    token: String,
+}
+
+#[derive(Debug, StructOpt)]
 pub struct AccountCreateOpt {
     #[structopt(flatten)]
     aopts: AccountCommonOpt,
@@ -156,35 +156,16 @@ pub struct AccountCreateOpt {
 
 #[derive(Debug, StructOpt)]
 pub enum AccountCredential {
-    /// Set this accounts password
-    #[structopt(name = "set_password")]
-    SetPassword(AccountCredentialSet),
-    /// Register a new webauthn device to this account.
-    #[structopt(name = "register_webauthn")]
-    RegisterWebauthn(AccountNamedTagOpt),
-    /// Remove a webauthn device from this account
-    #[structopt(name = "remove_webauthn")]
-    RemoveWebauthn(AccountNamedTagOpt),
-    /// Set the TOTP credential of the account. If a TOTP already exists, on a successful
-    /// registration, this will replace it.
-    #[structopt(name = "register_totp")]
-    RegisterTotp(AccountNamedOpt),
-    /// Remove TOTP from the account. If no TOTP exists, no action is taken.
-    #[structopt(name = "remove_totp")]
-    RemoveTotp(AccountNamedOpt),
-    /// Show the status of the accounts credentials.
-    #[structopt(name = "status")]
-    Status(AccountNamedOpt),
-    /// Reset the accounts credentials, removing all TOTP, Webauthn, Passwords,
-    /// and generate a new strong random password.
-    #[structopt(name = "reset_credential")]
-    GeneratePassword(AccountCredentialSet),
-    /// Generate a new set of backup codes.
-    #[structopt(name = "generate_backup_codes")]
-    BackupCodeGenerate(AccountNamedOpt),
-    /// Remove backup codes from the account.
-    #[structopt(name = "remove_backup_codes")]
-    BackupCodeRemove(AccountNamedOpt),
+    /// Interactively update and change the content of the credentials of an account
+    #[structopt(name = "update")]
+    Update(AccountNamedOpt),
+    /// Given a reset token, interactively perform a credential reset
+    #[structopt(name = "reset")]
+    Reset(AnonTokenOpt),
+    /// Create a reset link (token) that can be given to another person so they can
+    /// recover or reset their account credentials.
+    #[structopt(name = "create_reset_link")]
+    CreateResetLink(AccountNamedOpt),
 }
 
 #[derive(Debug, StructOpt)]

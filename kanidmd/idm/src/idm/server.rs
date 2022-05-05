@@ -545,6 +545,7 @@ impl<'a> IdmServerAuthTransaction<'a> {
         session_read.contains_key(sessionid)
     }
 
+    #[instrument(level = "trace", skip(self))]
     pub async fn expire_auth_sessions(&mut self, ct: Duration) {
         // ct is current time - sub the timeout. and then split.
         let expire = ct - Duration::from_secs(AUTH_SESSION_TIMEOUT);

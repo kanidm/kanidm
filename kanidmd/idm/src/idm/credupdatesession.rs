@@ -15,6 +15,7 @@ use crate::utils::{backup_code_from_random, uuid_from_duration};
 
 use serde::{Deserialize, Serialize};
 
+use std::fmt;
 use std::sync::Arc;
 use std::sync::Mutex;
 use std::time::Duration;
@@ -62,7 +63,6 @@ pub struct CredentialUpdateSessionToken {
     pub token_enc: String,
 }
 
-#[derive(Debug)]
 enum MfaRegState {
     None,
     TotpInit(Totp),
@@ -70,7 +70,18 @@ enum MfaRegState {
     TotpInvalidSha1(Totp),
 }
 
-#[derive(Debug)]
+impl fmt::Debug for MfaRegState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let t = match self {
+            MfaRegState::None => "MfaRegState::None",
+            MfaRegState::TotpInit(_) => "MfaRegState::TotpInit",
+            MfaRegState::TotpTryAgain(_) => "MfaRegState::TotpTryAgain",
+            MfaRegState::TotpInvalidSha1(_) => "MfaRegState::TotpInvalidSha1",
+        };
+        write!(f, "{}", t)
+    }
+}
+
 pub(crate) struct CredentialUpdateSession {
     // Current credentials - these are on the Account!
     account: Account,
@@ -87,7 +98,18 @@ pub(crate) struct CredentialUpdateSession {
     //
 }
 
-#[derive(Debug)]
+impl fmt::Debug for CredentialUpdateSession {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let primary: Option<CredentialDetail> = self.primary.as_ref().map(|c| c.into());
+        f.debug_struct("CredentialUpdateSession")
+            .field("account.spn", &self.account.spn)
+            .field("intent_token_id", &self.intent_token_id)
+            .field("primary.detail()", &primary)
+            .field("mfaregstate", &self.mfaregstate)
+            .finish()
+    }
+}
+
 enum MfaRegStateStatus {
     // Nothing in progress.
     None,
@@ -95,6 +117,19 @@ enum MfaRegStateStatus {
     TotpTryAgain,
     TotpInvalidSha1,
     BackupCodes(HashSet<String>),
+}
+
+impl fmt::Debug for MfaRegStateStatus {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let t = match self {
+            MfaRegStateStatus::None => "MfaRegStateStatus::None",
+            MfaRegStateStatus::TotpCheck(_) => "MfaRegStateStatus::TotpCheck(_)",
+            MfaRegStateStatus::TotpTryAgain => "MfaRegStateStatus::TotpTryAgain",
+            MfaRegStateStatus::TotpInvalidSha1 => "MfaRegStateStatus::TotpInvalidSha1",
+            MfaRegStateStatus::BackupCodes(_) => "MfaRegStateStatus::BackupCodes",
+        };
+        write!(f, "{}", t)
+    }
 }
 
 #[derive(Debug)]
@@ -184,6 +219,10 @@ pub struct InitCredentialUpdateEvent {
 }
 
 impl InitCredentialUpdateEvent {
+    pub fn new(ident: Identity, target: Uuid) -> Self {
+        InitCredentialUpdateEvent { ident, target }
+    }
+
     #[cfg(test)]
     pub fn new_impersonate_entry(e: std::sync::Arc<Entry<EntrySealed, EntryCommitted>>) -> Self {
         let ident = Identity::from_impersonate_entry(e);
@@ -279,6 +318,9 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let token_enc = self.token_enc_key.encrypt(&token_data);
 
         // Point of no return
+
+        // Sneaky! Now we know it will work, prune old sessions.
+        self.expire_credential_update_sessions(ct);
 
         // Store the update session into the map.
         self.cred_update_sessions.insert(sessionid, session);
@@ -476,8 +518,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         })
     }
 
-    pub fn prune_sessions() {
-        todo!();
+    #[instrument(level = "trace", skip(self))]
+    pub fn expire_credential_update_sessions(&mut self, ct: Duration) {
+        let before = self.cred_update_sessions.len();
+        let split_at = uuid_from_duration(ct, self.sid);
+        trace!(?split_at, "expiring less than");
+        self.cred_update_sessions.split_off_lt(&split_at);
+        let removed = before - self.cred_update_sessions.len();
+        trace!(?removed);
     }
 
     pub fn commit_credential_update(
@@ -906,6 +954,8 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                         OperationError::InvalidState
                     })?;
 
+                security_info!("A SHA1 TOTP credential was accepted");
+
                 session.primary = Some(ncred);
 
                 // Set the state to None.
@@ -1022,6 +1072,21 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
         Ok(session.deref().into())
     }
 
+    pub fn credential_update_cancel_mfareg(
+        &self,
+        cust: &CredentialUpdateSessionToken,
+        ct: Duration,
+    ) -> Result<CredentialUpdateSessionStatus, OperationError> {
+        let session_handle = self.get_current_session(cust, ct)?;
+        let mut session = session_handle.try_lock().map_err(|_| {
+            admin_error!("Session already locked, unable to proceed.");
+            OperationError::InvalidState
+        })?;
+        trace!(?session);
+        session.mfaregstate = MfaRegState::None;
+        Ok(session.deref().into())
+    }
+
     pub fn credential_primary_delete(
         &self,
         cust: &CredentialUpdateSessionToken,
@@ -1044,7 +1109,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 mod tests {
     use super::{
         CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
-        MfaRegStateStatus, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
+        MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
     use crate::credential::totp::Totp;
     use crate::event::{AuthEvent, AuthResult, CreateEvent};
@@ -1403,6 +1468,34 @@ mod tests {
             }) => Some(token),
             _ => None,
         }
+    }
+
+    #[test]
+    fn test_idm_credential_update_session_cleanup() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+            let cust = setup_test_session(idms, ct);
+
+            let cutxn = idms.cred_update_transaction();
+            // The session exists
+            let c_status = cutxn.credential_update_status(&cust, ct);
+            assert!(c_status.is_ok());
+            drop(cutxn);
+
+            // Making a new session is what triggers the clean of old sessions.
+            let _ = renew_test_session(idms, ct + MAXIMUM_CRED_UPDATE_TTL + Duration::from_secs(1));
+
+            let cutxn = idms.cred_update_transaction();
+
+            // Now fake going back in time .... allows the tokne to decrypt, but the sesion
+            // is gone anyway!
+            let c_status = cutxn
+                .credential_update_status(&cust, ct)
+                .expect_err("Session is still valid!");
+            assert!(matches!(c_status, OperationError::InvalidState));
+        })
     }
 
     #[test]
@@ -1768,6 +1861,52 @@ mod tests {
                 commit_session(idms, ct, cust);
             }
         )
+    }
+
+    #[test]
+    fn test_idm_credential_update_onboarding_cancel_inprogress_totp() {
+        run_idm_test!(|_qs: &QueryServer,
+                       idms: &IdmServer,
+                       _idms_delayed: &mut IdmServerDelayed| {
+            let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
+            let ct = Duration::from_secs(TEST_CURRENT_TIME);
+
+            let cust = setup_test_session(idms, ct);
+            let cutxn = idms.cred_update_transaction();
+
+            // Setup the PW
+            let c_status = cutxn
+                .credential_primary_set_password(&cust, ct, test_pw)
+                .expect("Failed to update the primary cred password");
+
+            // Since it's pw only.
+            assert!(c_status.can_commit);
+
+            //
+            let c_status = cutxn
+                .credential_primary_init_totp(&cust, ct)
+                .expect("Failed to update the primary cred password");
+
+            // Check the status has the token.
+            assert!(c_status.can_commit);
+            assert!(matches!(
+                c_status.mfaregstate,
+                MfaRegStateStatus::TotpCheck(_)
+            ));
+
+            let c_status = cutxn
+                .credential_update_cancel_mfareg(&cust, ct)
+                .expect("Failed to cancel inflight totp change");
+
+            assert!(matches!(c_status.mfaregstate, MfaRegStateStatus::None));
+            assert!(c_status.can_commit);
+
+            drop(cutxn);
+            commit_session(idms, ct, cust);
+
+            // It's pw only, since we canceled TOTP
+            assert!(check_testperson_password(idms, test_pw, ct).is_some());
+        })
     }
 
     // Primary cred must be pw or pwmfa

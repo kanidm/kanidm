@@ -413,6 +413,20 @@ pub async fn account_put_id_credential_primary(req: tide::Request<AppState>) -> 
     json_rest_event_credential_put(req).await
 }
 
+pub async fn account_get_id_credential_update(req: tide::Request<AppState>) -> tide::Result {
+    let uat = req.get_current_uat();
+    let uuid_or_name = req.get_url_param("id")?;
+
+    let (eventid, hvalue) = req.new_eventid();
+
+    let res = req
+        .state()
+        .qe_w_ref
+        .handle_idmcredentialupdate(uat, uuid_or_name, eventid)
+        .await;
+    to_tide_response(res, hvalue)
+}
+
 pub async fn account_get_id_credential_update_intent(req: tide::Request<AppState>) -> tide::Result {
     let uat = req.get_current_uat();
     let uuid_or_name = req.get_url_param("id")?;

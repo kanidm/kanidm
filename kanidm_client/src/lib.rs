@@ -1621,6 +1621,14 @@ impl KanidmClient {
             .await
     }
 
+    pub async fn idm_account_credential_update_begin(
+        &self,
+        id: &str,
+    ) -> Result<CUSessionToken, ClientError> {
+        self.perform_get_request(format!("/v1/account/{}/_credential/_update", id).as_str())
+            .await
+    }
+
     pub async fn idm_account_credential_update_exchange(
         &self,
         intent_token: CUIntentToken,
@@ -1643,7 +1651,71 @@ impl KanidmClient {
         session_token: &CUSessionToken,
         pw: &str,
     ) -> Result<CUStatus, ClientError> {
-        let scr = SetCredentialRequest::Password(pw.to_string());
+        let scr = CURequest::Password(pw.to_string());
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_cancel_mfareg(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::CancelMFAReg;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_init_totp(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::TotpGenerate;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_check_totp(
+        &self,
+        session_token: &CUSessionToken,
+        totp_chal: u32,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::TotpVerify(totp_chal);
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_accept_sha1_totp(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::TotpAcceptSha1;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_remove_totp(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::TotpRemove;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_backup_codes_generate(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::BackupCodeGenerate;
+        self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
+            .await
+    }
+
+    pub async fn idm_account_credential_update_primary_remove(
+        &self,
+        session_token: &CUSessionToken,
+    ) -> Result<CUStatus, ClientError> {
+        let scr = CURequest::PrimaryRemove;
         self.perform_simple_post_request("/v1/credential/_update", &(scr, &session_token))
             .await
     }
