@@ -276,9 +276,7 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
         // grab the body we're intending to return at this point
         let body_str = response.take_body().into_string().await?;
         // update it with the hash
-        response.set_body(
-            body_str.replace(
-                "==WASMHASH==", self.integrity_wasmloader.as_str()));
+        response.set_body(body_str.replace("==WASMHASH==", self.integrity_wasmloader.as_str()));
 
         response.insert_header(
                 "content-security-policy",
@@ -329,17 +327,23 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictReq
     }
 }
 
-pub fn generate_integrity_hash(filename: String) -> Result<String,String> {
+pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
     let wasm_filepath = PathBuf::from(filename);
     match wasm_filepath.exists() {
         false => {
-            return Err(format!("Can't find {:?} to generate file hash", &wasm_filepath));
+            return Err(format!(
+                "Can't find {:?} to generate file hash",
+                &wasm_filepath
+            ));
         }
         true => {
             let filecontents = match std::fs::read(&wasm_filepath) {
                 Ok(value) => value,
                 Err(error) => {
-                    return Err(format!("Failed to read {:?}, skipping: {:?}", wasm_filepath, error));
+                    return Err(format!(
+                        "Failed to read {:?}, skipping: {:?}",
+                        wasm_filepath, error
+                    ));
                 }
             };
             let shasum =
@@ -409,7 +413,8 @@ pub fn create_https_server(
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
         static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
-            generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js").unwrap(),
+            generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
+                .unwrap(),
         ));
 
         static_tserver.at("/").get(index_view);
