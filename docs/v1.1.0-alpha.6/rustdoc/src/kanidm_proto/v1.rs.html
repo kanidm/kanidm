@@ -970,6 +970,26 @@
 <span id="965">965</span>
 <span id="966">966</span>
 <span id="967">967</span>
+<span id="968">968</span>
+<span id="969">969</span>
+<span id="970">970</span>
+<span id="971">971</span>
+<span id="972">972</span>
+<span id="973">973</span>
+<span id="974">974</span>
+<span id="975">975</span>
+<span id="976">976</span>
+<span id="977">977</span>
+<span id="978">978</span>
+<span id="979">979</span>
+<span id="980">980</span>
+<span id="981">981</span>
+<span id="982">982</span>
+<span id="983">983</span>
+<span id="984">984</span>
+<span id="985">985</span>
+<span id="986">986</span>
+<span id="987">987</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -1361,10 +1381,12 @@ pub struct AccountOrgPersonExtend {
 <span class="kw">impl</span> <span class="ident">fmt::Display</span> <span class="kw">for</span> <span class="ident">CredentialDetail</span> {
     <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
         <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;uuid: {}&quot;</span>, <span class="self">self</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
-        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;claims:&quot;</span>)<span class="question-mark">?</span>;
-        <span class="kw">for</span> <span class="ident">claim</span> <span class="kw">in</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">claims</span> {
-            <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot; * {}&quot;</span>, <span class="ident">claim</span>)<span class="question-mark">?</span>;
+        <span class="comment">/*
+        writeln!(f, &quot;claims:&quot;)?;
+        for claim in &amp;self.claims {
+            writeln!(f, &quot; * {}&quot;, claim)?;
         }
+        */</span>
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">type_</span> {
             <span class="ident">CredentialDetailType::Password</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;password: set&quot;</span>),
             <span class="ident">CredentialDetailType::GeneratedPassword</span> =&gt; <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;generated password: set&quot;</span>),
@@ -1803,17 +1825,35 @@ pub struct AccountOrgPersonExtend {
     <span class="kw">pub</span> <span class="ident">session_token</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename_all</span> <span class="op">=</span> <span class="string">&quot;lowercase&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CURequest</span> {
     <span class="ident">PrimaryRemove</span>,
     <span class="ident">Password</span>(<span class="ident">String</span>),
+    <span class="ident">CancelMFAReg</span>,
     <span class="ident">TotpGenerate</span>,
     <span class="ident">TotpVerify</span>(<span class="ident">u32</span>),
     <span class="ident">TotpAcceptSha1</span>,
     <span class="ident">TotpRemove</span>,
     <span class="ident">BackupCodeGenerate</span>,
     <span class="ident">BackupCodeRemove</span>,
+}
+
+<span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">CURequest</span> {
+    <span class="kw">fn</span> <span class="ident">fmt</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">f</span>: <span class="kw-2">&amp;mut</span> <span class="ident">fmt::Formatter</span><span class="op">&lt;</span><span class="lifetime">&#39;_</span><span class="op">&gt;</span>) -&gt; <span class="ident">fmt::Result</span> {
+        <span class="kw">let</span> <span class="ident">t</span> <span class="op">=</span> <span class="kw">match</span> <span class="self">self</span> {
+            <span class="ident">CURequest::PrimaryRemove</span> =&gt; <span class="string">&quot;CURequest::PrimaryRemove&quot;</span>,
+            <span class="ident">CURequest::Password</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::Password&quot;</span>,
+            <span class="ident">CURequest::CancelMFAReg</span> =&gt; <span class="string">&quot;CURequest::CancelMFAReg&quot;</span>,
+            <span class="ident">CURequest::TotpGenerate</span> =&gt; <span class="string">&quot;CURequest::TotpGenerate&quot;</span>,
+            <span class="ident">CURequest::TotpVerify</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;CURequest::TotpVerify&quot;</span>,
+            <span class="ident">CURequest::TotpAcceptSha1</span> =&gt; <span class="string">&quot;CURequest::TotpAcceptSha1&quot;</span>,
+            <span class="ident">CURequest::TotpRemove</span> =&gt; <span class="string">&quot;CURequest::TotpRemove&quot;</span>,
+            <span class="ident">CURequest::BackupCodeGenerate</span> =&gt; <span class="string">&quot;CURequest::BackupCodeGenerate&quot;</span>,
+            <span class="ident">CURequest::BackupCodeRemove</span> =&gt; <span class="string">&quot;CURequest::BackupCodeRemove&quot;</span>,
+        };
+        <span class="macro">writeln!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">t</span>)
+    }
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>

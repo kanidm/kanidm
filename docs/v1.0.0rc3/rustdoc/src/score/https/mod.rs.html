@@ -672,6 +672,9 @@
 <span id="667">667</span>
 <span id="668">668</span>
 <span id="669">669</span>
+<span id="670">670</span>
+<span id="671">671</span>
+<span id="672">672</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -1219,6 +1222,9 @@
         .<span class="ident">get</span>(<span class="ident">account_get_backup_code</span>);
     <span class="comment">// .post(account_post_backup_code_regenerate) // use &quot;/:id/_credential/primary&quot; instead</span>
     <span class="comment">// .delete(account_delete_backup_code); // same as above</span>
+    <span class="ident">account_route</span>
+        .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update&quot;</span>)
+        .<span class="ident">get</span>(<span class="ident">account_get_id_credential_update</span>);
     <span class="ident">account_route</span>
         .<span class="ident">at</span>(<span class="string">&quot;/:id/_credential/_update_intent&quot;</span>)
         .<span class="ident">get</span>(<span class="ident">account_get_id_credential_update_intent</span>);

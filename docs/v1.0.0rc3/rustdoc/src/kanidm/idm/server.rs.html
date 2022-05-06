@@ -4025,6 +4025,7 @@
 <span id="4020">4020</span>
 <span id="4021">4021</span>
 <span id="4022">4022</span>
+<span id="4023">4023</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::policy::CryptoPolicy</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::softlock::CredSoftLock</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::webauthn::WebauthnDomainConfig</span>;
@@ -4572,6 +4573,7 @@
         <span class="ident">session_read</span>.<span class="ident">contains_key</span>(<span class="ident">sessionid</span>)
     }
 
+    <span class="attribute">#[<span class="ident">instrument</span>(<span class="ident">level</span> <span class="op">=</span> <span class="string">&quot;trace&quot;</span>, <span class="ident">skip</span>(<span class="self">self</span>))]</span>
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">expire_auth_sessions</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) {
         <span class="comment">// ct is current time - sub the timeout. and then split.</span>
         <span class="kw">let</span> <span class="ident">expire</span> <span class="op">=</span> <span class="ident">ct</span> <span class="op">-</span> <span class="ident">Duration::from_secs</span>(<span class="ident">AUTH_SESSION_TIMEOUT</span>);

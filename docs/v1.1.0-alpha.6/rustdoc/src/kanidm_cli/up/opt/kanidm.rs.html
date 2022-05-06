@@ -505,25 +505,6 @@
 <span id="500">500</span>
 <span id="501">501</span>
 <span id="502">502</span>
-<span id="503">503</span>
-<span id="504">504</span>
-<span id="505">505</span>
-<span id="506">506</span>
-<span id="507">507</span>
-<span id="508">508</span>
-<span id="509">509</span>
-<span id="510">510</span>
-<span id="511">511</span>
-<span id="512">512</span>
-<span id="513">513</span>
-<span id="514">514</span>
-<span id="515">515</span>
-<span id="516">516</span>
-<span id="517">517</span>
-<span id="518">518</span>
-<span id="519">519</span>
-<span id="520">520</span>
-<span id="521">521</span>
 </pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
     <span class="attribute">#[<span class="ident">structopt</span>()]</span>
@@ -609,14 +590,6 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
-<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountCredentialSet</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
-    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-}
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedOpt</span> {
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
@@ -671,6 +644,14 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AnonTokenOpt</span> {
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;token&quot;</span>)]</span>
+    <span class="ident">token</span>: <span class="ident">String</span>,
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountCreateOpt</span> {
     <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
@@ -682,35 +663,16 @@
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountCredential</span> {
-    <span class="doccomment">/// Set this accounts password</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_password&quot;</span>)]</span>
-    <span class="ident">SetPassword</span>(<span class="ident">AccountCredentialSet</span>),
-    <span class="doccomment">/// Register a new webauthn device to this account.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;register_webauthn&quot;</span>)]</span>
-    <span class="ident">RegisterWebauthn</span>(<span class="ident">AccountNamedTagOpt</span>),
-    <span class="doccomment">/// Remove a webauthn device from this account</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_webauthn&quot;</span>)]</span>
-    <span class="ident">RemoveWebauthn</span>(<span class="ident">AccountNamedTagOpt</span>),
-    <span class="doccomment">/// Set the TOTP credential of the account. If a TOTP already exists, on a successful</span>
-    <span class="doccomment">/// registration, this will replace it.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;register_totp&quot;</span>)]</span>
-    <span class="ident">RegisterTotp</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Remove TOTP from the account. If no TOTP exists, no action is taken.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_totp&quot;</span>)]</span>
-    <span class="ident">RemoveTotp</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Show the status of the accounts credentials.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;status&quot;</span>)]</span>
-    <span class="ident">Status</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Reset the accounts credentials, removing all TOTP, Webauthn, Passwords,</span>
-    <span class="doccomment">/// and generate a new strong random password.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_credential&quot;</span>)]</span>
-    <span class="ident">GeneratePassword</span>(<span class="ident">AccountCredentialSet</span>),
-    <span class="doccomment">/// Generate a new set of backup codes.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate_backup_codes&quot;</span>)]</span>
-    <span class="ident">BackupCodeGenerate</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="doccomment">/// Remove backup codes from the account.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_backup_codes&quot;</span>)]</span>
-    <span class="ident">BackupCodeRemove</span>(<span class="ident">AccountNamedOpt</span>),
+    <span class="doccomment">/// Interactively update and change the content of the credentials of an account</span>
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
+    <span class="ident">Update</span>(<span class="ident">AccountNamedOpt</span>),
+    <span class="doccomment">/// Given a reset token, interactively perform a credential reset</span>
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset&quot;</span>)]</span>
+    <span class="ident">Reset</span>(<span class="ident">AnonTokenOpt</span>),
+    <span class="doccomment">/// Create a reset link (token) that can be given to another person so they can</span>
+    <span class="doccomment">/// recover or reset their account credentials.</span>
+    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_reset_link&quot;</span>)]</span>
+    <span class="ident">CreateResetLink</span>(<span class="ident">AccountNamedOpt</span>),
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>

@@ -2041,6 +2041,78 @@
 <span id="2036">2036</span>
 <span id="2037">2037</span>
 <span id="2038">2038</span>
+<span id="2039">2039</span>
+<span id="2040">2040</span>
+<span id="2041">2041</span>
+<span id="2042">2042</span>
+<span id="2043">2043</span>
+<span id="2044">2044</span>
+<span id="2045">2045</span>
+<span id="2046">2046</span>
+<span id="2047">2047</span>
+<span id="2048">2048</span>
+<span id="2049">2049</span>
+<span id="2050">2050</span>
+<span id="2051">2051</span>
+<span id="2052">2052</span>
+<span id="2053">2053</span>
+<span id="2054">2054</span>
+<span id="2055">2055</span>
+<span id="2056">2056</span>
+<span id="2057">2057</span>
+<span id="2058">2058</span>
+<span id="2059">2059</span>
+<span id="2060">2060</span>
+<span id="2061">2061</span>
+<span id="2062">2062</span>
+<span id="2063">2063</span>
+<span id="2064">2064</span>
+<span id="2065">2065</span>
+<span id="2066">2066</span>
+<span id="2067">2067</span>
+<span id="2068">2068</span>
+<span id="2069">2069</span>
+<span id="2070">2070</span>
+<span id="2071">2071</span>
+<span id="2072">2072</span>
+<span id="2073">2073</span>
+<span id="2074">2074</span>
+<span id="2075">2075</span>
+<span id="2076">2076</span>
+<span id="2077">2077</span>
+<span id="2078">2078</span>
+<span id="2079">2079</span>
+<span id="2080">2080</span>
+<span id="2081">2081</span>
+<span id="2082">2082</span>
+<span id="2083">2083</span>
+<span id="2084">2084</span>
+<span id="2085">2085</span>
+<span id="2086">2086</span>
+<span id="2087">2087</span>
+<span id="2088">2088</span>
+<span id="2089">2089</span>
+<span id="2090">2090</span>
+<span id="2091">2091</span>
+<span id="2092">2092</span>
+<span id="2093">2093</span>
+<span id="2094">2094</span>
+<span id="2095">2095</span>
+<span id="2096">2096</span>
+<span id="2097">2097</span>
+<span id="2098">2098</span>
+<span id="2099">2099</span>
+<span id="2100">2100</span>
+<span id="2101">2101</span>
+<span id="2102">2102</span>
+<span id="2103">2103</span>
+<span id="2104">2104</span>
+<span id="2105">2105</span>
+<span id="2106">2106</span>
+<span id="2107">2107</span>
+<span id="2108">2108</span>
+<span id="2109">2109</span>
+<span id="2110">2110</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -3664,6 +3736,14 @@
             .<span class="kw">await</span>
     }
 
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_begin</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">id</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUSessionToken</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="self">self</span>.<span class="ident">perform_get_request</span>(<span class="macro">format!</span>(<span class="string">&quot;/v1/account/{}/_credential/_update&quot;</span>, <span class="ident">id</span>).<span class="ident">as_str</span>())
+            .<span class="kw">await</span>
+    }
+
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_exchange</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">intent_token</span>: <span class="ident">CUIntentToken</span>,
@@ -3686,7 +3766,71 @@
         <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
         <span class="ident">pw</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">SetCredentialRequest::Password</span>(<span class="ident">pw</span>.<span class="ident">to_string</span>());
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::Password</span>(<span class="ident">pw</span>.<span class="ident">to_string</span>());
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_cancel_mfareg</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::CancelMFAReg</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_init_totp</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::TotpGenerate</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_check_totp</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+        <span class="ident">totp_chal</span>: <span class="ident">u32</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::TotpVerify</span>(<span class="ident">totp_chal</span>);
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_accept_sha1_totp</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::TotpAcceptSha1</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_remove_totp</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::TotpRemove</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_backup_codes_generate</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::BackupCodeGenerate</span>;
+        <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
+            .<span class="kw">await</span>
+    }
+
+    <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">idm_account_credential_update_primary_remove</span>(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        <span class="ident">session_token</span>: <span class="kw-2">&amp;</span><span class="ident">CUSessionToken</span>,
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUStatus</span>, <span class="ident">ClientError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="ident">scr</span> <span class="op">=</span> <span class="ident">CURequest::PrimaryRemove</span>;
         <span class="self">self</span>.<span class="ident">perform_simple_post_request</span>(<span class="string">&quot;/v1/credential/_update&quot;</span>, <span class="kw-2">&amp;</span>(<span class="ident">scr</span>, <span class="kw-2">&amp;</span><span class="ident">session_token</span>))
             .<span class="kw">await</span>
     }

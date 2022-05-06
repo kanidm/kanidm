@@ -1038,6 +1038,20 @@
 <span id="1033">1033</span>
 <span id="1034">1034</span>
 <span id="1035">1035</span>
+<span id="1036">1036</span>
+<span id="1037">1037</span>
+<span id="1038">1038</span>
+<span id="1039">1039</span>
+<span id="1040">1040</span>
+<span id="1041">1041</span>
+<span id="1042">1042</span>
+<span id="1043">1043</span>
+<span id="1044">1044</span>
+<span id="1045">1045</span>
+<span id="1046">1046</span>
+<span id="1047">1047</span>
+<span id="1048">1048</span>
+<span id="1049">1049</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm::event::AuthResult</span>;
 <span class="kw">use</span> <span class="ident">kanidm::filter</span>::{<span class="ident">Filter</span>, <span class="ident">FilterInvalid</span>};
 <span class="kw">use</span> <span class="ident">kanidm::idm::AuthState</span>;
@@ -1451,6 +1465,20 @@
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">account_put_id_credential_primary</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
     <span class="ident">json_rest_event_credential_put</span>(<span class="ident">req</span>).<span class="kw">await</span>
+}
+
+<span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">account_get_id_credential_update</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
+    <span class="kw">let</span> <span class="ident">uat</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_current_uat</span>();
+    <span class="kw">let</span> <span class="ident">uuid_or_name</span> <span class="op">=</span> <span class="ident">req</span>.<span class="ident">get_url_param</span>(<span class="string">&quot;id&quot;</span>)<span class="question-mark">?</span>;
+
+    <span class="kw">let</span> (<span class="ident">eventid</span>, <span class="ident">hvalue</span>) <span class="op">=</span> <span class="ident">req</span>.<span class="ident">new_eventid</span>();
+
+    <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="ident">req</span>
+        .<span class="ident">state</span>()
+        .<span class="ident">qe_w_ref</span>
+        .<span class="ident">handle_idmcredentialupdate</span>(<span class="ident">uat</span>, <span class="ident">uuid_or_name</span>, <span class="ident">eventid</span>)
+        .<span class="kw">await</span>;
+    <span class="ident">to_tide_response</span>(<span class="ident">res</span>, <span class="ident">hvalue</span>)
 }
 
 <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">account_get_id_credential_update_intent</span>(<span class="ident">req</span>: <span class="ident">tide::Request</span><span class="op">&lt;</span><span class="ident">AppState</span><span class="op">&gt;</span>) -&gt; <span class="ident">tide::Result</span> {
