@@ -2,9 +2,6 @@ ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS builder
 LABEL mantainer william@blackhats.net.au
 
-# RUN zypper ar obs://devel:languages:rust devel:languages:rust
-# RUN sed -i -E 's/https?:\/\/download.opensuse.org/http:\/\/dl.suse.blackhats.net.au:8080/g' /etc/zypp/repos.d/*.repo
-# RUN zypper --gpg-auto-import-keys ref --force
 RUN zypper refresh
 RUN zypper dup -y
 RUN zypper install -y \
