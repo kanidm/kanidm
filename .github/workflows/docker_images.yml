@@ -84,4 +84,5 @@ jobs:
           # build-args: |
           #   "KANIDM_BUILD_PROFILE=developer"
           #   "KANIDM_FEATURES="
-          file: kanidm_rlm_python/Dockerfile
+          # file: kanidm_rlm_python/Dockerfile
+          context: ./kanidm_rlm_python/
