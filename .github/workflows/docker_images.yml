@@ -2,13 +2,13 @@ name: release images
 
 on:
   push:
-    branches:
-      - master
+    #branches:
+    #  - master
 
-    tags:
-      - v*
+    #tags:
+    #  - v*
 
-  pull_request:
+  #pull_request:
 
 jobs:
   test:
