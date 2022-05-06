@@ -11,23 +11,23 @@ on:
   #pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [kanidmd, radiusd]
-    steps:
-      - uses: actions/checkout@v2
+  # test:
+  #   runs-on: ubuntu-latest
+  #   strategy:
+  #     matrix:
+  #       target: [kanidmd, radiusd]
+  #   steps:
+  #     - uses: actions/checkout@v2
 
-      - name: Run tests
-        run: make test/${{ matrix.target }}
+  #     - name: Run tests
+  #       run: make test/${{ matrix.target }}
 
-  push:
-    needs: test
+  docker_build:
+    # needs: test
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        target: [kanidmd, radiusd]
+    # strategy:
+    #   matrix:
+    #     target: [kanidmd, radiusd]
     if: github.event_name == 'push'
     steps:
       - uses: actions/checkout@v3
