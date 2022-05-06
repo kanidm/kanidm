@@ -1,16 +1,14 @@
 use std::net::TcpStream;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::Ordering;
+
+mod common;
+use crate::common::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, PORT_ALLOC};
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm::tracing_tree;
-use kanidm_client::{KanidmClient, KanidmClientBuilder};
 use score::create_server_core;
 use tokio::task;
-
-pub const ADMIN_TEST_USER: &str = "admin";
-pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
-pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 fn is_free_port(port: u16) -> bool {
     // TODO: Refactor to use `Result::is_err` in a future PR
@@ -20,8 +18,9 @@ fn is_free_port(port: u16) -> bool {
     }
 }
 
-// Test external behaviours of the service.
-pub async fn setup_async_test() -> KanidmClient {
+#[tokio::test]
+async fn test_https_middleware_headers() {
+    // tests stuff
     let _ = tracing_tree::test_init();
 
     let mut counter = 0;
@@ -48,9 +47,7 @@ pub async fn setup_async_test() -> KanidmClient {
     config.secure_cookies = false;
     config.integration_test_config = Some(int_config);
     config.log_level = Some(LogLevel::Quiet as u32);
-    config.role = ServerRole::WriteReplicaNoUI;
-    // config.log_level = Some(LogLevel::Verbose as u32);
-    // config.log_level = Some(LogLevel::FullTrace as u32);
+    config.role = ServerRole::WriteReplica;
     config.threads = 1;
 
     create_server_core(config, false)
@@ -59,12 +56,37 @@ pub async fn setup_async_test() -> KanidmClient {
     // We have to yield now to guarantee that the tide elements are setup.
     task::yield_now().await;
 
-    let addr = format!("http://127.0.0.1:{}", port);
-    let rsclient = KanidmClientBuilder::new()
-        .address(addr)
-        .no_proxy()
-        .build()
-        .expect("Failed to build client");
+    let addr = format!("http://127.0.0.1:{}/", port);
 
-    rsclient
+    // here we test the /ui/ endpoint which should have the headers
+    let response = match reqwest::get(format!("{}ui/", &addr)).await {
+        Ok(value) => value,
+        Err(error) => {
+            panic!("Failed to query {:?} : {:#?}", addr, error);
+        }
+    };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 200);
+
+    eprintln!(
+        "csp headers: {:#?}",
+        response.headers().get("content-security-policy")
+    );
+    assert_ne!(response.headers().get("content-security-policy"), None);
+
+    // here we test the /pkg/ endpoint which shouldn't have the headers
+    let response =
+        match reqwest::get(format!("{}pkg/external/bootstrap.bundle.min.js", &addr)).await {
+            Ok(value) => value,
+            Err(error) => {
+                panic!("Failed to query {:?} : {:#?}", addr, error);
+            }
+        };
+    eprintln!("response: {:#?}", response);
+    assert_eq!(response.status(), 200);
+    eprintln!(
+        "csp headers: {:#?}",
+        response.headers().get("content-security-policy")
+    );
+    assert_eq!(response.headers().get("content-security-policy"), None);
 }

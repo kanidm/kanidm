@@ -152,33 +152,27 @@ pub fn to_tide_response<T: Serialize>(
 // Handle the various end points we need to expose
 async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     let mut res = tide::Response::new(200);
-    res.set_content_type("text/html;charset=utf-8");
-    res.set_body(
-        r#"
-<!DOCTYPE html>
-<html>
-    <head>
-        <meta charset="utf-8"/>
-        <title>Kanidm</title>
-        <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
-        <link rel="stylesheet" href="/pkg/style.css"/>
-        <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
-        <script src="/pkg/external/confetti.js"></script>
-        <script type="module" defer>
-            import init, { run_app } from '/pkg/kanidmd_web_ui.js';
-            async function main() {
-               await init('/pkg/kanidmd_web_ui_bg.wasm');
-               run_app();
-            }
-            main()
-        </script>
 
-        <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🦀</text></svg>" />
-    </head>
-    <body>
-    </body>
-</html>
-    "#,
+    res.set_content_type("text/html;charset=utf-8");
+    res.set_body(r#"
+    <!DOCTYPE html>
+    <html lang="en">
+        <head>
+            <meta charset="utf-8"/>
+            <title>Kanidm</title>
+            <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
+            <link rel="stylesheet" href="/pkg/style.css"/>
+            <script src="/pkg/external/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"></script>
+            <script src="/pkg/external/confetti.js"></script>
+            <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH==">
+            </script>
+
+            <link rel="icon" href="/pkg/favicon.svg" />
+        </head>
+        <body>
+        </body>
+    </html>
+        "#,
     );
 
     Ok(res)
@@ -252,6 +246,49 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictRes
         Ok(response)
     }
 }
+#[derive(Default)]
+struct UIContentSecurityPolicyResponseMiddleware {
+    // The sha384 hash of /pkg/wasmloader.js
+    pub integrity_wasmloader: String,
+}
+
+impl UIContentSecurityPolicyResponseMiddleware {
+    fn new(integrity_wasmloader: String) -> Self {
+        return Self {
+            integrity_wasmloader,
+        };
+    }
+}
+
+#[async_trait::async_trait]
+impl<State: Clone + Send + Sync + 'static> tide::Middleware<State>
+    for UIContentSecurityPolicyResponseMiddleware
+{
+    async fn handle(
+        &self,
+        request: tide::Request<State>,
+        next: tide::Next<'_, State>,
+    ) -> tide::Result {
+        // This updates the UI body with the integrity hash value for the wasmloader.js file, and adds content-security-policy headers.
+
+        let mut response = next.run(request).await;
+
+        // grab the body we're intending to return at this point
+        let body_str = response.take_body().into_string().await?;
+        // update it with the hash
+        response.set_body(body_str.replace("==WASMHASH==", self.integrity_wasmloader.as_str()));
+
+        response.insert_header(
+                "content-security-policy",
+                format!(
+                    "default-src https: self; img-src https: self; script-src https: 'sha384-{}' 'unsafe-eval' self;",
+                    self.integrity_wasmloader.as_str(),
+                )
+            );
+
+        Ok(response)
+    }
+}
 
 struct StrictRequestMiddleware;
 
@@ -286,6 +323,32 @@ impl<State: Clone + Send + Sync + 'static> tide::Middleware<State> for StrictReq
                 tide::StatusCode::MethodNotAllowed,
                 "StrictRequestViolation",
             ))
+        }
+    }
+}
+
+pub fn generate_integrity_hash(filename: String) -> Result<String, String> {
+    let wasm_filepath = PathBuf::from(filename);
+    match wasm_filepath.exists() {
+        false => {
+            return Err(format!(
+                "Can't find {:?} to generate file hash",
+                &wasm_filepath
+            ));
+        }
+        true => {
+            let filecontents = match std::fs::read(&wasm_filepath) {
+                Ok(value) => value,
+                Err(error) => {
+                    return Err(format!(
+                        "Failed to read {:?}, skipping: {:?}",
+                        wasm_filepath, error
+                    ));
+                }
+            };
+            let shasum =
+                openssl::hash::hash(openssl::hash::MessageDigest::sha384(), &filecontents).unwrap();
+            Ok(format!("{}", openssl::base64::encode_block(&shasum)))
         }
     }
 }
@@ -349,11 +412,18 @@ pub fn create_https_server(
 
         let mut static_tserver = tserver.at("");
         static_tserver.with(StaticContentMiddleware::default());
+        static_tserver.with(UIContentSecurityPolicyResponseMiddleware::new(
+            generate_integrity_hash(env!("KANIDM_WEB_UI_PKG_PATH").to_owned() + "/wasmloader.js")
+                .unwrap(),
+        ));
 
         static_tserver.at("/").get(index_view);
         static_tserver.at("/ui/").get(index_view);
         static_tserver.at("/ui/*").get(index_view);
-        static_tserver
+
+        let mut static_dir_tserver = tserver.at("");
+        static_dir_tserver.with(StaticContentMiddleware::default());
+        static_dir_tserver
             .at("/pkg")
             .serve_dir(env!("KANIDM_WEB_UI_PKG_PATH"))
             .map_err(|e| {
@@ -646,6 +716,9 @@ pub fn create_https_server(
             let x_ref = Box::leak(x);
             let tlsl = TlsListener::new(address, x_ref);
             */
+
+            // adds Content-Security-Policy Headers when running in HTTPS
+            // TODO: make this only apply to /ui/
 
             tokio::spawn(async move {
                 if let Err(e) = tserver.listen(tlsl).await {
