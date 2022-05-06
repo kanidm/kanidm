@@ -5,7 +5,7 @@ EXPOSE 1812 1813
 
 # RUN sed -i -E 's/https?:\/\/download.opensuse.org/http:\/\/dl.suse.blackhats.net.au:8080/g' /etc/zypp/repos.d/*.repo && \
 RUN zypper --gpg-auto-import-keys ref --force
-
+RUN zypper refresh
 RUN zypper install -y timezone freeradius-client freeradius-server freeradius-server-ldap \
     freeradius-server-python3 openldap2-client freeradius-server-utils hostname \
     python3 python3-requests python3-devel && \
