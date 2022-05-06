@@ -1,17 +1,14 @@
 use std::net::TcpStream;
-use std::sync::atomic::{AtomicU16, Ordering};
+use std::sync::atomic::Ordering;
+
+mod common;
+use crate::common::{ADMIN_TEST_PASSWORD, ADMIN_TEST_USER, PORT_ALLOC};
 
 use kanidm::audit::LogLevel;
 use kanidm::config::{Configuration, IntegrationTestConfig, ServerRole};
 use kanidm::tracing_tree;
 use score::create_server_core;
 use tokio::task;
-
-// use tide::http::{Url, Method, Request, Response};
-
-pub const ADMIN_TEST_USER: &str = "admin";
-pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
-static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
 fn is_free_port(port: u16) -> bool {
     // TODO: Refactor to use `Result::is_err` in a future PR
