@@ -20,13 +20,13 @@ pub struct Group {
 macro_rules! try_from_account_e {
     ($value:expr, $qs:expr) => {{
         let name = $value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(str::to_string)
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let uuid = *$value.get_uuid();
+        let uuid = $value.get_uuid();
 
         let upg = Group { name, uuid };
 
@@ -36,7 +36,7 @@ macro_rules! try_from_account_e {
                 // just give and empty result set.
                 let f = filter!(f_or(
                     riter
-                        .map(|u| f_eq("uuid", PartialValue::new_uuidr(u)))
+                        .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
                         .collect()
                 ));
                 let ges: Vec<_> = $qs.internal_search(f).map_err(|e| {
@@ -96,13 +96,13 @@ impl Group {
 
         // Now extract our needed attributes
         let name = value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let uuid = *value.get_uuid();
+        let uuid = value.get_uuid();
 
         Ok(Group { name, uuid })
     }

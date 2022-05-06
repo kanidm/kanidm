@@ -374,9 +374,7 @@ pub const JSON_SCHEMA_ATTR_BADLIST_PASSWORD: &str = r#"{
       "description": [
         "A password that is badlisted meaning that it can not be set as a valid password by any user account."
       ],
-      "index": [
-        "EQUALITY"
-      ],
+      "index": [],
       "unique": [
         "false"
       ],

@@ -69,7 +69,7 @@ impl From<&IdentType> for IdentityId {
     fn from(idt: &IdentType) -> Self {
         match idt {
             IdentType::Internal => IdentityId::Internal,
-            IdentType::User(u) => IdentityId::User(*u.entry.get_uuid()),
+            IdentType::User(u) => IdentityId::User(u.entry.get_uuid()),
         }
     }
 }
@@ -135,7 +135,7 @@ impl Identity {
     pub fn get_uuid(&self) -> Option<Uuid> {
         match &self.origin {
             IdentType::Internal => None,
-            IdentType::User(u) => Some(*u.entry.get_uuid()),
+            IdentType::User(u) => Some(u.entry.get_uuid()),
         }
     }
 

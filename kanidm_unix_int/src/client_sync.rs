@@ -31,9 +31,9 @@ pub fn call_daemon_blocking(
         })
         .map_err(Box::new)?;
 
-    let data = serde_cbor::to_vec(&req).map_err(|e| {
+    let data = serde_json::to_vec(&req).map_err(|e| {
         error!("socket encoding error -> {:?}", e);
-        Box::new(IoError::new(ErrorKind::Other, "CBOR encode error"))
+        Box::new(IoError::new(ErrorKind::Other, "JSON encode error"))
     })?;
     //  .map_err(Box::new)?;
 
@@ -101,9 +101,9 @@ pub fn call_daemon_blocking(
     data.truncate(counter);
 
     // Now attempt to decode.
-    let cr = serde_cbor::from_slice::<ClientResponse>(data.as_slice()).map_err(|e| {
+    let cr = serde_json::from_slice::<ClientResponse>(data.as_slice()).map_err(|e| {
         error!("socket encoding error -> {:?}", e);
-        Box::new(IoError::new(ErrorKind::Other, "CBOR decode error"))
+        Box::new(IoError::new(ErrorKind::Other, "JSON decode error"))
     })?;
 
     Ok(cr)

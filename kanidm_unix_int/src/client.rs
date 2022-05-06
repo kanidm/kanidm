@@ -18,7 +18,7 @@ impl Decoder for ClientCodec {
     type Error = IoError;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_cbor::from_slice::<ClientResponse>(&src) {
+        match serde_json::from_slice::<ClientResponse>(&src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -33,9 +33,9 @@ impl Encoder<ClientRequest> for ClientCodec {
     type Error = IoError;
 
     fn encode(&mut self, msg: ClientRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
-        let data = serde_cbor::to_vec(&msg).map_err(|e| {
+        let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            IoError::new(ErrorKind::Other, "CBOR encode error")
+            IoError::new(ErrorKind::Other, "JSON encode error")
         })?;
         debug!("Attempting to send request -> {:?} ...", data);
         dst.put(data.as_slice());

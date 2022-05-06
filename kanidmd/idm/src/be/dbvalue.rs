@@ -252,6 +252,108 @@ pub enum DbValueV1 {
     AuthSession { u: Uuid },
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub enum DbValueSetV2 {
+    #[serde(rename = "U8")]
+    Utf8(Vec<String>),
+    #[serde(rename = "I8")]
+    Iutf8(Vec<String>),
+    #[serde(rename = "N8")]
+    Iname(Vec<String>),
+    #[serde(rename = "UU")]
+    Uuid(Vec<Uuid>),
+    #[serde(rename = "BO")]
+    Bool(Vec<bool>),
+    #[serde(rename = "SY")]
+    SyntaxType(Vec<usize>),
+    #[serde(rename = "IN")]
+    IndexType(Vec<usize>),
+    #[serde(rename = "RF")]
+    Reference(Vec<Uuid>),
+    #[serde(rename = "JF")]
+    JsonFilter(Vec<String>),
+    #[serde(rename = "CR")]
+    Credential(Vec<DbValueCredV1>),
+    #[serde(rename = "RU")]
+    SecretValue(Vec<String>),
+    #[serde(rename = "SK")]
+    SshKey(Vec<DbValueTaggedStringV1>),
+    #[serde(rename = "SP")]
+    Spn(Vec<(String, String)>),
+    #[serde(rename = "UI")]
+    Uint32(Vec<u32>),
+    #[serde(rename = "CI")]
+    Cid(Vec<DbCidV1>),
+    #[serde(rename = "NU")]
+    NsUniqueId(Vec<String>),
+    #[serde(rename = "DT")]
+    DateTime(Vec<String>),
+    #[serde(rename = "EM")]
+    EmailAddress(String, Vec<String>),
+    #[serde(rename = "PN")]
+    PhoneNumber(String, Vec<String>),
+    #[serde(rename = "AD")]
+    Address(Vec<DbValueAddressV1>),
+    #[serde(rename = "UR")]
+    Url(Vec<Url>),
+    #[serde(rename = "OS")]
+    OauthScope(Vec<String>),
+    #[serde(rename = "OM")]
+    OauthScopeMap(Vec<DbValueOauthScopeMapV1>),
+    #[serde(rename = "E2")]
+    PrivateBinary(Vec<Vec<u8>>),
+    #[serde(rename = "PB")]
+    PublicBinary(Vec<(String, Vec<u8>)>),
+    #[serde(rename = "RS")]
+    RestrictedString(Vec<String>),
+    #[serde(rename = "IT")]
+    IntentToken(Vec<(Uuid, DbValueIntentTokenStateV1)>),
+    #[serde(rename = "TE")]
+    TrustedDeviceEnrollment(Vec<Uuid>),
+    #[serde(rename = "AS")]
+    AuthSession(Vec<Uuid>),
+}
+
+impl DbValueSetV2 {
+    pub fn len(&self) -> usize {
+        match &self {
+            DbValueSetV2::Utf8(set) => set.len(),
+            DbValueSetV2::Iutf8(set) => set.len(),
+            DbValueSetV2::Iname(set) => set.len(),
+            DbValueSetV2::Uuid(set) => set.len(),
+            DbValueSetV2::Bool(set) => set.len(),
+            DbValueSetV2::SyntaxType(set) => set.len(),
+            DbValueSetV2::IndexType(set) => set.len(),
+            DbValueSetV2::Reference(set) => set.len(),
+            DbValueSetV2::JsonFilter(set) => set.len(),
+            DbValueSetV2::Credential(set) => set.len(),
+            DbValueSetV2::SecretValue(set) => set.len(),
+            DbValueSetV2::SshKey(set) => set.len(),
+            DbValueSetV2::Spn(set) => set.len(),
+            DbValueSetV2::Uint32(set) => set.len(),
+            DbValueSetV2::Cid(set) => set.len(),
+            DbValueSetV2::NsUniqueId(set) => set.len(),
+            DbValueSetV2::DateTime(set) => set.len(),
+            DbValueSetV2::EmailAddress(_primary, set) => set.len(),
+            DbValueSetV2::PhoneNumber(_primary, set) => set.len(),
+            DbValueSetV2::Address(set) => set.len(),
+            DbValueSetV2::Url(set) => set.len(),
+            DbValueSetV2::OauthScope(set) => set.len(),
+            DbValueSetV2::OauthScopeMap(set) => set.len(),
+            DbValueSetV2::PrivateBinary(set) => set.len(),
+            DbValueSetV2::PublicBinary(set) => set.len(),
+            DbValueSetV2::RestrictedString(set) => set.len(),
+            DbValueSetV2::IntentToken(set) => set.len(),
+            DbValueSetV2::TrustedDeviceEnrollment(set) => set.len(),
+            DbValueSetV2::AuthSession(set) => set.len(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::be::dbvalue::DbCredV1;

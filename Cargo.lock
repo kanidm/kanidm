@@ -948,6 +948,7 @@ dependencies = [
  "score",
  "serde",
  "structopt",
+ "tikv-jemallocator",
  "tokio",
  "toml",
  "users",
@@ -1095,6 +1096,12 @@ name = "discard"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "212d0f5754cb6769937f4501cc0e67f4f4483c8d2c3e1e922ee9edbe4ab4c7c0"
+
+[[package]]
+name = "dyn-clone"
+version = "1.0.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "21e50f3adc76d6a43f5ed73b698a87d0760ca74617f60f7c3b879003536fdd28"
 
 [[package]]
 name = "either"
@@ -1894,27 +1901,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1aab8fc367588b89dcee83ab0fd66b72b50b72fa1904d7095045ace2b0c81c35"
 
 [[package]]
-name = "jemalloc-sys"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0d3b9f3f5c9b31aa0f5ed3260385ac205db665baa41d49bb8338008ae94ede45"
-dependencies = [
- "cc",
- "fs_extra",
- "libc",
-]
-
-[[package]]
-name = "jemallocator"
-version = "0.3.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43ae63fcfc45e99ab3d1b29a46782ad679e98436c3169d15a167a1108a724b69"
-dependencies = [
- "jemalloc-sys",
- "libc",
-]
-
-[[package]]
 name = "joinery"
 version = "2.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1941,14 +1927,13 @@ dependencies = [
  "compiled-uuid",
  "concread",
  "criterion",
- "either",
+ "dyn-clone",
  "fernet",
  "filetime",
  "futures",
  "futures-util",
  "hashbrown 0.12.0",
  "idlset",
- "jemallocator",
  "kanidm_proto",
  "lazy_static",
  "ldap3_proto",
@@ -2060,7 +2045,7 @@ dependencies = [
  "rusqlite",
  "score",
  "serde",
- "serde_cbor",
+ "serde_json",
  "structopt",
  "tokio",
  "tokio-util",
@@ -2531,7 +2516,6 @@ dependencies = [
  "csv",
  "dialoguer",
  "futures-util",
- "jemallocator",
  "kanidm_client",
  "kanidm_proto",
  "ldap3_proto",
@@ -2542,6 +2526,7 @@ dependencies = [
  "serde",
  "serde_json",
  "structopt",
+ "tikv-jemallocator",
  "tokio",
  "tokio-openssl",
  "tokio-util",
@@ -3739,6 +3724,27 @@ dependencies = [
  "openssl",
  "openssl-sys",
  "tide",
+]
+
+[[package]]
+name = "tikv-jemalloc-sys"
+version = "0.4.3+5.2.1-patched.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a1792ccb507d955b46af42c123ea8863668fae24d03721e40cad6a41773dbb49"
+dependencies = [
+ "cc",
+ "fs_extra",
+ "libc",
+]
+
+[[package]]
+name = "tikv-jemallocator"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a5b7bcecfafe4998587d636f9ae9d55eb9d0499877b88757767c346875067098"
+dependencies = [
+ "libc",
+ "tikv-jemalloc-sys",
 ]
 
 [[package]]

@@ -36,14 +36,14 @@ macro_rules! try_from_entry {
 
         // Now extract our needed attributes
         let name = $value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: name".to_string(),
             ))?;
 
         let displayname = $value
-            .get_ava_single_str("displayname")
+            .get_ava_single_utf8("displayname")
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidAccountState(
                 "Missing attribute: displayname".to_string(),

@@ -17,7 +17,7 @@ pub struct Spn {}
 lazy_static! {
     static ref CLASS_GROUP: PartialValue = PartialValue::new_class("group");
     static ref CLASS_ACCOUNT: PartialValue = PartialValue::new_class("account");
-    static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
+    static ref PV_UUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
 }
 
 impl Plugin for Spn {

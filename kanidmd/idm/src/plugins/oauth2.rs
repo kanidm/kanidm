@@ -162,7 +162,7 @@ mod tests {
                 assert!(e.attribute_pres("oauth2_rs_basic_secret"));
                 assert!(e.attribute_pres("oauth2_rs_token_key"));
                 // Check the values are different.
-                assert!(e.get_ava_single_str("oauth2_rs_basic_secret") != Some("12345"));
+                assert!(e.get_ava_single_utf8("oauth2_rs_basic_secret") != Some("12345"));
                 assert!(e.get_ava_single_secret("oauth2_rs_token_key") != Some("12345"));
             }
         );

@@ -106,7 +106,7 @@ impl Plugin for ReferentialIntegrity {
         vsiter.try_for_each(|vs| {
             if let Some(uuid_iter) = vs.as_ref_uuid_iter() {
                 uuid_iter.for_each(|u| {
-                    i.push(PartialValue::new_uuid(*u))
+                    i.push(PartialValue::new_uuid(u))
                 });
                 Ok(())
             } else {
@@ -185,7 +185,7 @@ impl Plugin for ReferentialIntegrity {
                 .map(|e| e.get_uuid())
                 .map(|u| ref_types.values().map(move |r_type| {
                     // For everything that references the uuid's in the deleted set.
-                    f_eq(r_type.name.as_str(), PartialValue::new_refer(*u))
+                    f_eq(r_type.name.as_str(), PartialValue::new_refer(u))
                 }))
                 .flatten()
                 .collect(),
@@ -195,7 +195,7 @@ impl Plugin for ReferentialIntegrity {
 
         let removed_ids: BTreeSet<_> = cand
             .iter()
-            .map(|e| PartialValue::new_refer(*e.get_uuid()))
+            .map(|e| PartialValue::new_refer(e.get_uuid()))
             .collect();
 
         let work_set = qs.internal_search_writeable(&filt)?;
@@ -226,7 +226,7 @@ impl Plugin for ReferentialIntegrity {
             Err(e) => return vec![e],
         };
 
-        let acu_map: Set<&Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
+        let acu_map: Set<Uuid> = all_cand.iter().map(|e| e.get_uuid()).collect();
 
         let schema = qs.get_schema();
         let ref_types = schema.get_reference_types();
@@ -242,7 +242,7 @@ impl Plugin for ReferentialIntegrity {
                     match vs.as_ref_uuid_iter() {
                         Some(uuid_iter) => {
                             for vu in uuid_iter {
-                                if acu_map.get(vu).is_none() {
+                                if acu_map.get(&vu).is_none() {
                                     res.push(Err(ConsistencyError::RefintNotUpheld(c.get_id())))
                                 }
                             }

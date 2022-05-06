@@ -42,7 +42,7 @@ impl Decoder for TaskCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_cbor::from_slice::<TaskRequest>(&src) {
+        match serde_json::from_slice::<TaskRequest>(&src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -58,9 +58,9 @@ impl Encoder<TaskResponse> for TaskCodec {
 
     fn encode(&mut self, msg: TaskResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
         debug!("Attempting to send request -> {:?} ...", msg);
-        let data = serde_cbor::to_vec(&msg).map_err(|e| {
+        let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+            io::Error::new(io::ErrorKind::Other, "JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())

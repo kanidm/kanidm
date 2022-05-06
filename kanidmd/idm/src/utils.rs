@@ -25,7 +25,7 @@ pub struct DistinctAlpha;
 
 pub type Sid = [u8; 4];
 
-pub fn uuid_to_gid_u32(u: &Uuid) -> u32 {
+pub fn uuid_to_gid_u32(u: Uuid) -> u32 {
     let b_ref = u.as_bytes();
     let mut x: [u8; 4] = [0; 4];
     x.clone_from_slice(&b_ref[12..16]);
@@ -61,24 +61,26 @@ pub fn backup_code_from_random() -> HashSet<String> {
 }
 
 pub fn readable_password_from_random() -> String {
+    // 2^112 bits, means we need at least 55^20 to have as many bits of entropy.
+    // this leads us to 4 groups of 5 to create 55^20
     let mut trng = thread_rng();
     format!(
         "{}-{}-{}-{}",
         (&mut trng)
             .sample_iter(&DistinctAlpha)
-            .take(4)
+            .take(5)
             .collect::<String>(),
         (&mut trng)
             .sample_iter(&DistinctAlpha)
-            .take(4)
+            .take(5)
             .collect::<String>(),
         (&mut trng)
             .sample_iter(&DistinctAlpha)
-            .take(4)
+            .take(5)
             .collect::<String>(),
         (&mut trng)
             .sample_iter(&DistinctAlpha)
-            .take(4)
+            .take(5)
             .collect::<String>(),
     )
 }
@@ -206,15 +208,15 @@ mod tests {
     #[test]
     fn test_utils_uuid_to_gid_u32() {
         let u1 = Uuid::parse_str("00000000-0000-0001-0000-000000000000").unwrap();
-        let r1 = uuid_to_gid_u32(&u1);
+        let r1 = uuid_to_gid_u32(u1);
         assert!(r1 == 0);
 
         let u2 = Uuid::parse_str("00000000-0000-0001-0000-0000ffffffff").unwrap();
-        let r2 = uuid_to_gid_u32(&u2);
+        let r2 = uuid_to_gid_u32(u2);
         assert!(r2 == 0xffffffff);
 
         let u3 = Uuid::parse_str("00000000-0000-0001-0000-ffff12345678").unwrap();
-        let r3 = uuid_to_gid_u32(&u3);
+        let r3 = uuid_to_gid_u32(u3);
         assert!(r3 == 0x12345678);
     }
 }

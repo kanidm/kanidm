@@ -151,7 +151,7 @@ macro_rules! entry_str_to_account {
             unsafe { Entry::unsafe_from_entry_str($entry_str).into_invalid_new() };
         // Add spn, because normally this is generated but in tests we can't.
         let spn = e
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| Value::new_spn_str(s, "example.com"))
             .expect("Failed to munge spn from name!");
         e.set_ava("spn", once(spn));
@@ -571,25 +571,6 @@ macro_rules! btreemap {
 
 #[allow(unused_macros)]
 #[macro_export]
-macro_rules! valueset {
-    () => (
-        compile_error!("ValueSet needs at least 1 element")
-    );
-    ($e:expr) => ({
-        ValueSet::new($e)
-    });
-    ($e:expr,) => ({
-        valueset!($e)
-    });
-    ($e:expr, $($item:expr),*) => ({
-        let mut x: ValueSet = ValueSet::new($e);
-        $(assert!(x.insert($item));)*
-        x
-    });
-}
-
-#[allow(unused_macros)]
-#[macro_export]
 macro_rules! entry_init {
     () => ({
         let e1: Entry<EntryInit, EntryNew> = Entry::new();
@@ -605,5 +586,179 @@ macro_rules! entry_init {
         e1.add_ava($ava.0, $ava.1);
         $(e1.add_ava($item.0, $item.1);)*
         e1
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! mergesets {
+    (
+        $a:expr,
+        $b:expr
+    ) => {{
+        $b.iter().for_each(|v| {
+            $a.insert(v.clone());
+        });
+        Ok(())
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! mergemaps {
+    (
+        $a:expr,
+        $b:expr
+    ) => {{
+        $b.iter().for_each(|(k, v)| {
+            if !$a.contains_key(k) {
+                $a.insert(k.clone(), v.clone());
+            }
+        });
+        Ok(())
+    }};
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_utf8 {
+    () => (
+        compile_error!("ValueSetUtf8 needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetUtf8::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetUtf8::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_iutf8 {
+    () => (
+        compile_error!("ValueSetIutf8 needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetIutf8::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetIutf8::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_iname {
+    () => (
+        compile_error!("ValueSetIname needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetIname::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetIname::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_uuid {
+    () => (
+        compile_error!("ValueSetUuid needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetUuid::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetUuid::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_refer {
+    () => (
+        compile_error!("ValueSetRefer needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetRefer::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetRefer::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_bool {
+    () => (
+        compile_error!("ValueSetBool needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetBool::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetBool::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_syntax {
+    () => (
+        compile_error!("ValueSetSyntax needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetSyntax::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetSyntax::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_index {
+    () => (
+        compile_error!("ValueSetIndex needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetIndex::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetIndex::new($e);
+        $(assert!(x.push($item));)*
+        x
+    });
+}
+
+#[allow(unused_macros)]
+#[macro_export]
+macro_rules! vs_cid {
+    () => (
+        compile_error!("ValueSetCid needs at least 1 element")
+    );
+    ($e:expr) => ({
+        ValueSetCid::new($e)
+    });
+    ($e:expr, $($item:expr),*) => ({
+        let mut x = ValueSetCid::new($e);
+        $(assert!(x.push($item));)*
+        x
     });
 }

@@ -219,6 +219,7 @@ macro_rules! name2uuid {
             let cache_key = NameCacheKey::Name2Uuid($name.to_string());
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::U(uuid)) = cache_r {
+                trace!(?uuid, "Got cached name2uuid");
                 return Ok(Some(uuid.clone()));
             } else {
                 trace!("Cache miss uuid for name2uuid");
@@ -241,9 +242,10 @@ macro_rules! uuid2spn {
         $uuid:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::uuid2spn", {
-            let cache_key = NameCacheKey::Uuid2Spn(*$uuid);
+            let cache_key = NameCacheKey::Uuid2Spn($uuid);
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::S(ref spn)) = cache_r {
+                trace!(?spn, "Got cached uuid2spn");
                 return Ok(Some(spn.as_ref().clone()));
             } else {
                 trace!("Cache miss spn for uuid2spn");
@@ -266,7 +268,7 @@ macro_rules! uuid2rdn {
         $uuid:expr
     ) => {{
         spanned!("be::idl_arc_sqlite::uuid2rdn", {
-            let cache_key = NameCacheKey::Uuid2Rdn(*$uuid);
+            let cache_key = NameCacheKey::Uuid2Rdn($uuid);
             let cache_r = $self.name_cache.get(&cache_key);
             if let Some(NameCacheValue::R(ref rdn)) = cache_r {
                 return Ok(Some(rdn.clone()));
@@ -336,15 +338,17 @@ pub trait IdlArcSqliteTransaction {
 
     fn get_db_d_uuid(&self) -> Result<Option<Uuid>, OperationError>;
 
+    fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError>;
+
     fn verify(&self) -> Vec<Result<(), ConsistencyError>>;
 
     fn is_dirty(&self) -> bool;
 
     fn name2uuid(&mut self, name: &str) -> Result<Option<Uuid>, OperationError>;
 
-    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError>;
+    fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError>;
 
-    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError>;
+    fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError>;
 
     fn list_idxs(&self) -> Result<Vec<String>, OperationError>;
 
@@ -391,6 +395,10 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         self.db.get_db_d_uuid()
     }
 
+    fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
+        self.db.get_db_ts_max()
+    }
+
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         verify!(self)
     }
@@ -403,11 +411,11 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteReadTransaction<'a> {
         name2uuid!(self, name)
     }
 
-    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         uuid2spn!(self, uuid)
     }
 
-    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+    fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, uuid)
     }
 
@@ -468,6 +476,13 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         self.db.get_db_d_uuid()
     }
 
+    fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
+        match *self.op_ts_max {
+            Some(ts) => Ok(Some(ts)),
+            None => self.db.get_db_ts_max(),
+        }
+    }
+
     fn verify(&self) -> Vec<Result<(), ConsistencyError>> {
         verify!(self)
     }
@@ -480,11 +495,11 @@ impl<'a> IdlArcSqliteTransaction for IdlArcSqliteWriteTransaction<'a> {
         name2uuid!(self, name)
     }
 
-    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         uuid2spn!(self, uuid)
     }
 
-    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+    fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError> {
         uuid2rdn!(self, uuid)
     }
 
@@ -566,17 +581,17 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
                     .iter_mut_mark_clean()
                     .try_for_each(|(k, v)| match (k, v) {
                         (NameCacheKey::Name2Uuid(k), Some(NameCacheValue::U(v))) => {
-                            db.write_name2uuid_add(k, v)
+                            db.write_name2uuid_add(k, *v)
                         }
                         (NameCacheKey::Name2Uuid(k), None) => db.write_name2uuid_rem(k),
                         (NameCacheKey::Uuid2Spn(uuid), Some(NameCacheValue::S(v))) => {
-                            db.write_uuid2spn(uuid, Some(v))
+                            db.write_uuid2spn(*uuid, Some(v))
                         }
-                        (NameCacheKey::Uuid2Spn(uuid), None) => db.write_uuid2spn(uuid, None),
+                        (NameCacheKey::Uuid2Spn(uuid), None) => db.write_uuid2spn(*uuid, None),
                         (NameCacheKey::Uuid2Rdn(uuid), Some(NameCacheValue::R(v))) => {
-                            db.write_uuid2rdn(uuid, Some(v))
+                            db.write_uuid2rdn(*uuid, Some(v))
                         }
-                        (NameCacheKey::Uuid2Rdn(uuid), None) => db.write_uuid2rdn(uuid, None),
+                        (NameCacheKey::Uuid2Rdn(uuid), None) => db.write_uuid2rdn(*uuid, None),
 
                         _ => Err(OperationError::InvalidCacheState),
                     })
@@ -953,13 +968,13 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
 
     pub fn write_name2uuid_add(
         &mut self,
-        uuid: &Uuid,
+        uuid: Uuid,
         add: BTreeSet<String>,
     ) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_name2uuid_add", {
             add.into_iter().for_each(|k| {
                 let cache_key = NameCacheKey::Name2Uuid(k);
-                let cache_value = NameCacheValue::U(*uuid);
+                let cache_value = NameCacheValue::U(uuid);
                 self.name_cache.insert_dirty(cache_key, cache_value)
             });
             Ok(())
@@ -983,9 +998,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.create_uuid2spn()
     }
 
-    pub fn write_uuid2spn(&mut self, uuid: &Uuid, k: Option<Value>) -> Result<(), OperationError> {
+    pub fn write_uuid2spn(&mut self, uuid: Uuid, k: Option<Value>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_uuid2spn", {
-            let cache_key = NameCacheKey::Uuid2Spn(*uuid);
+            let cache_key = NameCacheKey::Uuid2Spn(uuid);
             match k {
                 Some(v) => self
                     .name_cache
@@ -1000,9 +1015,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.create_uuid2rdn()
     }
 
-    pub fn write_uuid2rdn(&mut self, uuid: &Uuid, k: Option<String>) -> Result<(), OperationError> {
+    pub fn write_uuid2rdn(&mut self, uuid: Uuid, k: Option<String>) -> Result<(), OperationError> {
         spanned!("be::idl_arc_sqlite::write_uuid2rdn", {
-            let cache_key = NameCacheKey::Uuid2Rdn(*uuid);
+            let cache_key = NameCacheKey::Uuid2Rdn(uuid);
             match k {
                 Some(s) => self
                     .name_cache
@@ -1041,16 +1056,9 @@ impl<'a> IdlArcSqliteWriteTransaction<'a> {
         self.db.write_db_d_uuid(nsid)
     }
 
-    pub fn set_db_ts_max(&mut self, ts: &Duration) -> Result<(), OperationError> {
-        *self.op_ts_max = Some(*ts);
+    pub fn set_db_ts_max(&mut self, ts: Duration) -> Result<(), OperationError> {
+        *self.op_ts_max = Some(ts);
         self.db.set_db_ts_max(ts)
-    }
-
-    pub fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
-        match *self.op_ts_max {
-            Some(ts) => Ok(Some(ts)),
-            None => self.db.get_db_ts_max(),
-        }
     }
 
     pub(crate) fn get_db_index_version(&self) -> i64 {

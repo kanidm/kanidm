@@ -1,7 +1,10 @@
+use crate::be::dbentry::DbEntry;
+use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::prelude::*;
 use crate::value::{IndexType, Value};
+use crate::valueset;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -28,9 +31,9 @@ fn sqlite_error(e: rusqlite::Error) -> OperationError {
 }
 
 #[allow(clippy::needless_pass_by_value)] // needs to accept value from `map_err`
-fn serde_cbor_error(e: serde_cbor::Error) -> OperationError {
-    admin_error!(?e, "Serde CBOR Error");
-    OperationError::SerdeCborError
+fn serde_json_error(e: serde_json::Error) -> OperationError {
+    admin_error!(?e, "Serde JSON Error");
+    OperationError::SerdeJsonError
 }
 
 #[repr(u32)]
@@ -240,7 +243,7 @@ pub trait IdlSqliteTransaction {
                 .map_err(sqlite_error)?;
 
             let idl = match idl_raw {
-                Some(d) => serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?,
+                Some(d) => serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?,
                 // We don't have this value, it must be empty (or we
                 // have a corrupted index .....
                 None => IDLBitRange::new(),
@@ -271,7 +274,7 @@ pub trait IdlSqliteTransaction {
         })
     }
 
-    fn uuid2spn(&mut self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid2spn(&mut self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         spanned!("be::idl_sqlite::uuid2spn", {
             let uuids = uuid.as_hyphenated().to_string();
             // The table exists - lets now get the actual index itself.
@@ -287,9 +290,10 @@ pub trait IdlSqliteTransaction {
 
             let spn: Option<Value> = match spn_raw {
                 Some(d) => {
-                    let dbv = serde_cbor::from_slice(d.as_slice()).map_err(serde_cbor_error)?;
+                    let dbv: DbValueSetV2 =
+                        serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?;
 
-                    ValueSet::from_db_valuev1_iter(std::iter::once(dbv))
+                    valueset::from_db_valueset_v2(dbv)
                         .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))
                         .map(|vs| vs.to_value_single())?
                 }
@@ -302,7 +306,7 @@ pub trait IdlSqliteTransaction {
         })
     }
 
-    fn uuid2rdn(&mut self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+    fn uuid2rdn(&mut self, uuid: Uuid) -> Result<Option<String>, OperationError> {
         spanned!("be::idl_sqlite::uuid2rdn", {
             let uuids = uuid.as_hyphenated().to_string();
             // The table exists - lets now get the actual index itself.
@@ -340,11 +344,15 @@ pub trait IdlSqliteTransaction {
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
-            Some(d) => Some(serde_cbor::from_slice(d.as_slice()).map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-                eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-                OperationError::SerdeCborError
-            })?),
+            Some(d) => Some(
+                serde_json::from_slice(d.as_slice())
+                    .or_else(|e| serde_cbor::from_slice(d.as_slice()).map_err(|_| e))
+                    .map_err(|e| {
+                        admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
+                        eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                        OperationError::SerdeCborError
+                    })?,
+            ),
             None => None,
         })
     }
@@ -367,11 +375,48 @@ pub trait IdlSqliteTransaction {
             .map_err(|_| OperationError::SqliteError)?;
 
         Ok(match data {
-            Some(d) => Some(serde_cbor::from_slice(d.as_slice()).map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-                eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-                OperationError::SerdeCborError
-            })?),
+            Some(d) => Some(
+                serde_json::from_slice(d.as_slice())
+                    .or_else(|e| serde_cbor::from_slice(d.as_slice()).map_err(|_| e))
+                    .map_err(|e| {
+                        admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
+                        eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
+                        OperationError::SerdeCborError
+                    })?,
+            ),
+            None => None,
+        })
+    }
+
+    fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
+        // Try to get a value.
+        let data: Option<Vec<u8>> = self
+            .get_conn()
+            .query_row("SELECT data FROM db_op_ts WHERE id = 1", [], |row| {
+                row.get(0)
+            })
+            .optional()
+            // this whole `map` call is useless
+            .map(|e_opt| {
+                // If we have a row, we try to make it a sid
+                e_opt.map(|e| {
+                    let y: Vec<u8> = e;
+                    y
+                })
+                // If no sid, we return none.
+            })
+            .map_err(sqlite_error)?;
+
+        Ok(match data {
+            Some(d) => Some(
+                serde_json::from_slice(d.as_slice())
+                    .or_else(|_| serde_cbor::from_slice(d.as_slice()))
+                    .map_err(|e| {
+                        admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
+                        eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+                        OperationError::SerdeJsonError
+                    })?,
+            ),
             None => None,
         })
     }
@@ -454,8 +499,8 @@ pub trait IdlSqliteTransaction {
         idx_iter
             .map(|v| {
                 v.map_err(sqlite_error).and_then(|KeyIdl { key, data }| {
-                    serde_cbor::from_slice(data.as_slice())
-                        .map_err(serde_cbor_error)
+                    serde_json::from_slice(data.as_slice())
+                        .map_err(serde_json_error)
                         .map(|idl| (key, idl))
                 })
             })
@@ -626,7 +671,7 @@ impl IdlSqliteWriteTransaction {
         entry: &Entry<EntrySealed, EntryCommitted>,
     ) -> Result<(), OperationError> {
         let dbe = entry.to_dbentry();
-        let data = serde_cbor::to_vec(&dbe).map_err(serde_cbor_error)?;
+        let data = serde_json::to_vec(&dbe).map_err(serde_json_error)?;
 
         let raw_entries = std::iter::once(IdRawEntry {
             id: entry.get_id(),
@@ -742,7 +787,7 @@ impl IdlSqliteWriteTransaction {
             } else {
                 trace!(?idl, "writing idl");
                 // Serialise the IdList to Vec<u8>
-                let idl_raw = serde_cbor::to_vec(idl).map_err(serde_cbor_error)?;
+                let idl_raw = serde_json::to_vec(idl).map_err(serde_json_error)?;
 
                 // update or create it.
                 let query = format!(
@@ -776,7 +821,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub fn write_name2uuid_add(&self, name: &str, uuid: &Uuid) -> Result<(), OperationError> {
+    pub fn write_name2uuid_add(&self, name: &str, uuid: Uuid) -> Result<(), OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
 
         self.conn
@@ -809,12 +854,37 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub fn write_uuid2spn(&self, uuid: &Uuid, k: Option<&Value>) -> Result<(), OperationError> {
+    pub fn migrate_dbentryv1_to_dbentryv2(&self) -> Result<(), OperationError> {
+        let allids = self.get_identry_raw(&IdList::AllIds)?;
+        let raw_entries: Result<Vec<IdRawEntry>, _> = allids
+            .into_iter()
+            .map(|raw| {
+                serde_cbor::from_slice(raw.data.as_slice())
+                    .map_err(|e| {
+                        admin_error!(?e, "Serde CBOR Error");
+                        OperationError::SerdeCborError
+                    })
+                    .and_then(|dbe: DbEntry| dbe.to_v2())
+                    .and_then(|dbe| {
+                        serde_json::to_vec(&dbe)
+                            .map(|data| IdRawEntry { id: raw.id, data })
+                            .map_err(|e| {
+                                admin_error!(?e, "Serde Json Error");
+                                OperationError::SerdeJsonError
+                            })
+                    })
+            })
+            .collect();
+
+        self.write_identries_raw(raw_entries?.into_iter())
+    }
+
+    pub fn write_uuid2spn(&self, uuid: Uuid, k: Option<&Value>) -> Result<(), OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
         match k {
             Some(k) => {
                 let dbv1 = k.to_supplementary_db_valuev1();
-                let data = serde_cbor::to_vec(&dbv1).map_err(serde_cbor_error)?;
+                let data = serde_json::to_vec(&dbv1).map_err(serde_json_error)?;
                 self.conn
                     .prepare("INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)")
                     .and_then(|mut stmt| {
@@ -845,7 +915,7 @@ impl IdlSqliteWriteTransaction {
             .map_err(sqlite_error)
     }
 
-    pub fn write_uuid2rdn(&self, uuid: &Uuid, k: Option<&String>) -> Result<(), OperationError> {
+    pub fn write_uuid2rdn(&self, uuid: Uuid, k: Option<&String>) -> Result<(), OperationError> {
         let uuids = uuid.as_hyphenated().to_string();
         match k {
             Some(k) => self
@@ -971,10 +1041,10 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_db_s_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
-        let data = serde_cbor::to_vec(&nsid).map_err(|e| {
-            admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-            eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-            OperationError::SerdeCborError
+        let data = serde_json::to_vec(&nsid).map_err(|e| {
+            admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
+            eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+            OperationError::SerdeJsonError
         })?;
 
         self.conn
@@ -994,10 +1064,10 @@ impl IdlSqliteWriteTransaction {
     }
 
     pub fn write_db_d_uuid(&self, nsid: Uuid) -> Result<(), OperationError> {
-        let data = serde_cbor::to_vec(&nsid).map_err(|e| {
-            admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-            eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-            OperationError::SerdeCborError
+        let data = serde_json::to_vec(&nsid).map_err(|e| {
+            admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
+            eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+            OperationError::SerdeJsonError
         })?;
 
         self.conn
@@ -1016,11 +1086,11 @@ impl IdlSqliteWriteTransaction {
             })
     }
 
-    pub fn set_db_ts_max(&self, ts: &Duration) -> Result<(), OperationError> {
-        let data = serde_cbor::to_vec(ts).map_err(|e| {
-            admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-            eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-            OperationError::SerdeCborError
+    pub fn set_db_ts_max(&self, ts: Duration) -> Result<(), OperationError> {
+        let data = serde_json::to_vec(&ts).map_err(|e| {
+            admin_error!(immediate = true, ?e, "CRITICAL: Serde JSON Error");
+            eprintln!("CRITICAL: Serde JSON Error -> {:?}", e);
+            OperationError::SerdeJsonError
         })?;
 
         self.conn
@@ -1037,35 +1107,6 @@ impl IdlSqliteWriteTransaction {
                 eprintln!("CRITICAL: rusqlite error {:?}", e);
                 OperationError::SqliteError
             })
-    }
-
-    pub fn get_db_ts_max(&self) -> Result<Option<Duration>, OperationError> {
-        // Try to get a value.
-        let data: Option<Vec<u8>> = self
-            .get_conn()
-            .query_row("SELECT data FROM db_op_ts WHERE id = 1", [], |row| {
-                row.get(0)
-            })
-            .optional()
-            // this whole `map` call is useless
-            .map(|e_opt| {
-                // If we have a row, we try to make it a sid
-                e_opt.map(|e| {
-                    let y: Vec<u8> = e;
-                    y
-                })
-                // If no sid, we return none.
-            })
-            .map_err(sqlite_error)?;
-
-        Ok(match data {
-            Some(d) => Some(serde_cbor::from_slice(d.as_slice()).map_err(|e| {
-                admin_error!(immediate = true, ?e, "CRITICAL: Serde CBOR Error");
-                eprintln!("CRITICAL: Serde CBOR Error -> {:?}", e);
-                OperationError::SerdeCborError
-            })?),
-            None => None,
-        })
     }
 
     // ===== inner helpers =====
@@ -1202,7 +1243,14 @@ impl IdlSqliteWriteTransaction {
             dbv_id2entry = 4;
             admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (name2uuid, uuid2spn, uuid2rdn)");
         }
-        //   * if v4 -> complete.
+        //   * if v4 -> migrate v1 to v2 entries.
+        if dbv_id2entry == 4 {
+            self.migrate_dbentryv1_to_dbentryv2()?;
+            dbv_id2entry = 5;
+            admin_info!(entry = %dbv_id2entry, "dbv_id2entry migrated (dbentryv1 -> dbentryv2)");
+        }
+
+        //   * if v5 -> complete.
 
         self.set_db_version_key(DBV_ID2ENTRY, dbv_id2entry)
             .map_err(sqlite_error)?;

@@ -55,7 +55,7 @@ macro_rules! try_from_entry {
         }
 
         let name = $value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
@@ -65,10 +65,10 @@ macro_rules! try_from_entry {
             OperationError::InvalidAccountState("Missing attribute: spn".to_string())
         })?;
 
-        let uuid = *$value.get_uuid();
+        let uuid = $value.get_uuid();
 
         let displayname = $value
-            .get_ava_single_str("displayname")
+            .get_ava_single_utf8("displayname")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: displayname".to_string())
@@ -79,7 +79,7 @@ macro_rules! try_from_entry {
         })?;
 
         let shell = $value
-            .get_ava_single_str("loginshell")
+            .get_ava_single_iutf8("loginshell")
             .map(|s| s.to_string());
 
         let sshkeys = $value
@@ -307,7 +307,7 @@ macro_rules! try_from_group_e {
         }
 
         let name = $value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
@@ -317,7 +317,7 @@ macro_rules! try_from_group_e {
             OperationError::InvalidAccountState("Missing attribute: spn".to_string())
         })?;
 
-        let uuid = *$value.get_uuid();
+        let uuid = $value.get_uuid();
 
         let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
@@ -350,7 +350,7 @@ macro_rules! try_from_account_group_e {
         }
 
         let name = $value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
@@ -360,7 +360,7 @@ macro_rules! try_from_account_group_e {
             OperationError::InvalidAccountState("Missing attribute: spn".to_string())
         })?;
 
-        let uuid = *$value.get_uuid();
+        let uuid = $value.get_uuid();
 
         let gidnumber = $value.get_ava_single_uint32("gidnumber").ok_or_else(|| {
             OperationError::InvalidAccountState("Missing attribute: gidnumber".to_string())
@@ -381,7 +381,7 @@ macro_rules! try_from_account_group_e {
                     f_eq("class", PartialValue::new_class("group")),
                     f_or(
                         riter
-                            .map(|u| f_eq("uuid", PartialValue::new_uuidr(u)))
+                            .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
                             .collect()
                     )
                 ]));

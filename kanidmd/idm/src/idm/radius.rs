@@ -44,16 +44,16 @@ impl RadiusAccount {
             .to_string();
 
         let name = value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: name".to_string())
             })?;
 
-        let uuid = *value.get_uuid();
+        let uuid = value.get_uuid();
 
         let displayname = value
-            .get_ava_single_str("displayname")
+            .get_ava_single_utf8("displayname")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 OperationError::InvalidAccountState("Missing attribute: displayname".to_string())

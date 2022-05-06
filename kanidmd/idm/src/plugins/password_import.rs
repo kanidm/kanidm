@@ -31,7 +31,7 @@ impl Plugin for PasswordImport {
                     return Err(OperationError::Plugin(PluginError::PasswordImport("multiple password_imports specified".to_string())))
                 }
 
-                let im_pw = vs.to_str_single()
+                let im_pw = vs.to_utf8_single()
                     .ok_or_else(|| OperationError::Plugin(PluginError::PasswordImport("password_import has incorrect value type".to_string())))?;
 
                 // convert the import_password to a cred
@@ -75,7 +75,7 @@ impl Plugin for PasswordImport {
                 )));
             }
 
-            let im_pw = vs.to_str_single().ok_or_else(|| {
+            let im_pw = vs.to_utf8_single().ok_or_else(|| {
                 OperationError::Plugin(PluginError::PasswordImport(
                     "password_import has incorrect value type".to_string(),
                 ))

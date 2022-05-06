@@ -260,9 +260,9 @@ impl<'a> DbTxn<'a> {
         let r: Result<Option<(_, _)>, ()> = data
             .first()
             .map(|(token, expiry)| {
-                // token convert with cbor.
-                let t = serde_cbor::from_slice(token.as_slice()).map_err(|e| {
-                    error!("cbor error -> {:?}", e);
+                // token convert with json.
+                let t = serde_json::from_slice(token.as_slice()).map_err(|e| {
+                    error!("json error -> {:?}", e);
                 })?;
                 let e = u64::try_from(*expiry).map_err(|e| {
                     error!("u64 convert error -> {:?}", e);
@@ -296,17 +296,17 @@ impl<'a> DbTxn<'a> {
 
         data.iter()
             .map(|token| {
-                // token convert with cbor.
-                serde_cbor::from_slice(token.as_slice()).map_err(|e| {
-                    error!("cbor error -> {:?}", e);
+                // token convert with json.
+                serde_json::from_slice(token.as_slice()).map_err(|e| {
+                    error!("json error -> {:?}", e);
                 })
             })
             .collect()
     }
 
     pub fn update_account(&self, account: &UnixUserToken, expire: u64) -> Result<(), ()> {
-        let data = serde_cbor::to_vec(account).map_err(|e| {
-            error!("cbor error -> {:?}", e);
+        let data = serde_json::to_vec(account).map_err(|e| {
+            error!("json error -> {:?}", e);
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("i64 convert error -> {:?}", e);
@@ -423,8 +423,8 @@ impl<'a> DbTxn<'a> {
             error!("password error -> {:?}", e);
         })?;
         let dbpw = pw.to_dbpasswordv1();
-        let data = serde_cbor::to_vec(&dbpw).map_err(|e| {
-            error!("cbor error -> {:?}", e);
+        let data = serde_json::to_vec(&dbpw).map_err(|e| {
+            error!("json error -> {:?}", e);
         })?;
 
         self.conn
@@ -479,8 +479,8 @@ impl<'a> DbTxn<'a> {
             .first()
             .map(|raw| {
                 // Map the option from data.first.
-                let dbpw: DbPasswordV1 = serde_cbor::from_slice(raw.as_slice()).map_err(|e| {
-                    error!("cbor error -> {:?}", e);
+                let dbpw: DbPasswordV1 = serde_json::from_slice(raw.as_slice()).map_err(|e| {
+                    error!("json error -> {:?}", e);
                 })?;
                 let pw = Password::try_from(dbpw)?;
                 pw.verify(cred).map_err(|e| {
@@ -555,9 +555,9 @@ impl<'a> DbTxn<'a> {
         let r: Result<Option<(_, _)>, ()> = data
             .first()
             .map(|(token, expiry)| {
-                // token convert with cbor.
-                let t = serde_cbor::from_slice(token.as_slice()).map_err(|e| {
-                    error!("cbor error -> {:?}", e);
+                // token convert with json.
+                let t = serde_json::from_slice(token.as_slice()).map_err(|e| {
+                    error!("json error -> {:?}", e);
                 })?;
                 let e = u64::try_from(*expiry).map_err(|e| {
                     error!("u64 convert error -> {:?}", e);
@@ -593,10 +593,10 @@ impl<'a> DbTxn<'a> {
 
         data.iter()
             .map(|token| {
-                // token convert with cbor.
+                // token convert with json.
                 // debug!("{:?}", token);
-                serde_cbor::from_slice(token.as_slice()).map_err(|e| {
-                    error!("cbor error -> {:?}", e);
+                serde_json::from_slice(token.as_slice()).map_err(|e| {
+                    error!("json error -> {:?}", e);
                 })
             })
             .collect()
@@ -625,18 +625,18 @@ impl<'a> DbTxn<'a> {
 
         data.iter()
             .map(|token| {
-                // token convert with cbor.
+                // token convert with json.
                 // debug!("{:?}", token);
-                serde_cbor::from_slice(token.as_slice()).map_err(|e| {
-                    error!("cbor error -> {:?}", e);
+                serde_json::from_slice(token.as_slice()).map_err(|e| {
+                    error!("json error -> {:?}", e);
                 })
             })
             .collect()
     }
 
     pub fn update_group(&self, grp: &UnixGroupToken, expire: u64) -> Result<(), ()> {
-        let data = serde_cbor::to_vec(grp).map_err(|e| {
-            error!("cbor error -> {:?}", e);
+        let data = serde_json::to_vec(grp).map_err(|e| {
+            error!("json error -> {:?}", e);
         })?;
         let expire = i64::try_from(expire).map_err(|e| {
             error!("i64 convert error -> {:?}", e);
