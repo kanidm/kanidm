@@ -14,18 +14,19 @@ jobs:
          - linux/arm64
          - linux/amd64
     steps:
-      - uses: actions/checkout@v3
-      - name: Install packages
-        run: |
-          apt-get -y install \
-          git curl build-essential \
-          apt-transport-https \
-          clang jq \
-          libstd-rust-dev libssl-dev \
-          libsqlite3-dev \
-          libudev-dev libpam0g-dev \
-          python3-pkgconfig \
-          unzip
+    - uses: actions/checkout@v3
+
+    - name: Update package manager
+      run: sudo apt-get update
+
+    - name: Install dependencies
+      run: |
+        sudo apt-get install -y \
+          libpam0g-dev \
+          libudev-dev \
+          libssl-dev \
+          libsqlite3-dev
+
       - uses: icepuma/rust-action@master
         with:
           args: cargo test
