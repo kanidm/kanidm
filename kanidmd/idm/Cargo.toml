@@ -49,7 +49,7 @@ uuid = { version = "^1.0.0", features = ["serde", "v4" ] }
 compiled-uuid = "0.1.2"
 serde = { version = "^1.0.137", features = ["derive"] }
 serde_cbor = "^0.11.2"
-serde_json = "^1.0.80"
+serde_json = "^1.0.81"
 
 libsqlite3-sys = "0.24.2"
 rusqlite = "^0.27.0"
