@@ -28,11 +28,12 @@ jobs:
             libudev-dev \
             libssl-dev \
             libsqlite3-dev
-      - name: Setup Rust
-        uses: ATiltedTree/setup-rust@v1
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
         with:
-          rust-version: stable
-          components: clippy
+            toolchain: stable
+            default: true
+            components: cargo
       - name: Run cargo test
         run: cargo test --workspace
 
