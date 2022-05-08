@@ -41,7 +41,7 @@ lazy_static = "^1.4.0"
 
 futures = "^0.3.21"
 futures-util = "^0.3.21"
-tokio = { version = "^1.18.0", features = ["net", "sync", "time"] }
+tokio = { version = "^1.18.2", features = ["net", "sync", "time"] }
 tokio-util = { version = "^0.7.1", features = ["codec"] }
 openssl = "^0.10.38"
 

@@ -49,7 +49,7 @@ zxcvbn = "^2.2.1"
 dialoguer =  "^0.10.0"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.12"
-tokio = { version = "^1.18.0", features = ["rt", "macros"] }
+tokio = { version = "^1.18.2", features = ["rt", "macros"] }
 
 [build-dependencies]
 structopt = { version = "^0.3.26", default-features = false }
