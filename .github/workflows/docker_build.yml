@@ -28,10 +28,13 @@ jobs:
             libudev-dev \
             libssl-dev \
             libsqlite3-dev
-
-      - uses: icepuma/rust-action@master
+      - name: Setup Rust
+        uses: ATiltedTree/setup-rust@v1
         with:
-          args: cargo test
+          rust-version: stable
+          components: clippy
+      - name: Run cargo test
+        run: cargo test --workspace
 
   kanidm_build:
     needs: test
