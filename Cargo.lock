@@ -1621,9 +1621,9 @@ dependencies = [
 
 [[package]]
 name = "hashbrown"
-version = "0.12.0"
+version = "0.12.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8c21d40587b92fa6a6c6e3c1bdbf87d75511db5672f9c93175574b3a00df1758"
+checksum = "db0d4cf898abf0081f964436dc980e96670a0f36863e4b83aaacdb65c9d7ccc3"
 dependencies = [
  "ahash",
  "serde",
@@ -1946,7 +1946,7 @@ dependencies = [
  "filetime",
  "futures",
  "futures-util",
- "hashbrown 0.12.0",
+ "hashbrown 0.12.1",
  "idlset",
  "jemallocator",
  "kanidm_proto",
