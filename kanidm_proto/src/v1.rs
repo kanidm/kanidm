@@ -789,14 +789,14 @@ impl TotpSecret {
         // This is already done server side but paranoia is good!
         let accountname = self
             .accountname
-            .replace(":", "")
+            .replace(':', "")
             .replace("%3A", "")
-            .replace(" ", "%20");
+            .replace(' ', "%20");
         let issuer = self
             .issuer
-            .replace(":", "")
+            .replace(':', "")
             .replace("%3A", "")
-            .replace(" ", "%20");
+            .replace(' ', "%20");
         let label = format!("{}:{}", issuer, accountname);
         let algo = self.algo.to_string();
         let secret = self.get_secret();
