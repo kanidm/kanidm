@@ -9,7 +9,7 @@ Kanidm currently supports:
  * OpenSUSE Tumbleweed
  * OpenSUSE Leap 15.3/15.4
  * Fedora 34/35
- * Centos Stream 9
+ * Centos Stream 9 (alpha 7 only)
 
 ### OpenSUSE Tumbleweed
 
@@ -33,7 +33,7 @@ Then you need to refresh your metadata and install the clients.
 
 ### Fedora / Centos Stream
 
-Fedora has limited supported through the development repository. You need to add the repository metadata into the correct directory.
+Fedora has limited support through the development repository. You need to add the repository metadata into the correct directory.
 
     cd /etc/yum.repos.d
     # Fedora 34
