@@ -37,6 +37,13 @@ updates:
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
+    directory: "/kanidm_tools"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
     directory: "/kanidm_unix_int"
     schedule:
       interval: weekly
