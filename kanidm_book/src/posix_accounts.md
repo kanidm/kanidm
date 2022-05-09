@@ -108,8 +108,7 @@ special or separate type of membership for posix members required.
 
 ### Subid conflicts with Podman
 
-Due to the way that podman operates, in some cases using the kanidm client inside non-root containers with
-kanidm accounts may fail with an error such as:
+Due to the way that podman operates, in some cases using the kanidm client inside non-root containers with kanidm accounts may fail with an error such as:
 
     ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user "NAME" in /etc/subuid
 

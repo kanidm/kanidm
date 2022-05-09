@@ -198,6 +198,7 @@ The content should look like:
 
 These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.
 
+#### Without authselect
 If you just remove the symlinks:
 edit the content.
 
@@ -260,6 +261,7 @@ edit the content.
     session     required                                     pam_unix.so
     session     optional                                     pam_kanidm.so
 
+#### With authselect
 To work with authselect:
 You will need to [create a new profile](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect). First run
 
@@ -274,7 +276,7 @@ A new folder, /etc/authselect/custom/kanidm, should be created. Inside that fold
     services:   sss files
     netgroup:   sss files
     automount:  sss files
-
+    
     aliases:    files
     ethers:     files
     gshadow:    files
@@ -282,6 +284,12 @@ A new folder, /etc/authselect/custom/kanidm, should be created. Inside that fold
     protocols:  files
     publickey:  files
     rpc:        files
+
+finally run
+
+    authselect select custom/kanidm
+
+to update your profile.
 
 ## Troubleshooting
 
