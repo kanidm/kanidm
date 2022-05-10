@@ -1,37 +1,59 @@
+---
 version: 2
 updates:
-- package-ecosystem: pip
-  directory: "/kanidm_rlm_python"
-  schedule:
-    interval: weekly
-    time: "06:00"
-    timezone: Australia/Brisbane
-  open-pull-requests-limit: 99
-- package-ecosystem: cargo
-  directory: "/"
-  schedule:
-    interval: weekly
-    time: "06:00"
-    timezone: Australia/Brisbane
-  open-pull-requests-limit: 99
-- package-ecosystem: cargo
-  directory: "/kanidm_client"
-  schedule:
-    interval: weekly
-    time: "06:00"
-    timezone: Australia/Brisbane
-  open-pull-requests-limit: 99
-- package-ecosystem: cargo
-  directory: "/kanidm_proto"
-  schedule:
-    interval: weekly
-    time: "06:00"
-    timezone: Australia/Brisbane
-  open-pull-requests-limit: 99
-- package-ecosystem: cargo
-  directory: "/kanidmd"
-  schedule:
-    interval: weekly
-    time: "06:00"
-    timezone: Australia/Brisbane
-  open-pull-requests-limit: 99
+  - package-ecosystem: pip
+    directory: "/kanidm_rlm_python"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidm_client"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidm_proto"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidmd"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidm_tools"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidm_unix_int"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/orca"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
