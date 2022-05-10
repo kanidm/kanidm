@@ -1,6 +1,6 @@
 # Installing Client Tools
 
-> **NOTE** As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running matching release versions of client and server binaries.
+> **NOTE** As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running matching release versions of client and server binaries. If you have any issues check that you are running the latest software.
 
 ## From packages
 
@@ -9,7 +9,7 @@ Kanidm currently supports:
  * OpenSUSE Tumbleweed
  * OpenSUSE Leap 15.3/15.4
  * Fedora 34/35
- * Centos Stream 9 (alpha 7 only)
+ * CentOS Stream 9
 
 ### OpenSUSE Tumbleweed
 
