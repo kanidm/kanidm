@@ -196,7 +196,10 @@ The content should look like:
 >
 > You may also need to run `audit2allow` for sshd and other types to be able to access the unix daemon sockets.
 
-These files are managed by authselect as symlinks. You will need to remove the symlinks first, then
+These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.
+
+#### Without authselect
+If you just remove the symlinks:
 edit the content.
 
     # /etc/pam.d/password-auth
@@ -206,18 +209,18 @@ edit the content.
     auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
     auth        sufficient                                   pam_unix.so nullok try_first_pass
     auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
-    auth        sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    auth        sufficient                                   pam_kanidm.so ignore_unknown_user
     auth        required                                     pam_deny.so
     
     account     sufficient                                   pam_unix.so
     account     sufficient                                   pam_localuser.so
     account     sufficient                                   pam_usertype.so issystem
-    account     sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    account     sufficient                                   pam_kanidm.so ignore_unknown_user
     account     required                                     pam_permit.so
     
     password    requisite                                    pam_pwquality.so try_first_pass local_users_only
     password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
-    password    sufficient                                   pam_kanidm.so debug
+    password    sufficient                                   pam_kanidm.so
     password    required                                     pam_deny.so
     
     session     optional                                     pam_keyinit.so revoke
@@ -225,7 +228,7 @@ edit the content.
     -session    optional                                     pam_systemd.so
     session     [success=1 default=ignore]                   pam_succeed_if.so service in crond quiet use_uid
     session     required                                     pam_unix.so
-    session     optional                                     pam_kanidm.so debug
+    session     optional                                     pam_kanidm.so
 
 -
 
@@ -237,18 +240,18 @@ edit the content.
     auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
     auth        sufficient                                   pam_unix.so nullok try_first_pass
     auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
-    auth        sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    auth        sufficient                                   pam_kanidm.so ignore_unknown_user
     auth        required                                     pam_deny.so
 
     account     sufficient                                   pam_unix.so
     account     sufficient                                   pam_localuser.so
     account     sufficient                                   pam_usertype.so issystem
-    account     sufficient                                   pam_kanidm.so debug ignore_unknown_user
+    account     sufficient                                   pam_kanidm.so ignore_unknown_user
     account     required                                     pam_permit.so
 
     password    requisite                                    pam_pwquality.so try_first_pass local_users_only
     password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
-    password    sufficient                                   pam_kanidm.so debug
+    password    sufficient                                   pam_kanidm.so
     password    required                                     pam_deny.so
 
     session     optional                                     pam_keyinit.so revoke
@@ -256,7 +259,37 @@ edit the content.
     -session    optional                                     pam_systemd.so
     session     [success=1 default=ignore]                   pam_succeed_if.so service in crond quiet use_uid
     session     required                                     pam_unix.so
-    session     optional                                     pam_kanidm.so debug
+    session     optional                                     pam_kanidm.so
+
+#### With authselect
+To work with authselect:
+You will need to [create a new profile](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect). First run
+
+    authselect create-profile kanidm -b sssd
+
+A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or overwrite the following 3 files: nsswitch.conf, password-auth, system-auth. password-auth and system-auth should be the same as above. nsswitch should be modified for your usecase, but a working example looks like this:
+
+    passwd: compat kanidm sss files systemd
+    group: compat kanidm sss files systemd
+    shadow:     files
+    hosts:      files dns myhostname
+    services:   sss files
+    netgroup:   sss files
+    automount:  sss files
+    
+    aliases:    files
+    ethers:     files
+    gshadow:    files
+    networks:   files dns
+    protocols:  files
+    publickey:  files
+    rpc:        files
+
+finally run
+
+    authselect select custom/kanidm
+
+to update your profile.
 
 ## Troubleshooting
 
