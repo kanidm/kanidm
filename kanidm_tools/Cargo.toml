@@ -46,7 +46,7 @@ compact_jwt = "^0.2.1"
 
 zxcvbn = "^2.2.1"
 
-dialoguer =  "^0.10.0"
+dialoguer =  "^0.10.1"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.12"
 tokio = { version = "^1.18.0", features = ["rt", "macros"] }
