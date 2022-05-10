@@ -1781,14 +1781,14 @@ pub struct AccountOrgPersonExtend {
         <span class="comment">// This is already done server side but paranoia is good!</span>
         <span class="kw">let</span> <span class="ident">accountname</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">accountname</span>
-            .<span class="ident">replace</span>(<span class="string">&quot;:&quot;</span>, <span class="string">&quot;&quot;</span>)
+            .<span class="ident">replace</span>(<span class="string">&#39;:&#39;</span>, <span class="string">&quot;&quot;</span>)
             .<span class="ident">replace</span>(<span class="string">&quot;%3A&quot;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&quot; &quot;</span>, <span class="string">&quot;%20&quot;</span>);
+            .<span class="ident">replace</span>(<span class="string">&#39; &#39;</span>, <span class="string">&quot;%20&quot;</span>);
         <span class="kw">let</span> <span class="ident">issuer</span> <span class="op">=</span> <span class="self">self</span>
             .<span class="ident">issuer</span>
-            .<span class="ident">replace</span>(<span class="string">&quot;:&quot;</span>, <span class="string">&quot;&quot;</span>)
+            .<span class="ident">replace</span>(<span class="string">&#39;:&#39;</span>, <span class="string">&quot;&quot;</span>)
             .<span class="ident">replace</span>(<span class="string">&quot;%3A&quot;</span>, <span class="string">&quot;&quot;</span>)
-            .<span class="ident">replace</span>(<span class="string">&quot; &quot;</span>, <span class="string">&quot;%20&quot;</span>);
+            .<span class="ident">replace</span>(<span class="string">&#39; &#39;</span>, <span class="string">&quot;%20&quot;</span>);
         <span class="kw">let</span> <span class="ident">label</span> <span class="op">=</span> <span class="macro">format!</span>(<span class="string">&quot;{}:{}&quot;</span>, <span class="ident">issuer</span>, <span class="ident">accountname</span>);
         <span class="kw">let</span> <span class="ident">algo</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">algo</span>.<span class="ident">to_string</span>();
         <span class="kw">let</span> <span class="ident">secret</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_secret</span>();
