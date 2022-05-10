@@ -565,7 +565,7 @@ kanidm logout --name admin
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installing-client-tools"><a class="header" href="#installing-client-tools">Installing Client Tools</a></h1>
 <blockquote>
-<p><strong>NOTE</strong> As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running matching release versions of client and server binaries.</p>
+<p><strong>NOTE</strong> As this project is in a rapid development phase, running different release versions will likely present incompatibilities. Ensure you're running matching release versions of client and server binaries. If you have any issues check that you are running the latest software.</p>
 </blockquote>
 <h2 id="from-packages"><a class="header" href="#from-packages">From packages</a></h2>
 <p>Kanidm currently supports:</p>
@@ -573,7 +573,7 @@ kanidm logout --name admin
 <li>OpenSUSE Tumbleweed</li>
 <li>OpenSUSE Leap 15.3/15.4</li>
 <li>Fedora 34/35</li>
-<li>Centos Stream 9</li>
+<li>CentOS Stream 9</li>
 </ul>
 <h3 id="opensuse-tumbleweed"><a class="header" href="#opensuse-tumbleweed">OpenSUSE Tumbleweed</a></h3>
 <p>Kanidm is part of OpenSUSE Tumbleweed since October 2020. This means you can install
@@ -591,7 +591,7 @@ try the development repository. Using zypper you can add the repository with:</p
 zypper in kanidm-clients
 </code></pre>
 <h3 id="fedora--centos-stream"><a class="header" href="#fedora--centos-stream">Fedora / Centos Stream</a></h3>
-<p>Fedora has limited supported through the development repository. You need to add the repository metadata into the correct directory.</p>
+<p>Fedora has limited support through the development repository. You need to add the repository metadata into the correct directory.</p>
 <pre><code>cd /etc/yum.repos.d
 # Fedora 34
 sudo wget https://download.opensuse.org/repositories/network:/idm/Fedora_34/network:idm.repo
@@ -1009,8 +1009,7 @@ kanidm group posix set --name idm_admin demo_group --gidnumber 2001
 special or separate type of membership for posix members required.</p>
 <h2 id="troubleshooting-common-issues"><a class="header" href="#troubleshooting-common-issues">Troubleshooting Common Issues</a></h2>
 <h3 id="subid-conflicts-with-podman"><a class="header" href="#subid-conflicts-with-podman">Subid conflicts with Podman</a></h3>
-<p>Due to the way that podman operates, in some cases using non-root containers with
-kanidm accounts may fail with an error such as:</p>
+<p>Due to the way that podman operates, in some cases using the kanidm client inside non-root containers with kanidm accounts may fail with an error such as:</p>
 <pre><code>ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
 </code></pre>
 <p>This is a fault in podman and how it attempts to provide non-root containers, when uid/gids
@@ -1543,7 +1542,9 @@ run the daemon with permissive mode for the unconfined_service_t daemon type. To
 <code>semanage permissive -a unconfined_service_t</code>. To undo this run <code>semanage permissive -d unconfined_service_t</code>.</p>
 <p>You may also need to run <code>audit2allow</code> for sshd and other types to be able to access the unix daemon sockets.</p>
 </blockquote>
-<p>These files are managed by authselect as symlinks. You will need to remove the symlinks first, then
+<p>These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.</p>
+<h4 id="without-authselect"><a class="header" href="#without-authselect">Without authselect</a></h4>
+<p>If you just remove the symlinks:
 edit the content.</p>
 <pre><code># /etc/pam.d/password-auth
 auth        required                                     pam_env.so
@@ -1552,18 +1553,18 @@ auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregul
 auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
 auth        sufficient                                   pam_unix.so nullok try_first_pass
 auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
-auth        sufficient                                   pam_kanidm.so debug ignore_unknown_user
+auth        sufficient                                   pam_kanidm.so ignore_unknown_user
 auth        required                                     pam_deny.so
 
 account     sufficient                                   pam_unix.so
 account     sufficient                                   pam_localuser.so
 account     sufficient                                   pam_usertype.so issystem
-account     sufficient                                   pam_kanidm.so debug ignore_unknown_user
+account     sufficient                                   pam_kanidm.so ignore_unknown_user
 account     required                                     pam_permit.so
 
 password    requisite                                    pam_pwquality.so try_first_pass local_users_only
 password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
-password    sufficient                                   pam_kanidm.so debug
+password    sufficient                                   pam_kanidm.so
 password    required                                     pam_deny.so
 
 session     optional                                     pam_keyinit.so revoke
@@ -1571,7 +1572,7 @@ session     required                                     pam_limits.so
 -session    optional                                     pam_systemd.so
 session     [success=1 default=ignore]                   pam_succeed_if.so service in crond quiet use_uid
 session     required                                     pam_unix.so
-session     optional                                     pam_kanidm.so debug
+session     optional                                     pam_kanidm.so
 </code></pre>
 <ul>
 <li></li>
@@ -1584,18 +1585,18 @@ auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregul
 auth        [default=1 ignore=ignore success=ok]         pam_localuser.so
 auth        sufficient                                   pam_unix.so nullok try_first_pass
 auth        [default=1 ignore=ignore success=ok]         pam_usertype.so isregular
-auth        sufficient                                   pam_kanidm.so debug ignore_unknown_user
+auth        sufficient                                   pam_kanidm.so ignore_unknown_user
 auth        required                                     pam_deny.so
 
 account     sufficient                                   pam_unix.so
 account     sufficient                                   pam_localuser.so
 account     sufficient                                   pam_usertype.so issystem
-account     sufficient                                   pam_kanidm.so debug ignore_unknown_user
+account     sufficient                                   pam_kanidm.so ignore_unknown_user
 account     required                                     pam_permit.so
 
 password    requisite                                    pam_pwquality.so try_first_pass local_users_only
 password    sufficient                                   pam_unix.so sha512 shadow nullok try_first_pass use_authtok
-password    sufficient                                   pam_kanidm.so debug
+password    sufficient                                   pam_kanidm.so
 password    required                                     pam_deny.so
 
 session     optional                                     pam_keyinit.so revoke
@@ -1603,8 +1604,34 @@ session     required                                     pam_limits.so
 -session    optional                                     pam_systemd.so
 session     [success=1 default=ignore]                   pam_succeed_if.so service in crond quiet use_uid
 session     required                                     pam_unix.so
-session     optional                                     pam_kanidm.so debug
+session     optional                                     pam_kanidm.so
 </code></pre>
+<h4 id="with-authselect"><a class="header" href="#with-authselect">With authselect</a></h4>
+<p>To work with authselect:
+You will need to <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect">create a new profile</a>. First run</p>
+<pre><code>authselect create-profile kanidm -b sssd
+</code></pre>
+<p>A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or overwrite the following 3 files: nsswitch.conf, password-auth, system-auth. password-auth and system-auth should be the same as above. nsswitch should be modified for your usecase, but a working example looks like this:</p>
+<pre><code>passwd: compat kanidm sss files systemd
+group: compat kanidm sss files systemd
+shadow:     files
+hosts:      files dns myhostname
+services:   sss files
+netgroup:   sss files
+automount:  sss files
+
+aliases:    files
+ethers:     files
+gshadow:    files
+networks:   files dns
+protocols:  files
+publickey:  files
+rpc:        files
+</code></pre>
+<p>finally run</p>
+<pre><code>authselect select custom/kanidm
+</code></pre>
+<p>to update your profile.</p>
 <h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
 <h3 id="check-posix-status-of-group-and-config"><a class="header" href="#check-posix-status-of-group-and-config">Check POSIX-status of group and config</a></h3>
 <p>If authentication is failing via PAM, make sure that a list of groups is configured in <code>/etc/kanidm/unixd</code>:</p>

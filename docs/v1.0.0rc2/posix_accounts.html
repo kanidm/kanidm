@@ -214,8 +214,7 @@ kanidm group posix set --name idm_admin demo_group --gidnumber 2001
 special or separate type of membership for posix members required.</p>
 <h2 id="troubleshooting-common-issues"><a class="header" href="#troubleshooting-common-issues">Troubleshooting Common Issues</a></h2>
 <h3 id="subid-conflicts-with-podman"><a class="header" href="#subid-conflicts-with-podman">Subid conflicts with Podman</a></h3>
-<p>Due to the way that podman operates, in some cases using non-root containers with
-kanidm accounts may fail with an error such as:</p>
+<p>Due to the way that podman operates, in some cases using the kanidm client inside non-root containers with kanidm accounts may fail with an error such as:</p>
 <pre><code>ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
 </code></pre>
 <p>This is a fault in podman and how it attempts to provide non-root containers, when uid/gids
