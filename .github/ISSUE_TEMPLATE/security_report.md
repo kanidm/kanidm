@@ -2,13 +2,10 @@
 name: Security report
 about: Notify us of a security issue in Kanidm
 title: ''
-labels: 
- - 'security'
- - 'oh no~'
+labels: oh no~, security
 assignees: ''
 
 ---
-
 
 <!-- 
 
@@ -27,4 +24,3 @@ Thank you!
 ### Operating System / Version
 
 <!-- On Unix please post the output of "uname -a" -->
-
