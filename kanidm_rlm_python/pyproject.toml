@@ -9,7 +9,7 @@ python = "^3.6.2"
 requests = "^2.27.1"
 
 [tool.poetry.dev-dependencies]
-pylint = "^2.13.8"
+pylint = "^2.13.9"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
