@@ -39,7 +39,7 @@ libc = "^0.2.125"
 serde = { version = "^1.0.137", features = ["derive"] }
 serde_json = "^1.0.80"
 shellexpand = "^2.1.0"
-rayon = "^1.5.2"
+rayon = "^1.5.3"
 time = { version = "=0.2.27", features = ["serde", "std"] }
 qrcode = { version = "^0.12.0", default-features = false }
 compact_jwt = "^0.2.1"
