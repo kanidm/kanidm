@@ -33,7 +33,7 @@ kanidm_proto = { path = "../kanidm_proto" }
 kanidm_client = { path = "../kanidm_client" }
 
 tokio = { version = "^1.18.0", features = ["rt-multi-thread"] }
-tokio-util = { version = "^0.7.1", features = ["codec"] }
+tokio-util = { version = "^0.7.2", features = ["codec"] }
 tokio-openssl = "^0.6.3"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 openssl = "^0.10.38"
