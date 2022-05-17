@@ -17,11 +17,15 @@ The intent of the Kanidm project is to:
 
 Looking for the `rustdoc` documentation for the libraries themselves? [Click here!](./rustdoc/master/kanidm/)
 
+TODO This link does not work. Is this the correct URL? https://doc.rust-lang.org/rustdoc/index.html
+
+Or maybe the repo, https://github.com/rust-lang/rust/tree/master/src/doc/rustdoc
+
 ## Why do I want Kanidm?
 
 Whether you work in a business, a volunteer organisation, or are an enthusiast who manages 
-their personal services, we need methods of authenticating and identifying ourselves
-to these systems and subsequently, ways to determine what authorisation and privileges we have
+their personal services, you need methods of authenticating and identifying 
+to your systems, and subsequently, ways to determine what authorisation and privileges you have
 while accessing these systems.
 
 We've probably all been in workplaces where you end up with multiple accounts on various
@@ -79,8 +83,8 @@ many devices and credentials with different privileges. An example of how this l
                                    └──────────┘
 
 A key design goal is that you authenticate with your device in some manner, and then your device will
-continue to authenticate you in the future. Each of these different types of credential from SSH keys,
-application passwords, RADIUS passwords and others, are "things your device knows". Each password
+continue to authenticate you in the future. Each of these different types of credentials, from SSH keys,
+application passwords, to RADIUS passwords and others, are "things your device knows". Each password
 has limited capability, and can only access that exact service or resource.
 
 This helps improve security; a compromise of the service or the network transmission does not
@@ -90,4 +94,4 @@ specific service is compromised, only the credentials for that service need to b
 
 Due to this model, and the design of Kanidm to centre the device and to have more per-service credentials,
 workflows and automation are added or designed to reduce human handling. An example of this
-is the use of QR codes with deployment profiles to automatically enrol wireless credentials.
+is the use of QR codes with deployment profiles to automatically enroll wireless credentials.
