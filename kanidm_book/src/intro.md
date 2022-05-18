@@ -15,11 +15,7 @@ The intent of the Kanidm project is to:
 
 ## Library documentation
 
-Looking for the `rustdoc` documentation for the libraries themselves? [Click here!](./rustdoc/master/kanidm/)
-
-TODO This link does not work. Is this the correct URL? https://doc.rust-lang.org/rustdoc/index.html
-
-Or maybe the repo, https://github.com/rust-lang/rust/tree/master/src/doc/rustdoc
+Looking for the `rustdoc` documentation for the libraries themselves? [Click here!](https://kanidm.com/documentation/)
 
 ## Why do I want Kanidm?
 
