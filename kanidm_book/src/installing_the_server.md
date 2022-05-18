@@ -62,7 +62,7 @@ You'll need a volume where you can place configuration, certificates, and the da
     docker volume create kanidmd
 
 You should have a chain.pem and key.pem in your kanidmd volume. The reason for requiring
-Transport Layer Security (TLS, which replaces the deprecated Secure Sockets Layer, SSL)) is explained in [why tls](./why_tls.md). In summary, TLS is our root of trust between the
+Transport Layer Security (TLS, which replaces the deprecated Secure Sockets Layer, SSL) is explained in [why tls](./why_tls.md). In summary, TLS is our root of trust between the
 server and clients, and a critical element of ensuring a secure system.
 
 The key.pem should be a single PEM private key, with no encryption. The file content should be
