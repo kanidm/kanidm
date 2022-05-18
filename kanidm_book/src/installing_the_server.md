@@ -1,8 +1,6 @@
 # Installing the Server
 
-> **NOTE** Our preferred deployment method is in containers, the documentation assumes you're running in docker. Kanidm will run in traditional compute, and server builds are available for multiple platforms, or you can build the binaries yourself.
-
-TODO why are containers preferred?
+> **NOTE** Our preferred deployment method is in containers, the documentation assumes you're running in docker. Kanidm will run in traditional compute, and server builds are available for multiple platforms, or you can build the binaries yourself if you prefer this option.
 
 Currently we have docker images for the server components. They can be found at:
 
