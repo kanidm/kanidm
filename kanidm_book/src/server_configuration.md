@@ -25,10 +25,10 @@ You need a configuration file in the volume named `server.toml`. (Within the con
     #   value you must run a vacuum task.
     #   - zfs:
     #     * sets sqlite pagesize to 64k. You must set 
-    #   recordsize=64k on the zfs filesystem.
+    #       recordsize=64k on the zfs filesystem.
     #   - other:
     #     * sets sqlite pagesize to 4k, matching most 
-    #   filesystems block sizes.
+    #       filesystems block sizes.
     # db_fs_type = "zfs"
     #
     #   The number of entries to store in the in-memory cache. 
