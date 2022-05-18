@@ -149,11 +149,11 @@ This is a pre-release project. While all effort has been made to ensure no data 
 or security flaws, you should still be careful when using this in your environment.</p>
 </blockquote>
 <h2 id="library-documentation"><a class="header" href="#library-documentation">Library documentation</a></h2>
-<p>Looking for the <code>rustdoc</code> documentation for the libraries themselves? <a href="./rustdoc/master/kanidm/">Click here!</a></p>
+<p>Looking for the <code>rustdoc</code> documentation for the libraries themselves? <a href="https://kanidm.com/documentation/">Click here!</a></p>
 <h2 id="why-do-i-want-kanidm"><a class="header" href="#why-do-i-want-kanidm">Why do I want Kanidm?</a></h2>
 <p>Whether you work in a business, a volunteer organisation, or are an enthusiast who manages 
-their personal services, we need methods of authenticating and identifying ourselves
-to these systems and subsequently, ways to determine what authorisation and privileges we have
+their personal services, you need methods of authenticating and identifying 
+to your systems, and subsequently, ways to determine what authorisation and privileges you have
 while accessing these systems.</p>
 <p>We've probably all been in workplaces where you end up with multiple accounts on various
 systems - one for a workstation, different SSH keys for different tasks, maybe some shared
@@ -208,8 +208,8 @@ many devices and credentials with different privileges. An example of how this l
                                └──────────┘
 </code></pre>
 <p>A key design goal is that you authenticate with your device in some manner, and then your device will
-continue to authenticate you in the future. Each of these different types of credential from SSH keys,
-application passwords, RADIUS passwords and others, are &quot;things your device knows&quot;. Each password
+continue to authenticate you in the future. Each of these different types of credentials, from SSH keys,
+application passwords, to RADIUS passwords and others, are &quot;things your device knows&quot;. Each password
 has limited capability, and can only access that exact service or resource.</p>
 <p>This helps improve security; a compromise of the service or the network transmission does not
 grant you unlimited access to your account and all its privileges. As the credentials are specific
@@ -217,7 +217,7 @@ to a device, if a device is compromised you can revoke its associated credential
 specific service is compromised, only the credentials for that service need to be revoked.</p>
 <p>Due to this model, and the design of Kanidm to centre the device and to have more per-service credentials,
 workflows and automation are added or designed to reduce human handling. An example of this
-is the use of QR codes with deployment profiles to automatically enrol wireless credentials.</p>
+is the use of QR codes with deployment profiles to automatically enroll wireless credentials.</p>
 
                     </main>
 

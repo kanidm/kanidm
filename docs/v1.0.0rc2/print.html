@@ -150,11 +150,11 @@ This is a pre-release project. While all effort has been made to ensure no data 
 or security flaws, you should still be careful when using this in your environment.</p>
 </blockquote>
 <h2 id="library-documentation"><a class="header" href="#library-documentation">Library documentation</a></h2>
-<p>Looking for the <code>rustdoc</code> documentation for the libraries themselves? <a href="./rustdoc/master/kanidm/">Click here!</a></p>
+<p>Looking for the <code>rustdoc</code> documentation for the libraries themselves? <a href="https://kanidm.com/documentation/">Click here!</a></p>
 <h2 id="why-do-i-want-kanidm"><a class="header" href="#why-do-i-want-kanidm">Why do I want Kanidm?</a></h2>
 <p>Whether you work in a business, a volunteer organisation, or are an enthusiast who manages 
-their personal services, we need methods of authenticating and identifying ourselves
-to these systems and subsequently, ways to determine what authorisation and privileges we have
+their personal services, you need methods of authenticating and identifying 
+to your systems, and subsequently, ways to determine what authorisation and privileges you have
 while accessing these systems.</p>
 <p>We've probably all been in workplaces where you end up with multiple accounts on various
 systems - one for a workstation, different SSH keys for different tasks, maybe some shared
@@ -209,8 +209,8 @@ many devices and credentials with different privileges. An example of how this l
                                └──────────┘
 </code></pre>
 <p>A key design goal is that you authenticate with your device in some manner, and then your device will
-continue to authenticate you in the future. Each of these different types of credential from SSH keys,
-application passwords, RADIUS passwords and others, are &quot;things your device knows&quot;. Each password
+continue to authenticate you in the future. Each of these different types of credentials, from SSH keys,
+application passwords, to RADIUS passwords and others, are &quot;things your device knows&quot;. Each password
 has limited capability, and can only access that exact service or resource.</p>
 <p>This helps improve security; a compromise of the service or the network transmission does not
 grant you unlimited access to your account and all its privileges. As the credentials are specific
@@ -218,10 +218,10 @@ to a device, if a device is compromised you can revoke its associated credential
 specific service is compromised, only the credentials for that service need to be revoked.</p>
 <p>Due to this model, and the design of Kanidm to centre the device and to have more per-service credentials,
 workflows and automation are added or designed to reduce human handling. An example of this
-is the use of QR codes with deployment profiles to automatically enrol wireless credentials.</p>
+is the use of QR codes with deployment profiles to automatically enroll wireless credentials.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="installing-the-server"><a class="header" href="#installing-the-server">Installing the Server</a></h1>
 <blockquote>
-<p><strong>NOTE</strong> Our preferred deployment method is in containers, the documentation assumes you're running in docker. Kanidm will run in traditional compute, and server builds are available for multiple platforms or you can build the binaries yourself.</p>
+<p><strong>NOTE</strong> Our preferred deployment method is in containers, the documentation assumes you're running in docker. Kanidm will run in traditional compute, and server builds are available for multiple platforms, or you can build the binaries yourself if you prefer this option.</p>
 </blockquote>
 <p>Currently we have docker images for the server components. They can be found at:</p>
 <ul>
@@ -246,7 +246,7 @@ docker tag to <code>kanidm/server:devel</code> or <code>kanidm/server:x86_64_v3_
 <pre><code>cmov, cx8, fxsr, mmx, sse, sse2, cx16, sahf, popcnt, sse3, sse4.1, sse4.2, avx, avx2,
 bmi, bmi2, f16c, fma, lzcnt, movbe, xsave
 </code></pre>
-<p>Older or unsupported CPU's may raise a SIGIL (Illegal Instruction) on hardware that is not supported
+<p>Older or unsupported CPUs may raise a SIGIL (Illegal Instruction) on hardware that is not supported
 by the project.</p>
 <p>In this case, you should use the standard server:latest image.</p>
 <p>In the future we may apply a baseline of flags as a requirement for x86_64 for the server:latest
@@ -259,13 +259,13 @@ You should expect to see 64KB of ram per entry in your database, depending on ca
 <h4 id="disk"><a class="header" href="#disk">Disk</a></h4>
 <p>You should expect to use up to 8KB of disk per entry you plan to store. At an estimate 10,000 entry
 databases will consume 40MB, 100,000 entry will consume 400MB.</p>
-<p>For best performance, you should use NVME or other Flash media.</p>
+<p>For best performance, you should use non-volatile memory express (NVME), or other Flash storage media.</p>
 <h2 id="tls"><a class="header" href="#tls">TLS</a></h2>
 <p>You'll need a volume where you can place configuration, certificates, and the database:</p>
 <pre><code>docker volume create kanidmd
 </code></pre>
 <p>You should have a chain.pem and key.pem in your kanidmd volume. The reason for requiring
-TLS is explained in <a href="./why_tls.html">why tls</a>. In summary, TLS is our root of trust between the
+Transport Layer Security (TLS, which replaces the deprecated Secure Sockets Layer, SSL) is explained in <a href="./why_tls.html">why tls</a>. In summary, TLS is our root of trust between the
 server and clients, and a critical element of ensuring a secure system.</p>
 <p>The key.pem should be a single PEM private key, with no encryption. The file content should be
 similar to:</p>
@@ -320,75 +320,96 @@ in place you can use a shell container that mounts the volume such as:</p>
 <h1 id="continue-on-to-configuring-the-server"><a class="header" href="#continue-on-to-configuring-the-server">Continue on to <a href="server_configuration.html">Configuring the Server</a></a></h1>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="configuring-the-server"><a class="header" href="#configuring-the-server">Configuring the Server</a></h2>
 <h3 id="configuring-servertoml"><a class="header" href="#configuring-servertoml">Configuring server.toml</a></h3>
-<p>You will also need a config file in the volume named <code>server.toml</code> (Within the container it should be <code>/data/server.toml</code>). Its contents should be as follows:</p>
-<pre><code>#   The webserver bind address. Will use HTTPS if tls_* is provided.
+<p>You need a configuration file in the volume named <code>server.toml</code>. (Within the container it should be <code>/data/server.toml</code>.) Its contents should be as follows:</p>
+<pre><code>#   The webserver bind address. Will use HTTPS if tls_* 
+#   is provided.
 #   Defaults to &quot;127.0.0.1:8443&quot;
 bindaddress = &quot;[::]:8443&quot;
 #
-#   The read-only ldap server bind address. The server will use LDAPS if tls_* is provided.
+#   The read-only ldap server bind address. The server 
+#   will use LDAPS if tls_* is provided.
 #   Defaults to &quot;&quot; (disabled)
 # ldapbindaddress = &quot;[::]:3636&quot;
 #
 #   The path to the kanidm database.
 db_path = &quot;/data/kanidm.db&quot;
 #
-#   If you have a known filesystem, kanidm can tune sqlite to match. Valid choices are:
+#   If you have a known filesystem, kanidm can tune sqlite
+#   to match. Valid choices are:
 #   [zfs, other]
-#   If you are unsure about this leave it as the default (other). After changing this
+#   If you are unsure about this leave it as the default 
+#   (other). After changing this
 #   value you must run a vacuum task.
 #   - zfs:
-#     * sets sqlite pagesize to 64k. You must set recordsize=64k on the zfs filesystem.
+#     * sets sqlite pagesize to 64k. You must set 
+#       recordsize=64k on the zfs filesystem.
 #   - other:
-#     * sets sqlite pagesize to 4k, matching most filesystems block sizes.
+#     * sets sqlite pagesize to 4k, matching most 
+#       filesystems block sizes.
 # db_fs_type = &quot;zfs&quot;
 #
-#   The number of entries to store in the in-memory cache. Minimum value is 256. If unset
+#   The number of entries to store in the in-memory cache. 
+#   Minimum value is 256. If unset
 #   an automatic heuristic is used to scale this.
 # db_arc_size = 2048
 #
-#   TLS chain and key in pem format. Both must be commented, or both must be present
+#   TLS chain and key in pem format. Both must be 
+#   commented, or both must be present
 # tls_chain = &quot;/data/chain.pem&quot;
 # tls_key = &quot;/data/key.pem&quot;
 #
-#   The log level of the server. May be default, verbose, perfbasic, perffull
+#   The log level of the server. May be default, verbose,
+#   perfbasic, perffull
 #   Defaults to &quot;default&quot;
 # log_level = &quot;default&quot;
 #
-#   The DNS domain name of the server. This is used in a number of security-critical contexts
-#   such as webauthn, so it *must* match your DNS hostname. It is what is used to create
-#   security principal names such as `william@idm.example.com` so that in a (future)
-#   trust configuration it is possible to have unique spn's throughout the topology.
+#   The DNS domain name of the server. This is used in a 
+#   number of security-critical contexts
+#   such as webauthn, so it *must* match your DNS 
+#   hostname. It is used to create
+#   security principal names such as `william@idm.example.com`
+#   so that in a (future)
+#   trust configuration it is possible to have unique Service
+#   Principal Names (spns) throughout the topology.
 #   ⚠️  WARNING ⚠️
-#   Changing this value WILL break many types of registered credentials for accounts
+#   Changing this value WILL break many types of registered 
+#   credentials for accounts
 #   including but not limited to webauthn, oauth tokens, and more.
-#   If you change this value you *must* run `kanidmd domain_name_change` immediately
-#   after.
+#   If you change this value you *must* run 
+#   `kanidmd domain_name_change` immediately after.
 domain = &quot;idm.example.com&quot;
 #
-#   The origin for webauthn. This is the url to the server, with the port included if
-#   it is non-standard (any port except 443). This must match or be a descendent of the
-#   domain name you configure above. If these two items are not consistent, the server
-#   WILL refuse to start!
-# origin = &quot;https://idm.example.com&quot;
+#   The origin for webauthn. This is the url to the server, 
+#   with the port included if
+#   it is non-standard (any port except 443). This must match 
+#   or be a descendent of the
+#   domain name you configure above. If these two items are 
+#   not consistent, the server WILL refuse to start!
+#   origin = &quot;https://idm.example.com&quot;
 origin = &quot;https://idm.example.com:8443&quot;
 #
-#   The role of this server. This affects features available and how replication may interact.
+#   The role of this server. This affects available features  
+#   and how replication may interact.
 #   Valid roles are:
 #   - WriteReplica
-#     This server provides all functionality of Kanidm. It allows authentication, writes, and
+#     This server provides all functionality of Kanidm. It 
+#     allows authentication, writes, and
 #     the web user interface to be served.
 #   - WriteReplicaNoUI
-#     This server is the same as a WriteReplica, but does NOT offer the web user interface.
+#     This server is the same as a WriteReplica, but does NOT 
+#     offer the web user interface.
 #   - ReadOnlyReplica
-#     This server will not writes initiated by clients. It supports authentication and reads,
-#     and must have a replication agreement as a source of it's data.
+#     This server will not writes initiated by clients. It 
+#     supports authentication and reads,
+#     and must have a replication agreement as a source of 
+#     its data.
 #   Defaults to &quot;WriteReplica&quot;.
 # role = &quot;WriteReplica&quot;
 #
 # [online_backup]
 #   The path to the output folder for online backups
 # path = &quot;/var/lib/kanidm/backups/&quot;
-#   The schedule to run online backups - see https://crontab.guru/
+#   The schedule to run online backups (see https://crontab.guru/)
 #   every day at 22:00 UTC (default)
 # schedule = &quot;00 22 * * *&quot;
 #    four times a day at 3 minutes past the hour, every 6th hours
