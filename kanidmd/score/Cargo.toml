@@ -15,7 +15,7 @@ repository = "https://github.com/kanidm/kanidm/"
 [dependencies]
 kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
-libc = "^0.2.125"
+libc = "^0.2.126"
 
 uuid = { version = "^1.0.0", features = ["serde", "v4" ] }
 
