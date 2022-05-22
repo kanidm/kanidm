@@ -36,7 +36,7 @@ toml = "^0.5.9"
 
 chrono = "^0.4.19"
 saffron = "^0.1.0"
-regex = "^1.5.5"
+regex = "^1.5.6"
 lazy_static = "^1.4.0"
 
 futures = "^0.3.21"
