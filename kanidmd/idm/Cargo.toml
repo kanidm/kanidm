@@ -59,7 +59,7 @@ r2d2_sqlite = "^0.20.0"
 time = { version = "=0.2.27", features = ["serde", "std"] }
 
 hashbrown = { version = "0.12.0", features = ["serde", "inline-more", "ahash"] }
-concread = "^0.3.1"
+concread = "^0.3.4"
 smolset = "^1.3.1"
 
 sshkeys = "^0.3.1"
