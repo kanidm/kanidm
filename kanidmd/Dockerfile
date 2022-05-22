@@ -48,7 +48,7 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
 FROM ${BASE_IMAGE}
 LABEL maintainer william@blackhats.net.au
 
-RUN zypper ref
+RUN zypper refresh
 RUN zypper dup -y
 RUN zypper install -y \
         timezone \

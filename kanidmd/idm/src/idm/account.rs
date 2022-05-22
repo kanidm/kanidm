@@ -122,7 +122,7 @@ pub(crate) struct Account {
     // to include these.
     pub mail_primary: Option<String>,
     pub mail: Vec<String>,
-    pub credential_update_intent_tokens: BTreeMap<Uuid, IntentTokenState>,
+    pub credential_update_intent_tokens: BTreeMap<String, IntentTokenState>,
 }
 
 impl Account {

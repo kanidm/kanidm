@@ -161,10 +161,10 @@ The content should look like:
     # /etc/pam.d/common-account-pc
     # Controls authorisation to this system (who may login)
     account    [default=1 ignore=ignore success=ok] pam_localuser.so
-    account    sufficient  pam_unix.so
+    account    sufficient    pam_unix.so
     account    [default=1 ignore=ignore success=ok]  pam_succeed_if.so uid >= 1000 quiet_success quiet_fail
     account    sufficient    pam_kanidm.so ignore_unknown_user
-    account    pam_deny.so
+    account    required      pam_deny.so
 
     # /etc/pam.d/common-password-pc
     # Controls flow of what happens when a user invokes the passwd command. Currently does NOT

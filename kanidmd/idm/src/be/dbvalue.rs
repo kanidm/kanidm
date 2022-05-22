@@ -33,11 +33,15 @@ impl std::fmt::Debug for DbPasswordV1 {
 #[derive(Serialize, Deserialize, Debug)]
 pub enum DbValueIntentTokenStateV1 {
     #[serde(rename = "v")]
-    Valid,
+    Valid { max_ttl: Duration },
     #[serde(rename = "p")]
-    InProgress(Uuid, Duration),
+    InProgress {
+        max_ttl: Duration,
+        session_id: Uuid,
+        session_ttl: Duration,
+    },
     #[serde(rename = "c")]
-    Consumed,
+    Consumed { max_ttl: Duration },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -307,7 +311,7 @@ pub enum DbValueSetV2 {
     #[serde(rename = "RS")]
     RestrictedString(Vec<String>),
     #[serde(rename = "IT")]
-    IntentToken(Vec<(Uuid, DbValueIntentTokenStateV1)>),
+    IntentToken(Vec<(String, DbValueIntentTokenStateV1)>),
     #[serde(rename = "TE")]
     TrustedDeviceEnrollment(Vec<Uuid>),
     #[serde(rename = "AS")]

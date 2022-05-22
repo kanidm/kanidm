@@ -11,7 +11,7 @@ use crate::credential::totp::{Totp, TOTP_DEFAULT_STEP};
 
 use kanidm_proto::v1::{CURegState, CUStatus, CredentialDetail, PasswordFeedback, TotpSecret};
 
-use crate::utils::{backup_code_from_random, uuid_from_duration};
+use crate::utils::{backup_code_from_random, readable_password_from_random, uuid_from_duration};
 
 use serde::{Deserialize, Serialize};
 
@@ -36,20 +36,9 @@ pub enum PasswordQuality {
     Feedback(Vec<PasswordFeedback>),
 }
 
-#[derive(Serialize, Deserialize, Debug)]
-struct CredentialUpdateIntentTokenInner {
-    pub sessionid: Uuid,
-    // Who is it targeting?
-    pub target: Uuid,
-    // Id of the intent, for checking if it's already been used against this user.
-    pub uuid: Uuid,
-    // How long is it valid for?
-    pub max_ttl: Duration,
-}
-
 #[derive(Clone, Debug)]
 pub struct CredentialUpdateIntentToken {
-    pub token_enc: String,
+    pub intent_id: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -87,7 +76,7 @@ pub(crate) struct CredentialUpdateSession {
     // Current credentials - these are on the Account!
     account: Account,
     //
-    intent_token_id: Option<Uuid>,
+    intent_token_id: Option<String>,
     // Acc policy
     // The credentials as they are being updated
     primary: Option<Credential>,
@@ -292,7 +281,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
     fn create_credupdate_session(
         &mut self,
         sessionid: Uuid,
-        intent_token_id: Option<Uuid>,
+        intent_token_id: Option<String>,
         account: Account,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionToken, OperationError> {
@@ -344,15 +333,14 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             // Build the intent token.
             let mttl = event.max_ttl.unwrap_or_else(|| Duration::new(0, 0));
             let max_ttl = ct + mttl.clamp(MINIMUM_INTENT_TTL, MAXIMUM_INTENT_TTL);
-            let sessionid = uuid_from_duration(max_ttl, self.sid);
-            let uuid = Uuid::new_v4();
+            // let sessionid = uuid_from_duration(max_ttl, self.sid);
+            let intent_id = readable_password_from_random();
 
-            let target = event.target;
-
+            /*
             let token = CredentialUpdateIntentTokenInner {
                 sessionid,
                 target,
-                uuid,
+                intent_id,
                 max_ttl,
             };
 
@@ -364,11 +352,38 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             let token_enc = self
                 .token_enc_key
                 .encrypt_at_time(&token_data, ct.as_secs());
+            */
 
             // Mark that we have created an intent token on the user.
-            let modlist = ModifyList::new_append(
+            // ⚠️   -- remember, there is a risk, very low, but still a risk of collision of the intent_id.
+            //        instead of enforcing unique, which would divulge that the collision occured, we
+            //        write anyway, and instead on the intent access path we invalidate IF the collision
+            //        occurs.
+            let mut modlist = ModifyList::new_append(
                 "credential_update_intent_token",
-                Value::IntentToken(token.sessionid, IntentTokenState::Valid),
+                Value::IntentToken(intent_id.clone(), IntentTokenState::Valid { max_ttl }),
+            );
+
+            // Remove any old credential update intents
+            account.credential_update_intent_tokens.iter().for_each(
+                |(existing_intent_id, state)| {
+                    let max_ttl = match state {
+                        IntentTokenState::Valid { max_ttl }
+                        | IntentTokenState::InProgress {
+                            max_ttl,
+                            session_id: _,
+                            session_ttl: _,
+                        }
+                        | IntentTokenState::Consumed { max_ttl } => *max_ttl,
+                    };
+
+                    if ct >= max_ttl {
+                        modlist.push_mod(Modify::Removed(
+                            AttrString::from("credential_update_intent_token"),
+                            PartialValue::IntentToken(existing_intent_id.clone()),
+                        ));
+                    }
+                },
             );
 
             self.qs_write
@@ -382,7 +397,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
                     e
                 })?;
 
-            Ok(CredentialUpdateIntentToken { token_enc })
+            Ok(CredentialUpdateIntentToken { intent_id })
         })
     }
 
@@ -391,28 +406,71 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         token: CredentialUpdateIntentToken,
         ct: Duration,
     ) -> Result<CredentialUpdateSessionToken, OperationError> {
-        let token: CredentialUpdateIntentTokenInner = self
-            .token_enc_key
-            .decrypt(&token.token_enc)
-            .map_err(|e| {
-                admin_error!(?e, "Failed to decrypt intent request");
-                OperationError::SessionExpired
-            })
-            .and_then(|data| {
-                serde_json::from_slice(&data).map_err(|e| {
-                    admin_error!(err = ?e, "Failed to deserialise intent request");
-                    OperationError::SerdeJsonError
-                })
-            })?;
+        let CredentialUpdateIntentToken { intent_id } = token;
 
-        // Check the TTL
-        if ct >= token.max_ttl {
-            trace!(?ct, ?token.max_ttl);
-            security_info!(%token.sessionid, "session expired");
-            return Err(OperationError::SessionExpired);
-        }
+        /*
+            let entry = self.qs_write.internal_search_uuid(&token.target)?;
+        */
+        // ⚠️  due to a low, but possible risk of intent_id collision, if there are multiple
+        // entries, we will reject the intent.
+        // DO we need to force both to "Consumed" in this step?
+        //
+        // ⚠️  If not present, it may be due to replication delay. We can report this.
 
-        let entry = self.qs_write.internal_search_uuid(&token.target)?;
+        let mut vs = self.qs_write.internal_search(filter!(f_eq(
+            "credential_update_intent_token",
+            PartialValue::IntentToken(intent_id.clone())
+        )))?;
+
+        let entry = match vs.pop() {
+            Some(entry) => {
+                if vs.is_empty() {
+                    // Happy Path!
+                    entry
+                } else {
+                    // Multiple entries matched! This is bad!
+                    let matched_uuids = std::iter::once(entry.get_uuid())
+                        .chain(vs.iter().map(|e| e.get_uuid()))
+                        .collect::<Vec<_>>();
+
+                    security_error!("Multiple entries had identical intent_id - for safety, rejecting the use of this intent_id! {:?}", matched_uuids);
+
+                    /*
+                    let mut modlist = ModifyList::new();
+
+                    modlist.push_mod(Modify::Removed(
+                        AttrString::from("credential_update_intent_token"),
+                        PartialValue::IntentToken(intent_id.clone()),
+                    ));
+
+                    let filter_or = matched_uuids.into_iter()
+                        .map(|u| f_eq("uuid", PartialValue::new_uuid(u)))
+                        .collect();
+
+                    self.qs_write
+                        .internal_modify(
+                            // Filter as executed
+                            &filter!(f_or(filter_or)),
+                            &modlist,
+                        )
+                        .map_err(|e| {
+                            request_error!(error = ?e);
+                            e
+                        })?;
+                    */
+
+                    return Err(OperationError::InvalidState);
+                }
+            }
+            None => {
+                security_info!(
+                    "Rejecting Update Session - Intent Token does not exist (replication delay?)",
+                );
+                return Err(OperationError::Wait(
+                    OffsetDateTime::unix_epoch() + (ct + Duration::from_secs(150)),
+                ));
+            }
+        };
 
         // Is target an account? This checks for us.
         let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
@@ -420,41 +478,57 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // Check there is not already a user session in progress with this intent token.
         // Is there a need to revoke intent tokens?
 
-        match account
-            .credential_update_intent_tokens
-            .get(&token.sessionid)
-        {
-            Some(IntentTokenState::Consumed) => {
+        let max_ttl = match account.credential_update_intent_tokens.get(&intent_id) {
+            Some(IntentTokenState::Consumed { max_ttl: _ }) => {
                 security_info!(
                     ?entry,
-                    %token.target,
+                    %account.uuid,
                     "Rejecting Update Session - Intent Token has already been exchanged",
                 );
                 return Err(OperationError::SessionExpired);
             }
-            Some(IntentTokenState::InProgress(si, sd)) => {
-                if ct > *sd {
+            Some(IntentTokenState::InProgress {
+                max_ttl,
+                session_id,
+                session_ttl,
+            }) => {
+                if ct > *session_ttl {
                     // The former session has expired, continue.
                     security_info!(
                         ?entry,
-                        %token.target,
-                        "Initiating Credential Update Session - Previous session {} has expired", si
+                        %account.uuid,
+                        "Initiating Credential Update Session - Previous session {} has expired", session_id
                     );
+                    *max_ttl
                 } else {
                     security_info!(
                         ?entry,
-                        %token.target,
-                        "Rejecting Update Session - Intent Token is in use {}. Try again later", si
+                        %account.uuid,
+                        "Rejecting Update Session - Intent Token is in use {}. Try again later", session_id
                     );
-                    return Err(OperationError::Wait(OffsetDateTime::unix_epoch() + *sd));
+                    return Err(OperationError::Wait(
+                        OffsetDateTime::unix_epoch() + *session_ttl,
+                    ));
                 }
             }
-            Some(IntentTokenState::Valid) | None => {
-                security_info!(
-                    ?entry,
-                    %token.target,
-                    "Initiating Credential Update Session",
-                );
+            Some(IntentTokenState::Valid { max_ttl }) => {
+                // Check the TTL
+                if ct >= *max_ttl {
+                    trace!(?ct, ?max_ttl);
+                    security_info!(%account.uuid, "intent has expired");
+                    return Err(OperationError::SessionExpired);
+                } else {
+                    security_info!(
+                        ?entry,
+                        %account.uuid,
+                        "Initiating Credential Update Session",
+                    );
+                    *max_ttl
+                }
+            }
+            None => {
+                admin_error!("Corruption may have occured - index yielded an entry for intent_id, but the entry does not contain that intent_id");
+                return Err(OperationError::InvalidState);
             }
         };
 
@@ -467,19 +541,23 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // We need to pin the id from the intent token into the credential to ensure it's not re-used
 
         // Need to change this to the expiry time, so we can purge up to.
-        let sessionid = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
+        let session_id = uuid_from_duration(ct + MAXIMUM_CRED_UPDATE_TTL, self.sid);
 
         let mut modlist = ModifyList::new();
 
         modlist.push_mod(Modify::Removed(
             AttrString::from("credential_update_intent_token"),
-            PartialValue::IntentToken(token.sessionid),
+            PartialValue::IntentToken(intent_id.clone()),
         ));
         modlist.push_mod(Modify::Present(
             AttrString::from("credential_update_intent_token"),
             Value::IntentToken(
-                token.sessionid,
-                IntentTokenState::InProgress(sessionid, ct + MAXIMUM_CRED_UPDATE_TTL),
+                intent_id.clone(),
+                IntentTokenState::InProgress {
+                    max_ttl,
+                    session_id,
+                    session_ttl: ct + MAXIMUM_CRED_UPDATE_TTL,
+                },
             ),
         ));
 
@@ -497,7 +575,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         // ==========
         // Okay, good to exchange.
 
-        self.create_credupdate_session(sessionid, Some(token.sessionid), account, ct)
+        self.create_credupdate_session(session_id, Some(intent_id), account, ct)
     }
 
     pub fn init_credential_update(
@@ -571,6 +649,53 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
 
         // Setup mods for the various bits. We always assert an *exact* state.
 
+        // IF an intent was used on this session, AND that intent is not in our
+        // session state as an exact match, FAIL the commit. Move the intent to "Consumed".
+        //
+        // Should we mark the credential as suspect (lock the account?)
+        //
+        // If the credential has changed, reject? Do we need "asserts" in the modlist?
+        // that would allow better expression of this, and will allow resolving via replication
+
+        // If an intent token was used, remove it's former value, and add it as consumed.
+        if let Some(intent_token_id) = &session.intent_token_id {
+            let entry = self.qs_write.internal_search_uuid(&session.account.uuid)?;
+            let account = Account::try_from_entry_rw(entry.as_ref(), &mut self.qs_write)?;
+
+            let max_ttl = match account.credential_update_intent_tokens.get(intent_token_id) {
+                Some(IntentTokenState::InProgress {
+                    max_ttl,
+                    session_id,
+                    session_ttl: _,
+                }) => {
+                    if *session_id != session_token.sessionid {
+                        security_info!("Session originated from an intent token, but the intent token has initiated a conflicting second update session. Refusing to commit changes.");
+                        return Err(OperationError::InvalidState);
+                    } else {
+                        *max_ttl
+                    }
+                }
+                Some(IntentTokenState::Consumed { max_ttl: _ })
+                | Some(IntentTokenState::Valid { max_ttl: _ })
+                | None => {
+                    security_info!("Session originated from an intent token, but the intent token has transitioned to an invalid state. Refusing to commit changes.");
+                    return Err(OperationError::InvalidState);
+                }
+            };
+
+            modlist.push_mod(Modify::Removed(
+                AttrString::from("credential_update_intent_token"),
+                PartialValue::IntentToken(intent_token_id.clone()),
+            ));
+            modlist.push_mod(Modify::Present(
+                AttrString::from("credential_update_intent_token"),
+                Value::IntentToken(
+                    intent_token_id.clone(),
+                    IntentTokenState::Consumed { max_ttl },
+                ),
+            ));
+        };
+
         match &session.primary {
             Some(ncred) => {
                 modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
@@ -583,18 +708,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             None => {
                 modlist.push_mod(Modify::Purged(AttrString::from("primary_credential")));
             }
-        };
-
-        // If an intent token was used, remove it's former value, and add it as consumed.
-        if let Some(intent_token_id) = session.intent_token_id {
-            modlist.push_mod(Modify::Removed(
-                AttrString::from("credential_update_intent_token"),
-                PartialValue::IntentToken(intent_token_id),
-            ));
-            modlist.push_mod(Modify::Present(
-                AttrString::from("credential_update_intent_token"),
-                Value::IntentToken(intent_token_id, IntentTokenState::Consumed),
-            ));
         };
 
         // Are any other checks needed?

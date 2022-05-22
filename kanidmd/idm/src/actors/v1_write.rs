@@ -750,7 +750,7 @@ impl QueryServerWriteV1 {
                     e
                 })
                 .map(|tok| CUIntentToken {
-                    intent_token: tok.token_enc,
+                    intent_token: tok.intent_id,
                 })
         });
         res
@@ -771,7 +771,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmCredentialExchangeIntent>", {
             let intent_token = CredentialUpdateIntentToken {
-                token_enc: intent_token.intent_token,
+                intent_id: intent_token.intent_token,
             };
 
             idms_prox_write

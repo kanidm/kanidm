@@ -3,7 +3,7 @@
 //! typed values, allows their comparison, filtering and more. It also has the code for serialising
 //! these into a form for the backend that can be persistent into the [`Backend`](crate::be::Backend).
 
-use crate::be::dbvalue::DbValueV1;
+use crate::be::dbentry::DbIdentSpn;
 use crate::credential::Credential;
 use crate::repl::cid::Cid;
 use kanidm_proto::v1::Filter as ProtoFilter;
@@ -70,9 +70,17 @@ pub enum IndexType {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum IntentTokenState {
-    Valid,
-    InProgress(Uuid, Duration),
-    Consumed,
+    Valid {
+        max_ttl: Duration,
+    },
+    InProgress {
+        max_ttl: Duration,
+        session_id: Uuid,
+        session_ttl: Duration,
+    },
+    Consumed {
+        max_ttl: Duration,
+    },
 }
 
 impl TryFrom<&str> for IndexType {
@@ -332,7 +340,7 @@ pub enum PartialValue {
     // Enumeration(String),
     // Float64(f64),
     RestrictedString(String),
-    IntentToken(Uuid),
+    IntentToken(String),
     TrustedDeviceEnrollment(Uuid),
     AuthSession(Uuid),
 }
@@ -647,11 +655,8 @@ impl PartialValue {
         PartialValue::RestrictedString(s.to_string())
     }
 
-    pub fn new_intenttoken_s(us: &str) -> Option<Self> {
-        match Uuid::parse_str(us) {
-            Ok(u) => Some(PartialValue::IntentToken(u)),
-            Err(_) => None,
-        }
+    pub fn new_intenttoken_s(s: String) -> Option<Self> {
+        Some(PartialValue::IntentToken(s))
     }
 
     pub fn to_str(&self) -> Option<&str> {
@@ -705,7 +710,7 @@ impl PartialValue {
             PartialValue::OauthScopeMap(u) => u.as_hyphenated().to_string(),
             PartialValue::Address(a) => a.to_string(),
             PartialValue::PhoneNumber(a) => a.to_string(),
-            PartialValue::IntentToken(u) => u.as_hyphenated().to_string(),
+            PartialValue::IntentToken(u) => u.clone(),
             PartialValue::TrustedDeviceEnrollment(u) => u.as_hyphenated().to_string(),
             PartialValue::AuthSession(u) => u.as_hyphenated().to_string(),
         }
@@ -752,7 +757,7 @@ pub enum Value {
     // Enumeration(String),
     // Float64(f64),
     RestrictedString(String),
-    IntentToken(Uuid, IntentTokenState),
+    IntentToken(String, IntentTokenState),
     TrustedDeviceEnrollment(Uuid),
     AuthSession(Uuid),
 }
@@ -878,6 +883,16 @@ impl From<&Uuid> for Value {
 impl From<Uuid> for Value {
     fn from(u: Uuid) -> Self {
         Value::Uuid(u)
+    }
+}
+
+impl From<DbIdentSpn> for Value {
+    fn from(dis: DbIdentSpn) -> Self {
+        match dis {
+            DbIdentSpn::Spn(n, r) => Value::Spn(n, r),
+            DbIdentSpn::Iname(n) => Value::Iname(n),
+            DbIdentSpn::Uuid(u) => Value::Uuid(u),
+        }
     }
 }
 
@@ -1234,15 +1249,15 @@ impl Value {
     }
 
     #[allow(clippy::unreachable)]
-    pub(crate) fn to_supplementary_db_valuev1(&self) -> DbValueV1 {
+    pub(crate) fn to_db_ident_spn(&self) -> DbIdentSpn {
         // This has to clone due to how the backend works.
         match &self {
-            Value::Iname(s) => DbValueV1::Iname(s.clone()),
-            Value::Utf8(s) => DbValueV1::Utf8(s.clone()),
-            Value::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
-            Value::Uuid(u) => DbValueV1::Uuid(*u),
-            Value::Spn(n, r) => DbValueV1::Spn(n.clone(), r.clone()),
-            Value::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
+            Value::Spn(n, r) => DbIdentSpn::Spn(n.clone(), r.clone()),
+            Value::Iname(s) => DbIdentSpn::Iname(s.clone()),
+            Value::Uuid(u) => DbIdentSpn::Uuid(*u),
+            // Value::Iutf8(s) => DbValueV1::Iutf8(s.clone()),
+            // Value::Utf8(s) => DbValueV1::Utf8(s.clone()),
+            // Value::Nsuniqueid(s) => DbValueV1::NsUniqueId(s.clone()),
             v => unreachable!("-> {:?}", v),
         }
     }
@@ -1436,7 +1451,7 @@ impl Value {
         }
     }
 
-    pub fn to_intenttoken(self) -> Option<(Uuid, IntentTokenState)> {
+    pub fn to_intenttoken(self) -> Option<(String, IntentTokenState)> {
         match self {
             Value::IntentToken(u, s) => Some((u, s)),
             _ => None,

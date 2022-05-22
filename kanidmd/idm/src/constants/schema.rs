@@ -844,7 +844,9 @@ pub const JSON_SCHEMA_ATTR_CREDENTIAL_UPDATE_INTENT_TOKEN: &str = r#"{
       "description": [
         "The status of a credential update intent token"
       ],
-      "index": [],
+      "index": [
+        "EQUALITY"
+      ],
       "unique": [
         "false"
       ],

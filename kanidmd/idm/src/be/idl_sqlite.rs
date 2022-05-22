@@ -1,10 +1,10 @@
 use crate::be::dbentry::DbEntry;
-use crate::be::dbvalue::DbValueSetV2;
+use crate::be::dbentry::DbIdentSpn;
 use crate::be::{BackendConfig, IdList, IdRawEntry, IdxKey, IdxSlope};
 use crate::entry::{Entry, EntryCommitted, EntrySealed};
 use crate::prelude::*;
 use crate::value::{IndexType, Value};
-use crate::valueset;
+// use crate::valueset;
 use hashbrown::HashMap;
 use idlset::v2::IDLBitRange;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
@@ -290,12 +290,10 @@ pub trait IdlSqliteTransaction {
 
             let spn: Option<Value> = match spn_raw {
                 Some(d) => {
-                    let dbv: DbValueSetV2 =
+                    let dbv: DbIdentSpn =
                         serde_json::from_slice(d.as_slice()).map_err(serde_json_error)?;
 
-                    valueset::from_db_valueset_v2(dbv)
-                        .map_err(|_| OperationError::CorruptedIndex("uuid2spn".to_string()))
-                        .map(|vs| vs.to_value_single())?
+                    Some(Value::from(dbv))
                 }
                 None => None,
             };
@@ -396,7 +394,6 @@ pub trait IdlSqliteTransaction {
                 row.get(0)
             })
             .optional()
-            // this whole `map` call is useless
             .map(|e_opt| {
                 // If we have a row, we try to make it a sid
                 e_opt.map(|e| {
@@ -883,7 +880,7 @@ impl IdlSqliteWriteTransaction {
         let uuids = uuid.as_hyphenated().to_string();
         match k {
             Some(k) => {
-                let dbv1 = k.to_supplementary_db_valuev1();
+                let dbv1: DbIdentSpn = k.to_db_ident_spn();
                 let data = serde_json::to_vec(&dbv1).map_err(serde_json_error)?;
                 self.conn
                     .prepare("INSERT OR REPLACE INTO idx_uuid2spn (uuid, spn) VALUES(:uuid, :spn)")

@@ -25,6 +25,18 @@ pub enum DbEntryVers {
     V2(DbEntryV2),
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+// This doesn't need a version since uuid2spn is reindexed - remember if you change this
+// though, to change the index version!
+pub enum DbIdentSpn {
+    #[serde(rename = "SP")]
+    Spn(String, String),
+    #[serde(rename = "N8")]
+    Iname(String),
+    #[serde(rename = "UU")]
+    Uuid(Uuid),
+}
+
 // This is actually what we store into the DB.
 #[derive(Serialize, Deserialize)]
 pub struct DbEntry {
@@ -375,7 +387,7 @@ fn from_vec_dbval1(attr_val: Vec<DbValueV1>) -> Result<DbValueSetV2, OperationEr
             let vs: Result<Vec<_>, _> = viter
                 .map(|dbv| {
                     if let DbValueV1::IntentToken { u, s } = dbv {
-                        Ok((u, s))
+                        Ok((u.as_hyphenated().to_string(), s))
                     } else {
                         Err(OperationError::InvalidValueState)
                     }
