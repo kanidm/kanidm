@@ -111,7 +111,7 @@ An example is located in [examples/server.toml](../../examples/server.toml).
 
 You should test your configuration is valid before you proceed.
 
-    docker run --rm -i -t -v kandimd:/data \
+    docker run --rm -i -t -v kanidmd:/data \
         kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
 
 ### Default Admin Account
