@@ -250,7 +250,7 @@ you can then rename the domain.</p>
 </code></pre>
 <p>Second, change <code>domain</code> and <code>origin</code> in <code>server.toml</code>.</p>
 <p>Third, trigger the database domain rename process.</p>
-<pre><code>docker run --rm -i -t -v kandimd:/data \
+<pre><code>docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml
 </code></pre>
 <p>Finally, you can now start your instance again.</p>

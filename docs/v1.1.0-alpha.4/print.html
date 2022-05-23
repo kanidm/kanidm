@@ -425,7 +425,7 @@ may refuse to start, or some features (e.g. webauthn, oauth) may not work correc
 </blockquote>
 <h3 id="check-the-configuration-is-valid"><a class="header" href="#check-the-configuration-is-valid">Check the configuration is valid.</a></h3>
 <p>You should test your configuration is valid before you proceed.</p>
-<pre><code>docker run --rm -i -t -v kandimd:/data \
+<pre><code>docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd configtest -c /data/server.toml
 </code></pre>
 <h3 id="default-admin-account"><a class="header" href="#default-admin-account">Default Admin Account</a></h3>
@@ -900,7 +900,7 @@ you can then rename the domain.</p>
 </code></pre>
 <p>Second, change <code>domain</code> and <code>origin</code> in <code>server.toml</code>.</p>
 <p>Third, trigger the database domain rename process.</p>
-<pre><code>docker run --rm -i -t -v kandimd:/data \
+<pre><code>docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd domain_name_change -c /data/server.toml
 </code></pre>
 <p>Finally, you can now start your instance again.</p>
@@ -1416,7 +1416,7 @@ If disabled, your system will function as usual. It is however recommended due t
 it provides supporting Kanidm's capabilities.</p>
 </blockquote>
 <p>Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-<a href="./client_tools.html#kandim-configuration">client_tools</a>. </p>
+<a href="./client_tools.html#kanidm-configuration">client_tools</a>.</p>
 <p>You can also configure some unixd specific options with the file /etc/kanidm/unixd.</p>
 <pre><code>pam_allowed_login_groups = [&quot;posix_group&quot;]
 default_shell = &quot;/bin/sh&quot;
