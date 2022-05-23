@@ -2058,6 +2058,16 @@ as having TLS present on your communication channels.</p>
 <p>You will also need some system libraries to build this:</p>
 <pre><code>libudev-devel sqlite3-devel libopenssl-devel npm-default
 </code></pre>
+<h4 id="fedora"><a class="header" href="#fedora">Fedora</a></h4>
+<p>You will need to install the rust toolchain packages.</p>
+<pre><code>rust cargo
+</code></pre>
+<p>You will also need some system libraries to build this:</p>
+<pre><code>systemd-devel sqlite-devel openssl-devel pam-devel
+</code></pre>
+<p>Building the web ui requires additional packages:</p>
+<pre><code>perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
+</code></pre>
 <h3 id="get-involved"><a class="header" href="#get-involved">Get involved</a></h3>
 <p>To get started, you'll need to fork or branch, and we'll merge based on PR's.</p>
 <p>If you are a contributor to the project, simply clone:</p>
