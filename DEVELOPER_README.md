@@ -40,6 +40,19 @@ You will also need some system libraries to build this:
 
     libudev-devel sqlite3-devel libopenssl-devel npm-default
 
+#### Fedora
+
+You will need to install the rust toolchain packages.
+
+    rust cargo
+
+You will also need some system libraries to build this:
+
+    systemd-devel sqlite-devel openssl-devel pam-devel
+
+Building the web ui requires additional packages:
+
+    perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
 
 ### Get involved
 
