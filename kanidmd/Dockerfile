@@ -1,6 +1,6 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS builder
-LABEL mantainer william@blackhats.net.au
+LABEL maintainer william@blackhats.net.au
 
 RUN zypper refresh
 RUN zypper dup -y
@@ -46,7 +46,7 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
 	fi;
 
 FROM ${BASE_IMAGE}
-LABEL mantainer william@blackhats.net.au
+LABEL maintainer william@blackhats.net.au
 
 RUN zypper ref
 RUN zypper dup -y
