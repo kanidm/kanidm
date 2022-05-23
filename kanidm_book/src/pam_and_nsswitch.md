@@ -28,7 +28,7 @@ You can check the privileged tasks daemon is running with
 > it provides supporting Kanidm's capabilities.
 
 Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
-[client_tools](./client_tools.md#kandim-configuration). 
+[client_tools](./client_tools.md#kanidm-configuration).
 
 You can also configure some unixd specific options with the file /etc/kanidm/unixd.
 

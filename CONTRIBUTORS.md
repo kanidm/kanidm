@@ -15,6 +15,7 @@
 * Victor Wai (vcwai)
 * James Hodgkinson (yaleman)
 * Euan Kemp (euank)
+* Kellin (kellinm)
 
 ## Acknowledgements
 
