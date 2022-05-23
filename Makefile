@@ -2,9 +2,9 @@
 
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
-EXT_OPTS ?=
+CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
-ARGS ?= --build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"
+CONTAINER_BUILD_ARGS ?= 
 CONTAINER_TOOL ?= docker
 
 BOOK_VERSION ?= master
@@ -15,50 +15,50 @@ help:
 
 buildx/kanidmd/x86_64_v3: ## build multiarch server images
 buildx/kanidmd/x86_64_v3:
-	@$(CONTAINER_TOOL) buildx build $(EXT_OPTS) --pull --push --platform "linux/amd64" \
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform "linux/amd64" \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:x86_64_$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_x86_64_v3" \
 		--build-arg "KANIDM_FEATURES=" \
-		$(ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
+		$(CONTAINER_BUILD_ARGS) .
+	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 buildx/kanidmd: ## build multiarch server images
 buildx/kanidmd:
-	@$(CONTAINER_TOOL) buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) \
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform $(IMAGE_ARCH) \
 		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
-		$(ARGS) .
-	@$(CONTAINER_TOOL) buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
+		$(CONTAINER_BUILD_ARGS) .
+	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
 buildx/radiusd: ## build multiarch radius images
 buildx/radiusd:
-	@$(CONTAINER_TOOL) buildx build $(EXT_OPTS) --pull --push --platform $(IMAGE_ARCH) \
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform $(IMAGE_ARCH) \
 		-f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
-	@$(CONTAINER_TOOL) buildx imagetools $(EXT_OPTS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
+	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 buildx: buildx/kanidmd buildx/radiusd
 
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
-	@$(CONTAINER_TOOL) build $(EXT_OPTS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=developer" \
 		--build-arg "KANIDM_FEATURES=" \
-		$(ARGS) .
+		$(CONTAINER_BUILD_ARGS) .
 
 build/radiusd:	## build radiusd image
 build/radiusd:
-	@$(CONTAINER_TOOL) build $(EXT_OPTS) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
 
 build: build/kanidmd build/radiusd
 
 test/kanidmd:	## test kanidmd
 test/kanidmd:
 	@$(CONTAINER_TOOL) build \
-		$(EXT_OPTS) -f kanidmd/Dockerfile \
+		$(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile \
 		--target builder \
 		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder \
-		$(ARGS) .
+		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
 # test/radiusd:	build/radiusd	## test radiusd
