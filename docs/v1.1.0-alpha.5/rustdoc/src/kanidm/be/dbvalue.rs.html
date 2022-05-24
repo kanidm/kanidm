@@ -381,6 +381,10 @@
 <span id="376">376</span>
 <span id="377">377</span>
 <span id="378">378</span>
+<span id="379">379</span>
+<span id="380">380</span>
+<span id="381">381</span>
+<span id="382">382</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
@@ -416,11 +420,15 @@
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbValueIntentTokenStateV1</span> {
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;v&quot;</span>)]</span>
-    <span class="ident">Valid</span>,
+    <span class="ident">Valid</span> { <span class="ident">max_ttl</span>: <span class="ident">Duration</span> },
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>)]</span>
-    <span class="ident">InProgress</span>(<span class="ident">Uuid</span>, <span class="ident">Duration</span>),
+    <span class="ident">InProgress</span> {
+        <span class="ident">max_ttl</span>: <span class="ident">Duration</span>,
+        <span class="ident">session_id</span>: <span class="ident">Uuid</span>,
+        <span class="ident">session_ttl</span>: <span class="ident">Duration</span>,
+    },
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;c&quot;</span>)]</span>
-    <span class="ident">Consumed</span>,
+    <span class="ident">Consumed</span> { <span class="ident">max_ttl</span>: <span class="ident">Duration</span> },
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -690,7 +698,7 @@
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;RS&quot;</span>)]</span>
     <span class="ident">RestrictedString</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;IT&quot;</span>)]</span>
-    <span class="ident">IntentToken</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">Uuid</span>, <span class="ident">DbValueIntentTokenStateV1</span>)<span class="op">&gt;</span>),
+    <span class="ident">IntentToken</span>(<span class="ident">Vec</span><span class="op">&lt;</span>(<span class="ident">String</span>, <span class="ident">DbValueIntentTokenStateV1</span>)<span class="op">&gt;</span>),
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;TE&quot;</span>)]</span>
     <span class="ident">TrustedDeviceEnrollment</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>),
     <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;AS&quot;</span>)]</span>

@@ -1932,6 +1932,119 @@
 <span id="1927">1927</span>
 <span id="1928">1928</span>
 <span id="1929">1929</span>
+<span id="1930">1930</span>
+<span id="1931">1931</span>
+<span id="1932">1932</span>
+<span id="1933">1933</span>
+<span id="1934">1934</span>
+<span id="1935">1935</span>
+<span id="1936">1936</span>
+<span id="1937">1937</span>
+<span id="1938">1938</span>
+<span id="1939">1939</span>
+<span id="1940">1940</span>
+<span id="1941">1941</span>
+<span id="1942">1942</span>
+<span id="1943">1943</span>
+<span id="1944">1944</span>
+<span id="1945">1945</span>
+<span id="1946">1946</span>
+<span id="1947">1947</span>
+<span id="1948">1948</span>
+<span id="1949">1949</span>
+<span id="1950">1950</span>
+<span id="1951">1951</span>
+<span id="1952">1952</span>
+<span id="1953">1953</span>
+<span id="1954">1954</span>
+<span id="1955">1955</span>
+<span id="1956">1956</span>
+<span id="1957">1957</span>
+<span id="1958">1958</span>
+<span id="1959">1959</span>
+<span id="1960">1960</span>
+<span id="1961">1961</span>
+<span id="1962">1962</span>
+<span id="1963">1963</span>
+<span id="1964">1964</span>
+<span id="1965">1965</span>
+<span id="1966">1966</span>
+<span id="1967">1967</span>
+<span id="1968">1968</span>
+<span id="1969">1969</span>
+<span id="1970">1970</span>
+<span id="1971">1971</span>
+<span id="1972">1972</span>
+<span id="1973">1973</span>
+<span id="1974">1974</span>
+<span id="1975">1975</span>
+<span id="1976">1976</span>
+<span id="1977">1977</span>
+<span id="1978">1978</span>
+<span id="1979">1979</span>
+<span id="1980">1980</span>
+<span id="1981">1981</span>
+<span id="1982">1982</span>
+<span id="1983">1983</span>
+<span id="1984">1984</span>
+<span id="1985">1985</span>
+<span id="1986">1986</span>
+<span id="1987">1987</span>
+<span id="1988">1988</span>
+<span id="1989">1989</span>
+<span id="1990">1990</span>
+<span id="1991">1991</span>
+<span id="1992">1992</span>
+<span id="1993">1993</span>
+<span id="1994">1994</span>
+<span id="1995">1995</span>
+<span id="1996">1996</span>
+<span id="1997">1997</span>
+<span id="1998">1998</span>
+<span id="1999">1999</span>
+<span id="2000">2000</span>
+<span id="2001">2001</span>
+<span id="2002">2002</span>
+<span id="2003">2003</span>
+<span id="2004">2004</span>
+<span id="2005">2005</span>
+<span id="2006">2006</span>
+<span id="2007">2007</span>
+<span id="2008">2008</span>
+<span id="2009">2009</span>
+<span id="2010">2010</span>
+<span id="2011">2011</span>
+<span id="2012">2012</span>
+<span id="2013">2013</span>
+<span id="2014">2014</span>
+<span id="2015">2015</span>
+<span id="2016">2016</span>
+<span id="2017">2017</span>
+<span id="2018">2018</span>
+<span id="2019">2019</span>
+<span id="2020">2020</span>
+<span id="2021">2021</span>
+<span id="2022">2022</span>
+<span id="2023">2023</span>
+<span id="2024">2024</span>
+<span id="2025">2025</span>
+<span id="2026">2026</span>
+<span id="2027">2027</span>
+<span id="2028">2028</span>
+<span id="2029">2029</span>
+<span id="2030">2030</span>
+<span id="2031">2031</span>
+<span id="2032">2032</span>
+<span id="2033">2033</span>
+<span id="2034">2034</span>
+<span id="2035">2035</span>
+<span id="2036">2036</span>
+<span id="2037">2037</span>
+<span id="2038">2038</span>
+<span id="2039">2039</span>
+<span id="2040">2040</span>
+<span id="2041">2041</span>
+<span id="2042">2042</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::access::AccessControlsTransaction</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential</span>::{<span class="ident">BackupCodes</span>, <span class="ident">Credential</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::account::Account</span>;
@@ -1945,7 +2058,7 @@
 
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">CURegState</span>, <span class="ident">CUStatus</span>, <span class="ident">CredentialDetail</span>, <span class="ident">PasswordFeedback</span>, <span class="ident">TotpSecret</span>};
 
-<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::{<span class="ident">backup_code_from_random</span>, <span class="ident">uuid_from_duration</span>};
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>::{<span class="ident">backup_code_from_random</span>, <span class="ident">readable_password_from_random</span>, <span class="ident">uuid_from_duration</span>};
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 
@@ -1970,20 +2083,9 @@
     <span class="ident">Feedback</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">PasswordFeedback</span><span class="op">&gt;</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
-<span class="kw">struct</span> <span class="ident">CredentialUpdateIntentTokenInner</span> {
-    <span class="kw">pub</span> <span class="ident">sessionid</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// Who is it targeting?</span>
-    <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// Id of the intent, for checking if it&#39;s already been used against this user.</span>
-    <span class="kw">pub</span> <span class="ident">uuid</span>: <span class="ident">Uuid</span>,
-    <span class="comment">// How long is it valid for?</span>
-    <span class="kw">pub</span> <span class="ident">max_ttl</span>: <span class="ident">Duration</span>,
-}
-
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Clone</span>, <span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialUpdateIntentToken</span> {
-    <span class="kw">pub</span> <span class="ident">token_enc</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">intent_id</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
@@ -2021,7 +2123,7 @@
     <span class="comment">// Current credentials - these are on the Account!</span>
     <span class="ident">account</span>: <span class="ident">Account</span>,
     <span class="comment">//</span>
-    <span class="ident">intent_token_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
+    <span class="ident">intent_token_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
     <span class="comment">// Acc policy</span>
     <span class="comment">// The credentials as they are being updated</span>
     <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Credential</span><span class="op">&gt;</span>,
@@ -2226,7 +2328,7 @@
     <span class="kw">fn</span> <span class="ident">create_credupdate_session</span>(
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">sessionid</span>: <span class="ident">Uuid</span>,
-        <span class="ident">intent_token_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Uuid</span><span class="op">&gt;</span>,
+        <span class="ident">intent_token_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">account</span>: <span class="ident">Account</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
@@ -2278,31 +2380,57 @@
             <span class="comment">// Build the intent token.</span>
             <span class="kw">let</span> <span class="ident">mttl</span> <span class="op">=</span> <span class="ident">event</span>.<span class="ident">max_ttl</span>.<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">Duration::new</span>(<span class="number">0</span>, <span class="number">0</span>));
             <span class="kw">let</span> <span class="ident">max_ttl</span> <span class="op">=</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">mttl</span>.<span class="ident">clamp</span>(<span class="ident">MINIMUM_INTENT_TTL</span>, <span class="ident">MAXIMUM_INTENT_TTL</span>);
-            <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">max_ttl</span>, <span class="self">self</span>.<span class="ident">sid</span>);
-            <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">Uuid::new_v4</span>();
+            <span class="comment">// let sessionid = uuid_from_duration(max_ttl, self.sid);</span>
+            <span class="kw">let</span> <span class="ident">intent_id</span> <span class="op">=</span> <span class="ident">readable_password_from_random</span>();
 
-            <span class="kw">let</span> <span class="ident">target</span> <span class="op">=</span> <span class="ident">event</span>.<span class="ident">target</span>;
-
-            <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span> <span class="ident">CredentialUpdateIntentTokenInner</span> {
-                <span class="ident">sessionid</span>,
-                <span class="ident">target</span>,
-                <span class="ident">uuid</span>,
-                <span class="ident">max_ttl</span>,
+            <span class="comment">/*
+            let token = CredentialUpdateIntentTokenInner {
+                sessionid,
+                target,
+                intent_id,
+                max_ttl,
             };
 
-            <span class="kw">let</span> <span class="ident">token_data</span> <span class="op">=</span> <span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Unable to encode token data&quot;</span>);
-                <span class="ident">OperationError::SerdeJsonError</span>
-            })<span class="question-mark">?</span>;
+            let token_data = serde_json::to_vec(&amp;token).map_err(|e| {
+                admin_error!(err = ?e, &quot;Unable to encode token data&quot;);
+                OperationError::SerdeJsonError
+            })?;
 
-            <span class="kw">let</span> <span class="ident">token_enc</span> <span class="op">=</span> <span class="self">self</span>
-                .<span class="ident">token_enc_key</span>
-                .<span class="ident">encrypt_at_time</span>(<span class="kw-2">&amp;</span><span class="ident">token_data</span>, <span class="ident">ct</span>.<span class="ident">as_secs</span>());
+            let token_enc = self
+                .token_enc_key
+                .encrypt_at_time(&amp;token_data, ct.as_secs());
+            */</span>
 
             <span class="comment">// Mark that we have created an intent token on the user.</span>
-            <span class="kw">let</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_append</span>(
+            <span class="comment">// ⚠️   -- remember, there is a risk, very low, but still a risk of collision of the intent_id.</span>
+            <span class="comment">//        instead of enforcing unique, which would divulge that the collision occured, we</span>
+            <span class="comment">//        write anyway, and instead on the intent access path we invalidate IF the collision</span>
+            <span class="comment">//        occurs.</span>
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new_append</span>(
                 <span class="string">&quot;credential_update_intent_token&quot;</span>,
-                <span class="ident">Value::IntentToken</span>(<span class="ident">token</span>.<span class="ident">sessionid</span>, <span class="ident">IntentTokenState::Valid</span>),
+                <span class="ident">Value::IntentToken</span>(<span class="ident">intent_id</span>.<span class="ident">clone</span>(), <span class="ident">IntentTokenState::Valid</span> { <span class="ident">max_ttl</span> }),
+            );
+
+            <span class="comment">// Remove any old credential update intents</span>
+            <span class="ident">account</span>.<span class="ident">credential_update_intent_tokens</span>.<span class="ident">iter</span>().<span class="ident">for_each</span>(
+                <span class="op">|</span>(<span class="ident">existing_intent_id</span>, <span class="ident">state</span>)<span class="op">|</span> {
+                    <span class="kw">let</span> <span class="ident">max_ttl</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">state</span> {
+                        <span class="ident">IntentTokenState::Valid</span> { <span class="ident">max_ttl</span> }
+                        <span class="op">|</span> <span class="ident">IntentTokenState::InProgress</span> {
+                            <span class="ident">max_ttl</span>,
+                            <span class="ident">session_id</span>: <span class="kw">_</span>,
+                            <span class="ident">session_ttl</span>: <span class="kw">_</span>,
+                        }
+                        <span class="op">|</span> <span class="ident">IntentTokenState::Consumed</span> { <span class="ident">max_ttl</span> } =&gt; <span class="kw-2">*</span><span class="ident">max_ttl</span>,
+                    };
+
+                    <span class="kw">if</span> <span class="ident">ct</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">max_ttl</span> {
+                        <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Removed</span>(
+                            <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
+                            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">existing_intent_id</span>.<span class="ident">clone</span>()),
+                        ));
+                    }
+                },
             );
 
             <span class="self">self</span>.<span class="ident">qs_write</span>
@@ -2316,7 +2444,7 @@
                     <span class="ident">e</span>
                 })<span class="question-mark">?</span>;
 
-            <span class="prelude-val">Ok</span>(<span class="ident">CredentialUpdateIntentToken</span> { <span class="ident">token_enc</span> })
+            <span class="prelude-val">Ok</span>(<span class="ident">CredentialUpdateIntentToken</span> { <span class="ident">intent_id</span> })
         })
     }
 
@@ -2325,28 +2453,71 @@
         <span class="ident">token</span>: <span class="ident">CredentialUpdateIntentToken</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">token</span>: <span class="ident">CredentialUpdateIntentTokenInner</span> <span class="op">=</span> <span class="self">self</span>
-            .<span class="ident">token_enc_key</span>
-            .<span class="ident">decrypt</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>.<span class="ident">token_enc</span>)
-            .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="macro">admin_error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to decrypt intent request&quot;</span>);
-                <span class="ident">OperationError::SessionExpired</span>
-            })
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">data</span><span class="op">|</span> {
-                <span class="ident">serde_json::from_slice</span>(<span class="kw-2">&amp;</span><span class="ident">data</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                    <span class="macro">admin_error!</span>(<span class="ident">err</span> <span class="op">=</span> <span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to deserialise intent request&quot;</span>);
-                    <span class="ident">OperationError::SerdeJsonError</span>
-                })
-            })<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">CredentialUpdateIntentToken</span> { <span class="ident">intent_id</span> } <span class="op">=</span> <span class="ident">token</span>;
 
-        <span class="comment">// Check the TTL</span>
-        <span class="kw">if</span> <span class="ident">ct</span> <span class="op">&gt;</span><span class="op">=</span> <span class="ident">token</span>.<span class="ident">max_ttl</span> {
-            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">ct</span>, <span class="question-mark">?</span><span class="ident">token</span>.<span class="ident">max_ttl</span>);
-            <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">token</span>.<span class="ident">sessionid</span>, <span class="string">&quot;session expired&quot;</span>);
-            <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SessionExpired</span>);
-        }
+        <span class="comment">/*
+            let entry = self.qs_write.internal_search_uuid(&amp;token.target)?;
+        */</span>
+        <span class="comment">// ⚠️  due to a low, but possible risk of intent_id collision, if there are multiple</span>
+        <span class="comment">// entries, we will reject the intent.</span>
+        <span class="comment">// DO we need to force both to &quot;Consumed&quot; in this step?</span>
+        <span class="comment">//</span>
+        <span class="comment">// ⚠️  If not present, it may be due to replication delay. We can report this.</span>
 
-        <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>.<span class="ident">target</span>)<span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">vs</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_search</span>(<span class="macro">filter!</span>(<span class="ident">f_eq</span>(
+            <span class="string">&quot;credential_update_intent_token&quot;</span>,
+            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">intent_id</span>.<span class="ident">clone</span>())
+        )))<span class="question-mark">?</span>;
+
+        <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">vs</span>.<span class="ident">pop</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">entry</span>) =&gt; {
+                <span class="kw">if</span> <span class="ident">vs</span>.<span class="ident">is_empty</span>() {
+                    <span class="comment">// Happy Path!</span>
+                    <span class="ident">entry</span>
+                } <span class="kw">else</span> {
+                    <span class="comment">// Multiple entries matched! This is bad!</span>
+                    <span class="kw">let</span> <span class="ident">matched_uuids</span> <span class="op">=</span> <span class="ident">std::iter::once</span>(<span class="ident">entry</span>.<span class="ident">get_uuid</span>())
+                        .<span class="ident">chain</span>(<span class="ident">vs</span>.<span class="ident">iter</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>()))
+                        .<span class="ident">collect</span>::<span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span><span class="op">&gt;</span>();
+
+                    <span class="macro">security_error!</span>(<span class="string">&quot;Multiple entries had identical intent_id - for safety, rejecting the use of this intent_id! {:?}&quot;</span>, <span class="ident">matched_uuids</span>);
+
+                    <span class="comment">/*
+                    let mut modlist = ModifyList::new();
+
+                    modlist.push_mod(Modify::Removed(
+                        AttrString::from(&quot;credential_update_intent_token&quot;),
+                        PartialValue::IntentToken(intent_id.clone()),
+                    ));
+
+                    let filter_or = matched_uuids.into_iter()
+                        .map(|u| f_eq(&quot;uuid&quot;, PartialValue::new_uuid(u)))
+                        .collect();
+
+                    self.qs_write
+                        .internal_modify(
+                            // Filter as executed
+                            &amp;filter!(f_or(filter_or)),
+                            &amp;modlist,
+                        )
+                        .map_err(|e| {
+                            request_error!(error = ?e);
+                            e
+                        })?;
+                    */</span>
+
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
+                }
+            }
+            <span class="prelude-val">None</span> =&gt; {
+                <span class="macro">security_info!</span>(
+                    <span class="string">&quot;Rejecting Update Session - Intent Token does not exist (replication delay?)&quot;</span>,
+                );
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Wait</span>(
+                    <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> (<span class="ident">ct</span> <span class="op">+</span> <span class="ident">Duration::from_secs</span>(<span class="number">150</span>)),
+                ));
+            }
+        };
 
         <span class="comment">// Is target an account? This checks for us.</span>
         <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">Account::try_from_entry_rw</span>(<span class="ident">entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">qs_write</span>)<span class="question-mark">?</span>;
@@ -2354,41 +2525,57 @@
         <span class="comment">// Check there is not already a user session in progress with this intent token.</span>
         <span class="comment">// Is there a need to revoke intent tokens?</span>
 
-        <span class="kw">match</span> <span class="ident">account</span>
-            .<span class="ident">credential_update_intent_tokens</span>
-            .<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">token</span>.<span class="ident">sessionid</span>)
-        {
-            <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::Consumed</span>) =&gt; {
+        <span class="kw">let</span> <span class="ident">max_ttl</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">account</span>.<span class="ident">credential_update_intent_tokens</span>.<span class="ident">get</span>(<span class="kw-2">&amp;</span><span class="ident">intent_id</span>) {
+            <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::Consumed</span> { <span class="ident">max_ttl</span>: <span class="kw">_</span> }) =&gt; {
                 <span class="macro">security_info!</span>(
                     <span class="question-mark">?</span><span class="ident">entry</span>,
-                    <span class="op">%</span><span class="ident">token</span>.<span class="ident">target</span>,
+                    <span class="op">%</span><span class="ident">account</span>.<span class="ident">uuid</span>,
                     <span class="string">&quot;Rejecting Update Session - Intent Token has already been exchanged&quot;</span>,
                 );
                 <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SessionExpired</span>);
             }
-            <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::InProgress</span>(<span class="ident">si</span>, <span class="ident">sd</span>)) =&gt; {
-                <span class="kw">if</span> <span class="ident">ct</span> <span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">sd</span> {
+            <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::InProgress</span> {
+                <span class="ident">max_ttl</span>,
+                <span class="ident">session_id</span>,
+                <span class="ident">session_ttl</span>,
+            }) =&gt; {
+                <span class="kw">if</span> <span class="ident">ct</span> <span class="op">&gt;</span> <span class="kw-2">*</span><span class="ident">session_ttl</span> {
                     <span class="comment">// The former session has expired, continue.</span>
                     <span class="macro">security_info!</span>(
                         <span class="question-mark">?</span><span class="ident">entry</span>,
-                        <span class="op">%</span><span class="ident">token</span>.<span class="ident">target</span>,
-                        <span class="string">&quot;Initiating Credential Update Session - Previous session {} has expired&quot;</span>, <span class="ident">si</span>
+                        <span class="op">%</span><span class="ident">account</span>.<span class="ident">uuid</span>,
+                        <span class="string">&quot;Initiating Credential Update Session - Previous session {} has expired&quot;</span>, <span class="ident">session_id</span>
                     );
+                    <span class="kw-2">*</span><span class="ident">max_ttl</span>
                 } <span class="kw">else</span> {
                     <span class="macro">security_info!</span>(
                         <span class="question-mark">?</span><span class="ident">entry</span>,
-                        <span class="op">%</span><span class="ident">token</span>.<span class="ident">target</span>,
-                        <span class="string">&quot;Rejecting Update Session - Intent Token is in use {}. Try again later&quot;</span>, <span class="ident">si</span>
+                        <span class="op">%</span><span class="ident">account</span>.<span class="ident">uuid</span>,
+                        <span class="string">&quot;Rejecting Update Session - Intent Token is in use {}. Try again later&quot;</span>, <span class="ident">session_id</span>
                     );
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Wait</span>(<span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="kw-2">*</span><span class="ident">sd</span>));
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::Wait</span>(
+                        <span class="ident">OffsetDateTime::unix_epoch</span>() <span class="op">+</span> <span class="kw-2">*</span><span class="ident">session_ttl</span>,
+                    ));
                 }
             }
-            <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::Valid</span>) <span class="op">|</span> <span class="prelude-val">None</span> =&gt; {
-                <span class="macro">security_info!</span>(
-                    <span class="question-mark">?</span><span class="ident">entry</span>,
-                    <span class="op">%</span><span class="ident">token</span>.<span class="ident">target</span>,
-                    <span class="string">&quot;Initiating Credential Update Session&quot;</span>,
-                );
+            <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::Valid</span> { <span class="ident">max_ttl</span> }) =&gt; {
+                <span class="comment">// Check the TTL</span>
+                <span class="kw">if</span> <span class="ident">ct</span> <span class="op">&gt;</span><span class="op">=</span> <span class="kw-2">*</span><span class="ident">max_ttl</span> {
+                    <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">ct</span>, <span class="question-mark">?</span><span class="ident">max_ttl</span>);
+                    <span class="macro">security_info!</span>(<span class="op">%</span><span class="ident">account</span>.<span class="ident">uuid</span>, <span class="string">&quot;intent has expired&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::SessionExpired</span>);
+                } <span class="kw">else</span> {
+                    <span class="macro">security_info!</span>(
+                        <span class="question-mark">?</span><span class="ident">entry</span>,
+                        <span class="op">%</span><span class="ident">account</span>.<span class="ident">uuid</span>,
+                        <span class="string">&quot;Initiating Credential Update Session&quot;</span>,
+                    );
+                    <span class="kw-2">*</span><span class="ident">max_ttl</span>
+                }
+            }
+            <span class="prelude-val">None</span> =&gt; {
+                <span class="macro">admin_error!</span>(<span class="string">&quot;Corruption may have occured - index yielded an entry for intent_id, but the entry does not contain that intent_id&quot;</span>);
+                <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
             }
         };
 
@@ -2401,19 +2588,23 @@
         <span class="comment">// We need to pin the id from the intent token into the credential to ensure it&#39;s not re-used</span>
 
         <span class="comment">// Need to change this to the expiry time, so we can purge up to.</span>
-        <span class="kw">let</span> <span class="ident">sessionid</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span> <span class="op">+</span> <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>, <span class="self">self</span>.<span class="ident">sid</span>);
+        <span class="kw">let</span> <span class="ident">session_id</span> <span class="op">=</span> <span class="ident">uuid_from_duration</span>(<span class="ident">ct</span> <span class="op">+</span> <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>, <span class="self">self</span>.<span class="ident">sid</span>);
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">modlist</span> <span class="op">=</span> <span class="ident">ModifyList::new</span>();
 
         <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Removed</span>(
             <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
-            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">token</span>.<span class="ident">sessionid</span>),
+            <span class="ident">PartialValue::IntentToken</span>(<span class="ident">intent_id</span>.<span class="ident">clone</span>()),
         ));
         <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Present</span>(
             <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
             <span class="ident">Value::IntentToken</span>(
-                <span class="ident">token</span>.<span class="ident">sessionid</span>,
-                <span class="ident">IntentTokenState::InProgress</span>(<span class="ident">sessionid</span>, <span class="ident">ct</span> <span class="op">+</span> <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>),
+                <span class="ident">intent_id</span>.<span class="ident">clone</span>(),
+                <span class="ident">IntentTokenState::InProgress</span> {
+                    <span class="ident">max_ttl</span>,
+                    <span class="ident">session_id</span>,
+                    <span class="ident">session_ttl</span>: <span class="ident">ct</span> <span class="op">+</span> <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>,
+                },
             ),
         ));
 
@@ -2431,7 +2622,7 @@
         <span class="comment">// ==========</span>
         <span class="comment">// Okay, good to exchange.</span>
 
-        <span class="self">self</span>.<span class="ident">create_credupdate_session</span>(<span class="ident">sessionid</span>, <span class="prelude-val">Some</span>(<span class="ident">token</span>.<span class="ident">sessionid</span>), <span class="ident">account</span>, <span class="ident">ct</span>)
+        <span class="self">self</span>.<span class="ident">create_credupdate_session</span>(<span class="ident">session_id</span>, <span class="prelude-val">Some</span>(<span class="ident">intent_id</span>), <span class="ident">account</span>, <span class="ident">ct</span>)
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_credential_update</span>(
@@ -2505,6 +2696,53 @@
 
         <span class="comment">// Setup mods for the various bits. We always assert an *exact* state.</span>
 
+        <span class="comment">// IF an intent was used on this session, AND that intent is not in our</span>
+        <span class="comment">// session state as an exact match, FAIL the commit. Move the intent to &quot;Consumed&quot;.</span>
+        <span class="comment">//</span>
+        <span class="comment">// Should we mark the credential as suspect (lock the account?)</span>
+        <span class="comment">//</span>
+        <span class="comment">// If the credential has changed, reject? Do we need &quot;asserts&quot; in the modlist?</span>
+        <span class="comment">// that would allow better expression of this, and will allow resolving via replication</span>
+
+        <span class="comment">// If an intent token was used, remove it&#39;s former value, and add it as consumed.</span>
+        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">intent_token_id</span>) <span class="op">=</span> <span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">intent_token_id</span> {
+            <span class="kw">let</span> <span class="ident">entry</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>)<span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="ident">Account::try_from_entry_rw</span>(<span class="ident">entry</span>.<span class="ident">as_ref</span>(), <span class="kw-2">&amp;mut</span> <span class="self">self</span>.<span class="ident">qs_write</span>)<span class="question-mark">?</span>;
+
+            <span class="kw">let</span> <span class="ident">max_ttl</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">account</span>.<span class="ident">credential_update_intent_tokens</span>.<span class="ident">get</span>(<span class="ident">intent_token_id</span>) {
+                <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::InProgress</span> {
+                    <span class="ident">max_ttl</span>,
+                    <span class="ident">session_id</span>,
+                    <span class="ident">session_ttl</span>: <span class="kw">_</span>,
+                }) =&gt; {
+                    <span class="kw">if</span> <span class="kw-2">*</span><span class="ident">session_id</span> <span class="op">!</span><span class="op">=</span> <span class="ident">session_token</span>.<span class="ident">sessionid</span> {
+                        <span class="macro">security_info!</span>(<span class="string">&quot;Session originated from an intent token, but the intent token has initiated a conflicting second update session. Refusing to commit changes.&quot;</span>);
+                        <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
+                    } <span class="kw">else</span> {
+                        <span class="kw-2">*</span><span class="ident">max_ttl</span>
+                    }
+                }
+                <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::Consumed</span> { <span class="ident">max_ttl</span>: <span class="kw">_</span> })
+                <span class="op">|</span> <span class="prelude-val">Some</span>(<span class="ident">IntentTokenState::Valid</span> { <span class="ident">max_ttl</span>: <span class="kw">_</span> })
+                <span class="op">|</span> <span class="prelude-val">None</span> =&gt; {
+                    <span class="macro">security_info!</span>(<span class="string">&quot;Session originated from an intent token, but the intent token has transitioned to an invalid state. Refusing to commit changes.&quot;</span>);
+                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidState</span>);
+                }
+            };
+
+            <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Removed</span>(
+                <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
+                <span class="ident">PartialValue::IntentToken</span>(<span class="ident">intent_token_id</span>.<span class="ident">clone</span>()),
+            ));
+            <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Present</span>(
+                <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
+                <span class="ident">Value::IntentToken</span>(
+                    <span class="ident">intent_token_id</span>.<span class="ident">clone</span>(),
+                    <span class="ident">IntentTokenState::Consumed</span> { <span class="ident">max_ttl</span> },
+                ),
+            ));
+        };
+
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">primary</span> {
             <span class="prelude-val">Some</span>(<span class="ident">ncred</span>) =&gt; {
                 <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;primary_credential&quot;</span>)));
@@ -2517,18 +2755,6 @@
             <span class="prelude-val">None</span> =&gt; {
                 <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;primary_credential&quot;</span>)));
             }
-        };
-
-        <span class="comment">// If an intent token was used, remove it&#39;s former value, and add it as consumed.</span>
-        <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">intent_token_id</span>) <span class="op">=</span> <span class="ident">session</span>.<span class="ident">intent_token_id</span> {
-            <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Removed</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
-                <span class="ident">PartialValue::IntentToken</span>(<span class="ident">intent_token_id</span>),
-            ));
-            <span class="ident">modlist</span>.<span class="ident">push_mod</span>(<span class="ident">Modify::Present</span>(
-                <span class="ident">AttrString::from</span>(<span class="string">&quot;credential_update_intent_token&quot;</span>),
-                <span class="ident">Value::IntentToken</span>(<span class="ident">intent_token_id</span>, <span class="ident">IntentTokenState::Consumed</span>),
-            ));
         };
 
         <span class="comment">// Are any other checks needed?</span>

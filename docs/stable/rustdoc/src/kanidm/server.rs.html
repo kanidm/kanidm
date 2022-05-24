@@ -4218,7 +4218,6 @@
 <span id="4213">4213</span>
 <span id="4214">4214</span>
 <span id="4215">4215</span>
-<span id="4216">4216</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4861,13 +4860,12 @@
                     }),
                     <span class="ident">SyntaxType::OauthScope</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::new_oauthscope</span>(<span class="ident">value</span>)),
                     <span class="ident">SyntaxType::PrivateBinary</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">PartialValue::PrivateBinary</span>),
-                    <span class="ident">SyntaxType::IntentToken</span> =&gt; {
-                        <span class="ident">PartialValue::new_intenttoken_s</span>(<span class="ident">value</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
+                    <span class="ident">SyntaxType::IntentToken</span> =&gt; <span class="ident">PartialValue::new_intenttoken_s</span>(<span class="ident">value</span>.<span class="ident">to_string</span>())
+                        .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                             <span class="ident">OperationError::InvalidAttribute</span>(
                                 <span class="string">&quot;Invalid Intent Token ID (uuid) syntax&quot;</span>.<span class="ident">to_string</span>(),
                             )
-                        })
-                    }
+                        }),
                 }
             }
             <span class="prelude-val">None</span> =&gt; {
@@ -6899,7 +6897,7 @@
                     <span class="ident">mut_d_info</span>.<span class="ident">d_name</span>,
                 );
                 <span class="macro">admin_warn!</span>(
-                    <span class="string">&quot;If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain&quot;</span>
+                    <span class="string">&quot;If you think this is an error, see https://kanidm.github.io/kanidm/stable/administrivia.html#rename-the-domain&quot;</span>
                 );
                 <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">=</span> <span class="ident">domain_name</span>;
             }

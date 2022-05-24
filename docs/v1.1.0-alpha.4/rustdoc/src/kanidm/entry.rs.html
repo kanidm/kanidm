@@ -4366,7 +4366,7 @@
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_ava_as_intenttokens</span>(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">attr</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
-    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">std::collections::BTreeMap</span><span class="op">&lt;</span><span class="ident">Uuid</span>, <span class="ident">IntentTokenState</span><span class="op">&gt;</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">std::collections::BTreeMap</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">IntentTokenState</span><span class="op">&gt;</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">attrs</span>.<span class="ident">get</span>(<span class="ident">attr</span>).<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">vs</span><span class="op">|</span> <span class="ident">vs</span>.<span class="ident">as_intenttoken_map</span>())
     }
 

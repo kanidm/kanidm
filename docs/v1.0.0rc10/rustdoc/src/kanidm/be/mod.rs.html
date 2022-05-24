@@ -5186,17 +5186,17 @@
             <span class="comment">// Test that on entry create, the indexes are made correctly.</span>
             <span class="comment">// this is a similar case to reindex.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
+            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
             <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e1</span>.<span class="ident">into_sealed_new</span>() };
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e2</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>));
+            <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>));
             <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;bd651620-00dd-426b-aaa0-4494f7b7906f&quot;</span>));
             <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e2</span>.<span class="ident">into_sealed_new</span>() };
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e3</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;userid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;lucy&quot;</span>));
+            <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;userid&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;lucy&quot;</span>));
             <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;7b23c99d-c06b-4a9a-a958-3afa56383e1d&quot;</span>));
             <span class="kw">let</span> <span class="ident">e3</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e3</span>.<span class="ident">into_sealed_new</span>() };
 
@@ -5228,7 +5228,7 @@
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">name2uuid</span>(<span class="string">&quot;claire&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">claire_uuid</span>)));
             <span class="kw">let</span> <span class="ident">x</span> <span class="op">=</span> <span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">claire_uuid</span>);
             <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">x</span>);
-            <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">claire_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>))));
+            <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">claire_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>))));
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2rdn</span>(<span class="ident">claire_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="string">&quot;name=claire&quot;</span>.<span class="ident">to_string</span>())));
 
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">name2uuid</span>(<span class="string">&quot;william&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
@@ -5249,7 +5249,7 @@
             <span class="comment">// us. For the test to be &quot;accurate&quot; we must add one attr, remove one attr</span>
             <span class="comment">// and change one attr.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
+            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;ta&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;test&quot;</span>));
             <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e1</span>.<span class="ident">into_sealed_new</span>() };
@@ -5264,7 +5264,7 @@
             <span class="ident">ce1</span>.<span class="ident">purge_ava</span>(<span class="string">&quot;ta&quot;</span>);
             <span class="comment">// mod something.</span>
             <span class="ident">ce1</span>.<span class="ident">purge_ava</span>(<span class="string">&quot;name&quot;</span>);
-            <span class="ident">ce1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>));
+            <span class="ident">ce1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>));
 
             <span class="kw">let</span> <span class="ident">ce1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">ce1</span>.<span class="ident">into_sealed_committed</span>() };
 
@@ -5283,7 +5283,7 @@
             <span class="kw">let</span> <span class="ident">william_uuid</span> <span class="op">=</span> <span class="ident">Uuid::parse_str</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>).<span class="ident">unwrap</span>();
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">name2uuid</span>(<span class="string">&quot;william&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">name2uuid</span>(<span class="string">&quot;claire&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">william_uuid</span>)));
-            <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">william_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>))));
+            <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">william_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>))));
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2rdn</span>(<span class="ident">william_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="string">&quot;name=claire&quot;</span>.<span class="ident">to_string</span>())));
         })
     }
@@ -5296,7 +5296,7 @@
             <span class="comment">// This will be needing to be correct for conflicts when we add</span>
             <span class="comment">// replication support!</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
+            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
             <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e1</span>.<span class="ident">into_sealed_new</span>() };
 
@@ -5306,7 +5306,7 @@
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">ce1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">rset</span>[<span class="number">0</span>].<span class="ident">as_ref</span>().<span class="ident">clone</span>().<span class="ident">into_invalid</span>() };
             <span class="ident">ce1</span>.<span class="ident">purge_ava</span>(<span class="string">&quot;name&quot;</span>);
             <span class="ident">ce1</span>.<span class="ident">purge_ava</span>(<span class="string">&quot;uuid&quot;</span>);
-            <span class="ident">ce1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>));
+            <span class="ident">ce1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>));
             <span class="ident">ce1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;04091a7a-6ce4-42d2-abf5-c2ce244ac9e8&quot;</span>));
             <span class="kw">let</span> <span class="ident">ce1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">ce1</span>.<span class="ident">into_sealed_committed</span>() };
 
@@ -5340,7 +5340,7 @@
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">name2uuid</span>(<span class="string">&quot;claire&quot;</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">claire_uuid</span>)));
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">william_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2rdn</span>(<span class="ident">william_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
-            <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">claire_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>))));
+            <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2spn</span>(<span class="ident">claire_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>))));
             <span class="macro">assert!</span>(<span class="ident">be</span>.<span class="ident">uuid2rdn</span>(<span class="ident">claire_uuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="string">&quot;name=claire&quot;</span>.<span class="ident">to_string</span>())));
         })
     }
@@ -5352,14 +5352,14 @@
 
             <span class="comment">// Create a test entry with some indexed / unindexed values.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
+            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;no-index&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;other-no-index&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
             <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e1</span>.<span class="ident">into_sealed_new</span>() };
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e2</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>));
+            <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>));
             <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d2&quot;</span>));
             <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e2</span>.<span class="ident">into_sealed_new</span>() };
 
@@ -5660,21 +5660,21 @@
         <span class="macro">run_test!</span>(<span class="op">|</span><span class="ident">be</span>: <span class="kw-2">&amp;mut</span> <span class="ident">BackendWriteTransaction</span><span class="op">|</span> {
             <span class="comment">// Create some test entry with some indexed / unindexed values.</span>
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e1</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
+            <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;ta&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;dupe&quot;</span>));
             <span class="ident">e1</span>.<span class="ident">add_ava</span>(<span class="string">&quot;tb&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;1&quot;</span>));
             <span class="kw">let</span> <span class="ident">e1</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e1</span>.<span class="ident">into_sealed_new</span>() };
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e2</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;claire&quot;</span>));
+            <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;claire&quot;</span>));
             <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d2&quot;</span>));
             <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;ta&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;dupe&quot;</span>));
             <span class="ident">e2</span>.<span class="ident">add_ava</span>(<span class="string">&quot;tb&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;1&quot;</span>));
             <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="kw">unsafe</span> { <span class="ident">e2</span>.<span class="ident">into_sealed_new</span>() };
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e3</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;benny&quot;</span>));
+            <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;benny&quot;</span>));
             <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d3&quot;</span>));
             <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;ta&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;dupe&quot;</span>));
             <span class="ident">e3</span>.<span class="ident">add_ava</span>(<span class="string">&quot;tb&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;2&quot;</span>));
@@ -5853,7 +5853,7 @@
             <span class="ident">lim_deny</span>.<span class="ident">search_max_filter_test</span> <span class="op">=</span> <span class="number">0</span>;
 
             <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">e</span>: <span class="ident">Entry</span><span class="op">&lt;</span><span class="ident">EntryInit</span>, <span class="ident">EntryNew</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">Entry::new</span>();
-            <span class="ident">e</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;william&quot;</span>));
+            <span class="ident">e</span>.<span class="ident">add_ava</span>(<span class="string">&quot;name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="string">&quot;william&quot;</span>));
             <span class="ident">e</span>.<span class="ident">add_ava</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;db237e8a-0079-4b8c-8a56-593b22aa44d1&quot;</span>));
             <span class="ident">e</span>.<span class="ident">add_ava</span>(<span class="string">&quot;nonexist&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;x&quot;</span>));
             <span class="ident">e</span>.<span class="ident">add_ava</span>(<span class="string">&quot;nonexist&quot;</span>, <span class="ident">Value::from</span>(<span class="string">&quot;y&quot;</span>));

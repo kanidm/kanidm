@@ -501,6 +501,18 @@
 <span id="496">496</span>
 <span id="497">497</span>
 <span id="498">498</span>
+<span id="499">499</span>
+<span id="500">500</span>
+<span id="501">501</span>
+<span id="502">502</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::be::dbvalue</span>::{<span class="ident">DbValueEmailAddressV1</span>, <span class="ident">DbValuePhoneNumberV1</span>, <span class="ident">DbValueSetV2</span>, <span class="ident">DbValueV1</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::prelude::OperationError</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
@@ -526,6 +538,18 @@
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbEntryVers</span> {
     <span class="ident">V1</span>(<span class="ident">DbEntryV1</span>),
     <span class="ident">V2</span>(<span class="ident">DbEntryV2</span>),
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>, <span class="ident">Debug</span>)]</span>
+<span class="comment">// This doesn&#39;t need a version since uuid2spn is reindexed - remember if you change this</span>
+<span class="comment">// though, to change the index version!</span>
+<span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DbIdentSpn</span> {
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;SP&quot;</span>)]</span>
+    <span class="ident">Spn</span>(<span class="ident">String</span>, <span class="ident">String</span>),
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;N8&quot;</span>)]</span>
+    <span class="ident">Iname</span>(<span class="ident">String</span>),
+    <span class="attribute">#[<span class="ident">serde</span>(<span class="ident">rename</span> <span class="op">=</span> <span class="string">&quot;UU&quot;</span>)]</span>
+    <span class="ident">Uuid</span>(<span class="ident">Uuid</span>),
 }
 
 <span class="comment">// This is actually what we store into the DB.</span>
@@ -878,7 +902,7 @@
             <span class="kw">let</span> <span class="ident">vs</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">viter</span>
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">dbv</span><span class="op">|</span> {
                     <span class="kw">if</span> <span class="kw">let</span> <span class="ident">DbValueV1::IntentToken</span> { <span class="ident">u</span>, <span class="ident">s</span> } <span class="op">=</span> <span class="ident">dbv</span> {
-                        <span class="prelude-val">Ok</span>((<span class="ident">u</span>, <span class="ident">s</span>))
+                        <span class="prelude-val">Ok</span>((<span class="ident">u</span>.<span class="ident">as_hyphenated</span>().<span class="ident">to_string</span>(), <span class="ident">s</span>))
                     } <span class="kw">else</span> {
                         <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidValueState</span>)
                     }
