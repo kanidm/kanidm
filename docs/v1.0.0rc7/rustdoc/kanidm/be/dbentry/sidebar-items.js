@@ -1,1 +1,1 @@
-initSidebarItems({"enum":[["DbEntryVers",""]],"struct":[["DbEntry",""],["DbEntryV1",""]]});
+initSidebarItems({"enum":[["DbBackup",""],["DbEntryVers",""]],"struct":[["DbEntry",""],["DbEntryV1",""],["DbEntryV2",""]]});

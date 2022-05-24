@@ -2674,7 +2674,7 @@
         }
 
         <span class="kw">let</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_as_str</span>(<span class="string">&quot;acp_search_attr&quot;</span>)
+            .<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;acp_search_attr&quot;</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Missing acp_search_attr&quot;</span>);
                 <span class="ident">OperationError::InvalidAcpState</span>(<span class="string">&quot;Missing acp_search_attr&quot;</span>.<span class="ident">to_string</span>())
@@ -2770,12 +2770,12 @@
         }
 
         <span class="kw">let</span> <span class="ident">attrs</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_as_str</span>(<span class="string">&quot;acp_create_attr&quot;</span>)
+            .<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;acp_create_attr&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">AttrString::from</span>).<span class="ident">collect</span>())
             .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
 
         <span class="kw">let</span> <span class="ident">classes</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_as_str</span>(<span class="string">&quot;acp_create_class&quot;</span>)
+            .<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;acp_create_class&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">AttrString::from</span>).<span class="ident">collect</span>())
             .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
 
@@ -2829,17 +2829,17 @@
         }
 
         <span class="kw">let</span> <span class="ident">presattrs</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_as_str</span>(<span class="string">&quot;acp_modify_presentattr&quot;</span>)
+            .<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;acp_modify_presentattr&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">AttrString::from</span>).<span class="ident">collect</span>())
             .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
 
         <span class="kw">let</span> <span class="ident">remattrs</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_as_str</span>(<span class="string">&quot;acp_modify_removedattr&quot;</span>)
+            .<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;acp_modify_removedattr&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">AttrString::from</span>).<span class="ident">collect</span>())
             .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
 
         <span class="kw">let</span> <span class="ident">classes</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_as_str</span>(<span class="string">&quot;acp_modify_class&quot;</span>)
+            .<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;acp_modify_class&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">i</span><span class="op">|</span> <span class="ident">i</span>.<span class="ident">map</span>(<span class="ident">AttrString::from</span>).<span class="ident">collect</span>())
             .<span class="ident">unwrap_or_else</span>(<span class="ident">Vec::new</span>);
 
@@ -2910,14 +2910,14 @@
 
         <span class="comment">// copy name</span>
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="macro">admin_error!</span>(<span class="string">&quot;Missing name&quot;</span>);
                 <span class="ident">OperationError::InvalidAcpState</span>(<span class="string">&quot;Missing name&quot;</span>.<span class="ident">to_string</span>())
             })<span class="question-mark">?</span>
             .<span class="ident">to_string</span>();
         <span class="comment">// copy uuid</span>
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
         <span class="comment">// receiver, and turn to real filter</span>
         <span class="kw">let</span> <span class="ident">receiver_f</span>: <span class="ident">ProtoFilter</span> <span class="op">=</span> <span class="ident">value</span>
             .<span class="ident">get_ava_single_protofilter</span>(<span class="string">&quot;acp_receiver&quot;</span>)
@@ -3598,7 +3598,7 @@
                 <span class="comment">// I still think if this is None, we should just fail here ...</span>
                 <span class="comment">// because it shouldn&#39;t be possible to match.</span>
 
-                <span class="kw">let</span> <span class="ident">create_classes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_as_str</span>(<span class="string">&quot;class&quot;</span>) {
+                <span class="kw">let</span> <span class="ident">create_classes</span>: <span class="ident">BTreeSet</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">str</span><span class="op">&gt;</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;class&quot;</span>) {
                     <span class="prelude-val">Some</span>(<span class="ident">s</span>) =&gt; <span class="ident">s</span>.<span class="ident">collect</span>(),
                     <span class="prelude-val">None</span> =&gt; {
                         <span class="macro">admin_error!</span>(<span class="string">&quot;Class set failed to build - corrupted entry?&quot;</span>);
@@ -3869,7 +3869,7 @@
                         .<span class="ident">collect</span>();
 
                     <span class="ident">AccessEffectivePermission</span> {
-                        <span class="ident">target</span>: <span class="kw-2">*</span><span class="ident">e</span>.<span class="ident">get_uuid</span>(),
+                        <span class="ident">target</span>: <span class="ident">e</span>.<span class="ident">get_uuid</span>(),
                         <span class="ident">search</span>: <span class="ident">search_effective</span>,
                         <span class="ident">modify_pres</span>,
                         <span class="ident">modify_rem</span>,

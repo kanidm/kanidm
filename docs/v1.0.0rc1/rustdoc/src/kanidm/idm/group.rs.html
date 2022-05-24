@@ -141,13 +141,13 @@
 <span class="macro">macro_rules!</span> <span class="ident">try_from_account_e</span> {
     (<span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>:<span class="ident">expr</span>, <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>:<span class="ident">expr</span>) =&gt; {{
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
 
         <span class="kw">let</span> <span class="ident">upg</span> <span class="op">=</span> <span class="ident">Group</span> { <span class="ident">name</span>, <span class="ident">uuid</span> };
 
@@ -157,7 +157,7 @@
                 <span class="comment">// just give and empty result set.</span>
                 <span class="kw">let</span> <span class="ident">f</span> <span class="op">=</span> <span class="macro">filter!</span>(<span class="ident">f_or</span>(
                     <span class="ident">riter</span>
-                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="ident">u</span>)))
+                        .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">u</span>)))
                         .<span class="ident">collect</span>()
                 ));
                 <span class="kw">let</span> <span class="ident">ges</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">qs</span>.<span class="ident">internal_search</span>(<span class="ident">f</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -217,13 +217,13 @@
 
         <span class="comment">// Now extract our needed attributes</span>
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="ident">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
             })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">value</span>.<span class="ident">get_uuid</span>();
 
         <span class="prelude-val">Ok</span>(<span class="ident">Group</span> { <span class="ident">name</span>, <span class="ident">uuid</span> })
     }

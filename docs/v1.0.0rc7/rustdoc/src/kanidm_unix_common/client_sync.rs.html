@@ -146,9 +146,9 @@
         })
         .<span class="ident">map_err</span>(<span class="ident">Box::new</span>)<span class="question-mark">?</span>;
 
-    <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_cbor::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">req</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+    <span class="kw">let</span> <span class="ident">data</span> <span class="op">=</span> <span class="ident">serde_json::to_vec</span>(<span class="kw-2">&amp;</span><span class="ident">req</span>).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
         <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-        <span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;CBOR encode error&quot;</span>))
+        <span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;JSON encode error&quot;</span>))
     })<span class="question-mark">?</span>;
     <span class="comment">//  .map_err(Box::new)?;</span>
 
@@ -216,9 +216,9 @@
     <span class="ident">data</span>.<span class="ident">truncate</span>(<span class="ident">counter</span>);
 
     <span class="comment">// Now attempt to decode.</span>
-    <span class="kw">let</span> <span class="ident">cr</span> <span class="op">=</span> <span class="ident">serde_cbor::from_slice</span>::<span class="op">&lt;</span><span class="ident">ClientResponse</span><span class="op">&gt;</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
+    <span class="kw">let</span> <span class="ident">cr</span> <span class="op">=</span> <span class="ident">serde_json::from_slice</span>::<span class="op">&lt;</span><span class="ident">ClientResponse</span><span class="op">&gt;</span>(<span class="ident">data</span>.<span class="ident">as_slice</span>()).<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
         <span class="macro">error!</span>(<span class="string">&quot;socket encoding error -&gt; {:?}&quot;</span>, <span class="ident">e</span>);
-        <span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;CBOR decode error&quot;</span>))
+        <span class="ident">Box::new</span>(<span class="ident">IoError::new</span>(<span class="ident">ErrorKind::Other</span>, <span class="string">&quot;JSON decode error&quot;</span>))
     })<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(<span class="ident">cr</span>)

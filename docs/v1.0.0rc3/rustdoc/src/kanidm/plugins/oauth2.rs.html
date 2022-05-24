@@ -337,7 +337,7 @@
                 <span class="macro">assert!</span>(<span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>));
                 <span class="macro">assert!</span>(<span class="ident">e</span>.<span class="ident">attribute_pres</span>(<span class="string">&quot;oauth2_rs_token_key&quot;</span>));
                 <span class="comment">// Check the values are different.</span>
-                <span class="macro">assert!</span>(<span class="ident">e</span>.<span class="ident">get_ava_single_str</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;12345&quot;</span>));
+                <span class="macro">assert!</span>(<span class="ident">e</span>.<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;oauth2_rs_basic_secret&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;12345&quot;</span>));
                 <span class="macro">assert!</span>(<span class="ident">e</span>.<span class="ident">get_ava_single_secret</span>(<span class="string">&quot;oauth2_rs_token_key&quot;</span>) <span class="op">!</span><span class="op">=</span> <span class="prelude-val">Some</span>(<span class="string">&quot;12345&quot;</span>));
             }
         );

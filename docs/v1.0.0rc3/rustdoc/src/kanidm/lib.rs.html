@@ -101,6 +101,10 @@
 <span id="96">96</span>
 <span id="97">97</span>
 <span id="98">98</span>
+<span id="99">99</span>
+<span id="100">100</span>
+<span id="101">101</span>
+<span id="102">102</span>
 </pre><pre class="rust"><code><span class="doccomment">//! The Kanidmd server library. This implements all of the internal components of the server</span>
 <span class="doccomment">//! which is used to process authentication, store identities and enforce access controls.</span>
 
@@ -190,7 +194,11 @@
         <span class="ident">QueryServerWriteTransaction</span>,
     };
     <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::value</span>::{<span class="ident">IndexType</span>, <span class="ident">PartialValue</span>, <span class="ident">SyntaxType</span>, <span class="ident">Value</span>};
-    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset::ValueSet</span>;
+    <span class="kw">pub</span> <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset</span>::{
+        <span class="ident">ValueSet</span>, <span class="ident">ValueSetBool</span>, <span class="ident">ValueSetCid</span>, <span class="ident">ValueSetIndex</span>, <span class="ident">ValueSetIutf8</span>, <span class="ident">ValueSetRefer</span>,
+        <span class="ident">ValueSetSecret</span>, <span class="ident">ValueSetSpn</span>, <span class="ident">ValueSetSyntax</span>, <span class="ident">ValueSetT</span>, <span class="ident">ValueSetUint32</span>, <span class="ident">ValueSetUtf8</span>,
+        <span class="ident">ValueSetUuid</span>,
+    };
     <span class="kw">pub</span> <span class="kw">use</span> <span class="kw">crate</span>::{
         <span class="ident">admin_error</span>, <span class="ident">admin_info</span>, <span class="ident">admin_warn</span>, <span class="ident">filter_error</span>, <span class="ident">filter_info</span>, <span class="ident">filter_trace</span>, <span class="ident">filter_warn</span>,
         <span class="ident">perf_trace</span>, <span class="ident">request_error</span>, <span class="ident">request_info</span>, <span class="ident">request_trace</span>, <span class="ident">request_warn</span>, <span class="ident">security_access</span>,

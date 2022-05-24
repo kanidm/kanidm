@@ -5400,9 +5400,9 @@
             .<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify_gen_event</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">pce</span>.<span class="ident">target</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">pce</span>.<span class="ident">target</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">ident</span>,
             )
@@ -5479,9 +5479,9 @@
             .<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify_gen_event</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">pce</span>.<span class="ident">target</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">pce</span>.<span class="ident">target</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="kw-2">&amp;</span><span class="ident">pce</span>.<span class="ident">ident</span>,
             )
@@ -5546,7 +5546,7 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">internal_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">target</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -5585,9 +5585,9 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">gpe</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">gpe</span>.<span class="ident">target</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">gpe</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">gpe</span>.<span class="ident">target</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="comment">// Provide the event to impersonate</span>
                 <span class="kw-2">&amp;</span><span class="ident">gpe</span>.<span class="ident">ident</span>,
@@ -5623,9 +5623,9 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">gbe</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">gbe</span>.<span class="ident">target</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">gbe</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">gbe</span>.<span class="ident">target</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="comment">// Provide the event to impersonate</span>
                 <span class="kw-2">&amp;</span><span class="ident">gbe</span>.<span class="ident">ident</span>,
@@ -5652,9 +5652,9 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="kw-2">&amp;</span><span class="ident">rte</span>.<span class="ident">ident</span>,
             )
@@ -5688,9 +5688,9 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">rrse</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">rrse</span>.<span class="ident">target</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">rrse</span>.<span class="ident">target</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">rrse</span>.<span class="ident">target</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="comment">// Provide the event to impersonate</span>
                 <span class="kw-2">&amp;</span><span class="ident">rrse</span>.<span class="ident">ident</span>,
@@ -5759,9 +5759,9 @@
             <span class="self">self</span>.<span class="ident">qs_write</span>
                 .<span class="ident">impersonate_modify</span>(
                     <span class="comment">// Filter as executed</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="comment">// Filter as intended (acp)</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                     <span class="kw-2">&amp;</span><span class="ident">wre</span>.<span class="ident">ident</span>,
                 )
@@ -5796,9 +5796,9 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="kw-2">&amp;</span><span class="ident">rwe</span>.<span class="ident">ident</span>,
             )
@@ -5871,9 +5871,9 @@
             <span class="self">self</span>.<span class="ident">qs_write</span>
                 .<span class="ident">impersonate_modify</span>(
                     <span class="comment">// Filter as executed</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="comment">// Filter as intended (acp)</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                     <span class="kw-2">&amp;</span><span class="ident">vte</span>.<span class="ident">ident</span>,
                 )
@@ -5925,9 +5925,9 @@
             <span class="self">self</span>.<span class="ident">qs_write</span>
                 .<span class="ident">impersonate_modify</span>(
                     <span class="comment">// Filter as executed</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="comment">// Filter as intended (acp)</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                     <span class="kw-2">&amp;</span><span class="ident">aste</span>.<span class="ident">ident</span>,
                 )
@@ -5956,9 +5956,9 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">impersonate_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="comment">// Filter as intended (acp)</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 <span class="kw-2">&amp;</span><span class="ident">rte</span>.<span class="ident">ident</span>,
             )
@@ -5987,7 +5987,7 @@
                 })<span class="question-mark">?</span>;
 
             <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_modify</span>(
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">pwu</span>.<span class="ident">target_uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
             )
         } <span class="kw">else</span> {
@@ -6019,7 +6019,7 @@
                 })<span class="question-mark">?</span>;
 
             <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_modify</span>(
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">pwu</span>.<span class="ident">target_uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">pwu</span>.<span class="ident">target_uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
             )
         } <span class="kw">else</span> {
@@ -6043,7 +6043,7 @@
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">modlist</span>) <span class="op">=</span> <span class="ident">opt_modlist</span> {
             <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_modify</span>(
-                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">wci</span>.<span class="ident">target_uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">wci</span>.<span class="ident">target_uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
             )
         } <span class="kw">else</span> {
@@ -6067,7 +6067,7 @@
             })<span class="question-mark">?</span>;
 
         <span class="self">self</span>.<span class="ident">qs_write</span>.<span class="ident">internal_modify</span>(
-            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">bcr</span>.<span class="ident">target_uuid</span>))),
+            <span class="kw-2">&amp;</span><span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">bcr</span>.<span class="ident">target_uuid</span>))),
             <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
         )
     }
@@ -8024,7 +8024,7 @@
                 <span class="kw">let</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>.<span class="ident">clone</span>());
                 <span class="kw">let</span> <span class="ident">me_reset_tokens</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                     <span class="ident">ModifyEvent::new_internal_invalid</span>(
-                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>))),
+                        <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">UUID_DOMAIN_INFO</span>))),
                         <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[
                             <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;fernet_private_key_str&quot;</span>)),
                             <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;es256_private_key_der&quot;</span>)),

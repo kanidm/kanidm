@@ -563,14 +563,14 @@
 
         <span class="comment">// Now extract our needed attributes</span>
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidAccountState</span>(
                 <span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>(),
             ))<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">displayname</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;displayname&quot;</span>)
+            .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;displayname&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidAccountState</span>(
                 <span class="string">&quot;Missing attribute: displayname&quot;</span>.<span class="ident">to_string</span>(),

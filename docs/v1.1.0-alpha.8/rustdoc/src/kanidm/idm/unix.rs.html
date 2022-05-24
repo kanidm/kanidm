@@ -506,7 +506,7 @@
         }
 
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
@@ -516,10 +516,10 @@
             <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
 
         <span class="kw">let</span> <span class="ident">displayname</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;displayname&quot;</span>)
+            .<span class="ident">get_ava_single_utf8</span>(<span class="string">&quot;displayname&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: displayname&quot;</span>.<span class="ident">to_string</span>())
@@ -530,7 +530,7 @@
         })<span class="question-mark">?</span>;
 
         <span class="kw">let</span> <span class="ident">shell</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;loginshell&quot;</span>)
+            .<span class="ident">get_ava_single_iutf8</span>(<span class="string">&quot;loginshell&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>());
 
         <span class="kw">let</span> <span class="ident">sshkeys</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
@@ -758,7 +758,7 @@
         }
 
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
@@ -768,7 +768,7 @@
             <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
 
         <span class="kw">let</span> <span class="ident">gidnumber</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;gidnumber&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.<span class="ident">to_string</span>())
@@ -801,7 +801,7 @@
         }
 
         <span class="kw">let</span> <span class="ident">name</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>
-            .<span class="ident">get_ava_single_str</span>(<span class="string">&quot;name&quot;</span>)
+            .<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;name&quot;</span>)
             .<span class="ident">map</span>(<span class="op">|</span><span class="ident">s</span><span class="op">|</span> <span class="ident">s</span>.<span class="ident">to_string</span>())
             .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
                 <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: name&quot;</span>.<span class="ident">to_string</span>())
@@ -811,7 +811,7 @@
             <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: spn&quot;</span>.<span class="ident">to_string</span>())
         })<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
+        <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_uuid</span>();
 
         <span class="kw">let</span> <span class="ident">gidnumber</span> <span class="op">=</span> <span class="macro-nonterminal">$</span><span class="macro-nonterminal">value</span>.<span class="ident">get_ava_single_uint32</span>(<span class="string">&quot;gidnumber&quot;</span>).<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> {
             <span class="ident">OperationError::InvalidAccountState</span>(<span class="string">&quot;Missing attribute: gidnumber&quot;</span>.<span class="ident">to_string</span>())
@@ -832,7 +832,7 @@
                     <span class="ident">f_eq</span>(<span class="string">&quot;class&quot;</span>, <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;group&quot;</span>)),
                     <span class="ident">f_or</span>(
                         <span class="ident">riter</span>
-                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="ident">u</span>)))
+                            .<span class="ident">map</span>(<span class="op">|</span><span class="ident">u</span><span class="op">|</span> <span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">u</span>)))
                             .<span class="ident">collect</span>()
                     )
                 ]));

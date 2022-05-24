@@ -343,9 +343,6 @@
 <span id="338">338</span>
 <span id="339">339</span>
 <span id="340">340</span>
-<span id="341">341</span>
-<span id="342">342</span>
-<span id="343">343</span>
 </pre><pre class="rust"><code><span class="comment">// Attribute uniqueness plugin. We read the schema and determine if the</span>
 <span class="comment">// value should be unique, and how to handle if it is not. This will</span>
 <span class="comment">// matter a lot when it comes to replication based on first-wins or</span>
@@ -371,12 +368,9 @@
 
     <span class="ident">cand</span>.<span class="ident">iter</span>()
         .<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-            <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_single_uuid</span>(<span class="string">&quot;uuid&quot;</span>) {
-                <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="kw-2">*</span><span class="ident">v</span>,
-                <span class="prelude-val">None</span> =&gt; {
-                    <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::InvalidEntryState</span>);
-                }
-            };
+            <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">e</span>
+                .<span class="ident">get_ava_single_uuid</span>(<span class="string">&quot;uuid&quot;</span>)
+                .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)<span class="question-mark">?</span>;
             <span class="comment">// Get the value and uuid</span>
             <span class="comment">//for each value in the ava.</span>
             <span class="ident">e</span>.<span class="ident">get_ava_set</span>(<span class="ident">attr</span>)

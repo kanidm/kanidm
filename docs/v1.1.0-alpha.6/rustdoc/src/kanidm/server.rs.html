@@ -4196,6 +4196,29 @@
 <span id="4191">4191</span>
 <span id="4192">4192</span>
 <span id="4193">4193</span>
+<span id="4194">4194</span>
+<span id="4195">4195</span>
+<span id="4196">4196</span>
+<span id="4197">4197</span>
+<span id="4198">4198</span>
+<span id="4199">4199</span>
+<span id="4200">4200</span>
+<span id="4201">4201</span>
+<span id="4202">4202</span>
+<span id="4203">4203</span>
+<span id="4204">4204</span>
+<span id="4205">4205</span>
+<span id="4206">4206</span>
+<span id="4207">4207</span>
+<span id="4208">4208</span>
+<span id="4209">4209</span>
+<span id="4210">4210</span>
+<span id="4211">4211</span>
+<span id="4212">4212</span>
+<span id="4213">4213</span>
+<span id="4214">4214</span>
+<span id="4215">4215</span>
+<span id="4216">4216</span>
 </pre><pre class="rust"><code><span class="doccomment">//! `server` contains the query server, which is the main high level construction</span>
 <span class="doccomment">//! to coordinate queries and operations in the server.</span>
 
@@ -4231,6 +4254,7 @@
     <span class="ident">Schema</span>, <span class="ident">SchemaAttribute</span>, <span class="ident">SchemaClass</span>, <span class="ident">SchemaReadTransaction</span>, <span class="ident">SchemaTransaction</span>,
     <span class="ident">SchemaWriteTransaction</span>,
 };
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::valueset::uuid_to_proto_string</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">ConsistencyError</span>, <span class="ident">SchemaError</span>};
 
 <span class="kw">const</span> <span class="ident">RESOLVE_FILTER_CACHE_MAX</span>: <span class="ident">usize</span> <span class="op">=</span> <span class="number">4096</span>;
@@ -4247,7 +4271,7 @@
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_ACC</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;access_control_create&quot;</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_ACP</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;access_control_profile&quot;</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVCLASS_OAUTH2_RS</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_class</span>(<span class="string">&quot;oauth2_resource_server&quot;</span>);
-    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVUUID_DOMAIN_INFO</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>);
+    <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVUUID_DOMAIN_INFO</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">UUID_DOMAIN_INFO</span>);
     <span class="kw">static</span> <span class="kw-2">ref</span> <span class="ident">PVACP_ENABLE_FALSE</span>: <span class="ident">PartialValue</span> <span class="op">=</span> <span class="ident">PartialValue::new_bool</span>(<span class="bool-val">false</span>);
 }
 
@@ -4484,7 +4508,7 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Value</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_be_txn</span>().<span class="ident">uuid2spn</span>(<span class="ident">uuid</span>)<span class="question-mark">?</span>;
 
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">ref</span> <span class="ident">n</span>) <span class="op">=</span> <span class="ident">r</span> {
@@ -4496,7 +4520,7 @@
         <span class="prelude-val">Ok</span>(<span class="ident">r</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="kw-2">&amp;</span><span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    <span class="kw">fn</span> <span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">uuid</span>: <span class="ident">Uuid</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// If we have a some, pass it on, else unwrap into a default.</span>
         <span class="self">self</span>.<span class="ident">get_be_txn</span>()
             .<span class="ident">uuid2rdn</span>(<span class="ident">uuid</span>)
@@ -4859,11 +4883,12 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">r_set</span>) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">as_refer_set</span>() {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">r_set</span>
                 .<span class="ident">iter</span>()
+                .<span class="ident">copied</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ur</span><span class="op">|</span> {
                     <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">ur</span>)<span class="question-mark">?</span>;
                     <span class="kw">match</span> <span class="ident">nv</span> {
                         <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="prelude-val">Ok</span>(<span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>()),
-                        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">ur</span>)),
+                        <span class="prelude-val">None</span> =&gt; <span class="prelude-val">Ok</span>(<span class="ident">uuid_to_proto_string</span>(<span class="ident">ur</span>)),
                     }
                 })
                 .<span class="ident">collect</span>();
@@ -4872,10 +4897,10 @@
             <span class="kw">let</span> <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">r_map</span>
                 .<span class="ident">iter</span>()
                 .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">u</span>, <span class="ident">m</span>)<span class="op">|</span> {
-                    <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">u</span>)<span class="question-mark">?</span>;
+                    <span class="kw">let</span> <span class="ident">nv</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">*</span><span class="ident">u</span>)<span class="question-mark">?</span>;
                     <span class="kw">let</span> <span class="ident">u</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">nv</span> {
                         <span class="prelude-val">Some</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">to_proto_string_clone</span>(),
-                        <span class="prelude-val">None</span> =&gt; <span class="ident">ValueSet::uuid_to_proto_string</span>(<span class="ident">u</span>),
+                        <span class="prelude-val">None</span> =&gt; <span class="ident">uuid_to_proto_string</span>(<span class="kw-2">*</span><span class="ident">u</span>),
                     };
                     <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{}: {:?}&quot;</span>, <span class="ident">u</span>, <span class="ident">m</span>))
                 })
@@ -4895,6 +4920,7 @@
         <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">r_set</span>) <span class="op">=</span> <span class="ident">value</span>.<span class="ident">as_refer_set</span>() {
             <span class="kw">let</span> <span class="ident">v</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">r_set</span>
                 .<span class="ident">iter</span>()
+                .<span class="ident">copied</span>()
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">ur</span><span class="op">|</span> {
                     <span class="kw">let</span> <span class="ident">rdn</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">uuid_to_rdn</span>(<span class="ident">ur</span>)<span class="question-mark">?</span>;
                     <span class="prelude-val">Ok</span>(<span class="macro">format!</span>(<span class="string">&quot;{},{}&quot;</span>, <span class="ident">rdn</span>, <span class="ident">basedn</span>))
@@ -4913,7 +4939,8 @@
     <span class="kw">fn</span> <span class="ident">get_db_domain_name</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
             .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
-                <span class="ident">e</span>.<span class="ident">get_ava_single_str</span>(<span class="string">&quot;domain_name&quot;</span>)
+                <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">e</span>);
+                <span class="ident">e</span>.<span class="ident">get_ava_single_iname</span>(<span class="string">&quot;domain_name&quot;</span>)
                     .<span class="ident">map</span>(<span class="ident">str::to_string</span>)
                     .<span class="ident">ok_or</span>(<span class="ident">OperationError::InvalidEntryState</span>)
             })
@@ -4952,7 +4979,7 @@
     <span class="comment">// This is a helper to get password badlist.</span>
     <span class="kw">fn</span> <span class="ident">get_password_badlist</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">HashSet</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="self">self</span>.<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_SYSTEM_CONFIG</span>)
-            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_as_str</span>(<span class="string">&quot;badlist_password&quot;</span>) {
+            .<span class="ident">and_then</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> <span class="kw">match</span> <span class="ident">e</span>.<span class="ident">get_ava_iter_iutf8</span>(<span class="string">&quot;badlist_password&quot;</span>) {
                 <span class="prelude-val">Some</span>(<span class="ident">vs_str_iter</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">badlist_hashset</span>: <span class="ident">HashSet</span><span class="op">&lt;</span><span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">vs_str_iter</span>.<span class="ident">map</span>(<span class="ident">str::to_string</span>).<span class="ident">collect</span>();
                     <span class="prelude-val">Ok</span>(<span class="ident">badlist_hashset</span>)
@@ -5196,7 +5223,7 @@
         <span class="kw">let</span> <span class="ident">d_info</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">write</span>();
 
         <span class="attribute">#[<span class="ident">allow</span>(<span class="ident">clippy::expect_used</span>)]</span>
-        <span class="kw">let</span> <span class="ident">ts_max</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="ident">ts</span>).<span class="ident">expect</span>(<span class="string">&quot;Unable to get db_ts_max&quot;</span>);
+        <span class="kw">let</span> <span class="ident">ts_max</span> <span class="op">=</span> <span class="ident">be_txn</span>.<span class="ident">get_db_ts_max</span>(<span class="ident">ts</span>).<span class="ident">expect</span>(<span class="string">&quot;Unable to get db_ts_max&quot;</span>);
         <span class="kw">let</span> <span class="ident">cid</span> <span class="op">=</span> <span class="ident">Cid::new_lamport</span>(<span class="self">self</span>.<span class="ident">s_uuid</span>, <span class="ident">d_info</span>.<span class="ident">d_uuid</span>, <span class="ident">ts</span>, <span class="kw-2">&amp;</span><span class="ident">ts_max</span>);
 
         <span class="ident">QueryServerWriteTransaction</span> {
@@ -5713,12 +5740,12 @@
 
             <span class="kw">for</span> <span class="ident">e</span> <span class="kw">in</span> <span class="ident">revive_cands</span> {
                 <span class="comment">// Get this entries uuid.</span>
-                <span class="kw">let</span> <span class="ident">u</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="kw-2">*</span><span class="ident">e</span>.<span class="ident">get_uuid</span>();
+                <span class="kw">let</span> <span class="ident">u</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>();
 
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">riter</span>) <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_ava_as_refuuid</span>(<span class="string">&quot;directmemberof&quot;</span>) {
                     <span class="kw">for</span> <span class="ident">g_uuid</span> <span class="kw">in</span> <span class="ident">riter</span> {
                         <span class="ident">dm_mods</span>
-                            .<span class="ident">entry</span>(<span class="kw-2">*</span><span class="ident">g_uuid</span>)
+                            .<span class="ident">entry</span>(<span class="ident">g_uuid</span>)
                             .<span class="ident">and_modify</span>(<span class="op">|</span><span class="ident">mlist</span><span class="op">|</span> {
                                 <span class="kw">let</span> <span class="ident">m</span> <span class="op">=</span> <span class="ident">Modify::Present</span>(
                                     <span class="ident">AttrString::from</span>(<span class="string">&quot;member&quot;</span>),
@@ -5808,6 +5835,9 @@
                     <span class="kw">return</span> <span class="prelude-val">Err</span>(<span class="ident">OperationError::NoMatchingEntries</span>);
                 }
             };
+
+            <span class="macro">trace!</span>(<span class="string">&quot;modify: pre_candidates -&gt; {:?}&quot;</span>, <span class="ident">pre_candidates</span>);
+            <span class="macro">trace!</span>(<span class="string">&quot;modify: modlist -&gt; {:?}&quot;</span>, <span class="ident">me</span>.<span class="ident">modlist</span>);
 
             <span class="comment">// Are we allowed to make the changes we want to?</span>
             <span class="comment">// modify_allow_operation</span>
@@ -6138,10 +6168,14 @@
 
             <span class="ident">candidates</span>.<span class="ident">iter_mut</span>().<span class="ident">try_for_each</span>(<span class="op">|</span><span class="ident">er</span><span class="op">|</span> {
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">er</span>.<span class="ident">get_ava_mut</span>(<span class="string">&quot;name&quot;</span>) {
-                    <span class="ident">vs</span>.<span class="ident">migrate_iutf8_iname</span>()<span class="question-mark">?</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">nvs</span>) <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">migrate_iutf8_iname</span>()<span class="question-mark">?</span> {
+                        <span class="ident">std::mem::swap</span>(<span class="kw-2">&amp;mut</span> <span class="ident">nvs</span>, <span class="ident">vs</span>)
+                    }
                 };
                 <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">vs</span>) <span class="op">=</span> <span class="ident">er</span>.<span class="ident">get_ava_mut</span>(<span class="string">&quot;domain_name&quot;</span>) {
-                    <span class="ident">vs</span>.<span class="ident">migrate_iutf8_iname</span>()<span class="question-mark">?</span>
+                    <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="kw-2">mut</span> <span class="ident">nvs</span>) <span class="op">=</span> <span class="ident">vs</span>.<span class="ident">migrate_iutf8_iname</span>()<span class="question-mark">?</span> {
+                        <span class="ident">std::mem::swap</span>(<span class="kw-2">&amp;mut</span> <span class="ident">nvs</span>, <span class="ident">vs</span>)
+                    }
                 };
                 <span class="prelude-val">Ok</span>(())
             })<span class="question-mark">?</span>;
@@ -6854,21 +6888,23 @@
     }
 
     <span class="kw">fn</span> <span class="ident">reload_domain_info</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
-        <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_domain_name</span>()<span class="question-mark">?</span>;
+        <span class="macro">spanned!</span>(<span class="string">&quot;server::reload_domain_info&quot;</span>, {
+            <span class="kw">let</span> <span class="ident">domain_name</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">get_db_domain_name</span>()<span class="question-mark">?</span>;
 
-        <span class="kw">let</span> <span class="ident">mut_d_info</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">get_mut</span>();
-        <span class="kw">if</span> <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">domain_name</span> {
-            <span class="macro">admin_warn!</span>(
-                <span class="string">&quot;Using database configured domain name {} - was {}&quot;</span>,
-                <span class="ident">domain_name</span>,
-                <span class="ident">mut_d_info</span>.<span class="ident">d_name</span>,
-            );
-            <span class="macro">admin_warn!</span>(
-                <span class="string">&quot;If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain&quot;</span>
-            );
-            <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">=</span> <span class="ident">domain_name</span>;
-        }
-        <span class="prelude-val">Ok</span>(())
+            <span class="kw">let</span> <span class="ident">mut_d_info</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">d_info</span>.<span class="ident">get_mut</span>();
+            <span class="kw">if</span> <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">!</span><span class="op">=</span> <span class="ident">domain_name</span> {
+                <span class="macro">admin_warn!</span>(
+                    <span class="string">&quot;Using database configured domain name {} - was {}&quot;</span>,
+                    <span class="ident">domain_name</span>,
+                    <span class="ident">mut_d_info</span>.<span class="ident">d_name</span>,
+                );
+                <span class="macro">admin_warn!</span>(
+                    <span class="string">&quot;If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain&quot;</span>
+                );
+                <span class="ident">mut_d_info</span>.<span class="ident">d_name</span> <span class="op">=</span> <span class="ident">domain_name</span>;
+            }
+            <span class="prelude-val">Ok</span>(())
+        })
     }
 
     <span class="doccomment">/// Initiate a domain rename process. This is generally an internal function but it&#39;s</span>
@@ -6891,7 +6927,7 @@
         <span class="ident">new_domain_name</span>: <span class="kw-2">&amp;</span><span class="ident">str</span>,
     ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">modl</span> <span class="op">=</span> <span class="ident">ModifyList::new_purge_and_set</span>(<span class="string">&quot;domain_name&quot;</span>, <span class="ident">Value::new_iname</span>(<span class="ident">new_domain_name</span>));
-        <span class="kw">let</span> <span class="ident">udi</span> <span class="op">=</span> <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>);
+        <span class="kw">let</span> <span class="ident">udi</span> <span class="op">=</span> <span class="ident">PVUUID_DOMAIN_INFO</span>.<span class="ident">clone</span>();
         <span class="kw">let</span> <span class="ident">filt</span> <span class="op">=</span> <span class="macro">filter_all!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">udi</span>));
         <span class="self">self</span>.<span class="ident">internal_modify</span>(<span class="kw-2">&amp;</span><span class="ident">filt</span>, <span class="kw-2">&amp;</span><span class="ident">modl</span>)
     }
@@ -6962,7 +6998,7 @@
 
         <span class="comment">// Write the cid to the db. If this fails, we can&#39;t assume replication</span>
         <span class="comment">// will be stable, so return if it fails.</span>
-        <span class="ident">be_txn</span>.<span class="ident">set_db_ts_max</span>(<span class="kw-2">&amp;</span><span class="ident">cid</span>.<span class="ident">ts</span>)<span class="question-mark">?</span>;
+        <span class="ident">be_txn</span>.<span class="ident">set_db_ts_max</span>(<span class="ident">cid</span>.<span class="ident">ts</span>)<span class="question-mark">?</span>;
         <span class="comment">// Validate the schema as we just loaded it.</span>
         <span class="kw">let</span> <span class="ident">r</span> <span class="op">=</span> <span class="ident">schema</span>.<span class="ident">validate</span>();
 
@@ -7686,17 +7722,17 @@
 
             <span class="comment">// Name doesn&#39;t exist</span>
             <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).<span class="ident">unwrap</span>());
+                .<span class="ident">uuid_to_spn</span>(<span class="ident">Uuid::parse_str</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).<span class="ident">unwrap</span>());
             <span class="comment">// There is nothing.</span>
             <span class="macro">assert!</span>(<span class="ident">r1</span> <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
             <span class="comment">// Name does exist</span>
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>());
+                .<span class="ident">uuid_to_spn</span>(<span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>());
             <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">r3</span>);
             <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">unwrap</span>().<span class="ident">unwrap</span>() <span class="op">==</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
             <span class="comment">// Name is not syntax normalised (but exists)</span>
             <span class="kw">let</span> <span class="ident">r4</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).<span class="ident">unwrap</span>());
+                .<span class="ident">uuid_to_spn</span>(<span class="ident">Uuid::parse_str</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).<span class="ident">unwrap</span>());
             <span class="macro">assert!</span>(<span class="ident">r4</span>.<span class="ident">unwrap</span>().<span class="ident">unwrap</span>() <span class="op">==</span> <span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>));
         })
     }
@@ -7724,17 +7760,17 @@
 
             <span class="comment">// Name doesn&#39;t exist</span>
             <span class="kw">let</span> <span class="ident">r1</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).<span class="ident">unwrap</span>());
+                .<span class="ident">uuid_to_rdn</span>(<span class="ident">Uuid::parse_str</span>(<span class="string">&quot;bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>).<span class="ident">unwrap</span>());
             <span class="comment">// There is nothing.</span>
             <span class="macro">assert!</span>(<span class="ident">r1</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a&quot;</span>);
             <span class="comment">// Name does exist</span>
             <span class="kw">let</span> <span class="ident">r3</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>());
+                .<span class="ident">uuid_to_rdn</span>(<span class="ident">Uuid::parse_str</span>(<span class="string">&quot;cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>).<span class="ident">unwrap</span>());
             <span class="macro">println!</span>(<span class="string">&quot;{:?}&quot;</span>, <span class="ident">r3</span>);
             <span class="macro">assert!</span>(<span class="ident">r3</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
             <span class="comment">// Uuid is not syntax normalised (but exists)</span>
             <span class="kw">let</span> <span class="ident">r4</span> <span class="op">=</span> <span class="ident">server_txn</span>
-                .<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">Uuid::parse_str</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).<span class="ident">unwrap</span>());
+                .<span class="ident">uuid_to_rdn</span>(<span class="ident">Uuid::parse_str</span>(<span class="string">&quot;CC8E95B4-C24F-4D68-BA54-8BED76F63930&quot;</span>).<span class="ident">unwrap</span>());
             <span class="macro">assert!</span>(<span class="ident">r4</span>.<span class="ident">unwrap</span>() <span class="op">==</span> <span class="string">&quot;spn=testperson1@example.com&quot;</span>);
         })
     }
@@ -7763,12 +7799,10 @@
             <span class="kw">let</span> <span class="ident">cr</span> <span class="op">=</span> <span class="ident">server_txn</span>.<span class="ident">create</span>(<span class="kw-2">&amp;</span><span class="ident">ce</span>);
             <span class="macro">assert!</span>(<span class="ident">cr</span>.<span class="ident">is_ok</span>());
 
-            <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>())
-            );
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>()));
 
             <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>)
+                <span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">tuuid</span>)
                     <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>)))
             );
 
@@ -7785,11 +7819,11 @@
 
             <span class="comment">// all should fail</span>
             <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>)
+                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="ident">tuuid</span>)
                     <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930&quot;</span>.<span class="ident">to_string</span>())
             );
 
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">None</span>));
 
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">name_to_uuid</span>(<span class="string">&quot;testperson1&quot;</span>).<span class="ident">is_err</span>());
 
@@ -7807,12 +7841,10 @@
 
             <span class="comment">// all checks pass</span>
 
-            <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>())
-            );
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">uuid_to_rdn</span>(<span class="ident">tuuid</span>) <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="string">&quot;spn=testperson1@example.com&quot;</span>.<span class="ident">to_string</span>()));
 
             <span class="macro">assert!</span>(
-                <span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="kw-2">&amp;</span><span class="ident">tuuid</span>)
+                <span class="ident">server_txn</span>.<span class="ident">uuid_to_spn</span>(<span class="ident">tuuid</span>)
                     <span class="op">==</span> <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="ident">Value::new_spn_str</span>(<span class="string">&quot;testperson1&quot;</span>, <span class="string">&quot;example.com&quot;</span>)))
             );
 
@@ -8329,11 +8361,11 @@
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_syn</span>).<span class="ident">is_ok</span>());
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
 
-            <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
+            <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
             <span class="comment">// ++ Mod domain name and name to be the old type.</span>
             <span class="kw">let</span> <span class="ident">me_dn</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                 <span class="ident">ModifyEvent::new_internal_invalid</span>(
-                    <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>))),
+                    <span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="kw-2">*</span><span class="ident">UUID_DOMAIN_INFO</span>))),
                     <span class="ident">ModifyList::new_list</span>(<span class="macro">vec!</span>[
                         <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;name&quot;</span>)),
                         <span class="ident">Modify::Purged</span>(<span class="ident">AttrString::from</span>(<span class="string">&quot;domain_name&quot;</span>)),
@@ -8346,13 +8378,17 @@
                 )
             };
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_dn</span>).<span class="ident">is_ok</span>());
+
             <span class="comment">// Now, both the types are invalid.</span>
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+
+            <span class="comment">// WARNING! We can&#39;t commit here because this triggers domain_reload which will fail</span>
+            <span class="comment">// due to incorrect syntax of the domain name! Run the migration in the same txn!</span>
+            <span class="comment">// Trigger a schema reload.</span>
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">reload_schema</span>().<span class="ident">is_ok</span>());
 
             <span class="comment">// We can&#39;t just re-run the migrate here because name takes it&#39;s definition from</span>
             <span class="comment">// in memory, and we can&#39;t re-run the initial memory gen. So we just fix it to match</span>
             <span class="comment">// what the migrate &quot;would do&quot;.</span>
-            <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
             <span class="kw">let</span> <span class="ident">me_syn</span> <span class="op">=</span> <span class="kw">unsafe</span> {
                 <span class="ident">ModifyEvent::new_internal_invalid</span>(
                     <span class="macro">filter!</span>(<span class="macro">f_or!</span>([
@@ -8366,11 +8402,15 @@
                 )
             };
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">modify</span>(<span class="kw-2">&amp;</span><span class="ident">me_syn</span>).<span class="ident">is_ok</span>());
-            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
+
+            <span class="comment">// WARNING! We can&#39;t commit here because this triggers domain_reload which will fail</span>
+            <span class="comment">// due to incorrect syntax of the domain name! Run the migration in the same txn!</span>
+            <span class="comment">// Trigger a schema reload.</span>
+            <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">reload_schema</span>().<span class="ident">is_ok</span>());
 
             <span class="comment">// ++ Run the upgrade for X to Y</span>
-            <span class="kw">let</span> <span class="ident">server_txn</span> <span class="op">=</span> <span class="ident">server</span>.<span class="ident">write</span>(<span class="ident">duration_from_epoch_now</span>());
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">migrate_2_to_3</span>().<span class="ident">is_ok</span>());
+
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
 
             <span class="comment">// Assert that it migrated and worked as expected.</span>
@@ -8379,12 +8419,18 @@
                 .<span class="ident">internal_search_uuid</span>(<span class="kw-2">&amp;</span><span class="ident">UUID_DOMAIN_INFO</span>)
                 .<span class="ident">expect</span>(<span class="string">&quot;failed&quot;</span>);
             <span class="comment">// ++ assert all names are iname</span>
-            <span class="macro">assert!</span>(<span class="ident">domain</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;name&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;no name?&quot;</span>).<span class="ident">is_iname</span>());
+            <span class="macro">assert!</span>(
+                <span class="ident">domain</span>.<span class="ident">get_ava_set</span>(<span class="string">&quot;name&quot;</span>).<span class="ident">expect</span>(<span class="string">&quot;no name?&quot;</span>).<span class="ident">syntax</span>()
+                    <span class="op">==</span> <span class="ident">SyntaxType::Utf8StringIname</span>
+            );
             <span class="comment">// ++ assert all domain/domain_name are iname</span>
-            <span class="macro">assert!</span>(<span class="ident">domain</span>
-                .<span class="ident">get_ava_set</span>(<span class="string">&quot;domain_name&quot;</span>)
-                .<span class="ident">expect</span>(<span class="string">&quot;no domain_name?&quot;</span>)
-                .<span class="ident">is_iname</span>());
+            <span class="macro">assert!</span>(
+                <span class="ident">domain</span>
+                    .<span class="ident">get_ava_set</span>(<span class="string">&quot;domain_name&quot;</span>)
+                    .<span class="ident">expect</span>(<span class="string">&quot;no domain_name?&quot;</span>)
+                    .<span class="ident">syntax</span>()
+                    <span class="op">==</span> <span class="ident">SyntaxType::Utf8StringIname</span>
+            );
             <span class="macro">assert!</span>(<span class="ident">server_txn</span>.<span class="ident">commit</span>().<span class="ident">is_ok</span>());
         })
     }

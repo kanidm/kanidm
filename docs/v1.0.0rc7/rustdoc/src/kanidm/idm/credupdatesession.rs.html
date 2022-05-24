@@ -1930,6 +1930,8 @@
 <span id="1925">1925</span>
 <span id="1926">1926</span>
 <span id="1927">1927</span>
+<span id="1928">1928</span>
+<span id="1929">1929</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::access::AccessControlsTransaction</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential</span>::{<span class="ident">BackupCodes</span>, <span class="ident">Credential</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::account::Account</span>;
@@ -1991,6 +1993,7 @@
     <span class="kw">pub</span> <span class="ident">max_ttl</span>: <span class="ident">Duration</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialUpdateSessionToken</span> {
     <span class="kw">pub</span> <span class="ident">token_enc</span>: <span class="ident">String</span>,
 }
@@ -2305,7 +2308,7 @@
             <span class="self">self</span>.<span class="ident">qs_write</span>
                 .<span class="ident">internal_modify</span>(
                     <span class="comment">// Filter as executed</span>
-                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                    <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                     <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
                 )
                 .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2417,7 +2420,7 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">internal_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -2536,7 +2539,7 @@
         <span class="self">self</span>.<span class="ident">qs_write</span>
             .<span class="ident">internal_modify</span>(
                 <span class="comment">// Filter as executed</span>
-                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuidr</span>(<span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
+                <span class="kw-2">&amp;</span><span class="macro">filter!</span>(<span class="ident">f_eq</span>(<span class="string">&quot;uuid&quot;</span>, <span class="ident">PartialValue::new_uuid</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">uuid</span>))),
                 <span class="kw-2">&amp;</span><span class="ident">modlist</span>,
             )
             .<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
@@ -3161,6 +3164,7 @@
             <span class="comment">// Already used.</span>
             <span class="kw">let</span> <span class="ident">cur</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>.<span class="ident">exchange_intent_credential_update</span>(<span class="ident">intent_tok</span>, <span class="ident">ct</span>);
 
+            <span class="macro">trace!</span>(<span class="question-mark">?</span><span class="ident">cur</span>);
             <span class="macro">assert!</span>(<span class="ident">cur</span>.<span class="ident">is_err</span>());
         })
     }

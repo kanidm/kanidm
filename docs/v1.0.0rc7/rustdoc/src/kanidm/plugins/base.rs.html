@@ -682,7 +682,6 @@
 <span id="677">677</span>
 <span id="678">678</span>
 <span id="679">679</span>
-<span id="680">680</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::plugins::Plugin</span>;
 <span class="kw">use</span> <span class="ident">hashbrown::HashSet</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeSet</span>;
@@ -771,7 +770,6 @@
         <span class="kw">for</span> <span class="ident">entry</span> <span class="kw">in</span> <span class="ident">cand</span>.<span class="ident">iter</span>() {
             <span class="kw">let</span> <span class="ident">uuid_ref</span>: <span class="ident">Uuid</span> <span class="op">=</span> <span class="ident">entry</span>
                 .<span class="ident">get_ava_single_uuid</span>(<span class="string">&quot;uuid&quot;</span>)
-                .<span class="ident">copied</span>()
                 .<span class="ident">ok_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="ident">OperationError::InvalidAttribute</span>(<span class="string">&quot;uuid&quot;</span>.<span class="ident">to_string</span>()))<span class="question-mark">?</span>;
             <span class="macro">trace!</span>(<span class="string">&quot;Entry valid UUID: {:?}&quot;</span>, <span class="ident">entry</span>);
             <span class="kw">if</span> <span class="op">!</span><span class="ident">cand_uuid</span>.<span class="ident">insert</span>(<span class="ident">uuid_ref</span>) {
@@ -896,7 +894,7 @@
                 <span class="comment">// uniqueness!</span>
                 <span class="kw">let</span> <span class="ident">uuid</span> <span class="op">=</span> <span class="ident">e</span>.<span class="ident">get_uuid</span>();
 
-                <span class="kw">if</span> <span class="ident">uuid_seen</span>.<span class="ident">insert</span>(<span class="kw-2">*</span><span class="ident">uuid</span>) {
+                <span class="kw">if</span> <span class="ident">uuid_seen</span>.<span class="ident">insert</span>(<span class="ident">uuid</span>) {
                     <span class="comment">// Insert returns true if the item was unique.</span>
                     <span class="prelude-val">Ok</span>(())
                 } <span class="kw">else</span> {
