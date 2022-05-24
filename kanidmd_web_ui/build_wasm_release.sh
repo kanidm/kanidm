@@ -1,7 +1,9 @@
 #!/bin/sh
-wasm-pack build --no-typescript --release --target web && \
+wasm-pack build --release --target web && \
     cp ./src/style.css ./pkg/style.css && \
+    cp ./src/wasmloader.js ./pkg/wasmloader.js && \
+    cp ./src/favicon.svg ./pkg/favicon.svg && \
     cp -a ./src/external ./pkg/external && \
     rm ./pkg/.gitignore
-    
+
 
