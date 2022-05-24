@@ -260,7 +260,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
         let rs_set: Result<HashMap<_, _>, _> = value
             .into_iter()
             .map(|ent| {
-                let uuid = *ent.get_uuid();
+                let uuid = ent.get_uuid();
                 admin_info!(?uuid, "Checking oauth2 configuration");
                 // From each entry, attempt to make an oauth2 configuration.
                 if !ent.attribute_equality("class", &CLASS_OAUTH2) {
@@ -272,12 +272,12 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                     // Now we know we can load the attrs.
                     trace!("name");
                     let name = ent
-                        .get_ava_single_str("oauth2_rs_name")
+                        .get_ava_single_iname("oauth2_rs_name")
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("displayname");
                     let displayname = ent
-                        .get_ava_single_str("displayname")
+                        .get_ava_single_utf8("displayname")
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("origin");
@@ -287,7 +287,7 @@ impl<'a> Oauth2ResourceServersWriteTransaction<'a> {
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("authz_secret");
                     let authz_secret = ent
-                        .get_ava_single_str("oauth2_rs_basic_secret")
+                        .get_ava_single_utf8("oauth2_rs_basic_secret")
                         .map(str::to_string)
                         .ok_or(OperationError::InvalidValueState)?;
                     trace!("token_key");
@@ -1347,7 +1347,7 @@ mod tests {
             .internal_search_uuid(&uuid)
             .expect("Failed to retrieve oauth2 resource entry ");
         let secret = entry
-            .get_ava_single_str("oauth2_rs_basic_secret")
+            .get_ava_single_utf8("oauth2_rs_basic_secret")
             .map(str::to_string)
             .expect("No oauth2_rs_basic_secret found");
 

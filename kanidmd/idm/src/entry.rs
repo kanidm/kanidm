@@ -33,18 +33,20 @@ use crate::repl::cid::Cid;
 use crate::schema::{SchemaAttribute, SchemaClass, SchemaTransaction};
 use crate::value::{IndexType, SyntaxType};
 use crate::value::{IntentTokenState, PartialValue, Value};
-use crate::valueset::ValueSet;
+use crate::valueset::{self, ValueSet};
 use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Filter as ProtoFilter;
 use kanidm_proto::v1::{OperationError, SchemaError};
 use tracing::trace;
 
-use crate::be::dbentry::{DbEntry, DbEntryV1, DbEntryVers};
+use crate::be::dbentry::{DbEntry, DbEntryV2, DbEntryVers};
+use crate::be::dbvalue::DbValueSetV2;
 use crate::be::{IdxKey, IdxSlope};
 
 use hashbrown::HashMap;
 use ldap3_proto::simple::{LdapPartialAttribute, LdapSearchResultEntry};
 use smartstring::alias::String as AttrString;
+use std::cmp::Ordering;
 use std::collections::BTreeMap as Map;
 pub use std::collections::BTreeSet as Set;
 use std::collections::BTreeSet;
@@ -165,7 +167,10 @@ fn compare_attrs(left: &Map<AttrString, ValueSet>, right: &Map<AttrString, Value
 
     allkeys.into_iter().all(|k| {
         // Both must be Some, and both must have the same interiors.
-        left.get(k) == right.get(k)
+        match (left.get(k), right.get(k)) {
+            (Some(l), Some(r)) => l.eq(r),
+            _ => false,
+        }
     })
 }
 
@@ -212,6 +217,7 @@ where
         f.debug_struct("Entry<EntrySealed, _>")
             .field("state", &self.state)
             .field("valid", &self.valid)
+            .field("attrs", &self.attrs)
             .finish()
     }
 }
@@ -230,7 +236,7 @@ impl<STATE> std::fmt::Display for Entry<EntryInit, STATE> {
 
 impl<STATE> Entry<EntryInit, STATE> {
     /// Get the uuid of this entry.
-    pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
+    pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 }
@@ -273,7 +279,7 @@ impl Entry<EntryInit, EntryNew> {
                 trace!(?k, ?v, "attribute");
                 let nk = qs.get_schema().normalise_attr_name(k);
                 let nv =
-                    ValueSet::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&nk, vr)));
+                    valueset::from_result_value_iter(v.iter().map(|vr| qs.clone_value(&nk, vr)));
                 trace!(?nv, "new valueset transform");
                 match nv {
                     Ok(nvi) => Ok((nk, nvi)),
@@ -332,115 +338,133 @@ impl Entry<EntryInit, EntryNew> {
                 let attr = AttrString::from(k.to_lowercase());
                 let vv: ValueSet = match attr.as_str() {
                     "attributename" | "classname" | "domain" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_iutf8(&v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_iutf8(&v))
+                        )
                     }
                     "name" | "domain_name" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_iname(&v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_iname(&v))
+                        )
                     }
                     "userid" | "uidnumber" => {
                         warn!("WARNING: Use of unstabilised attributes userid/uidnumber");
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_iutf8(&v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_iutf8(&v))
+                        )
                     }
                     "class" | "acp_create_class" | "acp_modify_class"  => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_class(v.as_str())).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_class(v.as_str()))
+                        )
                     }
                     "acp_create_attr" | "acp_search_attr" | "acp_modify_removedattr" | "acp_modify_presentattr" |
                     "systemmay" | "may" | "systemmust" | "must"
                     => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_attr(v.as_str())).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_attr(v.as_str()))
+                        )
                     }
                     "uuid" | "domain_uuid" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_uuids(v.as_str())
-                            .unwrap_or_else(|| {
-                                warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
-                                Value::new_utf8(v)
-                            })
-                        ).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_uuids(v.as_str())
+                                .unwrap_or_else(|| {
+                                    warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
+                                    Value::new_utf8(v)
+                                })
+                            )
+                        )
                     }
                     "member" | "memberof" | "directmemberof" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() ).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_refer_s(v.as_str()).unwrap() )
+                        )
                     }
                     "acp_enable" | "multivalue" | "unique" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_bools(v.as_str())
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| Value::new_bools(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                            ).collect();
-                        vs.unwrap()
+                            )
+                        )
                     }
                     "syntax" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| Value::new_syntaxs(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect();
-                        vs.unwrap()
+                        )
+                        )
                     }
                     "index" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_indexs(v.as_str())
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| Value::new_indexs(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect();
-                        vs.unwrap()
+                        )
+                        )
                     }
                     "acp_targetscope" | "acp_receiver" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| Value::new_json_filter_s(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        ).collect();
-                        vs.unwrap()
+                        )
+                        )
                     }
                     "displayname" | "description" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_utf8(v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| Value::new_utf8(v))
+                        )
                     }
                     "spn" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| {
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| {
                             Value::new_spn_parse(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect SPN attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        }).collect();
-                        vs.unwrap()
+                        })
+                        )
                     }
                     "gidnumber" | "version" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| {
+                        valueset::from_value_iter(
+                        vs.into_iter().map(|v| {
                             Value::new_uint32_str(v.as_str())
                             .unwrap_or_else(|| {
                                 warn!("WARNING: Allowing syntax incorrect UINT32 attribute to be presented UTF8 string");
                                 Value::new_utf8(v)
                             })
-                        }).collect();
-                        vs.unwrap()
+                        })
+                        )
                     }
                     "domain_token_key" | "fernet_private_key_str" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_secret_str(&v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_secret_str(&v))
+                        )
                     }
                     "es256_private_key_der" => {
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_privatebinary_base64(&v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_privatebinary_base64(&v))
+                        )
                     }
                     ia => {
                         warn!("WARNING: Allowing invalid attribute {} to be interpretted as UTF8 string. YOU MAY ENCOUNTER ODD BEHAVIOUR!!!", ia);
-                        let vs: Option<ValueSet> = vs.into_iter().map(|v| Value::new_utf8(v)).collect();
-                        vs.unwrap()
+                        valueset::from_value_iter(
+                            vs.into_iter().map(|v| Value::new_utf8(v))
+                        )
                     }
-                };
+                }
+                .unwrap();
                 Some((attr, vv))
                 }
             })
@@ -541,7 +565,7 @@ impl Entry<EntryInit, EntryNew> {
 
 impl<STATE> Entry<EntryInvalid, STATE> {
     // This is only used in tests today, but I don't want to cfg test it.
-    pub(crate) fn get_uuid(&self) -> Option<&Uuid> {
+    pub(crate) fn get_uuid(&self) -> Option<Uuid> {
         self.attrs.get("uuid").and_then(|vs| vs.to_uuid_single())
     }
 
@@ -560,7 +584,6 @@ impl<STATE> Entry<EntryInvalid, STATE> {
             .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             .and_then(|vs| {
                 vs.to_uuid_single()
-                    .copied()
                     .ok_or_else(|| SchemaError::MissingMustAttribute(vec!["uuid".to_string()]))
             })?;
 
@@ -592,7 +615,7 @@ impl<STATE> Entry<EntryInvalid, STATE> {
 
             let mut classes: Vec<&SchemaClass> = Vec::with_capacity(entry_classes.len());
 
-            match entry_classes.as_classname_iter() {
+            match entry_classes.as_iutf8_iter() {
                 Some(cls_iter) => cls_iter.for_each(|s| match schema_classes.get(s) {
                     Some(x) => classes.push(x),
                     None => invalid_classes.push(s.to_string()),
@@ -925,12 +948,12 @@ impl Entry<EntrySealed, EntryCommitted> {
         // into proper structures, and they themself emit/modify entries?
 
         DbEntry {
-            ent: DbEntryVers::V1(DbEntryV1 {
+            ent: DbEntryVers::V2(DbEntryV2 {
                 attrs: self
                     .attrs
                     .iter()
                     .map(|(k, vs)| {
-                        let dbvs: Vec<_> = vs.to_db_valuev1_iter().collect();
+                        let dbvs: DbValueSetV2 = vs.to_db_valueset_v2();
                         (k.clone(), dbvs)
                     })
                     .collect(),
@@ -963,7 +986,7 @@ impl Entry<EntrySealed, EntryCommitted> {
             .get("spn")
             .and_then(|vs| vs.to_value_single())
             .or_else(|| self.attrs.get("name").and_then(|vs| vs.to_value_single()))
-            .unwrap_or_else(|| Value::new_uuidr(self.get_uuid()))
+            .unwrap_or_else(|| Value::new_uuid(self.get_uuid()))
     }
 
     #[inline]
@@ -1227,34 +1250,74 @@ impl Entry<EntrySealed, EntryCommitted> {
                             }
                             (Some(pre_vs), Some(post_vs)) => {
                                 // it exists in both, we need to work out the differents within the attr.
-                                let removed_vs = pre_vs.idx_eq_key_difference(post_vs);
-                                let added_vs = post_vs.idx_eq_key_difference(pre_vs);
 
-                                let mut diff = Vec::with_capacity(
-                                    removed_vs.as_ref().map(|v| v.len()).unwrap_or(0)
-                                        + added_vs.as_ref().map(|v| v.len()).unwrap_or(0),
-                                );
+                                let mut pre_idx_keys = pre_vs.generate_idx_eq_keys();
+                                pre_idx_keys.sort_unstable();
+                                let mut post_idx_keys = post_vs.generate_idx_eq_keys();
+                                post_idx_keys.sort_unstable();
+
+                                let sz = if pre_idx_keys.len() > post_idx_keys.len() {
+                                    pre_idx_keys.len()
+                                } else {
+                                    post_idx_keys.len()
+                                };
+
+                                let mut pre_iter = pre_idx_keys.iter();
+                                let mut post_iter = post_idx_keys.iter();
+
+                                let mut pre = pre_iter.next();
+                                let mut post = post_iter.next();
+
+                                let mut added_vs = Vec::with_capacity(sz);
+
+                                let mut removed_vs = Vec::with_capacity(sz);
+
+                                loop {
+                                    match (pre, post) {
+                                        (Some(a), Some(b)) => {
+                                            match a.cmp(b) {
+                                                Ordering::Less => {
+                                                    removed_vs.push(a.clone());
+                                                    pre = pre_iter.next();
+                                                }
+                                                Ordering::Equal => {
+                                                    // In both - no action needed.
+                                                    pre = pre_iter.next();
+                                                    post = post_iter.next();
+                                                }
+                                                Ordering::Greater => {
+                                                    added_vs.push(b.clone());
+                                                    post = post_iter.next();
+                                                }
+                                            }
+                                        }
+                                        (Some(a), None) => {
+                                            removed_vs.push(a.clone());
+                                            pre = pre_iter.next();
+                                        }
+                                        (None, Some(b)) => {
+                                            added_vs.push(b.clone());
+                                            post = post_iter.next();
+                                        }
+                                        (None, None) => {
+                                            break;
+                                        }
+                                    }
+                                }
+
+                                let mut diff =
+                                    Vec::with_capacity(removed_vs.len() + added_vs.len());
 
                                 match ikey.itype {
                                     IndexType::Equality => {
-                                        if let Some(removed_vs) = removed_vs {
-                                            removed_vs
-                                                .generate_idx_eq_keys()
-                                                .into_iter()
-                                                .map(|idx_key| {
-                                                    Err((&ikey.attr, &ikey.itype, idx_key))
-                                                })
-                                                .for_each(|v| diff.push(v));
-                                        }
-                                        if let Some(added_vs) = added_vs {
-                                            added_vs
-                                                .generate_idx_eq_keys()
-                                                .into_iter()
-                                                .map(|idx_key| {
-                                                    Ok((&ikey.attr, &ikey.itype, idx_key))
-                                                })
-                                                .for_each(|v| diff.push(v));
-                                        }
+                                        removed_vs
+                                            .into_iter()
+                                            .map(|idx_key| Err((&ikey.attr, &ikey.itype, idx_key)))
+                                            .for_each(|v| diff.push(v));
+                                        added_vs
+                                            .into_iter()
+                                            .map(|idx_key| Ok((&ikey.attr, &ikey.itype, idx_key)))
+                                            .for_each(|v| diff.push(v));
                                     }
                                     IndexType::Presence => {
                                         // No action - we still are "present", so nothing to do!
@@ -1275,29 +1338,28 @@ impl Entry<EntrySealed, EntryCommitted> {
     pub fn from_dbentry(db_e: DbEntry, id: u64) -> Option<Self> {
         // Convert attrs from db format to value
         let r_attrs: Result<Map<AttrString, ValueSet>, ()> = match db_e.ent {
-            DbEntryVers::V1(v1) => v1
+            DbEntryVers::V1(_) => {
+                admin_error!("Db V1 entry should have been migrated!");
+                Err(())
+            }
+            DbEntryVers::V2(v2) => v2
                 .attrs
                 .into_iter()
                 // Skip anything empty as new VS can't deal with it.
                 .filter(|(_k, vs)| !vs.is_empty())
-                .map(|(k, vs)| {
-                    let vv: Result<ValueSet, _> = ValueSet::from_db_valuev1_iter(vs.into_iter());
-                    match vv {
-                        Ok(vv) => Ok((k, vv)),
-                        Err(e) => {
-                            admin_error!(?e, value = ?k, "from_dbentry failed");
-                            Err(())
-                        }
-                    }
+                .map(|(k, dbvs)| {
+                    valueset::from_db_valueset_v2(dbvs)
+                        .map(|vs: ValueSet| (k, vs))
+                        .map_err(|e| {
+                            admin_error!(?e, "from_dbentry failed");
+                        })
                 })
                 .collect(),
         };
 
         let attrs = r_attrs.ok()?;
 
-        let uuid = attrs
-            .get("uuid")
-            .and_then(|vs| vs.to_uuid_single().copied())?;
+        let uuid = attrs.get("uuid").and_then(|vs| vs.to_uuid_single())?;
 
         Some(Entry {
             valid: EntrySealed { uuid },
@@ -1356,16 +1418,12 @@ impl Entry<EntrySealed, EntryCommitted> {
     /// Convert this recycled entry, into a tombstone ready for reaping.
     pub fn to_tombstone(&self, cid: Cid) -> Entry<EntryInvalid, EntryCommitted> {
         // Duplicate this to a tombstone entry
-        let class_ava =
-            unsafe { valueset![Value::new_class("object"), Value::new_class("tombstone")] };
-        let last_mod_ava = ValueSet::new(Value::new_cid(cid.clone()));
+        let class_ava = vs_iutf8!["object", "tombstone"];
+        let last_mod_ava = vs_cid![cid.clone()];
 
         let mut attrs_new: Map<AttrString, ValueSet> = Map::new();
 
-        attrs_new.insert(
-            AttrString::from("uuid"),
-            ValueSet::new(Value::new_uuidr(self.get_uuid())),
-        );
+        attrs_new.insert(AttrString::from("uuid"), vs_uuid![self.get_uuid()]);
         attrs_new.insert(AttrString::from("class"), class_ava);
         attrs_new.insert(AttrString::from("last_modified_cid"), last_mod_ava);
 
@@ -1411,8 +1469,8 @@ impl<STATE> Entry<EntryValid, STATE> {
         }
     }
 
-    pub fn get_uuid(&self) -> &Uuid {
-        &self.valid.uuid
+    pub fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
     }
 }
 
@@ -1429,8 +1487,8 @@ impl<STATE> Entry<EntrySealed, STATE> {
         }
     }
 
-    pub fn get_uuid(&self) -> &Uuid {
-        &self.valid.uuid
+    pub fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
     }
 
     #[cfg(test)]
@@ -1447,8 +1505,8 @@ impl<STATE> Entry<EntrySealed, STATE> {
 }
 
 impl Entry<EntryReduced, EntryCommitted> {
-    pub fn get_uuid(&self) -> &Uuid {
-        &self.valid.uuid
+    pub fn get_uuid(&self) -> Uuid {
+        self.valid.uuid
     }
 
     /// Transform this reduced entry into a JSON protocol form that can be sent to clients.
@@ -1544,30 +1602,38 @@ impl<VALID, STATE> Entry<VALID, STATE> {
             let r = vs.insert_checked(value);
             debug_assert!(r.is_ok());
         } else {
-            self.attrs
-                .insert(AttrString::from(attr), ValueSet::new(value));
+            let vs = valueset::from_value_iter(std::iter::once(value))
+                .expect("Unable to fail - not empty, and only one type!");
+            self.attrs.insert(AttrString::from(attr), vs);
         }
         // Doesn't matter if it already exists, equality will replace.
     }
 
     /// Overwrite the current set of values for an attribute, with this new set.
-    // pub fn set_ava_int(&mut self, attr: &str, values: Set<Value>) {
     pub fn set_ava_int<T>(&mut self, attr: &str, iter: T)
     where
         T: IntoIterator<Item = Value>,
     {
         // Overwrite the existing value, build a tree from the list.
-        let values: Option<ValueSet> = iter.into_iter().collect();
-        if let Some(vs) = values {
-            let _ = self.attrs.insert(AttrString::from(attr), vs);
-        } else {
-            self.attrs.remove(attr);
+        let values = valueset::from_value_iter(iter.into_iter());
+        match values {
+            Ok(vs) => {
+                let _ = self.attrs.insert(AttrString::from(attr), vs);
+            }
+            Err(e) => {
+                admin_warn!(
+                    "dropping content of {} due to invalid valueset {:?}",
+                    attr,
+                    e
+                );
+                self.attrs.remove(attr);
+            }
         }
     }
 
     /// Update the last_changed flag of this entry to the given change identifier.
     fn set_last_changed(&mut self, cid: Cid) {
-        let cv = valueset![Value::new_cid(cid)];
+        let cv = vs_cid![cid];
         let _ = self.attrs.insert(AttrString::from("last_modified_cid"), cv);
     }
 
@@ -1610,18 +1676,24 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         &self,
         attr: &str,
     ) -> Option<&std::collections::BTreeMap<Uuid, IntentTokenState>> {
-        self.attrs.get(attr).and_then(|vs| vs.as_intenttoken())
+        self.attrs.get(attr).and_then(|vs| vs.as_intenttoken_map())
     }
 
     #[inline(always)]
     /// If possible, return an iterator over the set of values transformed into a `&str`.
-    pub fn get_ava_as_str(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
-        self.get_ava_set(attr).and_then(|vs| vs.as_str_iter())
+    pub fn get_ava_iter_iname(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava_set(attr).and_then(|vs| vs.as_iname_iter())
     }
 
     #[inline(always)]
-    /// If possible, return an iterator over the set of values transformed into a `&Uuid`.
-    pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<Box<dyn Iterator<Item = &Uuid> + '_>> {
+    /// If possible, return an iterator over the set of values transformed into a `&str`.
+    pub fn get_ava_iter_iutf8(&self, attr: &str) -> Option<impl Iterator<Item = &str>> {
+        self.get_ava_set(attr).and_then(|vs| vs.as_iutf8_iter())
+    }
+
+    #[inline(always)]
+    /// If possible, return an iterator over the set of values transformed into a `Uuid`.
+    pub fn get_ava_as_refuuid(&self, attr: &str) -> Option<Box<dyn Iterator<Item = Uuid> + '_>> {
         // If any value is NOT a reference, it's filtered out.
         self.get_ava_set(attr).and_then(|vs| vs.as_ref_uuid_iter())
     }
@@ -1645,7 +1717,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     pub(crate) fn get_ava_opt_index(&self, attr: &str) -> Option<Vec<IndexType>> {
         if let Some(vs) = self.get_ava_set(attr) {
-            vs.as_indextype_set().map(|i| i.cloned().collect())
+            vs.as_indextype_iter().map(|i| i.collect())
         } else {
             // Empty, but consider as valid.
             Some(vec![])
@@ -1679,7 +1751,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     #[inline(always)]
     /// Return a single syntax type, if valid to transform this value.
-    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<&SyntaxType> {
+    pub fn get_ava_single_syntax(&self, attr: &str) -> Option<SyntaxType> {
         self.attrs
             .get(attr)
             .and_then(|vs| vs.to_syntaxtype_single())
@@ -1707,8 +1779,20 @@ impl<VALID, STATE> Entry<VALID, STATE> {
 
     #[inline(always)]
     /// Return a single `&str`, if valid to transform this value.
-    pub fn get_ava_single_str(&self, attr: &str) -> Option<&str> {
-        self.attrs.get(attr).and_then(|vs| vs.to_str_single())
+    pub(crate) fn get_ava_single_utf8(&self, attr: &str) -> Option<&str> {
+        self.attrs.get(attr).and_then(|vs| vs.to_utf8_single())
+    }
+
+    #[inline(always)]
+    /// Return a single `&str`, if valid to transform this value.
+    pub(crate) fn get_ava_single_iutf8(&self, attr: &str) -> Option<&str> {
+        self.attrs.get(attr).and_then(|vs| vs.to_iutf8_single())
+    }
+
+    #[inline(always)]
+    /// Return a single `&str`, if valid to transform this value.
+    pub(crate) fn get_ava_single_iname(&self, attr: &str) -> Option<&str> {
+        self.attrs.get(attr).and_then(|vs| vs.to_iname_single())
     }
 
     #[inline(always)]
@@ -1717,11 +1801,11 @@ impl<VALID, STATE> Entry<VALID, STATE> {
         self.attrs.get(attr).and_then(|vs| vs.to_url_single())
     }
 
-    pub fn get_ava_single_uuid(&self, attr: &str) -> Option<&Uuid> {
+    pub fn get_ava_single_uuid(&self, attr: &str) -> Option<Uuid> {
         self.attrs.get(attr).and_then(|vs| vs.to_uuid_single())
     }
 
-    pub fn get_ava_single_refer(&self, attr: &str) -> Option<&Uuid> {
+    pub fn get_ava_single_refer(&self, attr: &str) -> Option<Uuid> {
         self.attrs.get(attr).and_then(|vs| vs.to_refer_single())
     }
 
@@ -1752,7 +1836,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     #[inline(always)]
     /// Return a single security principle name, if valid to transform this value.
     pub(crate) fn generate_spn(&self, domain_name: &str) -> Option<Value> {
-        self.get_ava_single_str("name")
+        self.get_ava_single_iname("name")
             .map(|name| Value::new_spn_str(name, domain_name))
     }
 
@@ -2050,16 +2134,16 @@ impl<VALID, STATE> PartialEq for Entry<VALID, STATE> {
 impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaAttribute) -> Self {
         // Convert an Attribute to an entry ... make it good!
-        let uuid_v = ValueSet::new(Value::new_uuidr(&s.uuid));
-        let name_v = ValueSet::new(Value::new_iutf8(s.name.as_str()));
-        let desc_v = ValueSet::new(Value::new_utf8(s.description.clone()));
+        let uuid_v = vs_uuid![s.uuid];
+        let name_v = vs_iutf8![s.name.as_str()];
+        let desc_v = vs_utf8![s.description.clone()];
 
-        let multivalue_v = ValueSet::new(Value::from(s.multivalue));
-        let unique_v = ValueSet::new(Value::from(s.unique));
+        let multivalue_v = vs_bool![s.multivalue];
+        let unique_v = vs_bool![s.unique];
 
-        let index_v: Option<ValueSet> = s.index.iter().cloned().map(Value::from).collect();
+        let index_v = ValueSetIndex::from_iter(s.index.iter().copied());
 
-        let syntax_v = ValueSet::new(Value::from(s.syntax.clone()));
+        let syntax_v = vs_syntax![s.syntax];
 
         // Build the Map of the attributes relevant
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
@@ -2073,13 +2157,10 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
             attrs.insert(AttrString::from("index"), vs);
         }
         attrs.insert(AttrString::from("syntax"), syntax_v);
-        attrs.insert(AttrString::from("class"), unsafe {
-            valueset![
-                Value::new_class("object"),
-                Value::new_class("system"),
-                Value::new_class("attributetype")
-            ]
-        });
+        attrs.insert(
+            AttrString::from("class"),
+            vs_iutf8!["object", "system", "attributetype"],
+        );
 
         // Insert stuff.
 
@@ -2093,37 +2174,27 @@ impl From<&SchemaAttribute> for Entry<EntryInit, EntryNew> {
 
 impl From<&SchemaClass> for Entry<EntryInit, EntryNew> {
     fn from(s: &SchemaClass) -> Self {
-        let uuid_v = ValueSet::new(Value::new_uuidr(&s.uuid));
-        let name_v = ValueSet::new(Value::new_iutf8(s.name.as_str()));
-        let desc_v = ValueSet::new(Value::new_utf8(s.description.clone()));
+        let uuid_v = vs_uuid![s.uuid];
+        let name_v = vs_iutf8![s.name.as_str()];
+        let desc_v = vs_utf8![s.description.clone()];
 
         // let mut attrs: Map<AttrString, Set<Value>> = Map::with_capacity(8);
         let mut attrs: Map<AttrString, ValueSet> = Map::new();
         attrs.insert(AttrString::from("classname"), name_v);
         attrs.insert(AttrString::from("description"), desc_v);
         attrs.insert(AttrString::from("uuid"), uuid_v);
-        attrs.insert(AttrString::from("class"), unsafe {
-            valueset![
-                Value::new_class("object"),
-                Value::new_class("system"),
-                Value::new_class("classtype")
-            ]
-        });
+        attrs.insert(
+            AttrString::from("class"),
+            vs_iutf8!["object", "system", "classtype"],
+        );
 
-        let vs_systemmay: Option<ValueSet> = s
-            .systemmay
-            .iter()
-            .map(|sm| Value::new_attr(sm.as_str()))
-            .collect();
+        let vs_systemmay = ValueSetIutf8::from_iter(s.systemmay.iter().map(|sm| sm.as_str()));
         if let Some(vs) = vs_systemmay {
             attrs.insert(AttrString::from("systemmay"), vs);
         }
 
-        let vs_systemmust: Option<ValueSet> = s
-            .systemmust
-            .iter()
-            .map(|sm| Value::new_attr(sm.as_str()))
-            .collect();
+        let vs_systemmust = ValueSetIutf8::from_iter(s.systemmust.iter().map(|sm| sm.as_str()));
+
         if let Some(vs) = vs_systemmust {
             attrs.insert(AttrString::from("systemmust"), vs);
         }

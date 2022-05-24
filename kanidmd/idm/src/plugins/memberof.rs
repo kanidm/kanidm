@@ -15,8 +15,8 @@ use crate::event::{CreateEvent, DeleteEvent, ModifyEvent};
 use crate::plugins::Plugin;
 use crate::prelude::*;
 use crate::value::{PartialValue, Value};
-use crate::valueset::ValueSet;
 use kanidm_proto::v1::{ConsistencyError, OperationError};
+use std::collections::BTreeSet;
 
 use hashbrown::HashMap;
 use std::sync::Arc;
@@ -54,7 +54,7 @@ fn do_memberof(
     // Add all the direct mo's and mos.
     let r: Result<(), _> = groups.iter().try_for_each(|g| {
         // TODO: Change add_ava to remove this alloc/clone.
-        let dmo = Value::new_refer(*g.get_uuid());
+        let dmo = Value::new_refer(g.get_uuid());
         tgte.add_ava("directmemberof", dmo.clone());
         tgte.add_ava("memberof", dmo);
 
@@ -117,7 +117,7 @@ fn apply_memberof(
         // Load the vecdeque with this batch.
 
         while let Some((pre, mut tgte)) = work_set.pop() {
-            let guuid = *pre.get_uuid();
+            let guuid = pre.get_uuid();
             // load the entry from the db.
             if !tgte.attribute_equality("class", &CLASS_GROUP) {
                 // It's not a group, we'll deal with you later. We should NOT
@@ -218,7 +218,6 @@ impl Plugin for MemberOf {
                     })
                     .flatten(),
             )
-            .copied()
             .collect();
 
         apply_memberof(qs, group_affect)
@@ -257,7 +256,6 @@ impl Plugin for MemberOf {
                     })
                     .flatten(),
             )
-            .copied()
             .collect();
 
         apply_memberof(qs, group_affect)
@@ -300,7 +298,6 @@ impl Plugin for MemberOf {
                 }
             })
             .flatten()
-            .copied()
             .collect();
 
         apply_memberof(qs, group_affect)
@@ -323,7 +320,7 @@ impl Plugin for MemberOf {
         for e in all_cand {
             let filt_in = filter!(f_and!([
                 f_eq("class", PartialValue::new_class("group")),
-                f_eq("member", PartialValue::new_refer(*e.get_uuid()))
+                f_eq("member", PartialValue::new_refer(e.get_uuid()))
             ]));
 
             let direct_memberof = match qs
@@ -335,19 +332,23 @@ impl Plugin for MemberOf {
             };
             // for all direct -> add uuid to map
 
-            let d_groups_set: Option<ValueSet> = direct_memberof
-                .iter()
-                .map(|e| Value::new_refer(*e.get_uuid()))
-                .collect();
+            let d_groups_set: BTreeSet<Uuid> =
+                direct_memberof.iter().map(|e| e.get_uuid()).collect();
+
+            let d_groups_set = if d_groups_set.is_empty() {
+                None
+            } else {
+                Some(d_groups_set)
+            };
 
             trace!("DMO search groups {:?} -> {:?}", e.get_uuid(), d_groups_set);
 
             match (e.get_ava_set("directmemberof"), d_groups_set) {
-                (Some(edmos), Some(dmos)) => {
+                (Some(edmos), Some(b)) => {
                     // Can they both be reference sets?
-                    match (edmos.as_refer_set(), dmos.as_refer_set()) {
-                        (Some(a), Some(b)) => {
-                            let diff: Vec<_> = a.symmetric_difference(b).collect();
+                    match edmos.as_refer_set() {
+                        Some(a) => {
+                            let diff: Vec<_> = a.symmetric_difference(&b).collect();
                             if !diff.is_empty() {
                                 admin_error!(
                                     "MemberOfInvalid: Entry {}, DMO has inconsistencies -> {:?}",

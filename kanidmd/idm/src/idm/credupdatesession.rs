@@ -59,6 +59,7 @@ struct CredentialUpdateSessionTokenInner {
     pub max_ttl: Duration,
 }
 
+#[derive(Debug)]
 pub struct CredentialUpdateSessionToken {
     pub token_enc: String,
 }
@@ -373,7 +374,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             self.qs_write
                 .internal_modify(
                     // Filter as executed
-                    &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                    &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
                     &modlist,
                 )
                 .map_err(|e| {
@@ -485,7 +486,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuidr(&account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::new_uuid(account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -604,7 +605,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         self.qs_write
             .internal_modify(
                 // Filter as executed
-                &filter!(f_eq("uuid", PartialValue::new_uuidr(&session.account.uuid))),
+                &filter!(f_eq("uuid", PartialValue::new_uuid(session.account.uuid))),
                 &modlist,
             )
             .map_err(|e| {
@@ -1229,6 +1230,7 @@ mod tests {
             // Already used.
             let cur = idms_prox_write.exchange_intent_credential_update(intent_tok, ct);
 
+            trace!(?cur);
             assert!(cur.is_err());
         })
     }

@@ -14,7 +14,7 @@ use std::cell::UnsafeCell;
 use std::sync::Arc;
 use tracing::{trace, trace_span};
 
-use crate::be::dbentry::DbEntry;
+use crate::be::dbentry::{DbBackup, DbEntry};
 use crate::entry::{Entry, EntryCommitted, EntryNew, EntrySealed};
 use crate::filter::{Filter, FilterPlan, FilterResolved, FilterValidResolved};
 use crate::identity::Limits;
@@ -129,18 +129,18 @@ pub struct BackendWriteTransaction<'a> {
 
 impl IdRawEntry {
     fn into_dbentry(self) -> Result<(u64, DbEntry), OperationError> {
-        serde_cbor::from_slice(self.data.as_slice())
+        serde_json::from_slice(self.data.as_slice())
             .map_err(|e| {
-                admin_error!(?e, "Serde CBOR Error");
-                OperationError::SerdeCborError
+                admin_error!(?e, "Serde JSON Error");
+                OperationError::SerdeJsonError
             })
             .map(|dbe| (self.id, dbe))
     }
 
     fn into_entry(self) -> Result<Entry<EntrySealed, EntryCommitted>, OperationError> {
-        let db_e = serde_cbor::from_slice(self.data.as_slice()).map_err(|e| {
-            admin_error!(?e, "Serde CBOR Error");
-            OperationError::SerdeCborError
+        let db_e = serde_json::from_slice(self.data.as_slice()).map_err(|e| {
+            admin_error!(?e, "Serde JSON Error");
+            OperationError::SerdeJsonError
         })?;
         // let id = u64::try_from(self.id).map_err(|_| OperationError::InvalidEntryId)?;
         Entry::from_dbentry(db_e, self.id).ok_or(OperationError::CorruptedEntry(self.id))
@@ -718,7 +718,7 @@ pub trait BackendTransaction {
                 .iter()
                 .try_for_each(|name| match self.get_idlayer().name2uuid(name) {
                     Ok(Some(idx_uuid)) => {
-                        if &idx_uuid == e_uuid {
+                        if idx_uuid == e_uuid {
                             Ok(())
                         } else {
                             admin_error!("Invalid name2uuid state -> incorrect uuid association");
@@ -792,19 +792,37 @@ pub trait BackendTransaction {
         // load all entries into RAM, may need to change this later
         // if the size of the database compared to RAM is an issue
         let idl = IdList::AllIds;
-        let raw_entries: Vec<IdRawEntry> = self.get_idlayer().get_identry_raw(&idl)?;
+        let idlayer = self.get_idlayer();
+        let raw_entries: Vec<IdRawEntry> = idlayer.get_identry_raw(&idl)?;
 
         let entries: Result<Vec<DbEntry>, _> = raw_entries
             .iter()
             .map(|id_ent| {
-                serde_cbor::from_slice(id_ent.data.as_slice())
+                serde_json::from_slice(id_ent.data.as_slice())
                     .map_err(|_| OperationError::SerdeJsonError) // log?
             })
             .collect();
 
         let entries = entries?;
 
-        let serialized_entries_str = serde_json::to_string_pretty(&entries).map_err(|e| {
+        let db_s_uuid = idlayer
+            .get_db_s_uuid()
+            .and_then(|u| u.ok_or(OperationError::InvalidDbState))?;
+        let db_d_uuid = idlayer
+            .get_db_d_uuid()
+            .and_then(|u| u.ok_or(OperationError::InvalidDbState))?;
+        let db_ts_max = idlayer
+            .get_db_ts_max()
+            .and_then(|u| u.ok_or(OperationError::InvalidDbState))?;
+
+        let bak = DbBackup::V2 {
+            db_s_uuid,
+            db_d_uuid,
+            db_ts_max,
+            entries,
+        };
+
+        let serialized_entries_str = serde_json::to_string(&bak).map_err(|e| {
             admin_error!(?e, "serde error");
             OperationError::SerdeJsonError
         })?;
@@ -821,11 +839,11 @@ pub trait BackendTransaction {
         self.get_idlayer().name2uuid(name)
     }
 
-    fn uuid2spn(&self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid2spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         self.get_idlayer().uuid2spn(uuid)
     }
 
-    fn uuid2rdn(&self, uuid: &Uuid) -> Result<Option<String>, OperationError> {
+    fn uuid2rdn(&self, uuid: Uuid) -> Result<Option<String>, OperationError> {
         self.get_idlayer().uuid2rdn(uuid)
     }
 }
@@ -1340,13 +1358,37 @@ impl<'a> BackendWriteTransaction<'a> {
             e
         })?;
 
-        let dbentries_option: Result<Vec<DbEntry>, serde_json::Error> =
+        let dbbak_option: Result<DbBackup, serde_json::Error> =
             serde_json::from_str(&serialized_string);
 
-        let dbentries = dbentries_option.map_err(|e| {
+        let dbbak = dbbak_option.map_err(|e| {
             admin_error!("serde_json error {:?}", e);
             OperationError::SerdeJsonError
         })?;
+
+        let dbentries = match dbbak {
+            DbBackup::V1(dbentries) => dbentries,
+            DbBackup::V2 {
+                db_s_uuid,
+                db_d_uuid,
+                db_ts_max,
+                entries,
+            } => {
+                // Do stuff.
+                idlayer.write_db_s_uuid(db_s_uuid)?;
+                idlayer.write_db_d_uuid(db_d_uuid)?;
+                idlayer.set_db_ts_max(db_ts_max)?;
+                entries
+            }
+        };
+
+        info!("Restoring {} entries ...", dbentries.len());
+
+        // Migrate any v1 entries to v2 if needed.
+        let dbentries = dbentries
+            .into_iter()
+            .map(|dbe| dbe.to_v2())
+            .collect::<Result<Vec<_>, _>>()?;
 
         // Now, we setup all the entries with new ids.
         let mut id_max = 0;
@@ -1354,12 +1396,14 @@ impl<'a> BackendWriteTransaction<'a> {
             .iter()
             .map(|e| {
                 id_max += 1;
-                let data = serde_cbor::to_vec(&e).map_err(|_| OperationError::SerdeCborError)?;
+                let data = serde_json::to_vec(&e).map_err(|_| OperationError::SerdeCborError)?;
                 Ok(IdRawEntry { id: id_max, data })
             })
             .collect();
 
         idlayer.write_identries_raw(identries?.into_iter())?;
+
+        info!("Restored {} entries", dbentries.len());
 
         // Reindex now we are loaded.
         self.reindex()?;
@@ -1424,15 +1468,15 @@ impl<'a> BackendWriteTransaction<'a> {
         }
     }
 
-    pub fn set_db_ts_max(&self, ts: &Duration) -> Result<(), OperationError> {
+    pub fn set_db_ts_max(&self, ts: Duration) -> Result<(), OperationError> {
         self.get_idlayer().set_db_ts_max(ts)
     }
 
-    pub fn get_db_ts_max(&self, ts: &Duration) -> Result<Duration, OperationError> {
+    pub fn get_db_ts_max(&self, ts: Duration) -> Result<Duration, OperationError> {
         // if none, return ts. If found, return it.
         match self.get_idlayer().get_db_ts_max()? {
             Some(dts) => Ok(dts),
-            None => Ok(*ts),
+            None => Ok(ts),
         }
     }
 
@@ -1578,10 +1622,11 @@ mod tests {
     use super::{
         Backend, BackendConfig, BackendTransaction, BackendWriteTransaction, IdList, OperationError,
     };
-    use super::{DbEntry, IdxKey};
+    use super::{DbBackup, IdxKey};
     use crate::identity::Limits;
     use crate::prelude::*;
     use crate::value::{IndexType, PartialValue, Value};
+    use std::time::Duration;
 
     macro_rules! run_test {
         ($test_fn:expr) => {{
@@ -1875,6 +1920,11 @@ mod tests {
         );
         eprintln!(" ⚠️   {}", db_backup_file_name);
         run_test!(|be: &mut BackendWriteTransaction| {
+            // Important! Need db metadata setup!
+            be.reset_db_s_uuid().unwrap();
+            be.reset_db_d_uuid().unwrap();
+            be.set_db_ts_max(Duration::from_secs(1)).unwrap();
+
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", Value::from("william"));
@@ -1926,6 +1976,10 @@ mod tests {
         );
         eprintln!(" ⚠️   {}", db_backup_file_name);
         run_test!(|be: &mut BackendWriteTransaction| {
+            // Important! Need db metadata setup!
+            be.reset_db_s_uuid().unwrap();
+            be.reset_db_d_uuid().unwrap();
+            be.set_db_ts_max(Duration::from_secs(1)).unwrap();
             // First create some entries (3?)
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
             e1.add_ava("userid", Value::from("william"));
@@ -1966,10 +2020,24 @@ mod tests {
 
             // Now here, we need to tamper with the file.
             let serialized_string = fs::read_to_string(&db_backup_file_name).unwrap();
-            let mut dbentries: Vec<DbEntry> = serde_json::from_str(&serialized_string).unwrap();
-            let _ = dbentries.pop();
+            let mut dbbak: DbBackup = serde_json::from_str(&serialized_string).unwrap();
 
-            let serialized_entries_str = serde_json::to_string_pretty(&dbentries).unwrap();
+            match &mut dbbak {
+                DbBackup::V1(_) => {
+                    // We no longer use these format versions!
+                    unreachable!()
+                }
+                DbBackup::V2 {
+                    db_s_uuid: _,
+                    db_d_uuid: _,
+                    db_ts_max: _,
+                    entries,
+                } => {
+                    let _ = entries.pop();
+                }
+            };
+
+            let serialized_entries_str = serde_json::to_string_pretty(&dbbak).unwrap();
             fs::write(&db_backup_file_name, serialized_entries_str).unwrap();
 
             be.restore(&db_backup_file_name).expect("Restore failed!");
@@ -2090,11 +2158,11 @@ mod tests {
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
             assert!(be.name2uuid("db237e8a-0079-4b8c-8a56-593b22aa44d1") == Ok(None));
             // check uuid2spn
-            assert!(be.uuid2spn(&claire_uuid) == Ok(Some(Value::new_iname("claire"))));
-            assert!(be.uuid2spn(&william_uuid) == Ok(Some(Value::new_iname("william"))));
+            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::new_iname("claire"))));
+            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::new_iname("william"))));
             // check uuid2rdn
-            assert!(be.uuid2rdn(&claire_uuid) == Ok(Some("name=claire".to_string())));
-            assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=william".to_string())));
+            assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
         });
     }
 
@@ -2129,8 +2197,8 @@ mod tests {
 
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid("william") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(&william_uuid) == Ok(Some(Value::from("william"))));
-            assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=william".to_string())));
+            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::from("william"))));
+            assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=william".to_string())));
 
             // == Now we delete, and assert we removed the items.
             be.delete(&rset).unwrap();
@@ -2150,8 +2218,8 @@ mod tests {
             idl_state!(be, "uuid", IndexType::Presence, "_", Some(Vec::new()));
 
             assert!(be.name2uuid("william") == Ok(None));
-            assert!(be.uuid2spn(&william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(&william_uuid) == Ok(None));
+            assert!(be.uuid2spn(william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(william_uuid) == Ok(None));
         })
     }
 
@@ -2204,16 +2272,18 @@ mod tests {
             let lucy_uuid = Uuid::parse_str("7b23c99d-c06b-4a9a-a958-3afa56383e1d").unwrap();
 
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
-            assert!(be.uuid2spn(&claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(&claire_uuid) == Ok(Some("name=claire".to_string())));
+            let x = be.uuid2spn(claire_uuid);
+            trace!(?x);
+            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
 
             assert!(be.name2uuid("william") == Ok(None));
-            assert!(be.uuid2spn(&william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(&william_uuid) == Ok(None));
+            assert!(be.uuid2spn(william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(william_uuid) == Ok(None));
 
             assert!(be.name2uuid("lucy") == Ok(None));
-            assert!(be.uuid2spn(&lucy_uuid) == Ok(None));
-            assert!(be.uuid2rdn(&lucy_uuid) == Ok(None));
+            assert!(be.uuid2spn(lucy_uuid) == Ok(None));
+            assert!(be.uuid2rdn(lucy_uuid) == Ok(None));
         })
     }
 
@@ -2259,8 +2329,8 @@ mod tests {
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.name2uuid("claire") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(&william_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(&william_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
 
@@ -2314,10 +2384,10 @@ mod tests {
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
-            assert!(be.uuid2spn(&william_uuid) == Ok(None));
-            assert!(be.uuid2rdn(&william_uuid) == Ok(None));
-            assert!(be.uuid2spn(&claire_uuid) == Ok(Some(Value::from("claire"))));
-            assert!(be.uuid2rdn(&claire_uuid) == Ok(Some("name=claire".to_string())));
+            assert!(be.uuid2spn(william_uuid) == Ok(None));
+            assert!(be.uuid2rdn(william_uuid) == Ok(None));
+            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
 

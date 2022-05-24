@@ -104,7 +104,7 @@ impl SchemaAttribute {
         trace!("Converting -> {:?}", value);
 
         // uuid
-        let uuid = *value.get_uuid();
+        let uuid = value.get_uuid();
 
         // class
         if !value.attribute_equality("class", &PVCLASS_ATTRIBUTETYPE) {
@@ -116,7 +116,7 @@ impl SchemaAttribute {
 
         // name
         let name = value
-            .get_ava_single_str("attributename")
+            .get_ava_single_iutf8("attributename")
             .map(|s| s.into())
             .ok_or_else(|| {
                 admin_error!("missing attributename - {:?}", uuid);
@@ -124,7 +124,7 @@ impl SchemaAttribute {
             })?;
         // description
         let description = value
-            .get_ava_single_str("description")
+            .get_ava_single_utf8("description")
             .map(|s| s.to_string())
             .ok_or_else(|| {
                 admin_error!("missing description - {}", name);
@@ -149,13 +149,10 @@ impl SchemaAttribute {
             OperationError::InvalidSchemaState("invalid index".to_string())
         })?;
         // syntax type
-        let syntax = value
-            .get_ava_single_syntax("syntax")
-            .cloned()
-            .ok_or_else(|| {
-                admin_error!("missing syntax - {}", name);
-                OperationError::InvalidSchemaState("missing syntax".to_string())
-            })?;
+        let syntax = value.get_ava_single_syntax("syntax").ok_or_else(|| {
+            admin_error!("missing syntax - {}", name);
+            OperationError::InvalidSchemaState("missing syntax".to_string())
+        })?;
 
         Ok(SchemaAttribute {
             name,
@@ -260,35 +257,15 @@ impl SchemaAttribute {
             return Err(SchemaError::InvalidAttributeSyntax(a.to_string()));
         };
         // If syntax, check the type is correct
-        let valid = match self.syntax {
-            SyntaxType::Boolean => ava.is_bool(),
-            SyntaxType::SYNTAX_ID => ava.is_syntax(),
-            SyntaxType::Uuid => ava.is_uuid(),
-            SyntaxType::REFERENCE_UUID => ava.is_refer(),
-            SyntaxType::INDEX_ID => ava.is_index(),
-            SyntaxType::Utf8StringInsensitive => ava.is_insensitive_utf8(),
-            SyntaxType::Utf8StringIname => ava.is_iname(),
-            SyntaxType::UTF8STRING => ava.is_utf8(),
-            SyntaxType::JSON_FILTER => ava.is_json_filter(),
-            SyntaxType::Credential => ava.is_credential(),
-            SyntaxType::SecretUtf8String => ava.is_secret_string(),
-            SyntaxType::SshKey => ava.is_sshkey(),
-            SyntaxType::SecurityPrincipalName => ava.is_spn(),
-            SyntaxType::UINT32 => ava.is_uint32(),
-            SyntaxType::Cid => ava.is_cid(),
-            SyntaxType::NsUniqueId => ava.is_nsuniqueid(),
-            SyntaxType::DateTime => ava.is_datetime(),
-            SyntaxType::EmailAddress => ava.is_email_address(),
-            SyntaxType::Url => ava.is_url(),
-            SyntaxType::OauthScope => ava.is_oauthscope(),
-            SyntaxType::OauthScopeMap => ava.is_oauthscopemap(),
-            SyntaxType::PrivateBinary => ava.is_privatebinary(),
-            SyntaxType::IntentToken => ava.is_intenttoken(),
-        };
-        if valid && ava.validate() {
+        let valid = self.syntax == ava.syntax();
+        if valid && ava.validate(self) {
             Ok(())
         } else {
-            admin_error!(?a, "validate_ava - InvalidAttributeSyntax");
+            admin_error!(
+                ?a,
+                "validate_ava - InvalidAttributeSyntax for {:?}",
+                self.syntax
+            );
             Err(SchemaError::InvalidAttributeSyntax(a.to_string()))
         }
     }
@@ -329,7 +306,7 @@ impl SchemaClass {
     pub fn try_from(value: &Entry<EntrySealed, EntryCommitted>) -> Result<Self, OperationError> {
         trace!("Converting {:?}", value);
         // uuid
-        let uuid = *value.get_uuid();
+        let uuid = value.get_uuid();
         // Convert entry to a schema class.
         if !value.attribute_equality("class", &PVCLASS_CLASSTYPE) {
             admin_error!("class classtype not present - {:?}", uuid);
@@ -340,7 +317,7 @@ impl SchemaClass {
 
         // name
         let name = value
-            .get_ava_single_str("classname")
+            .get_ava_single_iutf8("classname")
             .map(AttrString::from)
             .ok_or_else(|| {
                 admin_error!("missing classname - {:?}", uuid);
@@ -348,7 +325,7 @@ impl SchemaClass {
             })?;
         // description
         let description = value
-            .get_ava_single_str("description")
+            .get_ava_single_utf8("description")
             .map(String::from)
             .ok_or_else(|| {
                 admin_error!("missing description - {}", name);
@@ -357,19 +334,19 @@ impl SchemaClass {
 
         // These are all "optional" lists of strings.
         let systemmay = value
-            .get_ava_as_str("systemmay")
+            .get_ava_iter_iutf8("systemmay")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let systemmust = value
-            .get_ava_as_str("systemmust")
+            .get_ava_iter_iutf8("systemmust")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let may = value
-            .get_ava_as_str("may")
+            .get_ava_iter_iutf8("may")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
         let must = value
-            .get_ava_as_str("must")
+            .get_ava_iter_iutf8("must")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
@@ -1752,11 +1729,10 @@ mod tests {
             syntax: SyntaxType::Utf8StringInsensitive,
         };
 
-        let r1 =
-            single_value_string.validate_ava("single_value", &valueset![Value::new_iutf8("test")]);
+        let r1 = single_value_string.validate_ava("single_value", &(vs_iutf8!["test"] as _));
         assert_eq!(r1, Ok(()));
 
-        let rvs = unsafe { valueset![Value::new_iutf8("test1"), Value::new_iutf8("test2")] };
+        let rvs = vs_iutf8!["test1", "test2"] as _;
         let r2 = single_value_string.validate_ava("single_value", &rvs);
         assert_eq!(
             r2,
@@ -1779,7 +1755,7 @@ mod tests {
             syntax: SyntaxType::UTF8STRING,
         };
 
-        let rvs = unsafe { valueset![Value::new_utf8s("test1"), Value::new_utf8s("test2")] };
+        let rvs = vs_utf8!["test1".to_string(), "test2".to_string()] as _;
         let r5 = multi_value_string.validate_ava("mv_string", &rvs);
         assert_eq!(r5, Ok(()));
 
@@ -1811,8 +1787,8 @@ mod tests {
         );
         */
 
-        let rvs = unsafe { valueset![Value::new_bool(true), Value::new_bool(false)] };
-        let r4 = multi_value_boolean.validate_ava("mv_bool", &rvs);
+        let rvs = vs_bool![true, false];
+        let r4 = multi_value_boolean.validate_ava("mv_bool", &(rvs as _));
         assert_eq!(r4, Ok(()));
 
         // syntax_id and index_type values
@@ -1828,14 +1804,12 @@ mod tests {
             syntax: SyntaxType::SYNTAX_ID,
         };
 
-        let rvs = ValueSet::new(Value::new_syntaxs("UTF8STRING").unwrap());
+        let rvs = vs_syntax![SyntaxType::try_from("UTF8STRING").unwrap()] as _;
         let r6 = single_value_syntax.validate_ava("sv_syntax", &rvs);
         assert_eq!(r6, Ok(()));
 
-        let r7 = single_value_syntax.validate_ava(
-            "sv_syntax",
-            &ValueSet::new(Value::new_utf8s("thaeountaheu")),
-        );
+        let rvs = vs_utf8!["thaeountaheu".to_string()] as _;
+        let r7 = single_value_syntax.validate_ava("sv_syntax", &rvs);
         assert_eq!(
             r7,
             Err(SchemaError::InvalidAttributeSyntax("sv_syntax".to_string()))
@@ -1853,14 +1827,12 @@ mod tests {
             syntax: SyntaxType::INDEX_ID,
         };
         //
-        let r8 = single_value_index.validate_ava(
-            "sv_index",
-            &ValueSet::new(Value::new_indexs("EQUALITY").unwrap()),
-        );
+        let rvs = vs_index![IndexType::try_from("EQUALITY").unwrap()] as _;
+        let r8 = single_value_index.validate_ava("sv_index", &rvs);
         assert_eq!(r8, Ok(()));
 
-        let r9 = single_value_index
-            .validate_ava("sv_index", &ValueSet::new(Value::new_utf8s("thaeountaheu")));
+        let rvs = vs_utf8!["thaeountaheu".to_string()] as _;
+        let r9 = single_value_index.validate_ava("sv_index", &rvs);
         assert_eq!(
             r9,
             Err(SchemaError::InvalidAttributeSyntax("sv_index".to_string()))

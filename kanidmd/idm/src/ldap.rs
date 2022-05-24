@@ -52,7 +52,7 @@ impl LdapServer {
             .internal_search_uuid(&UUID_DOMAIN_INFO)?;
 
         let domain_name = domain_entry
-            .get_ava_single_str("domain_name")
+            .get_ava_single_iname("domain_name")
             .map(|s| s.to_string())
             .ok_or(OperationError::InvalidEntryState)?;
 

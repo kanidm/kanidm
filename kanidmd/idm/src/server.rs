@@ -33,6 +33,7 @@ use crate::schema::{
     Schema, SchemaAttribute, SchemaClass, SchemaReadTransaction, SchemaTransaction,
     SchemaWriteTransaction,
 };
+use crate::valueset::uuid_to_proto_string;
 use kanidm_proto::v1::{ConsistencyError, SchemaError};
 
 const RESOLVE_FILTER_CACHE_MAX: usize = 4096;
@@ -49,7 +50,7 @@ lazy_static! {
     static ref PVCLASS_ACC: PartialValue = PartialValue::new_class("access_control_create");
     static ref PVCLASS_ACP: PartialValue = PartialValue::new_class("access_control_profile");
     static ref PVCLASS_OAUTH2_RS: PartialValue = PartialValue::new_class("oauth2_resource_server");
-    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
+    static ref PVUUID_DOMAIN_INFO: PartialValue = PartialValue::new_uuid(*UUID_DOMAIN_INFO);
     static ref PVACP_ENABLE_FALSE: PartialValue = PartialValue::new_bool(false);
 }
 
@@ -286,7 +287,7 @@ pub trait QueryServerTransaction<'a> {
         })
     }
 
-    fn uuid_to_spn(&self, uuid: &Uuid) -> Result<Option<Value>, OperationError> {
+    fn uuid_to_spn(&self, uuid: Uuid) -> Result<Option<Value>, OperationError> {
         let r = self.get_be_txn().uuid2spn(uuid)?;
 
         if let Some(ref n) = r {
@@ -298,7 +299,7 @@ pub trait QueryServerTransaction<'a> {
         Ok(r)
     }
 
-    fn uuid_to_rdn(&self, uuid: &Uuid) -> Result<String, OperationError> {
+    fn uuid_to_rdn(&self, uuid: Uuid) -> Result<String, OperationError> {
         // If we have a some, pass it on, else unwrap into a default.
         self.get_be_txn()
             .uuid2rdn(uuid)
@@ -661,11 +662,12 @@ pub trait QueryServerTransaction<'a> {
         if let Some(r_set) = value.as_refer_set() {
             let v: Result<Vec<_>, _> = r_set
                 .iter()
+                .copied()
                 .map(|ur| {
                     let nv = self.uuid_to_spn(ur)?;
                     match nv {
                         Some(v) => Ok(v.to_proto_string_clone()),
-                        None => Ok(ValueSet::uuid_to_proto_string(ur)),
+                        None => Ok(uuid_to_proto_string(ur)),
                     }
                 })
                 .collect();
@@ -674,10 +676,10 @@ pub trait QueryServerTransaction<'a> {
             let v: Result<Vec<_>, _> = r_map
                 .iter()
                 .map(|(u, m)| {
-                    let nv = self.uuid_to_spn(u)?;
+                    let nv = self.uuid_to_spn(*u)?;
                     let u = match nv {
                         Some(v) => v.to_proto_string_clone(),
-                        None => ValueSet::uuid_to_proto_string(u),
+                        None => uuid_to_proto_string(*u),
                     };
                     Ok(format!("{}: {:?}", u, m))
                 })
@@ -697,6 +699,7 @@ pub trait QueryServerTransaction<'a> {
         if let Some(r_set) = value.as_refer_set() {
             let v: Result<Vec<_>, _> = r_set
                 .iter()
+                .copied()
                 .map(|ur| {
                     let rdn = self.uuid_to_rdn(ur)?;
                     Ok(format!("{},{}", rdn, basedn))
@@ -715,7 +718,8 @@ pub trait QueryServerTransaction<'a> {
     fn get_db_domain_name(&self) -> Result<String, OperationError> {
         self.internal_search_uuid(&UUID_DOMAIN_INFO)
             .and_then(|e| {
-                e.get_ava_single_str("domain_name")
+                trace!(?e);
+                e.get_ava_single_iname("domain_name")
                     .map(str::to_string)
                     .ok_or(OperationError::InvalidEntryState)
             })
@@ -754,7 +758,7 @@ pub trait QueryServerTransaction<'a> {
     // This is a helper to get password badlist.
     fn get_password_badlist(&self) -> Result<HashSet<String>, OperationError> {
         self.internal_search_uuid(&UUID_SYSTEM_CONFIG)
-            .and_then(|e| match e.get_ava_as_str("badlist_password") {
+            .and_then(|e| match e.get_ava_iter_iutf8("badlist_password") {
                 Some(vs_str_iter) => {
                     let badlist_hashset: HashSet<_> = vs_str_iter.map(str::to_string).collect();
                     Ok(badlist_hashset)
@@ -998,7 +1002,7 @@ impl QueryServer {
         let d_info = self.d_info.write();
 
         #[allow(clippy::expect_used)]
-        let ts_max = be_txn.get_db_ts_max(&ts).expect("Unable to get db_ts_max");
+        let ts_max = be_txn.get_db_ts_max(ts).expect("Unable to get db_ts_max");
         let cid = Cid::new_lamport(self.s_uuid, d_info.d_uuid, ts, &ts_max);
 
         QueryServerWriteTransaction {
@@ -1515,12 +1519,12 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             for e in revive_cands {
                 // Get this entries uuid.
-                let u: Uuid = *e.get_uuid();
+                let u: Uuid = e.get_uuid();
 
                 if let Some(riter) = e.get_ava_as_refuuid("directmemberof") {
                     for g_uuid in riter {
                         dm_mods
-                            .entry(*g_uuid)
+                            .entry(g_uuid)
                             .and_modify(|mlist| {
                                 let m = Modify::Present(
                                     AttrString::from("member"),
@@ -1610,6 +1614,9 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     return Err(OperationError::NoMatchingEntries);
                 }
             };
+
+            trace!("modify: pre_candidates -> {:?}", pre_candidates);
+            trace!("modify: modlist -> {:?}", me.modlist);
 
             // Are we allowed to make the changes we want to?
             // modify_allow_operation
@@ -1940,10 +1947,14 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
             candidates.iter_mut().try_for_each(|er| {
                 if let Some(vs) = er.get_ava_mut("name") {
-                    vs.migrate_iutf8_iname()?
+                    if let Some(mut nvs) = vs.migrate_iutf8_iname()? {
+                        std::mem::swap(&mut nvs, vs)
+                    }
                 };
                 if let Some(vs) = er.get_ava_mut("domain_name") {
-                    vs.migrate_iutf8_iname()?
+                    if let Some(mut nvs) = vs.migrate_iutf8_iname()? {
+                        std::mem::swap(&mut nvs, vs)
+                    }
                 };
                 Ok(())
             })?;
@@ -2656,21 +2667,23 @@ impl<'a> QueryServerWriteTransaction<'a> {
     }
 
     fn reload_domain_info(&mut self) -> Result<(), OperationError> {
-        let domain_name = self.get_db_domain_name()?;
+        spanned!("server::reload_domain_info", {
+            let domain_name = self.get_db_domain_name()?;
 
-        let mut_d_info = self.d_info.get_mut();
-        if mut_d_info.d_name != domain_name {
-            admin_warn!(
-                "Using database configured domain name {} - was {}",
-                domain_name,
-                mut_d_info.d_name,
-            );
-            admin_warn!(
-                "If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain"
-            );
-            mut_d_info.d_name = domain_name;
-        }
-        Ok(())
+            let mut_d_info = self.d_info.get_mut();
+            if mut_d_info.d_name != domain_name {
+                admin_warn!(
+                    "Using database configured domain name {} - was {}",
+                    domain_name,
+                    mut_d_info.d_name,
+                );
+                admin_warn!(
+                    "If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain"
+                );
+                mut_d_info.d_name = domain_name;
+            }
+            Ok(())
+        })
     }
 
     /// Initiate a domain rename process. This is generally an internal function but it's
@@ -2693,7 +2706,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
         new_domain_name: &str,
     ) -> Result<(), OperationError> {
         let modl = ModifyList::new_purge_and_set("domain_name", Value::new_iname(new_domain_name));
-        let udi = PartialValue::new_uuidr(&UUID_DOMAIN_INFO);
+        let udi = PVUUID_DOMAIN_INFO.clone();
         let filt = filter_all!(f_eq("uuid", udi));
         self.internal_modify(&filt, &modl)
     }
@@ -2764,7 +2777,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
 
         // Write the cid to the db. If this fails, we can't assume replication
         // will be stable, so return if it fails.
-        be_txn.set_db_ts_max(&cid.ts)?;
+        be_txn.set_db_ts_max(cid.ts)?;
         // Validate the schema as we just loaded it.
         let r = schema.validate();
 
@@ -3488,17 +3501,17 @@ mod tests {
 
             // Name doesn't exist
             let r1 = server_txn
-                .uuid_to_spn(&Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap());
+                .uuid_to_spn(Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap());
             // There is nothing.
             assert!(r1 == Ok(None));
             // Name does exist
             let r3 = server_txn
-                .uuid_to_spn(&Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
+                .uuid_to_spn(Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
             println!("{:?}", r3);
             assert!(r3.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
             // Name is not syntax normalised (but exists)
             let r4 = server_txn
-                .uuid_to_spn(&Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap());
+                .uuid_to_spn(Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap());
             assert!(r4.unwrap().unwrap() == Value::new_spn_str("testperson1", "example.com"));
         })
     }
@@ -3526,17 +3539,17 @@ mod tests {
 
             // Name doesn't exist
             let r1 = server_txn
-                .uuid_to_rdn(&Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap());
+                .uuid_to_rdn(Uuid::parse_str("bae3f507-e6c3-44ba-ad01-f8ff1083534a").unwrap());
             // There is nothing.
             assert!(r1.unwrap() == "uuid=bae3f507-e6c3-44ba-ad01-f8ff1083534a");
             // Name does exist
             let r3 = server_txn
-                .uuid_to_rdn(&Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
+                .uuid_to_rdn(Uuid::parse_str("cc8e95b4-c24f-4d68-ba54-8bed76f63930").unwrap());
             println!("{:?}", r3);
             assert!(r3.unwrap() == "spn=testperson1@example.com");
             // Uuid is not syntax normalised (but exists)
             let r4 = server_txn
-                .uuid_to_rdn(&Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap());
+                .uuid_to_rdn(Uuid::parse_str("CC8E95B4-C24F-4D68-BA54-8BED76F63930").unwrap());
             assert!(r4.unwrap() == "spn=testperson1@example.com");
         })
     }
@@ -3565,12 +3578,10 @@ mod tests {
             let cr = server_txn.create(&ce);
             assert!(cr.is_ok());
 
-            assert!(
-                server_txn.uuid_to_rdn(&tuuid) == Ok("spn=testperson1@example.com".to_string())
-            );
+            assert!(server_txn.uuid_to_rdn(tuuid) == Ok("spn=testperson1@example.com".to_string()));
 
             assert!(
-                server_txn.uuid_to_spn(&tuuid)
+                server_txn.uuid_to_spn(tuuid)
                     == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
             );
 
@@ -3587,11 +3598,11 @@ mod tests {
 
             // all should fail
             assert!(
-                server_txn.uuid_to_rdn(&tuuid)
+                server_txn.uuid_to_rdn(tuuid)
                     == Ok("uuid=cc8e95b4-c24f-4d68-ba54-8bed76f63930".to_string())
             );
 
-            assert!(server_txn.uuid_to_spn(&tuuid) == Ok(None));
+            assert!(server_txn.uuid_to_spn(tuuid) == Ok(None));
 
             assert!(server_txn.name_to_uuid("testperson1").is_err());
 
@@ -3609,12 +3620,10 @@ mod tests {
 
             // all checks pass
 
-            assert!(
-                server_txn.uuid_to_rdn(&tuuid) == Ok("spn=testperson1@example.com".to_string())
-            );
+            assert!(server_txn.uuid_to_rdn(tuuid) == Ok("spn=testperson1@example.com".to_string()));
 
             assert!(
-                server_txn.uuid_to_spn(&tuuid)
+                server_txn.uuid_to_spn(tuuid)
                     == Ok(Some(Value::new_spn_str("testperson1", "example.com")))
             );
 
@@ -4131,11 +4140,11 @@ mod tests {
             assert!(server_txn.modify(&me_syn).is_ok());
             assert!(server_txn.commit().is_ok());
 
-            let server_txn = server.write(duration_from_epoch_now());
+            let mut server_txn = server.write(duration_from_epoch_now());
             // ++ Mod domain name and name to be the old type.
             let me_dn = unsafe {
                 ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("uuid", PartialValue::new_uuidr(&UUID_DOMAIN_INFO))),
+                    filter!(f_eq("uuid", PartialValue::new_uuid(*UUID_DOMAIN_INFO))),
                     ModifyList::new_list(vec![
                         Modify::Purged(AttrString::from("name")),
                         Modify::Purged(AttrString::from("domain_name")),
@@ -4148,13 +4157,17 @@ mod tests {
                 )
             };
             assert!(server_txn.modify(&me_dn).is_ok());
+
             // Now, both the types are invalid.
-            assert!(server_txn.commit().is_ok());
+
+            // WARNING! We can't commit here because this triggers domain_reload which will fail
+            // due to incorrect syntax of the domain name! Run the migration in the same txn!
+            // Trigger a schema reload.
+            assert!(server_txn.reload_schema().is_ok());
 
             // We can't just re-run the migrate here because name takes it's definition from
             // in memory, and we can't re-run the initial memory gen. So we just fix it to match
             // what the migrate "would do".
-            let server_txn = server.write(duration_from_epoch_now());
             let me_syn = unsafe {
                 ModifyEvent::new_internal_invalid(
                     filter!(f_or!([
@@ -4168,11 +4181,15 @@ mod tests {
                 )
             };
             assert!(server_txn.modify(&me_syn).is_ok());
-            assert!(server_txn.commit().is_ok());
+
+            // WARNING! We can't commit here because this triggers domain_reload which will fail
+            // due to incorrect syntax of the domain name! Run the migration in the same txn!
+            // Trigger a schema reload.
+            assert!(server_txn.reload_schema().is_ok());
 
             // ++ Run the upgrade for X to Y
-            let server_txn = server.write(duration_from_epoch_now());
             assert!(server_txn.migrate_2_to_3().is_ok());
+
             assert!(server_txn.commit().is_ok());
 
             // Assert that it migrated and worked as expected.
@@ -4181,12 +4198,18 @@ mod tests {
                 .internal_search_uuid(&UUID_DOMAIN_INFO)
                 .expect("failed");
             // ++ assert all names are iname
-            assert!(domain.get_ava_set("name").expect("no name?").is_iname());
+            assert!(
+                domain.get_ava_set("name").expect("no name?").syntax()
+                    == SyntaxType::Utf8StringIname
+            );
             // ++ assert all domain/domain_name are iname
-            assert!(domain
-                .get_ava_set("domain_name")
-                .expect("no domain_name?")
-                .is_iname());
+            assert!(
+                domain
+                    .get_ava_set("domain_name")
+                    .expect("no domain_name?")
+                    .syntax()
+                    == SyntaxType::Utf8StringIname
+            );
             assert!(server_txn.commit().is_ok());
         })
     }

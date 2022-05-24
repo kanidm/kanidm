@@ -55,7 +55,7 @@ impl Decoder for ClientCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_cbor::from_slice::<ClientRequest>(&src) {
+        match serde_json::from_slice::<ClientRequest>(&src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -71,9 +71,9 @@ impl Encoder<ClientResponse> for ClientCodec {
 
     fn encode(&mut self, msg: ClientResponse, dst: &mut BytesMut) -> Result<(), Self::Error> {
         debug!("Attempting to send response -> {:?} ...", msg);
-        let data = serde_cbor::to_vec(&msg).map_err(|e| {
+        let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+            io::Error::new(io::ErrorKind::Other, "JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())
@@ -93,7 +93,7 @@ impl Decoder for TaskCodec {
     type Error = io::Error;
 
     fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Self::Item>, Self::Error> {
-        match serde_cbor::from_slice::<TaskResponse>(&src) {
+        match serde_json::from_slice::<TaskResponse>(&src) {
             Ok(msg) => {
                 // Clear the buffer for the next message.
                 src.clear();
@@ -109,9 +109,9 @@ impl Encoder<TaskRequest> for TaskCodec {
 
     fn encode(&mut self, msg: TaskRequest, dst: &mut BytesMut) -> Result<(), Self::Error> {
         debug!("Attempting to send request -> {:?} ...", msg);
-        let data = serde_cbor::to_vec(&msg).map_err(|e| {
+        let data = serde_json::to_vec(&msg).map_err(|e| {
             error!("socket encoding error -> {:?}", e);
-            io::Error::new(io::ErrorKind::Other, "CBOR encode error")
+            io::Error::new(io::ErrorKind::Other, "JSON encode error")
         })?;
         dst.put(data.as_slice());
         Ok(())

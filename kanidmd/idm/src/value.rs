@@ -48,7 +48,7 @@ lazy_static! {
     };
 }
 
-#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq)]
+#[derive(Debug, Clone, PartialOrd, Ord, Eq, PartialEq, Hash)]
 // https://openid.net/specs/openid-connect-core-1_0.html#AddressClaim
 pub struct Address {
     pub formatted: String,
@@ -61,7 +61,7 @@ pub struct Address {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Hash)]
 pub enum IndexType {
     Equality,
     Presence,
@@ -137,7 +137,7 @@ impl fmt::Display for IndexType {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Hash, Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Hash, Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum SyntaxType {
     UTF8STRING,
     Utf8StringInsensitive,
@@ -435,10 +435,6 @@ impl PartialValue {
         PartialValue::Uuid(u)
     }
 
-    pub fn new_uuidr(u: &Uuid) -> Self {
-        PartialValue::Uuid(*u)
-    }
-
     pub fn new_uuids(us: &str) -> Option<Self> {
         Uuid::parse_str(us).map(PartialValue::Uuid).ok()
     }
@@ -483,7 +479,12 @@ impl PartialValue {
     }
 
     pub fn new_json_filter_s(s: &str) -> Option<Self> {
-        serde_json::from_str(s).map(PartialValue::JsonFilt).ok()
+        serde_json::from_str(s)
+            .map(PartialValue::JsonFilt)
+            .map_err(|e| {
+                trace!(?e, ?s);
+            })
+            .ok()
     }
 
     pub fn is_json_filter(&self) -> bool {
@@ -928,10 +929,6 @@ impl Value {
 
     pub fn new_uuids(s: &str) -> Option<Self> {
         Uuid::parse_str(s).map(Value::Uuid).ok()
-    }
-
-    pub fn new_uuidr(u: &Uuid) -> Self {
-        Value::Uuid(*u)
     }
 
     // Is this correct? Should ref be seperate?

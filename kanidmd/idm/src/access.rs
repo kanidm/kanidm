@@ -74,7 +74,7 @@ impl AccessControlSearch {
         }
 
         let attrs = value
-            .get_ava_as_str("acp_search_attr")
+            .get_ava_iter_iutf8("acp_search_attr")
             .ok_or_else(|| {
                 admin_error!("Missing acp_search_attr");
                 OperationError::InvalidAcpState("Missing acp_search_attr".to_string())
@@ -170,12 +170,12 @@ impl AccessControlCreate {
         }
 
         let attrs = value
-            .get_ava_as_str("acp_create_attr")
+            .get_ava_iter_iutf8("acp_create_attr")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
-            .get_ava_as_str("acp_create_class")
+            .get_ava_iter_iutf8("acp_create_class")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
@@ -229,17 +229,17 @@ impl AccessControlModify {
         }
 
         let presattrs = value
-            .get_ava_as_str("acp_modify_presentattr")
+            .get_ava_iter_iutf8("acp_modify_presentattr")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let remattrs = value
-            .get_ava_as_str("acp_modify_removedattr")
+            .get_ava_iter_iutf8("acp_modify_removedattr")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
         let classes = value
-            .get_ava_as_str("acp_modify_class")
+            .get_ava_iter_iutf8("acp_modify_class")
             .map(|i| i.map(AttrString::from).collect())
             .unwrap_or_else(Vec::new);
 
@@ -310,14 +310,14 @@ impl AccessControlProfile {
 
         // copy name
         let name = value
-            .get_ava_single_str("name")
+            .get_ava_single_iname("name")
             .ok_or_else(|| {
                 admin_error!("Missing name");
                 OperationError::InvalidAcpState("Missing name".to_string())
             })?
             .to_string();
         // copy uuid
-        let uuid = *value.get_uuid();
+        let uuid = value.get_uuid();
         // receiver, and turn to real filter
         let receiver_f: ProtoFilter = value
             .get_ava_single_protofilter("acp_receiver")
@@ -998,7 +998,7 @@ pub trait AccessControlsTransaction<'a> {
                 // I still think if this is None, we should just fail here ...
                 // because it shouldn't be possible to match.
 
-                let create_classes: BTreeSet<&str> = match e.get_ava_as_str("class") {
+                let create_classes: BTreeSet<&str> = match e.get_ava_iter_iutf8("class") {
                     Some(s) => s.collect(),
                     None => {
                         admin_error!("Class set failed to build - corrupted entry?");
@@ -1269,7 +1269,7 @@ pub trait AccessControlsTransaction<'a> {
                         .collect();
 
                     AccessEffectivePermission {
-                        target: *e.get_uuid(),
+                        target: e.get_uuid(),
                         search: search_effective,
                         modify_pres,
                         modify_rem,

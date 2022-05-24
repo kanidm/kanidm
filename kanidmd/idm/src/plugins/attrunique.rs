@@ -23,12 +23,9 @@ fn get_cand_attr_set<VALID, STATE>(
 
     cand.iter()
         .try_for_each(|e| {
-            let uuid = match e.get_ava_single_uuid("uuid") {
-                Some(v) => *v,
-                None => {
-                    return Err(OperationError::InvalidEntryState);
-                }
-            };
+            let uuid = e
+                .get_ava_single_uuid("uuid")
+                .ok_or(OperationError::InvalidEntryState)?;
             // Get the value and uuid
             //for each value in the ava.
             e.get_ava_set(attr)

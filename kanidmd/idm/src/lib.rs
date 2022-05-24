@@ -87,7 +87,11 @@ pub mod prelude {
         QueryServerWriteTransaction,
     };
     pub use crate::value::{IndexType, PartialValue, SyntaxType, Value};
-    pub use crate::valueset::ValueSet;
+    pub use crate::valueset::{
+        ValueSet, ValueSetBool, ValueSetCid, ValueSetIndex, ValueSetIutf8, ValueSetRefer,
+        ValueSetSecret, ValueSetSpn, ValueSetSyntax, ValueSetT, ValueSetUint32, ValueSetUtf8,
+        ValueSetUuid,
+    };
     pub use crate::{
         admin_error, admin_info, admin_warn, filter_error, filter_info, filter_trace, filter_warn,
         perf_trace, request_error, request_info, request_trace, request_warn, security_access,

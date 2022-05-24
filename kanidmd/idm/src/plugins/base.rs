@@ -86,7 +86,6 @@ impl Plugin for Base {
         for entry in cand.iter() {
             let uuid_ref: Uuid = entry
                 .get_ava_single_uuid("uuid")
-                .copied()
                 .ok_or_else(|| OperationError::InvalidAttribute("uuid".to_string()))?;
             trace!("Entry valid UUID: {:?}", entry);
             if !cand_uuid.insert(uuid_ref) {
@@ -211,7 +210,7 @@ impl Plugin for Base {
                 // uniqueness!
                 let uuid = e.get_uuid();
 
-                if uuid_seen.insert(*uuid) {
+                if uuid_seen.insert(uuid) {
                     // Insert returns true if the item was unique.
                     Ok(())
                 } else {
