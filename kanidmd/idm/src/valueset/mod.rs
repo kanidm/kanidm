@@ -287,10 +287,12 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
     }
 
     fn as_oauthscopemap(&self) -> Option<&BTreeMap<Uuid, BTreeSet<String>>> {
+        /*
         error!(
             "as_oauthscopemap should not be called on {:?}",
             self.syntax()
         );
+        */
         None
     }
 
@@ -299,7 +301,7 @@ pub trait ValueSetT: std::fmt::Debug + DynClone {
         None
     }
 
-    fn as_intenttoken_map(&self) -> Option<&BTreeMap<Uuid, IntentTokenState>> {
+    fn as_intenttoken_map(&self) -> Option<&BTreeMap<String, IntentTokenState>> {
         debug_assert!(false);
         None
     }

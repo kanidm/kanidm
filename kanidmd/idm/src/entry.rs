@@ -1675,7 +1675,7 @@ impl<VALID, STATE> Entry<VALID, STATE> {
     pub fn get_ava_as_intenttokens(
         &self,
         attr: &str,
-    ) -> Option<&std::collections::BTreeMap<Uuid, IntentTokenState>> {
+    ) -> Option<&std::collections::BTreeMap<String, IntentTokenState>> {
         self.attrs.get(attr).and_then(|vs| vs.as_intenttoken_map())
     }
 

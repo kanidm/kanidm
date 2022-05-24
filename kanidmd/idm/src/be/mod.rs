@@ -2232,17 +2232,17 @@ mod tests {
             // Test that on entry create, the indexes are made correctly.
             // this is a similar case to reindex.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::from("claire"));
+            e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("bd651620-00dd-426b-aaa0-4494f7b7906f"));
             let e2 = unsafe { e2.into_sealed_new() };
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("userid", Value::from("lucy"));
+            e3.add_ava("userid", Value::new_iname("lucy"));
             e3.add_ava("uuid", Value::from("7b23c99d-c06b-4a9a-a958-3afa56383e1d"));
             let e3 = unsafe { e3.into_sealed_new() };
 
@@ -2274,7 +2274,7 @@ mod tests {
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
             let x = be.uuid2spn(claire_uuid);
             trace!(?x);
-            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::new_iname("claire"))));
             assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
 
             assert!(be.name2uuid("william") == Ok(None));
@@ -2295,7 +2295,7 @@ mod tests {
             // us. For the test to be "accurate" we must add one attr, remove one attr
             // and change one attr.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("ta", Value::from("test"));
             let e1 = unsafe { e1.into_sealed_new() };
@@ -2310,7 +2310,7 @@ mod tests {
             ce1.purge_ava("ta");
             // mod something.
             ce1.purge_ava("name");
-            ce1.add_ava("name", Value::from("claire"));
+            ce1.add_ava("name", Value::new_iname("claire"));
 
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
@@ -2329,7 +2329,7 @@ mod tests {
             let william_uuid = Uuid::parse_str("db237e8a-0079-4b8c-8a56-593b22aa44d1").unwrap();
             assert!(be.name2uuid("william") == Ok(None));
             assert!(be.name2uuid("claire") == Ok(Some(william_uuid)));
-            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2spn(william_uuid) == Ok(Some(Value::new_iname("claire"))));
             assert!(be.uuid2rdn(william_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
@@ -2342,7 +2342,7 @@ mod tests {
             // This will be needing to be correct for conflicts when we add
             // replication support!
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
@@ -2352,7 +2352,7 @@ mod tests {
             let mut ce1 = unsafe { rset[0].as_ref().clone().into_invalid() };
             ce1.purge_ava("name");
             ce1.purge_ava("uuid");
-            ce1.add_ava("name", Value::from("claire"));
+            ce1.add_ava("name", Value::new_iname("claire"));
             ce1.add_ava("uuid", Value::from("04091a7a-6ce4-42d2-abf5-c2ce244ac9e8"));
             let ce1 = unsafe { ce1.into_sealed_committed() };
 
@@ -2386,7 +2386,7 @@ mod tests {
             assert!(be.name2uuid("claire") == Ok(Some(claire_uuid)));
             assert!(be.uuid2spn(william_uuid) == Ok(None));
             assert!(be.uuid2rdn(william_uuid) == Ok(None));
-            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::from("claire"))));
+            assert!(be.uuid2spn(claire_uuid) == Ok(Some(Value::new_iname("claire"))));
             assert!(be.uuid2rdn(claire_uuid) == Ok(Some("name=claire".to_string())));
         })
     }
@@ -2398,14 +2398,14 @@ mod tests {
 
             // Create a test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("no-index", Value::from("william"));
             e1.add_ava("other-no-index", Value::from("william"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::from("claire"));
+            e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             let e2 = unsafe { e2.into_sealed_new() };
 
@@ -2706,21 +2706,21 @@ mod tests {
         run_test!(|be: &mut BackendWriteTransaction| {
             // Create some test entry with some indexed / unindexed values.
             let mut e1: Entry<EntryInit, EntryNew> = Entry::new();
-            e1.add_ava("name", Value::from("william"));
+            e1.add_ava("name", Value::new_iname("william"));
             e1.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e1.add_ava("ta", Value::from("dupe"));
             e1.add_ava("tb", Value::from("1"));
             let e1 = unsafe { e1.into_sealed_new() };
 
             let mut e2: Entry<EntryInit, EntryNew> = Entry::new();
-            e2.add_ava("name", Value::from("claire"));
+            e2.add_ava("name", Value::new_iname("claire"));
             e2.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d2"));
             e2.add_ava("ta", Value::from("dupe"));
             e2.add_ava("tb", Value::from("1"));
             let e2 = unsafe { e2.into_sealed_new() };
 
             let mut e3: Entry<EntryInit, EntryNew> = Entry::new();
-            e3.add_ava("name", Value::from("benny"));
+            e3.add_ava("name", Value::new_iname("benny"));
             e3.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d3"));
             e3.add_ava("ta", Value::from("dupe"));
             e3.add_ava("tb", Value::from("2"));
@@ -2899,7 +2899,7 @@ mod tests {
             lim_deny.search_max_filter_test = 0;
 
             let mut e: Entry<EntryInit, EntryNew> = Entry::new();
-            e.add_ava("name", Value::from("william"));
+            e.add_ava("name", Value::new_iname("william"));
             e.add_ava("uuid", Value::from("db237e8a-0079-4b8c-8a56-593b22aa44d1"));
             e.add_ava("nonexist", Value::from("x"));
             e.add_ava("nonexist", Value::from("y"));

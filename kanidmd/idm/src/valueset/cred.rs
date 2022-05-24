@@ -1,6 +1,5 @@
 use crate::prelude::*;
 use crate::schema::SchemaAttribute;
-use crate::valueset::uuid_to_proto_string;
 use crate::valueset::DbValueSetV2;
 use crate::valueset::ValueSet;
 use std::collections::btree_map::Entry as BTreeEntry;
@@ -170,34 +169,44 @@ impl ValueSetT for ValueSetCredential {
 
 #[derive(Debug, Clone)]
 pub struct ValueSetIntentToken {
-    map: BTreeMap<Uuid, IntentTokenState>,
+    map: BTreeMap<String, IntentTokenState>,
 }
 
 impl ValueSetIntentToken {
-    pub fn new(t: Uuid, s: IntentTokenState) -> Box<Self> {
+    pub fn new(t: String, s: IntentTokenState) -> Box<Self> {
         let mut map = BTreeMap::new();
         map.insert(t, s);
         Box::new(ValueSetIntentToken { map })
     }
 
-    pub fn push(&mut self, t: Uuid, s: IntentTokenState) -> bool {
+    pub fn push(&mut self, t: String, s: IntentTokenState) -> bool {
         self.map.insert(t, s).is_none()
     }
 
     pub fn from_dbvs2(
-        data: Vec<(Uuid, DbValueIntentTokenStateV1)>,
+        data: Vec<(String, DbValueIntentTokenStateV1)>,
     ) -> Result<ValueSet, OperationError> {
         let map = data
             .into_iter()
-            .map(|(u, dits)| {
+            .map(|(s, dits)| {
                 let ts = match dits {
-                    DbValueIntentTokenStateV1::Valid => IntentTokenState::Valid,
-                    DbValueIntentTokenStateV1::InProgress(pu, pd) => {
-                        IntentTokenState::InProgress(pu, pd)
+                    DbValueIntentTokenStateV1::Valid { max_ttl } => {
+                        IntentTokenState::Valid { max_ttl }
                     }
-                    DbValueIntentTokenStateV1::Consumed => IntentTokenState::Consumed,
+                    DbValueIntentTokenStateV1::InProgress {
+                        max_ttl,
+                        session_id,
+                        session_ttl,
+                    } => IntentTokenState::InProgress {
+                        max_ttl,
+                        session_id,
+                        session_ttl,
+                    },
+                    DbValueIntentTokenStateV1::Consumed { max_ttl } => {
+                        IntentTokenState::Consumed { max_ttl }
+                    }
                 };
-                (u, ts)
+                (s, ts)
             })
             .collect();
         Ok(Box::new(ValueSetIntentToken { map }))
@@ -205,7 +214,7 @@ impl ValueSetIntentToken {
 
     pub fn from_iter<T>(iter: T) -> Option<Box<Self>>
     where
-        T: IntoIterator<Item = (Uuid, IntentTokenState)>,
+        T: IntoIterator<Item = (String, IntentTokenState)>,
     {
         let map = iter.into_iter().collect();
         Some(Box::new(ValueSetIntentToken { map }))
@@ -258,10 +267,7 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn generate_idx_eq_keys(&self) -> Vec<String> {
-        self.map
-            .keys()
-            .map(|u| u.as_hyphenated().to_string())
-            .collect()
+        self.map.keys().cloned().collect()
     }
 
     fn syntax(&self) -> SyntaxType {
@@ -273,11 +279,7 @@ impl ValueSetT for ValueSetIntentToken {
     }
 
     fn to_proto_string_clone_iter(&self) -> Box<dyn Iterator<Item = String> + '_> {
-        Box::new(
-            self.map
-                .iter()
-                .map(|(u, m)| format!("{}: {:?}", uuid_to_proto_string(*u), m)),
-        )
+        Box::new(self.map.keys().cloned())
     }
 
     fn to_db_valueset_v2(&self) -> DbValueSetV2 {
@@ -286,13 +288,23 @@ impl ValueSetT for ValueSetIntentToken {
                 .iter()
                 .map(|(u, s)| {
                     (
-                        *u,
+                        u.clone(),
                         match s {
-                            IntentTokenState::Valid => DbValueIntentTokenStateV1::Valid,
-                            IntentTokenState::InProgress(i, d) => {
-                                DbValueIntentTokenStateV1::InProgress(*i, *d)
+                            IntentTokenState::Valid { max_ttl } => {
+                                DbValueIntentTokenStateV1::Valid { max_ttl: *max_ttl }
                             }
-                            IntentTokenState::Consumed => DbValueIntentTokenStateV1::Consumed,
+                            IntentTokenState::InProgress {
+                                max_ttl,
+                                session_id,
+                                session_ttl,
+                            } => DbValueIntentTokenStateV1::InProgress {
+                                max_ttl: *max_ttl,
+                                session_id: *session_id,
+                                session_ttl: *session_ttl,
+                            },
+                            IntentTokenState::Consumed { max_ttl } => {
+                                DbValueIntentTokenStateV1::Consumed { max_ttl: *max_ttl }
+                            }
                         },
                     )
                 })
@@ -330,7 +342,7 @@ impl ValueSetT for ValueSetIntentToken {
         }
     }
 
-    fn as_intenttoken_map(&self) -> Option<&BTreeMap<Uuid, IntentTokenState>> {
+    fn as_intenttoken_map(&self) -> Option<&BTreeMap<String, IntentTokenState>> {
         Some(&self.map)
     }
 }

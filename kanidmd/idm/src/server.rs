@@ -640,13 +640,12 @@ pub trait QueryServerTransaction<'a> {
                     }),
                     SyntaxType::OauthScope => Ok(PartialValue::new_oauthscope(value)),
                     SyntaxType::PrivateBinary => Ok(PartialValue::PrivateBinary),
-                    SyntaxType::IntentToken => {
-                        PartialValue::new_intenttoken_s(value).ok_or_else(|| {
+                    SyntaxType::IntentToken => PartialValue::new_intenttoken_s(value.to_string())
+                        .ok_or_else(|| {
                             OperationError::InvalidAttribute(
                                 "Invalid Intent Token ID (uuid) syntax".to_string(),
                             )
-                        })
-                    }
+                        }),
                 }
             }
             None => {
@@ -2678,7 +2677,7 @@ impl<'a> QueryServerWriteTransaction<'a> {
                     mut_d_info.d_name,
                 );
                 admin_warn!(
-                    "If you think this is an error, see https://kanidm.github.io/kanidm/administrivia.html#rename-the-domain"
+                    "If you think this is an error, see https://kanidm.github.io/kanidm/stable/administrivia.html#rename-the-domain"
                 );
                 mut_d_info.d_name = domain_name;
             }
