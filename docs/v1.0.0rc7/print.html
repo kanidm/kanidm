@@ -925,9 +925,11 @@ kanidm raw search -H https://localhost:8443 -C ../insecure/ca.pem -D admin '{&qu
 kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '{&quot;eq&quot;: [&quot;name&quot;, &quot;test_account_delete_me&quot;]}'
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="monitoring-the-platform"><a class="header" href="#monitoring-the-platform">Monitoring the platform</a></h1>
-<p>The monitoring design of Kanidm is still very much in its infancy - <a href="https://github.com/kanidm/kanidm/issues/216">take part in the dicussion here!</a>.</p>
+<p>The monitoring design of Kanidm is still very much in its infancy - 
+<a href="https://github.com/kanidm/kanidm/issues/216">take part in the dicussion at github.com/kanidm/kanidm/issues/216</a>.</p>
 <h2 id="kanidmd"><a class="header" href="#kanidmd">kanidmd</a></h2>
-<p>kanidmd currently responds to HTTP GET requests at the <code>/status</code> endpoint with a JSON object of either &quot;true&quot; or &quot;false&quot;. <code>true</code> indicates that the platform is responding to requests.</p>
+<p>kanidmd currently responds to HTTP GET requests at the <code>/status</code> endpoint with a JSON object of 
+either &quot;true&quot; or &quot;false&quot;. <code>true</code> indicates that the platform is responding to requests.</p>
 <table><thead><tr><th>URL</th><th><code>&lt;hostname&gt;/status</code></th></tr></thead><tbody>
 <tr><td>Example URL</td><td><code>https://example.com/status</code></td></tr>
 <tr><td>Expected response</td><td>One of either <code>true</code> or <code>false</code> (without quotes)</td></tr>
@@ -936,18 +938,29 @@ kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '
 <tr><td>Cookies</td><td>kanidm-session</td></tr>
 </tbody></table>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="password-quality-and-badlisting"><a class="header" href="#password-quality-and-badlisting">Password Quality and Badlisting</a></h1>
-<p>Kanidm embeds a set of tools to help your users use and create strong passwords. This is important as not all user types will require MFA for their roles, but compromised accounts still pose a risk. There may also be deployment or other barriers to a site rolling out site wide MFA.</p>
+<p>Kanidm embeds a set of tools to help your users use and create strong passwords. 
+This is important as not all user types will require multi-factor authentication (MFA) 
+for their roles, but compromised accounts still pose a risk. There may also be deployment 
+or other barriers to a site rolling out sitewide MFA.</p>
 <h2 id="quality-checking"><a class="header" href="#quality-checking">Quality Checking</a></h2>
-<p>Kanidm enforces that all passwords are checked by the library &quot;<a href="https://github.com/dropbox/zxcvbn">zxcvbn</a>&quot;. This has a large number of checks for password quality. It also provides constructive feedback to users on how to improve their passwords if it was rejected.</p>
-<p>Some things that zxcvbn looks for is use of the account name or email in the password, common passwords, low entropy passwords, dates, reverse words and more.</p>
+<p>Kanidm enforces that all passwords are checked by the library &quot;<a href="https://github.com/dropbox/zxcvbn">zxcvbn</a>&quot;. 
+This has a large number of checks for password quality. It also provides constructive feedback to users on how 
+to improve their passwords if they are rejected.</p>
+<p>Some things that zxcvbn looks for is use of the account name or email in the password, common passwords, 
+low entropy passwords, dates, reverse words and more.</p>
 <p>This library can not be disabled - all passwords in Kanidm must pass this check.</p>
 <h2 id="password-badlisting"><a class="header" href="#password-badlisting">Password Badlisting</a></h2>
-<p>This is the process of configuring a list of passwords to exclude from being able to be used. This is especially useful if a specific business has been notified of a compromised account, allowing you to maintain a list of customised excluded passwords.</p>
-<p>The other value to this feature is being able to badlist common passwords that zxcvbn does not detect, or from other large scale password compromises.</p>
-<p>By default we ship with a preconfigured badlist that is updated overtime as new password breach lists are made available.</p>
-<h2 id="updating-your-own-badlist"><a class="header" href="#updating-your-own-badlist">Updating your own badlist.</a></h2>
-<p>You can update your own badlist by using the proided <code>kanidm_badlist_preprocess</code> tool which helps to automate this process.</p>
-<p>Given a list of passwords in a text file, it will generate a modification set which can be applied. The tool also provides the command you need to run to apply this.</p>
+<p>This is the process of configuring a list of passwords to exclude from being able to be used. 
+This is especially useful if a specific business has been notified of a compromised account, allowing 
+you to maintain a list of customised excluded passwords.</p>
+<p>The other value to this feature is being able to badlist common passwords that zxcvbn does not detect, or 
+from other large scale password compromises.</p>
+<p>By default we ship with a preconfigured badlist that is updated over time as new password breach lists are 
+made available.</p>
+<h2 id="updating-your-own-badlist"><a class="header" href="#updating-your-own-badlist">Updating your own Badlist</a></h2>
+<p>You can update your own badlist by using the provided <code>kanidm_badlist_preprocess</code> tool which helps to automate this process.</p>
+<p>Given a list of passwords in a text file, it will generate a modification set which can be applied. 
+The tool also provides the command you need to run to apply this:</p>
 <pre><code>kanidm_badlist_preprocess -m -o /tmp/modlist.json &lt;password file&gt; [&lt;password file&gt; &lt;password file&gt; ...]
 </code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="posix-accounts-and-groups"><a class="header" href="#posix-accounts-and-groups">POSIX Accounts and Groups</a></h1>
@@ -955,9 +968,9 @@ kanidm raw delete -H https://localhost:8443 -C ../insecure/ca.pem -D idm_admin '
 POSIX-like machines, such as Linux, FreeBSD, or others.</p>
 <h2 id="notes-on-posix-features"><a class="header" href="#notes-on-posix-features">Notes on POSIX Features</a></h2>
 <p>Many design decisions have been made in the POSIX features
-of kanidm that are intended to make distributed systems easier to manage and
+of Kanidm that are intended to make distributed systems easier to manage and
 client systems more secure.</p>
-<h3 id="uid-and-gid-numbers"><a class="header" href="#uid-and-gid-numbers">UID and GID numbers</a></h3>
+<h3 id="uid-and-gid-numbers"><a class="header" href="#uid-and-gid-numbers">UID and GID Numbers</a></h3>
 <p>In Kanidm there is no difference between a UID and a GID number. On most UNIX systems
 a user will create all files with a primary user and group. The primary group is
 effectively equivalent to the permissions of the user. It is very easy to see scenarios
@@ -965,16 +978,16 @@ where someone may change the account to have a shared primary group (ie <code>al
 but without changing the umask on all client systems. This can cause users' data to be
 compromised by any member of the same shared group.</p>
 <p>To prevent this, many systems create a &quot;user private group&quot;, or UPG. This group has the
-gidnumber matching the uidnumber of the user, and the user sets its primary
-group id to the gidnumber of the UPG.</p>
+GID number matching the UID of the user, and the user sets their primary
+group ID to the GID number of the UPG.</p>
 <p>As there is now an equivalence between the UID and GID number of the user and the UPG,
-there is no benefit to separating these values. As a result kanidm accounts <em>only</em>
-have a gidnumber, which is also considered to be its uidnumber as well. This has the benefit
-of preventing the accidental creation of a separate group that has an overlapping gidnumber
+there is no benefit in separating these values. As a result Kanidm accounts <em>only</em>
+have a GID number, which is also considered to be its UID number as well. This has the benefit
+of preventing the accidental creation of a separate group that has an overlapping GID number
 (the <code>uniqueness</code> attribute of the schema will block the creation).</p>
-<h3 id="upg-generation"><a class="header" href="#upg-generation">UPG generation</a></h3>
+<h3 id="upg-generation"><a class="header" href="#upg-generation">UPG Generation</a></h3>
 <p>Due to the requirement that a user have a UPG for security, many systems create these as
-two independent items. For example in /etc/passwd and /etc/group</p>
+two independent items. For example in /etc/passwd and /etc/group:</p>
 <pre><code># passwd
 william:x:654401105:654401105::/home/william:/bin/zsh
 # group
@@ -982,60 +995,61 @@ william:x:654401105:
 </code></pre>
 <p>Other systems like FreeIPA use a plugin that generates a UPG as a database record on
 creation of the account.</p>
-<p>Kanidm does neither of these. As the gidnumber of the user must be unique, and a user
+<p>Kanidm does neither of these. As the GID number of the user must be unique, and a user
 implies the UPG must exist, we can generate UPG's on-demand from the account.
 This has a single side effect - that you are unable to add any members to a
 UPG - given the nature of a user private group, this is the point.</p>
-<h3 id="gidnumber-generation"><a class="header" href="#gidnumber-generation">gidnumber generation</a></h3>
+<h3 id="gid-number-generation"><a class="header" href="#gid-number-generation">GID Number Generation</a></h3>
 <p>In the future, Kanidm plans to have asynchronous replication as a feature between writable
 database servers. In this case, we need to be able to allocate stable and reliable
-gidnumbers to accounts on replicas that may not be in continual communication.</p>
-<p>To do this, we use the last 32 bits of the account or group's UUID to generate the
-gidnumber.</p>
+GID numbers to accounts on replicas that may not be in continual communication.</p>
+<p>To do this, we use the last 32 bits of the account or group's UUID to 
+generate the GID number.</p>
 <p>A valid concern is the possibility of duplication in the lower 32 bits. Given the
 birthday problem, if you have 77,000 groups and accounts, you have a 50% chance
 of duplication. With 50,000 you have a 20% chance, 9,300 you have a 1% chance and
 with 2900 you have a 0.1% chance.</p>
 <p>We advise that if you have a site with &gt;10,000 users you should use an external system 
-to allocate gidnumbers serially or consistently to avoid potential duplication events.</p>
+to allocate GID numbers serially or consistently to avoid potential duplication events.</p>
 <p>This design decision is made as most small sites will benefit greatly from the
-autoallocation policy and the simplicity of its design, while larger enterprises
-will already have IDM or Business process applications for HR/People that are
+auto-allocation policy and the simplicity of its design, while larger enterprises
+will already have IDM or business process applications for HR/People that are
 capable of supplying this kind of data in batch jobs.</p>
-<h2 id="enabling-posix-attributes"><a class="header" href="#enabling-posix-attributes">Enabling Posix Attributes</a></h2>
-<h3 id="enabling-posix-attributes-on-accounts"><a class="header" href="#enabling-posix-attributes-on-accounts">Enabling Posix Attributes on Accounts</a></h3>
-<p>To enable posix account features and ids on an account, you require the permission <code>idm_account_unix_extend_priv</code>.
-This is provided to <code>idm_admins</code> in the default database.</p>
-<p>You can then use the following command to enable posix extensions.</p>
+<h2 id="enabling-posix-attributes"><a class="header" href="#enabling-posix-attributes">Enabling POSIX Attributes</a></h2>
+<h3 id="enabling-posix-attributes-on-accounts"><a class="header" href="#enabling-posix-attributes-on-accounts">Enabling POSIX Attributes on Accounts</a></h3>
+<p>To enable POSIX account features and IDs on an account, you require the permission 
+<code>idm_account_unix_extend_priv</code>. This is provided to <code>idm_admins</code> in the default database.</p>
+<p>You can then use the following command to enable POSIX extensions.</p>
 <pre><code>kanidm account posix set --name idm_admin &lt;account_id&gt; [--shell SHELL --gidnumber GID]
 kanidm account posix set --name idm_admin demo_user
 kanidm account posix set --name idm_admin demo_user --shell /bin/zsh
 kanidm account posix set --name idm_admin demo_user --gidnumber 2001
 </code></pre>
-<p>You can view the accounts posix token details with:</p>
+<p>You can view the accounts POSIX token details with:</p>
 <pre><code>kanidm account posix show --name anonymous demo_user
 </code></pre>
-<h3 id="enabling-posix-attributes-on-groups"><a class="header" href="#enabling-posix-attributes-on-groups">Enabling Posix Attributes on Groups</a></h3>
-<p>To enable posix group features and ids on an account, you require the permission <code>idm_group_unix_extend_priv</code>.
+<h3 id="enabling-posix-attributes-on-groups"><a class="header" href="#enabling-posix-attributes-on-groups">Enabling POSIX Attributes on Groups</a></h3>
+<p>To enable POSIX group features and IDs on an account, you require the permission <code>idm_group_unix_extend_priv</code>.
 This is provided to <code>idm_admins</code> in the default database.</p>
-<p>You can then use the following command to enable posix extensions.</p>
+<p>You can then use the following command to enable POSIX extensions:</p>
 <pre><code>kanidm group posix set --name idm_admin &lt;group_id&gt; [--gidnumber GID]
 kanidm group posix set --name idm_admin demo_group
 kanidm group posix set --name idm_admin demo_group --gidnumber 2001
 </code></pre>
-<p>You can view the accounts posix token details with:</p>
+<p>You can view the accounts POSIX token details with:</p>
 <pre><code>kanidm group posix show --name anonymous demo_group
 </code></pre>
-<p>Posix enabled groups will supply their members as posix members to clients. There is no
-special or separate type of membership for posix members required.</p>
+<p>POSIX-enabled groups will supply their members as POSIX members to clients. There is no
+special or separate type of membership for POSIX members required.</p>
 <h2 id="troubleshooting-common-issues"><a class="header" href="#troubleshooting-common-issues">Troubleshooting Common Issues</a></h2>
-<h3 id="subid-conflicts-with-podman"><a class="header" href="#subid-conflicts-with-podman">Subid conflicts with Podman</a></h3>
-<p>Due to the way that podman operates, in some cases using the kanidm client inside non-root containers with kanidm accounts may fail with an error such as:</p>
+<h3 id="subuid-conflicts-with-podman"><a class="header" href="#subuid-conflicts-with-podman">subuid conflicts with Podman</a></h3>
+<p>Due to the way that Podman operates, in some cases using the Kanidm client inside non-root containers 
+with Kanidm accounts may fail with an error such as:</p>
 <pre><code>ERRO[0000] cannot find UID/GID for user NAME: No subuid ranges found for user &quot;NAME&quot; in /etc/subuid
 </code></pre>
-<p>This is a fault in podman and how it attempts to provide non-root containers, when uid/gids
-are greater than 65535. In this case you may manually allocate your users gidnumber to be
-between 1000 - 65535 which may not have the fault.</p>
+<p>This is a fault in Podman and how it attempts to provide non-root containers, when UID/GIDs
+are greater than 65535. In this case you may manually allocate your users GID number to be
+between 1000 - 65535, which may not trigger the fault.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ssh-key-distribution"><a class="header" href="#ssh-key-distribution">SSH Key Distribution</a></h1>
 <p>To support SSH authentication securely to a large set of hosts running SSH, we support distribution
 of SSH public keys via the kanidm server.</p>

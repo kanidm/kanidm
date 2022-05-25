@@ -135,9 +135,11 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="monitoring-the-platform"><a class="header" href="#monitoring-the-platform">Monitoring the platform</a></h1>
-<p>The monitoring design of Kanidm is still very much in its infancy - <a href="https://github.com/kanidm/kanidm/issues/216">take part in the dicussion here!</a>.</p>
+<p>The monitoring design of Kanidm is still very much in its infancy - 
+<a href="https://github.com/kanidm/kanidm/issues/216">take part in the dicussion at github.com/kanidm/kanidm/issues/216</a>.</p>
 <h2 id="kanidmd"><a class="header" href="#kanidmd">kanidmd</a></h2>
-<p>kanidmd currently responds to HTTP GET requests at the <code>/status</code> endpoint with a JSON object of either &quot;true&quot; or &quot;false&quot;. <code>true</code> indicates that the platform is responding to requests.</p>
+<p>kanidmd currently responds to HTTP GET requests at the <code>/status</code> endpoint with a JSON object of 
+either &quot;true&quot; or &quot;false&quot;. <code>true</code> indicates that the platform is responding to requests.</p>
 <table><thead><tr><th>URL</th><th><code>&lt;hostname&gt;/status</code></th></tr></thead><tbody>
 <tr><td>Example URL</td><td><code>https://example.com/status</code></td></tr>
 <tr><td>Expected response</td><td>One of either <code>true</code> or <code>false</code> (without quotes)</td></tr>
