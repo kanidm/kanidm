@@ -10,13 +10,13 @@ out-of-box experience possible, as well as supplying best practice examples rela
 Identity Management (IDM) systems.
 
 The system administrator account has limited privileges (see 
-[Recovering the Initial idm_admin Account] (#recovering-the-initial-admin-account)) to learn 
+[Recovering the Initial idm_admin Account](#recovering-the-initial-idm_admin-account)) to learn 
 how to access the inbuilt admin account).
 It manages only high-privilege accounts and services. This is to help separate system administration
-from identity administration actions. An idm_admin is also provided that is only for management
+from identity administration actions. An idm_admin user is also provided that is only for management
 of accounts and groups.
 
-Both admin and idm_admin should *NOT* be used for daily activities - they exist for initial
+Both the admin and the idm_admin user should *NOT* be used for daily activities - they exist for initial
 system configuration, and for disaster recovery scenarios. You should delegate permissions
 as required to named user accounts instead.
 
@@ -61,7 +61,7 @@ default permissions. These can be viewed with:
 Members of the `idm_account_manage_priv` group have the rights to manage other users'
 accounts security and login aspects. This includes resetting account credentials.
 
-You can perform a password reset on the demo_user, for example as idm_admin, who is
+You can perform a password reset on the demo_user, for example as the idm_admin user, who is
 a default member of this group.
 
     kanidm account credential set_password demo_user --name idm_admin
