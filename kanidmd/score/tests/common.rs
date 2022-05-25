@@ -12,7 +12,7 @@ pub const ADMIN_TEST_USER: &str = "admin";
 pub const ADMIN_TEST_PASSWORD: &str = "integration test admin password";
 pub static PORT_ALLOC: AtomicU16 = AtomicU16::new(18080);
 
-fn is_free_port(port: u16) -> bool {
+pub fn is_free_port(port: u16) -> bool {
     // TODO: Refactor to use `Result::is_err` in a future PR
     match TcpStream::connect(("0.0.0.0", port)) {
         Ok(_) => false,
@@ -21,6 +21,9 @@ fn is_free_port(port: u16) -> bool {
 }
 
 // Test external behaviours of the service.
+
+// allowed because the use of this function is behind a test gate
+#[allow(dead_code)]
 pub async fn setup_async_test() -> KanidmClient {
     let _ = tracing_tree::test_init();
 
