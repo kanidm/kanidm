@@ -166,9 +166,9 @@ Setting different developer profiles while building is done by setting the envir
 
 For example: `KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd`
 
-### Building the development container
+### Build a kanidm container
 
-Build a development container with the current branch using:
+Build a container with the current branch using:
 
     make <TARGET>
 
@@ -176,20 +176,22 @@ Check `make help` for a list of valid targets.
 
 The following environment variables control the build:
 
-|ENV variable|Definition|
-|-|-|
-|`IMAGE_BASE`|Base location of the container image. Defaults to `kanidm`.|
-|`IMAGE_VERSION`|Determines the container's tag.|
-|`CONTAINER_TOOL_ARGS`|Specify extra options for the container build tool.|
-|`IMAGE_ARCH`|Passed to `--platforms` when the container is built. Defaults to `linux/amd64,linux/arm64`.|
-|`CONTAINER_BUILD_ARGS`|Override default ARG settings during the container build.|
-|`CONTAINER_TOOL`|Use an alternative container build tool. Defaults to `docker`.|
-|`BOOK_VERSION`|Sets version used when building the documentation book. Defaults to `master`.|
+|ENV variable|Definition|Default|
+|-|-|-|
+|`IMAGE_BASE`|Base location of the container image.|`kanidm`|
+|`IMAGE_VERSION`|Determines the container's tag.|None|
+|`CONTAINER_TOOL_ARGS`|Specify extra options for the container build tool.|None|
+|`IMAGE_ARCH`|Passed to `--platforms` when the container is built.|`linux/amd64,linux/arm64`|
+|`CONTAINER_BUILD_ARGS`|Override default ARG settings during the container build.|None|
+|`CONTAINER_TOOL`|Use an alternative container build tool.|`docker`|
+|`BOOK_VERSION`|Sets version used when building the documentation book.|`master`|
 
-Build a development container using `podman`:
+#### Container build examples
+
+Build a `kanidm` container using `podman`:
 
     CONTAINER_TOOL=podman make build/kanidmd
 
-Build a development container and specify a redis build cache:
+Build a `kanidm` container and use a redis build cache:
 
-    CONTAINER_BUILD_ARGS="--build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"" make build/kanidmd
+    CONTAINER_BUILD_ARGS='--build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"' make build/kanidmd
