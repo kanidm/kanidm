@@ -1,13 +1,17 @@
 # Administration Tasks
 
-There are a number of tasks that you may wish to perform as an administrator of a service like Kanidm.
+This chapter describes some of the routine administration tasks for running
+a Kanidm server, such as making backups and restoring from backups, testing
+server configuration, reindexing, verifying data consistency, and renaming
+your domain.
 
 # Backup and Restore
 
-With any idm software, it's important you have the capability to restore in case of a disaster - be
-that physical damage or mistake. Kanidm supports backup and restore of the database with two methods.
+With any IDM software, it's important you have the capability to restore in 
+case of a disaster - be that physical damage or a mistake. Kanidm supports backup 
+and restore of the database with two methods.
 
-## Method 1
+## Method 1 (Preferred)
 
 Method 1 involves taking a backup of the database entry content, which is then re-indexed on restore.
 This is the preferred method.
@@ -46,7 +50,8 @@ This is a simple backup of the data volume.
 Automatic backups can be generated online by a `kanidmd server` instance
 by including the `[online_backup]` section in the `server.toml`.
 This allows you to run regular backups, defined by a cron schedule, and maintain
-the number of backup versions to keep. An example is located in [examples/server.toml](../../examples/server.toml).
+the number of backup versions to keep. An example is located in 
+TODO this link is 404 [examples/server.toml](../../examples/server.toml).
 
 # Configuration Test
 
@@ -69,7 +74,8 @@ Please note the server will sometimes reindex on startup as a result of the proj
 changing its internal schema definitions. This is normal and expected - you may never need
 to start a reindex yourself as a result!
 
-You'll likely notice a need to reindex if you add indexes to schema and you see a message in your logs such as:
+You'll likely notice a need to reindex if you add indexes to schema and you see a message in 
+your logs such as:
 
     Index EQUALITY name not found
     Index {type} {attribute} not found
@@ -97,7 +103,7 @@ queries more efficient . It is recommended that you vacuum after a reindex is pe
 when you wish to reclaim space in the database file.
 
 Vacuum is also able to change the pagesize of the database. After changing `db_fs_type` (which affects
-pagesize) in server.toml, you must run a vacuum for this to take effect.
+pagesize) in server.toml, you must run a vacuum for this to take effect:
 
     docker stop <container name>
     docker run --rm -i -t -v kanidmd:/data \
@@ -133,10 +139,10 @@ name, merging, or other needs which may prompt this needing to be changed.
 > the domain name unless REQUIRED and have a plan on how to manage these issues.
 
 > **WARNING:** This operation can take an extensive amount of time as ALL accounts and groups
-> in the domain MUST have their SPN's regenerated. This WILL also cause a large delay in
-> replication once the system is restarted.
+> in the domain MUST have their Service Principal Names (SPNs) regenerated. This WILL also cause 
+> a large delay in replication once the system is restarted.
 
-You should take a backup before proceeding with this operation.
+You should make a backup before proceeding with this operation.
 
 When you have a created a migration plan and strategy on handling the invalidation of webauthn,
 you can then rename the domain.
