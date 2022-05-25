@@ -9,7 +9,7 @@ your domain.
 
 With any Identity Management (IDM) software, it's important you have the capability to restore in 
 case of a disaster - be that physical damage or a mistake. Kanidm supports backup 
-and restore of the database with two methods.
+and restore of the database with three methods.
 
 ## Method 1 (Preferred)
 

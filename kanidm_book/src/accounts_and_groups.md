@@ -10,7 +10,7 @@ out-of-box experience possible, as well as supplying best practice examples rela
 Identity Management (IDM) systems.
 
 The system administrator account has limited privileges (see 
-[Recovering the Initial idm_admin Account] (#recovering-the-initial-admin-account) to learn 
+[Recovering the Initial idm_admin Account] (#recovering-the-initial-admin-account)) to learn 
 how to access the inbuilt admin account).
 It manages only high-privilege accounts and services. This is to help separate system administration
 from identity administration actions. An idm_admin is also provided that is only for management
