@@ -46,9 +46,6 @@ metadata into the correct directory:
     wget https://download.opensuse.org/repositories/network:/idm/Fedora_35/network:idm.repo
     # Centos Stream 9
     wget https://download.opensuse.org/repositories/network:/idm/CentOS_9_Stream/network:idm.repo
-    
-<!-- I removed 'sudo' for consistency, as most example commands in the book do not have command 
-    prompts or sudo -->
 
 You can then install with:
 

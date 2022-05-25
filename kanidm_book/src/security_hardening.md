@@ -38,11 +38,9 @@ Each warning highlights an issue that may exist in your environment. It is not p
 prescribe an exact configuration that may secure your system. This is why we only present
 possible risks.
 
-### Should be readonly to running uid
+### Should be readonly to running UID
 
-TODO is the running UID the kanidm daemon?
-
-Files such as configurations should be read-only to this UID/GID. If an attacker is
+Files, such as configuration files, should be read-only to the UID of the Kanidm daemon. If an attacker is
 able to gain code execution, they are then unable to modify the configuration to write, or to over-write
 files in other locations, or to tamper with the systems configuration.
 
@@ -58,10 +56,10 @@ attacker can read Kanidm content and may be able to further attack the system as
 This can be prevented by removing "everyone: execute bits from parent directories containing the
 configuration, and removing "everyone" bits from the files in question.
 
-### owned by the current uid, which may allow file permission changes
+### owned by the current UID, which may allow file permission changes
 
-File permissions in unix systems are a discrestionary access control system, which means the
-named uid owner is able to further modify the access of a file regardless of the current
+File permissions in unix systems are a discretionary access control system, which means the
+named UID owner is able to further modify the access of a file regardless of the current
 settings. For example:
 
     [william@amethyst 12:25] /tmp > touch test
@@ -77,7 +75,6 @@ settings. For example:
 Notice that even though the file was set to "read only" to william, and no permission to any
 other users, user "william" can change the bits to add write permissions back or permissions
 for other users.
-<!-- gotta watch out for that william dude, he is trouble -->
 
 This can be prevent by making the file owner a different UID than the running process for kanidm.
 
@@ -108,20 +105,19 @@ kanidm from being able to change the permissions of the folder. Because the fold
 "everyone" mode bits, the content of the database is secure because users can now cd/read
 from the directory.
 
-Configurations for clients, such as /etc/kanidm/config, should be secured with read-only permissions:
+Configurations for clients, such as /etc/kanidm/config, should be secured with read-only permissions
+and owned by root:
 
     [william@amethyst 12:26] /etc/kanidm > ls -al config
-    -r--r--r--    1 root  wheel    38 10 Jul 10:10 config
+    -r--r--r--    1 root  root    38 10 Jul 10:10 config
     
-TODO must it be the wheel group? the wheel group controls sudo users on many linuxes    
-
 This file should be "everyone"-readable, which is why the bits are defined as such.
 
 > NOTE: Why do you use 440 or 444 modes?
 >
 > A bug exists in the implementation of readonly() in rust that checks this as "does a write
-> bit exist for any user" vs "can the current uid write the file?". This distinction is subtle
-> but it affects the check. We don't believe this is a significant issue though because
+> bit exist for any user" vs "can the current UID write the file?". This distinction is subtle
+> but it affects the check. We don't believe this is a significant issue though, because
 > setting these to 440 and 444 helps to prevent accidental changes by an administrator anyway
 
 ## Running as non-root in docker
@@ -129,12 +125,12 @@ This file should be "everyone"-readable, which is why the bits are defined as su
 The commands provided in this book will run kanidmd as "root" in the container to make the onboarding
 smoother. However, this is not recommended in production for security reasons.
 
-You should allocate unique uid and gid numbers for the service to run as on your host
+You should allocate unique UID and GID numbers for the service to run as on your host
 system. In this example we use `1000:1000`
 
 You will need to adjust the permissions on the `/data` volume to ensure that the process
 can manage the files. Kanidm requires the ability to write to the `/data` directory to create
-the sqlite files. This uid/gid number should match the above. You could consider the following
+the sqlite files. This UID/GID number should match the above. You could consider the following
 changes to help isolate these changes:
 
     docker run --rm -i -t -v kanidmd:/data opensuse/leap:latest /bin/sh
@@ -145,12 +141,10 @@ changes to help isolate these changes:
     chown root:root /data/server.toml
     chmod 644 /data/server.toml
     
-    <!-- removed prompts for consistency with other command examples -->
-
 You can then use this to run the kanidm server in docker with a user:
 
     docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/kanidmd ...
 
 > **HINT**
-> You need to use the uid number/gid number with the `-u` argument, as the container can't resolve
+> You need to use the UID or GID number with the `-u` argument, as the container can't resolve
 > usernames from the host system.
