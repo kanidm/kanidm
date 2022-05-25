@@ -9,8 +9,9 @@ Kanidm ships with a number of default accounts and groups. This is to give you t
 out-of-box experience possible, as well as supplying best practice examples related to modern 
 Identity Management (IDM) systems.
 
-The system administrator account has limited privileges (see [Recovering the Initial idm_admin Account]
-(#recovering-the-initial-admin-account) to learn how to access the inbuilt admin account).
+The system administrator account has limited privileges (see 
+[Recovering the Initial idm_admin Account] (#recovering-the-initial-admin-account) to learn 
+how to access the inbuilt admin account).
 It manages only high-privilege accounts and services. This is to help separate system administration
 from identity administration actions. An idm_admin is also provided that is only for management
 of accounts and groups.
@@ -25,7 +26,7 @@ and sensitive data), group management, and more.
 
 ## Recovering the Initial idm_admin Account
 
-By default the idm_admin has no password, and can not be accessed. You should recover it with the
+By default the idm_admin user has no password, and can not be accessed. You should recover it with the
 admin (system admin) account. We recommend the use of "reset_credential" as it provides a high
 strength, random, machine only password.
 
@@ -34,7 +35,7 @@ strength, random, machine only password.
 
 ## Creating Accounts
 
-You can now use the idm_admin to create initial groups and accounts.
+You can now use the idm_admin user to create initial groups and accounts.
 
     kanidm group create demo_group --name idm_admin
     kanidm account create demo_user "Demonstration User" --name idm_admin
