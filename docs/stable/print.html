@@ -2140,26 +2140,27 @@ npm install --global rollup
 <p>The &quot;developer&quot; profile for kanidmd will automatically use the pkg output in this folder.</p>
 <p>Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in <code>/profiles</code>. </p>
 <p>For example: <code>KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd</code></p>
-<h3 id="building-the-development-container"><a class="header" href="#building-the-development-container">Building the development container</a></h3>
-<p>Build a development container with the current branch using:</p>
+<h3 id="build-a-kanidm-container"><a class="header" href="#build-a-kanidm-container">Build a kanidm container</a></h3>
+<p>Build a container with the current branch using:</p>
 <pre><code>make &lt;TARGET&gt;
 </code></pre>
 <p>Check <code>make help</code> for a list of valid targets.</p>
 <p>The following environment variables control the build:</p>
-<table><thead><tr><th>ENV variable</th><th>Definition</th></tr></thead><tbody>
-<tr><td><code>IMAGE_BASE</code></td><td>Base location of the container image. Defaults to <code>kanidm</code>.</td></tr>
-<tr><td><code>IMAGE_VERSION</code></td><td>Determines the container's tag.</td></tr>
-<tr><td><code>CONTAINER_TOOL_ARGS</code></td><td>Specify extra options for the container build tool.</td></tr>
-<tr><td><code>IMAGE_ARCH</code></td><td>Passed to <code>--platforms</code> when the container is built. Defaults to <code>linux/amd64,linux/arm64</code>.</td></tr>
-<tr><td><code>CONTAINER_BUILD_ARGS</code></td><td>Override default ARG settings during the container build.</td></tr>
-<tr><td><code>CONTAINER_TOOL</code></td><td>Use an alternative container build tool. Defaults to <code>docker</code>.</td></tr>
-<tr><td><code>BOOK_VERSION</code></td><td>Sets version used when building the documentation book. Defaults to <code>master</code>.</td></tr>
+<table><thead><tr><th>ENV variable</th><th>Definition</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>IMAGE_BASE</code></td><td>Base location of the container image.</td><td><code>kanidm</code></td></tr>
+<tr><td><code>IMAGE_VERSION</code></td><td>Determines the container's tag.</td><td>None</td></tr>
+<tr><td><code>CONTAINER_TOOL_ARGS</code></td><td>Specify extra options for the container build tool.</td><td>None</td></tr>
+<tr><td><code>IMAGE_ARCH</code></td><td>Passed to <code>--platforms</code> when the container is built.</td><td><code>linux/amd64,linux/arm64</code></td></tr>
+<tr><td><code>CONTAINER_BUILD_ARGS</code></td><td>Override default ARG settings during the container build.</td><td>None</td></tr>
+<tr><td><code>CONTAINER_TOOL</code></td><td>Use an alternative container build tool.</td><td><code>docker</code></td></tr>
+<tr><td><code>BOOK_VERSION</code></td><td>Sets version used when building the documentation book.</td><td><code>master</code></td></tr>
 </tbody></table>
-<p>Build a development container using <code>podman</code>:</p>
+<h4 id="container-build-examples"><a class="header" href="#container-build-examples">Container build examples</a></h4>
+<p>Build a <code>kanidm</code> container using <code>podman</code>:</p>
 <pre><code>CONTAINER_TOOL=podman make build/kanidmd
 </code></pre>
-<p>Build a development container and specify a redis build cache:</p>
-<pre><code>CONTAINER_BUILD_ARGS=&quot;--build-arg &quot;SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379&quot;&quot; make build/kanidmd
+<p>Build a <code>kanidm</code> container and use a redis build cache:</p>
+<pre><code>CONTAINER_BUILD_ARGS='--build-arg &quot;SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379&quot;' make build/kanidmd
 </code></pre>
 
                     </main>
