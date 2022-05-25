@@ -10,7 +10,6 @@ follow to ensure that Kanidm operates in a secure environment.
 The main server is a high-value target for a potential attack, as Kanidm serves as
 the authority on identity and authorisation in a network. Compromise of the Kanidm
 server is equivalent to a full-network take over, also known as "game over".
-<!-- it is good to avoid abbreviations, especially for the benefit of non-native English speakers -->
 
 The unixd resolver is also a high value target as it can be accessed to allow unauthorised
 access to a server, to intercept communications to the server, or more. This also must be protected
@@ -56,7 +55,7 @@ attacker can read Kanidm content and may be able to further attack the system as
 This can be prevented by removing "everyone: execute bits from parent directories containing the
 configuration, and removing "everyone" bits from the files in question.
 
-### owned by the current UID, which may allow file permission changes
+### Owned by the current UID, which may allow file permission changes
 
 File permissions in unix systems are a discretionary access control system, which means the
 named UID owner is able to further modify the access of a file regardless of the current
