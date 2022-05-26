@@ -37,7 +37,7 @@ Each warning highlights an issue that may exist in your environment. It is not p
 prescribe an exact configuration that may secure your system. This is why we only present
 possible risks.
 
-### Should be readonly to running UID
+### Should be Read-only to Running UID
 
 Files, such as configuration files, should be read-only to the UID of the Kanidm daemon. If an attacker is
 able to gain code execution, they are then unable to modify the configuration to write, or to over-write
@@ -46,7 +46,7 @@ files in other locations, or to tamper with the systems configuration.
 This can be prevented by changing the files ownership to another user, or removing "write" bits
 from the group.
 
-### 'everyone' permission bits in the mode
+### 'everyone' Permission Bits in the Mode
 
 This means that given a permission mask, "everyone" or all users of the system can read, write or
 execute the content of this file. This may mean that if an account on the system is compromised the
@@ -55,9 +55,9 @@ attacker can read Kanidm content and may be able to further attack the system as
 This can be prevented by removing "everyone: execute bits from parent directories containing the
 configuration, and removing "everyone" bits from the files in question.
 
-### Owned by the current UID, which may allow file permission changes
+### Owned by the Current UID, Which May Allow File Permission Changes
 
-File permissions in unix systems are a discretionary access control system, which means the
+File permissions in UNIX systems are a discretionary access control system, which means the
 named UID owner is able to further modify the access of a file regardless of the current
 settings. For example:
 
@@ -77,20 +77,17 @@ for other users.
 
 This can be prevent by making the file owner a different UID than the running process for kanidm.
 
-### A secure example
+### A Secure Example
 
 Between these three issues it can be hard to see a possible strategy to secure files, however
-one way exists - group read permissions. The most effective method to secure resources for kanidm
+one way exists - group read permissions. The most effective method to secure resources for Kanidm
 is to set configurations to:
 
     [william@amethyst 12:26] /etc/kanidm > ls -al server.toml
     -r--r-----   1 root           kanidm      212 28 Jul 16:53 server.toml
 
-The kanidm server should be run as "kanidm:kanidm" with the appropriate user and user private
+The Kanidm server should be run as "kanidm:kanidm" with the appropriate user and user private
 group created on your system. This applies to unixd configuration as well.
-
-TODO is the kanidm user created the same way as other daemon users, without a /home dir and 
-no shell access (/sbin/nologin, /bin/false)?
 
 For the database your data folder should be:
 
@@ -99,8 +96,8 @@ For the database your data folder should be:
     drwxrwx---   3 root     kanidm      96 29 Jul 12:38 .
     -rw-r-----   1 kanidm   kanidm  544768 29 Jul 12:38 kanidm.db
 
-This means 770 root:kanidm. This allows kanidm to create new files in the folder, but prevents
-kanidm from being able to change the permissions of the folder. Because the folder does not have
+This means 770 root:kanidm. This allows Kanidm to create new files in the folder, but prevents
+Kanidm from being able to change the permissions of the folder. Because the folder does not have
 "everyone" mode bits, the content of the database is secure because users can now cd/read
 from the directory.
 
@@ -119,7 +116,7 @@ This file should be "everyone"-readable, which is why the bits are defined as su
 > but it affects the check. We don't believe this is a significant issue though, because
 > setting these to 440 and 444 helps to prevent accidental changes by an administrator anyway
 
-## Running as non-root in docker
+## Running as Non-root in docker
 
 The commands provided in this book will run kanidmd as "root" in the container to make the onboarding
 smoother. However, this is not recommended in production for security reasons.
@@ -140,7 +137,9 @@ changes to help isolate these changes:
     chown root:root /data/server.toml
     chmod 644 /data/server.toml
     
-You can then use this to run the kanidm server in docker with a user:
+Note that the example commands all run inside the docker container.
+
+You can then use this to run the Kanidm server in docker with a user:
 
     docker run --rm -i -t -u 1000:1000 -v kanidmd:/data kanidm/server:latest /sbin/kanidmd ...
 
