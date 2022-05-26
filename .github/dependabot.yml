@@ -30,7 +30,21 @@ updates:
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
-    directory: "/kanidmd"
+    directory: "/kanidmd/idm"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidmd/score"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidmd/daemon"
     schedule:
       interval: weekly
       time: "06:00"
@@ -44,7 +58,34 @@ updates:
       timezone: Australia/Brisbane
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
+    directory: "/kanidmd_web_ui"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
     directory: "/kanidm_unix_int"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+  - package-ecosystem: cargo
+    directory: "/kanidm_unix_int/nss_kanidm"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidm_unix_int/pam_kanidm"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/kanidm_unix_int/pam_tester"
     schedule:
       interval: weekly
       time: "06:00"
@@ -52,6 +93,13 @@ updates:
     open-pull-requests-limit: 99
   - package-ecosystem: cargo
     directory: "/orca"
+    schedule:
+      interval: weekly
+      time: "06:00"
+      timezone: Australia/Brisbane
+    open-pull-requests-limit: 99
+  - package-ecosystem: cargo
+    directory: "/profiles"
     schedule:
       interval: weekly
       time: "06:00"
