@@ -1,9 +1,14 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
-FROM ${BASE_IMAGE} AS builder
+FROM ${BASE_IMAGE} AS repos
+# To help mirrors not be as bad
+RUN zypper install -y mirrorsorcerer
+RUN /usr/sbin/mirrorsorcerer -x; true
+RUN zypper refresh --force
+RUN zypper dup -y
+
+FROM repos AS builder
 LABEL maintainer william@blackhats.net.au
 
-RUN zypper refresh
-RUN zypper dup -y
 RUN zypper install -y \
         cargo \
         rust \
@@ -21,10 +26,13 @@ ARG SCCACHE_REDIS
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE
 
-ENV RUSTC_BOOTSTRAP=1
 RUN mkdir /scratch
-RUN ln -s -f /usr/bin/clang /usr/bin/cc
-RUN ln -s -f /usr/bin/ld.lld /usr/bin/ld
+RUN echo $KANIDM_BUILD_PROFILE
+RUN echo $KANIDM_FEATURES
+
+ENV RUSTFLAGS="-Clinker=clang -Clink-arg=-fuse-ld=/usr/bin/ld.lld"
+ENV CARGO_HOME=/scratch/.cargo
+
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
 		then \
 			export CC="/usr/bin/sccache /usr/bin/clang" && \
@@ -32,24 +40,20 @@ RUN if [ "${SCCACHE_REDIS}" != "" ]; \
 			sccache --start-server; \
 		else \
 			export CC="/usr/bin/clang"; \
-	fi
-RUN echo $KANIDM_BUILD_PROFILE
-RUN echo $KANIDM_FEATURES
-ENV CARGO_HOME=/scratch/.cargo
-RUN cargo build \
+	fi && \
+    cargo build \
 		--features=${KANIDM_FEATURES} \
 		--target-dir=/usr/src/kanidm/target/ \
-		--release
-RUN ls -al /usr/src/kanidm/target/release
-RUN if [ "${SCCACHE_REDIS}" != "" ]; \
+		--release && \
+    if [ "${SCCACHE_REDIS}" != "" ]; \
 		then sccache -s; \
 	fi;
 
-FROM ${BASE_IMAGE}
+RUN ls -al /usr/src/kanidm/target/release
+
+FROM repos
 LABEL maintainer william@blackhats.net.au
 
-RUN zypper refresh
-RUN zypper dup -y
 RUN zypper install -y \
         timezone \
         sqlite3 \
