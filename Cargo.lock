@@ -628,7 +628,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
 ]
 
 [[package]]
@@ -1991,7 +1991,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "users",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "validator",
  "webauthn-authenticator-rs",
  "webauthn-rs",
@@ -2010,7 +2010,7 @@ dependencies = [
  "toml",
  "tracing",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "webauthn-rs",
 ]
 
@@ -2023,7 +2023,7 @@ dependencies = [
  "serde_json",
  "time 0.2.27",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "webauthn-rs",
 ]
 
@@ -2551,7 +2551,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "uuid 1.0.0",
+ "uuid 1.1.0",
 ]
 
 [[package]]
@@ -3226,7 +3226,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "webauthn-authenticator-rs",
 ]
 
@@ -4109,9 +4109,9 @@ checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "uuid"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
+checksum = "93bbc61e655a4833cf400d0d15bf3649313422fa7572886ad6dab16d79886365"
 dependencies = [
  "getrandom 0.2.6",
  "serde",
