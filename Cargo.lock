@@ -2047,6 +2047,7 @@ dependencies = [
  "tokio",
  "tracing",
  "tracing-subscriber",
+ "url",
  "webauthn-authenticator-rs",
  "zxcvbn",
 ]

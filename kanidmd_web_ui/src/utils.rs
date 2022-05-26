@@ -35,3 +35,10 @@ pub fn get_value_from_input_event(e: InputEvent) -> String {
     let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
     target.value()
 }
+
+pub fn get_value_from_element_id(id: &str) -> Option<String> {
+    document()
+            .get_element_by_id(id)
+                    .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
+                            .map(|element| element.value())
+                            }

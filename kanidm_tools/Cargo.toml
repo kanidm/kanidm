@@ -50,6 +50,7 @@ dialoguer =  "^0.10.1"
 
 webauthn-authenticator-rs = "^0.3.0-alpha.12"
 tokio = { version = "^1.18.0", features = ["rt", "macros"] }
+url = { version = "^2.2.2", features = ["serde"] }
 
 [build-dependencies]
 structopt = { version = "^0.3.26", default-features = false }

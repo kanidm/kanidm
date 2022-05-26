@@ -825,12 +825,12 @@ pub enum SetCredentialResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUIntentToken {
-    pub intent_token: String,
+    pub token: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUSessionToken {
-    pub session_token: String,
+    pub token: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -876,6 +876,8 @@ pub enum CURegState {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUStatus {
+    pub spn: String,
+    pub displayname: String,
     pub can_commit: bool,
     pub primary: Option<CredentialDetail>,
     pub mfaregstate: CURegState,

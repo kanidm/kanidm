@@ -123,8 +123,9 @@ impl fmt::Debug for MfaRegStateStatus {
 }
 
 #[derive(Debug)]
-pub(crate) struct CredentialUpdateSessionStatus {
-    // spn: ?
+pub struct CredentialUpdateSessionStatus {
+    spn: String,
+    displayname: String,
     // ttl: Duration,
     //
     can_commit: bool,
@@ -136,6 +137,8 @@ pub(crate) struct CredentialUpdateSessionStatus {
 impl Into<CUStatus> for CredentialUpdateSessionStatus {
     fn into(self) -> CUStatus {
         CUStatus {
+            spn: self.spn.clone(),
+            displayname: self.displayname.clone(),
             can_commit: self.can_commit,
             primary: self.primary,
             mfaregstate: match self.mfaregstate {
@@ -154,6 +157,9 @@ impl Into<CUStatus> for CredentialUpdateSessionStatus {
 impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
     fn from(session: &CredentialUpdateSession) -> Self {
         CredentialUpdateSessionStatus {
+            spn: session.account.spn.clone(),
+            displayname: session.account.displayname.clone(),
+
             can_commit: true,
             primary: session.primary.as_ref().map(|c| c.into()),
             mfaregstate: match &session.mfaregstate {
@@ -284,17 +290,22 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         intent_token_id: Option<String>,
         account: Account,
         ct: Duration,
-    ) -> Result<CredentialUpdateSessionToken, OperationError> {
+    ) -> Result<
+    (CredentialUpdateSessionToken, CredentialUpdateSessionStatus ), OperationError> {
         // - stash the current state of all associated credentials
         let primary = account.primary.clone();
         // - store account policy (if present)
-
-        let session = Arc::new(Mutex::new(CredentialUpdateSession {
+        let session = CredentialUpdateSession {
             account,
             intent_token_id,
             primary,
             mfaregstate: MfaRegState::None,
-        }));
+        };
+
+        let status: CredentialUpdateSessionStatus = (&session).into();
+
+        let session = Arc::new(Mutex::new(session));
+
 
         let max_ttl = ct + MAXIMUM_CRED_UPDATE_TTL;
 
@@ -317,7 +328,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         trace!("cred_update_sessions.insert - {}", sessionid);
 
         // - issue the CredentialUpdateToken (enc)
-        Ok(CredentialUpdateSessionToken { token_enc })
+        Ok((CredentialUpdateSessionToken { token_enc }, status))
     }
 
     pub fn init_credential_update_intent(
@@ -405,7 +416,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         token: CredentialUpdateIntentToken,
         ct: Duration,
-    ) -> Result<CredentialUpdateSessionToken, OperationError> {
+    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus ), OperationError> {
         let CredentialUpdateIntentToken { intent_id } = token;
 
         /*
@@ -582,7 +593,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         event: &InitCredentialUpdateEvent,
         ct: Duration,
-    ) -> Result<CredentialUpdateSessionToken, OperationError> {
+    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus ), OperationError> {
         spanned!("idm::server::credupdatesession<Init>", {
             let account = self.validate_init_credential_update(event.target, &event.ident)?;
 
@@ -1222,7 +1233,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CredentialUpdateSessionToken, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
+        CredentialUpdateSessionToken, CredentialUpdateSessionStatus, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
         MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
     use crate::credential::totp::Totp;
@@ -1348,7 +1359,7 @@ mod tests {
         })
     }
 
-    fn setup_test_session(idms: &IdmServer, ct: Duration) -> CredentialUpdateSessionToken {
+    fn setup_test_session(idms: &IdmServer, ct: Duration) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus)  {
         let mut idms_prox_write = idms.proxy_write(ct);
 
         let e2 = entry_init!(
@@ -1380,7 +1391,7 @@ mod tests {
         cur.expect("Failed to start update")
     }
 
-    fn renew_test_session(idms: &IdmServer, ct: Duration) -> CredentialUpdateSessionToken {
+    fn renew_test_session(idms: &IdmServer, ct: Duration) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
         let mut idms_prox_write = idms.proxy_write(ct);
 
         let testperson = idms_prox_write
@@ -1591,7 +1602,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let cust = setup_test_session(idms, ct);
+            let (cust, _) = setup_test_session(idms, ct);
 
             let cutxn = idms.cred_update_transaction();
             // The session exists
@@ -1621,7 +1632,7 @@ mod tests {
             let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let cust = setup_test_session(idms, ct);
+            let (cust, _) = setup_test_session(idms, ct);
 
             let cutxn = idms.cred_update_transaction();
 
@@ -1651,7 +1662,7 @@ mod tests {
             assert!(check_testperson_password(idms, test_pw, ct).is_some());
 
             // Test deleting the pw
-            let cust = renew_test_session(idms, ct);
+            let (cust, _) = renew_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
             let c_status = cutxn
@@ -1687,7 +1698,7 @@ mod tests {
             let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let cust = setup_test_session(idms, ct);
+            let (cust, _) = setup_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
@@ -1746,7 +1757,7 @@ mod tests {
             // No need to test delete of the whole cred, we already did with pw above.
 
             // If we remove TOTP, show it reverts back.
-            let cust = renew_test_session(idms, ct);
+            let (cust, _) = renew_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
             let c_status = cutxn
@@ -1776,7 +1787,7 @@ mod tests {
             let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let cust = setup_test_session(idms, ct);
+            let (cust, _) = setup_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
@@ -1847,7 +1858,7 @@ mod tests {
                     "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-                let cust = setup_test_session(idms, ct);
+                let (cust, _) = setup_test_session(idms, ct);
                 let cutxn = idms.cred_update_transaction();
 
                 // Setup the PW
@@ -1923,7 +1934,7 @@ mod tests {
                 assert!(r.is_ok());
 
                 // Renew to start the next steps
-                let cust = renew_test_session(idms, ct);
+                let (cust, _) = renew_test_session(idms, ct);
                 let cutxn = idms.cred_update_transaction();
 
                 // Only 7 codes left.
@@ -1986,7 +1997,7 @@ mod tests {
             let test_pw = "fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki";
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
 
-            let cust = setup_test_session(idms, ct);
+            let (cust, _) = setup_test_session(idms, ct);
             let cutxn = idms.cred_update_transaction();
 
             // Setup the PW
