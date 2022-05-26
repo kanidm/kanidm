@@ -1,16 +1,16 @@
-# Oauth2
+# OAuth2
 
-Oauth is a web authorisation protocol that allows "single sign on". It's key to note
-oauth is authorisation, not authentication, as the protocol in it's default forms
+OAuth is a web authorisation protocol that allows "single sign on". It's key to note
+OAuth is authorisation, not authentication, as the protocol in its default forms
 do not provide identity or authentication information, only information that
 an entity is authorised for the requested resources.
 
-Oauth can tie into extensions allowing an identity provider to reveal information
-about authorised sessions. This extends oauth from an authorisation only system
+OAuth can tie into extensions allowing an identity provider to reveal information
+about authorised sessions. This extends OAuth from an authorisation only system
 to a system capable of identity and authorisation. Two primary methods of this
-exist today: rfc7662 token introspection, and openid connect.
+exist today: RFC7662 token introspection, and OpenID connect.
 
-## How Does Oauth2 Work?
+## How Does OAuth2 Work?
 
 A user wishes to access a service (resource, resource server). The resource
 server does not have an active session for the client, so it redirects to the
@@ -24,29 +24,29 @@ allows the authorisation to proceed. The user is then prompted to consent to the
 authorisation from the authorisation server to the resource server as some identity
 information may be revealed by granting this consent.
 
-If successful and consent given, the user is redirected back to the resource server with an authorisation
-code. The resource server then contacts the authorisation server directly with this
-code and exchanges it for a valid token that may be provided to the users browser.
+If successful and consent given, the user is redirected back to the resource server with an 
+authorisation code. The resource server then contacts the authorisation server directly with this
+code and exchanges it for a valid token that may be provided to the user's browser.
 
-The resource server may then optionally contact the token introspection endpoint of the authorisation server about the
-provided oauth token, which yields extra metadata about the identity that holds the
-token from the authorisation. This metadata may include identity information,
+The resource server may then optionally contact the token introspection endpoint of the 
+authorisation server about the provided OAuth token, which yields extra metadata about the identity 
+that holds the token from the authorisation. This metadata may include identity information,
 but also may include extended metadata, sometimes refered to as "claims". Claims are
 information bound to a token based on properties of the session that may allow
 the resource server to make extended authorisation decisions without the need
 to contact the authorisation server to arbitrate.
 
-It's important to note that oauth2 at it's core is an authorisation system which has layered
-identity providing elements on top.
+It's important to note that OAuth2 at its core is an authorisation system which has layered
+identity-providing elements on top.
 
 ### Resource Server
 
-This is the server that a user wants to access. Common examples could be nextcloud, a wiki
+This is the server that a user wants to access. Common examples could be Nextcloud, a wiki,
 or something else. This is the system that "needs protecting" and wants to delegate authorisation
 decisions to Kanidm.
 
-It's important for you to know *how* your resource server supports oauth2. For example, does it
-support rfc7662 token introspection or does it rely on openid connect for identity information?
+It's important for you to know *how* your resource server supports OAuth2. For example, does it
+support RFC 7662 token introspection or does it rely on OpenID connect for identity information?
 Does the resource server support PKCE S256?
 
 In general Kanidm requires that your resource server supports:
@@ -55,32 +55,32 @@ In general Kanidm requires that your resource server supports:
 * PKCE S256 code verification to prevent certain token attack classes
 * OIDC only - JWT ES256 for token signatures
 
-Kanidm will expose it's oauth2 apis at the following urls:
+Kanidm will expose its OAuth2 APIs at the following URLs:
 
 * user auth url: https://idm.example.com/ui/oauth2
 * api auth url: https://idm.example.com/oauth2/authorise
 * token url: https://idm.example.com/oauth2/token
 * token inspect url: https://idm.example.com/oauth2/inspect
 
-OpenID Connect discovery - you need to substitute your oauth2 client id in the following
+OpenID Connect discovery - you need to substitute your OAuth2 client id in the following
 urls:
 
-* openid connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id:/
-* openid connect discovery:  https://idm.example.com/oauth2/openid/:client\_id:/.well-known/openid-configuration
+* OpenID connect issuer uri: https://idm.example.com/oauth2/openid/:client\_id:/
+* OpenID connect discovery:  https://idm.example.com/oauth2/openid/:client\_id:/.well-known/openid-configuration
 
 For manual OpenID configuration:
 
-* openid connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id:/userinfo
+* OpenID connect userinfo:   https://idm.example.com/oauth2/openid/:client\_id:/userinfo
 * token signing public key:  https://idm.example.com/oauth2/openid/:client\_id:/public\_key.jwk
 
 ### Scope Relationships
 
 For an authorisation to proceed, the resource server will request a list of scopes, which are
 unique to that resource server. For example, when a user wishes to login to the admin panel
-of the resource server, it may request the "admin" scope from kanidm for authorisation. But when
-a user wants to login, it may only request "access" as a scope from kanidm.
+of the resource server, it may request the "admin" scope from Kanidm for authorisation. But when
+a user wants to login, it may only request "access" as a scope from Kanidm.
 
-As each resource server may have it's own scopes and understanding of these, Kanidm isolates
+As each resource server may have its own scopes and understanding of these, Kanidm isolates
 scopes to each resource server connected to Kanidm. Kanidm has two methods of granting scopes to accounts (users).
 
 The first are implicit scopes. These are scopes granted to all accounts that Kanidm holds.
@@ -103,7 +103,7 @@ you have a resource server that will always request a scope of "read", then you 
 
 After you have understood your resource server requirements you first need to configure Kanidm.
 By default members of "system\_admins" or "idm\_hp\_oauth2\_manage\_priv" are able to create or
-manage oauth2 resource server integrations.
+manage OAuth2 resource server integrations.
 
 You can create a new resource server with:
 
@@ -121,12 +121,12 @@ You can create a scope map with:
     kanidm system oauth2 create_scope_map nextcloud nextcloud_admins admin
 
 > **WARNING**
-> If you are creating an openid connect (OIDC) resource server you *MUST* provide a
-> scope map OR implicit scope named 'openid'. Without this, openid clients *WILL NOT WORK*
+> If you are creating an OpenID Connect (OIDC) resource server you *MUST* provide a
+> scope map OR implicit scope named 'openid'. Without this, OpenID clients *WILL NOT WORK*
 
 > **HINT**
-> openid connect allows a number of scopes that affect the content of the resulting
-> authorisation token. If one of the following scopes are requested by the openid client,
+> OpenID connect allows a number of scopes that affect the content of the resulting
+> authorisation token. If one of the following scopes are requested by the OpenID client,
 > then the associated claims may be added to the authorisation token. It is not guaranteed
 > that all of the associated claims will be added.
 >
@@ -151,8 +151,8 @@ Once created you can view the details of the resource server.
 
 ### Configure the Resource Server
 
-On your resource server, you should configure the client id as the "oauth2\_rs\_name" from
-kanidm, and the password to be the value shown in "oauth2\_rs\_basic\_secret". Ensure that
+On your resource server, you should configure the client ID as the "oauth2\_rs\_name" from
+Kanidm, and the password to be the value shown in "oauth2\_rs\_basic\_secret". Ensure that
 the code challenge/verification method is set to S256.
 
 You should now be able to test authorisation.
@@ -216,7 +216,7 @@ In the virtual host, to protect a location:
 Install the module [from the nextcloud market place](https://apps.nextcloud.com/apps/user_oidc) -
 it can also be found in the Apps section of your deployment as "OpenID Connect user backend".
 
-In nextcloud's config.php you need to allow connection to remote servers:
+In Nextcloud's config.php you need to allow connection to remote servers:
 
     'allow_local_remote_servers' => true,
 
@@ -234,13 +234,13 @@ This module does not support PKCE or ES256. You will need to run:
     kanidm system oauth2 warning_insecure_client_disable_pkce <resource server name>
     kanidm system oauth2 warning_enable_legacy_crypto <resource server name>
 
-In the settings menu, configure the discovery url and client id and secret.
+In the settings menu, configure the discovery URL and client ID and secret.
 
 You can choose to disable other login methods with:
 
     php occ config:app:set --value=0 user_oidc allow_multiple_user_backends
 
-You can login directly by appending `?direct=1` to your login page still. You can re-enable
+You can login directly by appending `?direct=1` to your login page. You can re-enable
 other backends by setting the value to `1`
 
 ### Velociraptor
@@ -271,4 +271,3 @@ these to a group with a scope map due to Velociraptors high impact.
     # kanidm group create velociraptor_users
     # kanidm group add_members velociraptor_users ...
     kanidm system oauth2 create_scope_map <resource server name> velociraptor_users openid email
-

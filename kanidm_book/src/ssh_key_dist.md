@@ -1,39 +1,40 @@
 # SSH Key Distribution
 
-To support SSH authentication securely to a large set of hosts running SSH, we support distribution
-of SSH public keys via the kanidm server.
+To support SSH authentication securely to a large set of hosts running SSH, we support 
+distribution of SSH public keys via the Kanidm server.
 
-## Configuring accounts
+## Configuring Accounts
 
-To view the current ssh public keys on accounts, you can use:
+To view the current SSH public keys on accounts, you can use:
 
     kanidm account ssh list_publickeys --name <login user> <account to view>
     kanidm account ssh list_publickeys --name idm_admin william
 
-All users by default can self-manage their ssh public keys. To upload a key, a command like this
+All users by default can self-manage their SSH public keys. To upload a key, a command like this
 is the best way to do so:
 
     kanidm account ssh add_publickey --name william william 'test-key' "`cat ~/.ssh/id_rsa.pub`"
 
-To remove (revoke) an ssh publickey, you delete them by the tag name:
+To remove (revoke) an SSH public key, delete them by the tag name:
 
     kanidm account ssh delete_publickey --name william william 'test-key'
 
-## Security notes
+## Security Notes
 
-As a security feature, kanidm validates *all* publickeys to ensure they are valid ssh publickeys.
+As a security feature, Kanidm validates *all* public keys to ensure they are valid SSH public keys.
 Uploading a private key or other data will be rejected. For example:
 
     kanidm account ssh add_publickey --name william william 'test-key' "invalid"
     Enter password:
-    thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: Http(400, Some(SchemaViolation(InvalidAttributeSyntax)))', src/libcore/result.rs:1084:5
+    thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: 
+      Http(400, Some(SchemaViolation(InvalidAttributeSyntax)))', src/libcore/result.rs:1084:5
 
 ## Server Configuration
 
-### Public key caching configuration
+### Public Key Caching Configuration
 
-If you have kanidm_unixd running, you can use it to locally cache ssh public keys. This means you
-can still ssh into your machines, even if your network is down, you move away from kanidm, or
+If you have kanidm_unixd running, you can use it to locally cache SSH public keys. This means you
+can still SSH into your machines, even if your network is down, you move away from Kanidm, or
 some other interruption occurs.
 
 The kanidm_ssh_authorizedkeys command is part of the kanidm-unix-clients package, so should be installed
@@ -44,7 +45,7 @@ You can test this is configured correctly by running:
 
     kanidm_ssh_authorizedkeys <account name>
 
-If the account has ssh public keys you should see them listed, one per line.
+If the account has SSH public keys you should see them listed, one per line.
 
 To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:
@@ -69,12 +70,12 @@ management tool such as salt or ansible.
     GSSAPIAuthentication no
     KerberosAuthentication no
 
-### Direct communication configuration
+### Direct Communication Configuration
 
-In this mode, the authorised keys commands will contact kanidm directly.
+In this mode, the authorised keys commands will contact Kanidm directly.
 
 > **NOTICE:**
-> As kanidm is contacted directly there is no ssh public key cache. Any network
+> As Kanidm is contacted directly there is no SSH public key cache. Any network
 > outage or communication loss may prevent you accessing your systems. You should
 > only use this version if you have a requirement for it.
 
@@ -87,7 +88,7 @@ You can test this is configured correctly by running:
 
     kanidm_ssh_authorizedkeys_direct -D anonymous <account name>
 
-If the account has ssh public keys you should see them listed, one per line.
+If the account has SSH public keys you should see them listed, one per line.
 
 To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:
