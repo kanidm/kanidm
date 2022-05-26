@@ -146,10 +146,10 @@ are valid once they have been revived.</p>
 <p>The recycle bin is stored as part of your main database - it is included in all
 backups and restores, just like any other data. It is also replicated between
 all servers.</p>
-<h2 id="how-do-things-get-into-the-recycle-bin"><a class="header" href="#how-do-things-get-into-the-recycle-bin">How do things get into the Recycle Bin?</a></h2>
+<h2 id="how-do-things-get-into-the-recycle-bin"><a class="header" href="#how-do-things-get-into-the-recycle-bin">How do Things Get Into the Recycle Bin?</a></h2>
 <p>Any delete operation of an entry will cause it to be sent to the recycle bin. No
 configuration or specification is required.</p>
-<h2 id="how-long-do-items-stay-in-the-recycle-bin"><a class="header" href="#how-long-do-items-stay-in-the-recycle-bin">How long do items stay in the Recycle Bin?</a></h2>
+<h2 id="how-long-do-items-stay-in-the-recycle-bin"><a class="header" href="#how-long-do-items-stay-in-the-recycle-bin">How Long Do Items Stay in the Recycle Bin?</a></h2>
 <p>Currently they stay up to 1 week before they are removed.</p>
 <h2 id="managing-the-recycle-bin"><a class="header" href="#managing-the-recycle-bin">Managing the Recycle Bin</a></h2>
 <p>You can display all items in the Recycle Bin with:</p>
@@ -161,7 +161,7 @@ configuration or specification is required.</p>
 <p>An entry can be revived with:</p>
 <pre><code>kanidm recycle_bin revive --name admin &lt;id&gt;
 </code></pre>
-<h2 id="edge-cases"><a class="header" href="#edge-cases">Edge cases</a></h2>
+<h2 id="edge-cases"><a class="header" href="#edge-cases">Edge Cases</a></h2>
 <p>The recycle bin is a best effort to restore your data - there are some cases where
 the revived entries may not be the same as their were when they were deleted. This
 generally revolves around reference types such as group membership, or when the reference

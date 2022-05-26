@@ -135,31 +135,32 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="ssh-key-distribution"><a class="header" href="#ssh-key-distribution">SSH Key Distribution</a></h1>
-<p>To support SSH authentication securely to a large set of hosts running SSH, we support distribution
-of SSH public keys via the kanidm server.</p>
-<h2 id="configuring-accounts"><a class="header" href="#configuring-accounts">Configuring accounts</a></h2>
-<p>To view the current ssh public keys on accounts, you can use:</p>
+<p>To support SSH authentication securely to a large set of hosts running SSH, we support 
+distribution of SSH public keys via the Kanidm server.</p>
+<h2 id="configuring-accounts"><a class="header" href="#configuring-accounts">Configuring Accounts</a></h2>
+<p>To view the current SSH public keys on accounts, you can use:</p>
 <pre><code>kanidm account ssh list_publickeys --name &lt;login user&gt; &lt;account to view&gt;
 kanidm account ssh list_publickeys --name idm_admin william
 </code></pre>
-<p>All users by default can self-manage their ssh public keys. To upload a key, a command like this
+<p>All users by default can self-manage their SSH public keys. To upload a key, a command like this
 is the best way to do so:</p>
 <pre><code>kanidm account ssh add_publickey --name william william 'test-key' &quot;`cat ~/.ssh/id_rsa.pub`&quot;
 </code></pre>
-<p>To remove (revoke) an ssh publickey, you delete them by the tag name:</p>
+<p>To remove (revoke) an SSH public key, delete them by the tag name:</p>
 <pre><code>kanidm account ssh delete_publickey --name william william 'test-key'
 </code></pre>
-<h2 id="security-notes"><a class="header" href="#security-notes">Security notes</a></h2>
-<p>As a security feature, kanidm validates <em>all</em> publickeys to ensure they are valid ssh publickeys.
+<h2 id="security-notes"><a class="header" href="#security-notes">Security Notes</a></h2>
+<p>As a security feature, Kanidm validates <em>all</em> public keys to ensure they are valid SSH public keys.
 Uploading a private key or other data will be rejected. For example:</p>
 <pre><code>kanidm account ssh add_publickey --name william william 'test-key' &quot;invalid&quot;
 Enter password:
-thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: Http(400, Some(SchemaViolation(InvalidAttributeSyntax)))', src/libcore/result.rs:1084:5
+thread 'main' panicked at 'called `Result::unwrap()` on an `Err` value: 
+  Http(400, Some(SchemaViolation(InvalidAttributeSyntax)))', src/libcore/result.rs:1084:5
 </code></pre>
 <h2 id="server-configuration"><a class="header" href="#server-configuration">Server Configuration</a></h2>
-<h3 id="public-key-caching-configuration"><a class="header" href="#public-key-caching-configuration">Public key caching configuration</a></h3>
-<p>If you have kanidm_unixd running, you can use it to locally cache ssh public keys. This means you
-can still ssh into your machines, even if your network is down, you move away from kanidm, or
+<h3 id="public-key-caching-configuration"><a class="header" href="#public-key-caching-configuration">Public Key Caching Configuration</a></h3>
+<p>If you have kanidm_unixd running, you can use it to locally cache SSH public keys. This means you
+can still SSH into your machines, even if your network is down, you move away from Kanidm, or
 some other interruption occurs.</p>
 <p>The kanidm_ssh_authorizedkeys command is part of the kanidm-unix-clients package, so should be installed
 on the servers. It communicates to kanidm_unixd, so you should have a configured PAM/nsswitch
@@ -167,7 +168,7 @@ setup as well.</p>
 <p>You can test this is configured correctly by running:</p>
 <pre><code>kanidm_ssh_authorizedkeys &lt;account name&gt;
 </code></pre>
-<p>If the account has ssh public keys you should see them listed, one per line.</p>
+<p>If the account has SSH public keys you should see them listed, one per line.</p>
 <p>To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:</p>
 <pre><code>PubkeyAuthentication yes
@@ -189,11 +190,11 @@ PermitEmptyPasswords no
 GSSAPIAuthentication no
 KerberosAuthentication no
 </code></pre>
-<h3 id="direct-communication-configuration"><a class="header" href="#direct-communication-configuration">Direct communication configuration</a></h3>
-<p>In this mode, the authorised keys commands will contact kanidm directly.</p>
+<h3 id="direct-communication-configuration"><a class="header" href="#direct-communication-configuration">Direct Communication Configuration</a></h3>
+<p>In this mode, the authorised keys commands will contact Kanidm directly.</p>
 <blockquote>
 <p><strong>NOTICE:</strong>
-As kanidm is contacted directly there is no ssh public key cache. Any network
+As Kanidm is contacted directly there is no SSH public key cache. Any network
 outage or communication loss may prevent you accessing your systems. You should
 only use this version if you have a requirement for it.</p>
 </blockquote>
@@ -203,7 +204,7 @@ on the servers.</p>
 <p>You can test this is configured correctly by running:</p>
 <pre><code>kanidm_ssh_authorizedkeys_direct -D anonymous &lt;account name&gt;
 </code></pre>
-<p>If the account has ssh public keys you should see them listed, one per line.</p>
+<p>If the account has SSH public keys you should see them listed, one per line.</p>
 <p>To configure servers to accept these keys, you must change their /etc/ssh/sshd_config to
 contain the lines:</p>
 <pre><code>PubkeyAuthentication yes

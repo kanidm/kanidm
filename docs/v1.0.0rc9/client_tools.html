@@ -135,9 +135,11 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="client-tools"><a class="header" href="#client-tools">Client tools</a></h1>
-<p>To interact with Kanidm as an administrator, you'll need to use our command line tools. If you haven't installed them yet, <a href="installing_client_tools.html">install them now</a>.</p>
+<p>To interact with Kanidm as an administrator, you'll need to use our command line tools. 
+If you haven't installed them yet, <a href="installing_client_tools.html">install them now</a>.</p>
 <h2 id="kanidm-configuration"><a class="header" href="#kanidm-configuration">Kanidm configuration</a></h2>
-<p>You can configure <code>kanidm</code> to help make commands simpler by modifying <code>~/.config/kanidm</code> or <code>/etc/kanidm/config</code>.</p>
+<p>You can configure <code>kanidm</code> to help make commands simpler by modifying <code>~/.config/kanidm</code> 
+or <code>/etc/kanidm/config</code>.</p>
 <pre><code>uri = &quot;https://idm.example.com&quot;
 verify_ca = true|false
 verify_hostnames = true|false
@@ -147,12 +149,12 @@ ca_path = &quot;/path/to/ca.pem&quot;
 <pre><code>kanidm self whoami --name anonymous
 </code></pre>
 <h2 id="session-management"><a class="header" href="#session-management">Session Management</a></h2>
-<p>To authenticate as a user for use with the command line, you need to use the <code>login</code> command
+<p>To authenticate as a user (for use with the command line), you need to use the <code>login</code> command
 to establish a session token.</p>
 <pre><code>kanidm login --name USERNAME
 kanidm login --name admin
 </code></pre>
-<p>Once complete, you can use <code>kanidm</code> without reauthenticating for a period of time for administration.</p>
+<p>Once complete, you can use <code>kanidm</code> without re-authenticating for a period of time for administration.</p>
 <p>You can list active sessions with:</p>
 <pre><code>kanidm session list
 </code></pre>
@@ -160,10 +162,9 @@ kanidm login --name admin
 locally you can use:</p>
 <pre><code>kanidm session cleanup
 </code></pre>
-<p>To logout of a session:</p>
+<p>To log out of a session:</p>
 <pre><code>kanidm logout --name USERNAME
-kanidm logout --name admin
-</code></pre>
+kanidm logout --name admin</code></pre>
 
                     </main>
 
