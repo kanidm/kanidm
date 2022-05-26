@@ -17,7 +17,7 @@ kanidm = { path = "../idm" }
 kanidm_proto = { path = "../../kanidm_proto" }
 libc = "^0.2.126"
 
-uuid = { version = "^1.0.0", features = ["serde", "v4" ] }
+uuid = { version = "^1.1.0", features = ["serde", "v4" ] }
 
 tide = "^0.16.0"
 tide-openssl = "^0.1.1"
