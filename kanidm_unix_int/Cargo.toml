@@ -74,7 +74,7 @@ users = "^0.11.0"
 #async-std = { version = "^1.11.0", features = ["tokio1"] }
 
 
-lru = "^0.7.5"
+lru = "^0.7.6"
 
 [features]
 # default = [ "libsqlite3-sys/bundled" ]
