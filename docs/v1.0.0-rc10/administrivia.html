@@ -135,11 +135,15 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="administration-tasks"><a class="header" href="#administration-tasks">Administration Tasks</a></h1>
-<p>There are a number of tasks that you may wish to perform as an administrator of a service like Kanidm.</p>
+<p>This chapter describes some of the routine administration tasks for running
+a Kanidm server, such as making backups and restoring from backups, testing
+server configuration, reindexing, verifying data consistency, and renaming
+your domain.</p>
 <h1 id="backup-and-restore"><a class="header" href="#backup-and-restore">Backup and Restore</a></h1>
-<p>With any idm software, it's important you have the capability to restore in case of a disaster - be
-that physical damage or mistake. Kanidm supports backup and restore of the database with two methods.</p>
-<h2 id="method-1"><a class="header" href="#method-1">Method 1</a></h2>
+<p>With any Identity Management (IDM) software, it's important you have the capability to restore in 
+case of a disaster - be that physical damage or a mistake. Kanidm supports backup 
+and restore of the database with three methods.</p>
+<h2 id="method-1-preferred"><a class="header" href="#method-1-preferred">Method 1 (Preferred)</a></h2>
 <p>Method 1 involves taking a backup of the database entry content, which is then re-indexed on restore.
 This is the preferred method.</p>
 <p>To take the backup (assuming our docker environment) you first need to stop the instance:</p>
@@ -169,7 +173,8 @@ docker start &lt;container name&gt;
 <p>Automatic backups can be generated online by a <code>kanidmd server</code> instance
 by including the <code>[online_backup]</code> section in the <code>server.toml</code>.
 This allows you to run regular backups, defined by a cron schedule, and maintain
-the number of backup versions to keep. An example is located in <a href="../../examples/server.toml">examples/server.toml</a>.</p>
+the number of backup versions to keep. An example is located in 
+<a href="https://github.com/kanidm/kanidm/blob/master/examples/server.toml">examples/server.toml</a>.</p>
 <h1 id="configuration-test"><a class="header" href="#configuration-test">Configuration Test</a></h1>
 <p>You can test your configuration will correctly start with the server.</p>
 <blockquote>
@@ -187,7 +192,8 @@ docker start &lt;container name&gt;
 Please note the server will sometimes reindex on startup as a result of the project
 changing its internal schema definitions. This is normal and expected - you may never need
 to start a reindex yourself as a result!</p>
-<p>You'll likely notice a need to reindex if you add indexes to schema and you see a message in your logs such as:</p>
+<p>You'll likely notice a need to reindex if you add indexes to schema and you see a message in 
+your logs such as:</p>
 <pre><code>Index EQUALITY name not found
 Index {type} {attribute} not found
 </code></pre>
@@ -209,7 +215,7 @@ from the sqlite freelists, as well as performing some data reordering tasks that
 queries more efficient . It is recommended that you vacuum after a reindex is performed or
 when you wish to reclaim space in the database file.</p>
 <p>Vacuum is also able to change the pagesize of the database. After changing <code>db_fs_type</code> (which affects
-pagesize) in server.toml, you must run a vacuum for this to take effect.</p>
+pagesize) in server.toml, you must run a vacuum for this to take effect:</p>
 <pre><code>docker stop &lt;container name&gt;
 docker run --rm -i -t -v kanidmd:/data \
     kanidm/server:latest /sbin/kanidmd vacuum -c /data/server.toml
@@ -239,10 +245,10 @@ the domain name unless REQUIRED and have a plan on how to manage these issues.</
 </blockquote>
 <blockquote>
 <p><strong>WARNING:</strong> This operation can take an extensive amount of time as ALL accounts and groups
-in the domain MUST have their SPN's regenerated. This WILL also cause a large delay in
-replication once the system is restarted.</p>
+in the domain MUST have their Security Principal Names (SPNs) regenerated. This WILL also cause 
+a large delay in replication once the system is restarted.</p>
 </blockquote>
-<p>You should take a backup before proceeding with this operation.</p>
+<p>You should make a backup before proceeding with this operation.</p>
 <p>When you have a created a migration plan and strategy on handling the invalidation of webauthn,
 you can then rename the domain.</p>
 <p>First, stop the instance.</p>

@@ -135,31 +135,33 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="accounts-and-groups"><a class="header" href="#accounts-and-groups">Accounts and groups</a></h1>
-<p>Accounts and Groups are the primary reason for Kanidm to exist. Kanidm is optimised as a repository
-for these data. As a result, they have many concepts and important details to understand.</p>
+<p>Accounts and Groups are the primary reasons for Kanidm to exist. Kanidm is optimised as a repository
+for these data. As a result, there are many concepts and important details to understand.</p>
 <h2 id="default-accounts-and-groups"><a class="header" href="#default-accounts-and-groups">Default Accounts and Groups</a></h2>
-<p>Kanidm ships with a number of default accounts and groups. This is to give you the best out of
-box experience possible, as well as supplying best practice examples related to modern IDM
-systems.</p>
-<p>The system admin account (the account you recovered in the setup) has limited privileges - only to
-manage high-privilege accounts and services. This is to help separate system administration
-from identity administration actions. An idm_admin is also provided that is only for management
+<p>Kanidm ships with a number of default accounts and groups. This is to give you the best 
+out-of-box experience possible, as well as supplying best practice examples related to modern 
+Identity Management (IDM) systems.</p>
+<p>The system administrator account has limited privileges (see 
+<a href="#recovering-the-initial-idm_admin-account">Recovering the Initial idm_admin Account</a>) to learn 
+how to access the inbuilt admin account).
+It manages only high-privilege accounts and services. This is to help separate system administration
+from identity administration actions. An idm_admin user is also provided that is only for management
 of accounts and groups.</p>
-<p>Both admin and idm_admin should <em>NOT</em> be used for daily activities - they exist for initial
+<p>Both the admin and the idm_admin user should <em>NOT</em> be used for daily activities - they exist for initial
 system configuration, and for disaster recovery scenarios. You should delegate permissions
 as required to named user accounts instead.</p>
 <p>The majority of the provided content is privilege groups that provide rights over Kanidm
 administrative actions. These include groups for account management, person management (personal
 and sensitive data), group management, and more.</p>
 <h2 id="recovering-the-initial-idm_admin-account"><a class="header" href="#recovering-the-initial-idm_admin-account">Recovering the Initial idm_admin Account</a></h2>
-<p>By default the idm_admin has no password, and can not be accessed. You should recover it with the
+<p>By default the idm_admin user has no password, and can not be accessed. You should recover it with the
 admin (system admin) account. We recommend the use of &quot;reset_credential&quot; as it provides a high
 strength, random, machine only password.</p>
 <pre><code>kanidm account credential reset_credential  --name admin idm_admin
 Generated password for idm_admin: tqoReZfz....
 </code></pre>
 <h2 id="creating-accounts"><a class="header" href="#creating-accounts">Creating Accounts</a></h2>
-<p>We can now use the idm_admin to create initial groups and accounts.</p>
+<p>You can now use the idm_admin user to create initial groups and accounts.</p>
 <pre><code>kanidm group create demo_group --name idm_admin
 kanidm account create demo_user &quot;Demonstration User&quot; --name idm_admin
 kanidm group add_members demo_group demo_user --name idm_admin
@@ -167,7 +169,7 @@ kanidm group list_members demo_group --name idm_admin
 kanidm account get demo_user --name idm_admin
 </code></pre>
 <p>You can also use anonymous to view users and groups - note that you won't see as many fields due
-to the different anonymous access profile limits!</p>
+to the different anonymous access profile limits.</p>
 <pre><code>kanidm account get demo_user --name anonymous
 </code></pre>
 <h2 id="viewing-default-groups"><a class="header" href="#viewing-default-groups">Viewing Default Groups</a></h2>
@@ -177,9 +179,9 @@ default permissions. These can be viewed with:</p>
 kanidm group get &lt;name&gt;
 </code></pre>
 <h2 id="resetting-account-credentials"><a class="header" href="#resetting-account-credentials">Resetting Account Credentials</a></h2>
-<p>Members of the <code>idm_account_manage_priv</code> group have the rights to manage other users
+<p>Members of the <code>idm_account_manage_priv</code> group have the rights to manage other users'
 accounts security and login aspects. This includes resetting account credentials.</p>
-<p>We can perform a password reset on the demo_user for example as idm_admin, who is
+<p>You can perform a password reset on the demo_user, for example as the idm_admin user, who is
 a default member of this group.</p>
 <pre><code>kanidm account credential set_password demo_user --name idm_admin
 kanidm self whoami --name demo_user
@@ -187,7 +189,7 @@ kanidm self whoami --name demo_user
 <h2 id="nested-groups"><a class="header" href="#nested-groups">Nested Groups</a></h2>
 <p>Kanidm supports groups being members of groups, allowing nested groups. These nesting relationships
 are shown through the &quot;memberof&quot; attribute on groups and accounts.</p>
-<p>Kanidm makes all group-membership determinations by inspecting an entries &quot;memberof&quot; attribute.</p>
+<p>Kanidm makes all group membership determinations by inspecting an entry's &quot;memberof&quot; attribute.</p>
 <p>An example can be easily shown with:</p>
 <pre><code>kanidm group create group_1 --name idm_admin
 kanidm group create group_2 --name idm_admin
@@ -197,7 +199,7 @@ kanidm group add_members group2 nest_example --name idm_admin
 kanidm account get nest_example --name anonymous
 </code></pre>
 <h2 id="account-validity"><a class="header" href="#account-validity">Account Validity</a></h2>
-<p>Kanidm supports accounts that are only able to be authenticated between specific datetime
+<p>Kanidm supports accounts that are only able to be authenticated between specific date and time
 windows. This takes the form of a &quot;valid from&quot; attribute that defines the earliest start
 date where authentication can succeed, and an expiry date where the account will no longer
 allow authentication.</p>
@@ -219,7 +221,7 @@ kanidm account validity expire_at demo_user '2020-09-25T11:22:04+00:00' --name i
 <pre><code>kanidm account validity begin_from demo_user any|clear --name idm_admin
 kanidm account validity expire_at demo_user never|clear --name idm_admin
 </code></pre>
-<p>To &quot;lock&quot; an account, you can set the expire_at value to the past or unix epoch. Even in the situation
+<p>To &quot;lock&quot; an account, you can set the expire_at value to the past, or unix epoch. Even in the situation
 where the &quot;valid from&quot; is <em>after</em> the expire_at, the expire_at will be respected.</p>
 <pre><code>kanidm account validity expire_at demo_user 1970-01-01T00:00:00+00:00 --name idm_admin
 </code></pre>
@@ -261,7 +263,7 @@ HR or System Admin teams to move laterally.</p>
 <li>idm_schema_manage_priv</li>
 <li>many more ...</li>
 </ul>
-<p>Indirectly grants you membership to &quot;idm_high_privilege&quot;. If you are a member of
+<p>...indirectly grants you membership to &quot;idm_high_privilege&quot;. If you are a member of
 this group, the standard &quot;account&quot; and &quot;people&quot; rights groups are NOT able to
 alter, read or manage these accounts. To manage these accounts higher rights
 are required, such as those held by the admin account are required.</p>
