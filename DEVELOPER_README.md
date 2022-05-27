@@ -12,7 +12,7 @@ cargo doc --document-private-items --open --no-deps
 
 ### Rust Documentation
 
-The library documentation is [here](https://kanidm.github.io/kanidm/rustdoc/master/kanidm/).
+A list of links to the library documentation is [here](https://kanidm.com/documentation/).
 
 ### Minimum Supported Rust Version
 
@@ -22,9 +22,7 @@ The MSRV is specified in the package `Cargo.toml` files.
 
 #### MacOS
 
-You will need [rustup] to install a rust toolchain.
-
-[rustup]: https://rustup.rs/
+You will need [rustup](https://rustup.rs/) to install a rust toolchain.
 
 If you plan to work on the web-ui, you may also need npm for setting up some parts.
 
@@ -32,9 +30,7 @@ If you plan to work on the web-ui, you may also need npm for setting up some par
 
 #### SUSE
 
-You will need [rustup] to install a rust toolchain.
-
-[rustup]: https://rustup.rs/
+You will need [rustup](https://rustup.rs/) to install a rust toolchain.
 
 You will also need some system libraries to build this:
 
@@ -60,13 +56,13 @@ To get started, you'll need to fork or branch, and we'll merge based on PR's.
 
 If you are a contributor to the project, simply clone:
 
-```
+```shell
 git clone git@github.com:kanidm/kanidm.git
 ```
 
-If you are forking, then Fork in github and clone with:
+If you are forking, then fork in GitHub and clone with:
 
-```
+```shell
 git clone https://github.com/kanidm/kanidm.git
 cd kanidm
 git remote add myfork git@github.com:<YOUR USERNAME>/kanidm.git
@@ -74,7 +70,7 @@ git remote add myfork git@github.com:<YOUR USERNAME>/kanidm.git
 
 Select an issue (always feel free to reach out to us for advice!), and create a branch to start working:
 
-```
+```shell
 git branch <feature-branch-name>
 git checkout <feature-branch-name>
 cargo test
@@ -82,14 +78,18 @@ cargo test
 
 When you are ready for review (even if the feature isn't complete and you just want some advice)
 
-```
-cargo test
+1. Run the test suite: `cargo test --workspace`
+2. Ensure rust formatting standards are followed: `cargo fmt --check`
+3. Try following the suggestions from clippy, after running `cargo clippy`. This is not a blocker on us accepting your code!
+4. Then commit your changes:
+
+```shell
 git commit -m 'Commit message' change_file.rs ...
 git push <myfork/origin> <feature-branch-name>
 ```
 
-If you get advice or make changes, just keep commiting to the branch, and pushing to your branch.
-When we are happy with the code, we'll merge in github, meaning you can now clean up your branch.
+If you receive advice or make further changes, just keep commiting to the branch, and pushing to your branch.
+When we are happy with the code, we'll merge in GitHub, meaning you can now clean up your branch.
 
 ```
 git checkout master
@@ -97,7 +97,7 @@ git pull
 git branch -D <feature-branch-name>
 ```
 
-Rebasing:
+#### Rebasing
 
 If you are asked to rebase your change, follow these steps:
 
@@ -195,3 +195,22 @@ Build a `kanidm` container using `podman`:
 Build a `kanidm` container and use a redis build cache:
 
     CONTAINER_BUILD_ARGS='--build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"' make build/kanidmd
+
+#### Automatically built containers
+
+To speed up testing across platforms, we're leveraging GitHub actions to build containers for test use.
+
+Whenever code is merged with the `master` branch of Kanidm, containers are automatically built for `kanidmd` and `radius`. Sometimes they fail to build, but we'll try and keep them avilable.
+
+To find information on the packages, [visit the Kanidm packages page here](https://github.com/orgs/kanidm/packages?repo_name=kanidm).
+
+An example command for pulling and running the radius container is below. You'll need to [authenticate with the GitHub container registry first](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry).
+
+```shell
+docker pull ghcr.io/kanidm/radius:devel
+docker run --rm -it \
+    -v $(pwd)/config.ini:/data/config.ini \
+    ghcr.io/kanidm/radius:devel
+```
+
+This assumes you have a `config.ini` file in the current working directory.
