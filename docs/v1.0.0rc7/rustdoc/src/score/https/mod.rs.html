@@ -748,6 +748,8 @@
 <span id="743">743</span>
 <span id="744">744</span>
 <span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -762,6 +764,7 @@
 
 <span class="kw">use</span> <span class="ident">serde::Serialize</span>;
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
+<span class="kw">use</span> <span class="ident">std::fs::canonicalize</span>;
 <span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
@@ -1115,7 +1118,6 @@
     <span class="ident">qe_w_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerWriteV1</span>,
     <span class="ident">qe_r_ref</span>: <span class="kw-2">&amp;</span><span class="lifetime">&#39;static</span> <span class="ident">QueryServerReadV1</span>,
 ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(), ()<span class="op">&gt;</span> {
-    <span class="macro">info!</span>(<span class="string">&quot;WEB_UI_PKG_PATH -&gt; {}&quot;</span>, <span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>));
 
     <span class="kw">let</span> <span class="ident">jws_validator</span> <span class="op">=</span> <span class="ident">jws_signer</span>.<span class="ident">get_validator</span>().<span class="ident">map_err</span>(<span class="op">|</span><span class="ident">e</span><span class="op">|</span> {
         <span class="macro">error!</span>(<span class="question-mark">?</span><span class="ident">e</span>, <span class="string">&quot;Failed to get jws validator&quot;</span>);
@@ -1151,6 +1153,7 @@
 
     <span class="comment">// If we are no-ui, we remove this.</span>
     <span class="kw">if</span> <span class="op">!</span><span class="macro">matches!</span>(<span class="ident">role</span>, <span class="ident">ServerRole::WriteReplicaNoUI</span>) {
+
         <span class="kw">let</span> <span class="ident">pkg_path</span> <span class="op">=</span> <span class="ident">PathBuf::from</span>(<span class="macro">env!</span>(<span class="string">&quot;KANIDM_WEB_UI_PKG_PATH&quot;</span>));
         <span class="kw">if</span> <span class="op">!</span><span class="ident">pkg_path</span>.<span class="ident">exists</span>() {
             <span class="macro">eprintln!</span>(
@@ -1159,6 +1162,7 @@
             );
             <span class="ident">std::process::exit</span>(<span class="number">1</span>);
         }
+        <span class="macro">info!</span>(<span class="string">&quot;Web UI package path: {:?}&quot;</span>, <span class="ident">canonicalize</span>(<span class="ident">pkg_path</span>).<span class="ident">unwrap</span>());
 
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">static_tserver</span> <span class="op">=</span> <span class="ident">tserver</span>.<span class="ident">at</span>(<span class="string">&quot;&quot;</span>);
         <span class="ident">static_tserver</span>.<span class="ident">with</span>(<span class="ident">StaticContentMiddleware::default</span>());
