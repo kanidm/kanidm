@@ -4,7 +4,7 @@ use yew::prelude::*;
 use yew_router::prelude::*;
 
 use kanidm_proto::v1::{
-    CUIntentToken, CURegState, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType, CURequest
+    CUIntentToken, CURegState, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType, CURequest, OperationError, PasswordFeedback
 };
 use wasm_bindgen::UnwrapThrowExt;
 
@@ -31,6 +31,7 @@ pub enum Msg {
     },
     PasswordInput,
     PasswordResponseSuccess { status: CUStatus },
+    PasswordResponseQuality { feedback: Vec<PasswordFeedback> },
     // PasswordCheck { check: bool },
     Ignore,
 }
@@ -179,8 +180,33 @@ impl Component for CredentialResetApp {
                 None
             }
             // Msg::PasswordResponseError
-            // Msg::PasswordResponseQuality
-            // Msg::PasswordResponseSuccess
+            (Msg::PasswordResponseQuality { feedback }, State::Main { token, status: _ }) => {
+                console::log!("credential::reset::update - password response quality");
+
+                console::log!(format!("{:?}", feedback).as_str());
+                // Unlock the inputs.
+                // Unlock cancel
+                let pw_input = utils::get_inputelement_by_id("password")
+                    .unwrap_throw();
+                let ck_input = utils::get_inputelement_by_id("password-check")
+                    .unwrap_throw();
+                let submit = utils::get_buttonelement_by_id("password-submit")
+                    .unwrap_throw();
+                let cancel = utils::get_buttonelement_by_id("password-cancel")
+                    .unwrap_throw();
+
+                pw_input.set_disabled(false);
+                ck_input.set_disabled(false);
+                submit.set_disabled(true);
+                cancel.set_disabled(false);
+
+                // Set the feedback into a list item, and stitch it to the modal.
+
+
+
+                // No state transition
+                None
+            }
             (Msg::PasswordResponseSuccess { status }, State::Main { token, status: _ }) => {
                 console::log!("credential::reset::update - password response success");
                 utils::modal_hide_by_id("staticPassword");
@@ -553,13 +579,28 @@ impl CredentialResetApp {
             let status: CUStatus =
                 jsval.into_serde().expect_throw("Invalid response type");
             Ok(Msg::PasswordResponseSuccess { status })
+
+        } else if status == 400 {
+            let kopid = headers.get("x-kanidm-opid").ok().flatten();
+            let jsval = JsFuture::from(resp.json()?).await?;
+            let status: OperationError =
+                jsval.into_serde().expect_throw("Invalid response type");
+            match status {
+                OperationError::PasswordQuality(feedback) =>
+                    Ok(Msg::PasswordResponseQuality { feedback }),
+                e => {
+                    Ok(Msg::Error {
+                        emsg: format!("Invalid PWResp State Transition due to {:?}", e),
+                        kopid,
+                    })
+                }
+            }
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
             Ok(Msg::Error { emsg, kopid })
         }
-        
     }
 }
 
