@@ -828,7 +828,7 @@ pub struct CUIntentToken {
     pub token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CUSessionToken {
     pub token: String,
 }

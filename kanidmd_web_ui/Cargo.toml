@@ -25,6 +25,7 @@ wasm-bindgen-futures = { version = "^0.4.30" }
 kanidm_proto = { path = "../kanidm_proto" }
 
 webauthn-rs = { version = "^0.3.2", default-features = false, features = ["wasm"] }
+qrcode = { version = "^0.12.0", default-features = false, features = ["svg"] }
 
 yew-router = "^0.16.0"
 yew = "^0.19.3"
@@ -44,6 +45,7 @@ features = [
     "Event",
     "FocusEvent",
     "Headers",
+    "HtmlButtonElement",
     "HtmlDocument",
     "Navigator",
     "PublicKeyCredential",

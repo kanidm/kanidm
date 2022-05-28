@@ -2089,6 +2089,7 @@ dependencies = [
  "gloo 0.7.0",
  "js-sys",
  "kanidm_proto",
+ "qrcode",
  "serde",
  "serde_json",
  "wasm-bindgen",
