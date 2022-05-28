@@ -31,6 +31,22 @@ db_path = "/var/lib/kanidm/kanidm.db"
 #   Defaults to "default"
 # log_level = "default"
 #
+#   The DNS domain name of the server. This is used in a
+#   number of security-critical contexts
+#   such as webauthn, so it *must* match your DNS
+#   hostname. It is used to create
+#   security principal names such as `william@idm.example.com`
+#   so that in a (future)
+#   trust configuration it is possible to have unique Service
+#   Principal Names (spns) throughout the topology.
+#   ⚠️  WARNING ⚠️
+#   Changing this value WILL break many types of registered
+#   credentials for accounts
+#   including but not limited to webauthn, oauth tokens, and more.
+#   If you change this value you *must* run
+#   `kanidmd domain_name_change` immediately after.
+domain = "idm.example.com"
+#
 #   The origin for webauthn. This is the url to the server, with the port included if
 #   it is non-standard (any port except 443)
 # origin = "https://idm.example.com"
@@ -59,4 +75,3 @@ origin = "https://idm.example.com:8443"
 # schedule = "03 */6 * * *"
 #   Number of backups to keep (default 7)
 # versions = 7
-#
