@@ -22,7 +22,7 @@ RUN zypper install -y \
 COPY . /usr/src/kanidm
 WORKDIR /usr/src/kanidm/kanidmd/daemon
 
-ARG SCCACHE_REDIS
+ARG SCCACHE_REDIS=""
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE
 
