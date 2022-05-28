@@ -1,5 +1,6 @@
 ARG BASE_IMAGE=opensuse/tumbleweed:latest
 FROM ${BASE_IMAGE} AS repos
+RUN zypper dup -y
 # To help mirrors not be as bad
 RUN zypper install -y mirrorsorcerer
 RUN /usr/sbin/mirrorsorcerer -x; true
