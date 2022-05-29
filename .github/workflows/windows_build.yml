@@ -1,0 +1,28 @@
+---
+name: Windows Binaries
+
+# this will build regardless,
+# but only push to the container registry
+# when you're committing on the master branch.
+"on":
+  push:
+
+jobs:
+  windows_build_kanidm:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            default: true
+            components: cargo
+      - name: build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release --bin kanidm
+          env: |
+            "KANIDM_BUILD_PROFILE=developer"
+            "KANIDM_FEATURES="
