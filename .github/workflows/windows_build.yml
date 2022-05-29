@@ -23,6 +23,3 @@ jobs:
         with:
           command: build
           args: --release --bin kanidm
-          env: |
-            "KANIDM_BUILD_PROFILE=developer"
-            "KANIDM_FEATURES="
