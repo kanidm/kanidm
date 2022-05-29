@@ -1130,9 +1130,9 @@ impl KanidmClient {
         self.perform_get_request("/v1/auth/valid").await
     }
 
+    // TODO(mea): self -> whoami?
     pub async fn whoami(&self) -> Result<Option<(Entry, UserAuthToken)>, ClientError> {
-        let whoami_dest = [self.addr.as_str(), "/v1/self"].concat();
-        // format!("{}/v1/self", self.addr);
+        let whoami_dest = [self.addr.as_str(), "/v1/whoami"].concat();
         debug!("{:?}", whoami_dest);
         let response = self.client.get(whoami_dest.as_str());
 
@@ -1521,7 +1521,7 @@ impl KanidmClient {
         }
     }
 
-    pub async fn idm_account_primary_credential_complete_webuthn_registration(
+    pub async fn idm_account_primary_credential_complete_webauthn_registration(
         &self,
         id: &str,
         rego: RegisterPublicKeyCredential,

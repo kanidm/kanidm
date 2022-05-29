@@ -1083,7 +1083,7 @@ async fn test_server_rest_webauthn_auth_lifecycle() {
 
     // Enroll the cred after signing.
     rsclient
-        .idm_account_primary_credential_complete_webuthn_registration(
+        .idm_account_primary_credential_complete_webauthn_registration(
             "demo_account",
             rego,
             sessionid,
@@ -1106,7 +1106,7 @@ async fn test_server_rest_webauthn_auth_lifecycle() {
 
     // Enroll the cred after signing.
     rsclient
-        .idm_account_primary_credential_complete_webuthn_registration(
+        .idm_account_primary_credential_complete_webauthn_registration(
             "demo_account",
             rego,
             sessionid,
@@ -1196,7 +1196,7 @@ async fn test_server_rest_webauthn_mfa_auth_lifecycle() {
 
     // Enroll the cred after signing.
     rsclient
-        .idm_account_primary_credential_complete_webuthn_registration(
+        .idm_account_primary_credential_complete_webauthn_registration(
             "demo_account",
             rego,
             sessionid,

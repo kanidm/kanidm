@@ -11,8 +11,8 @@ use kanidm::prelude::*;
 use kanidm::status::StatusActor;
 
 use serde::Serialize;
-use std::path::PathBuf;
 use std::fs::canonicalize;
+use std::path::PathBuf;
 use std::str::FromStr;
 use uuid::Uuid;
 
@@ -366,7 +366,6 @@ pub fn create_https_server(
     qe_w_ref: &'static QueryServerWriteV1,
     qe_r_ref: &'static QueryServerReadV1,
 ) -> Result<(), ()> {
-
     let jws_validator = jws_signer.get_validator().map_err(|e| {
         error!(?e, "Failed to get jws validator");
     })?;
@@ -401,7 +400,6 @@ pub fn create_https_server(
 
     // If we are no-ui, we remove this.
     if !matches!(role, ServerRole::WriteReplicaNoUI) {
-
         let pkg_path = PathBuf::from(env!("KANIDM_WEB_UI_PKG_PATH"));
         if !pkg_path.exists() {
             eprintln!(
@@ -555,7 +553,8 @@ pub fn create_https_server(
         .post(oauth2_id_scopemap_post)
         .delete(oauth2_id_scopemap_delete);
 
-    let mut self_route = appserver.at("/v1/self");
+    // TODO(mea): self -> whoami?
+    let mut self_route = appserver.at("/v1/whoami");
     self_route.at("/").get(whoami);
 
     self_route.at("/_attr/:attr").get(do_nothing);
