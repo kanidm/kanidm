@@ -13,7 +13,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: ensure openssl and vcpkg is good
-        run: vcpkg integrate install
+        run: |
+          vcpkg integrate install
+          vcpkg install openssl:x64-windows
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
