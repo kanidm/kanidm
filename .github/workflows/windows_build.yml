@@ -15,7 +15,7 @@ jobs:
       - name: ensure openssl and vcpkg is good
         run: |
           vcpkg integrate install
-          vcpkg install openssl:x64-windows
+          vcpkg install openssl:x64-windows-static-md
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
