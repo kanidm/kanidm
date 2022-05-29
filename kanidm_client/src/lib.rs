@@ -89,6 +89,7 @@ pub struct KanidmClient {
     pub(crate) auth_session_id: RwLock<Option<String>>,
 }
 
+#[cfg(target_family = "unix")]
 fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
     metadata(path).map_err(|e| {
         error!(
