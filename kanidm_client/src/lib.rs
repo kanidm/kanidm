@@ -22,7 +22,6 @@ use std::fs::File;
 #[cfg(target_family = "unix")] // not needed for windows builds
 use std::fs::{metadata, Metadata};
 use std::io::ErrorKind;
-#[cfg(target_family = "unix")] // not needed for windows builds
 use std::io::Read;
 
 #[cfg(target_family = "unix")] // not needed for windows builds
