@@ -78,7 +78,7 @@ impl GroupOpt {
                     .await
                 {
                     Err(e) => error!("Error -> {:?}", e),
-                    Ok(_) => println!("Successfully added members to {}", gcopt.name.as_str()),
+                    Ok(_) => println!("Successfully added {:?} to group \"{}\"", &new_members, gcopt.name.as_str()),
                 }
             }
 
