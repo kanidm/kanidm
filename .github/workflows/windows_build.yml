@@ -12,6 +12,8 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v3
+      - name: ensure openssl and vcpkg is good
+        run: vcpkg integrate install
       - name: Install latest stable
         uses: actions-rs/toolchain@v1
         with:
