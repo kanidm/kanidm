@@ -18,6 +18,7 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::error::Error as SerdeJsonError;
+#[cfg(target_family = "unix")]
 use std::fs::{metadata, File, Metadata};
 use std::io::ErrorKind;
 use std::io::Read;
