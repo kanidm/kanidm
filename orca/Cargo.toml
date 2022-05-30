@@ -46,7 +46,7 @@ mathru = "^0.12.0"
 
 dialoguer = "0.10.1"
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
+[target.'cfg(not(target_family = "windows"))'.dependencies]
 tikv-jemallocator = "0.5"
 
 

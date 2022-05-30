@@ -25,7 +25,7 @@ serde = { version = "^1.0.137", features = ["derive"] }
 tokio = { version = "^1.18.0", features = ["rt-multi-thread", "macros", "signal"] }
 toml = "0.5.9"
 
-[target.'cfg(not(target_env = "msvc"))'.dependencies]
+[target.'cfg(not(target_family = "windows"))'.dependencies]
 tikv-jemallocator = "0.5"
 
 [build-dependencies]
