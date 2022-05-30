@@ -25,6 +25,7 @@ WORKDIR /usr/src/kanidm/kanidmd/daemon
 ARG SCCACHE_REDIS=""
 ARG KANIDM_FEATURES
 ARG KANIDM_BUILD_PROFILE
+ARG KANIDM_BUILD_OPTIONS=""
 
 RUN mkdir /scratch
 RUN echo $KANIDM_BUILD_PROFILE
@@ -36,12 +37,13 @@ ENV CARGO_HOME=/scratch/.cargo
 RUN if [ "${SCCACHE_REDIS}" != "" ]; \
 		then \
 			export CC="/usr/bin/sccache /usr/bin/clang" && \
+      export CARGO_INCREMENTAL=false && \
 			export RUSTC_WRAPPER=sccache && \
 			sccache --start-server; \
 		else \
 			export CC="/usr/bin/clang"; \
 	fi && \
-    cargo build \
+    cargo build ${KANIDM_BUILD_OPTIONS} \
 		--features=${KANIDM_FEATURES} \
 		--target-dir=/usr/src/kanidm/target/ \
 		--release && \
