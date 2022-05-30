@@ -22,9 +22,11 @@ score = { path = "../score" }
 structopt = { version = "^0.3.26", default-features = false }
 users = "^0.11.0"
 serde = { version = "^1.0.137", features = ["derive"] }
-tikv-jemallocator = "0.5.0"
 tokio = { version = "^1.18.0", features = ["rt-multi-thread", "macros", "signal"] }
 toml = "0.5.9"
+
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+tikv-jemallocator = "0.5"
 
 [build-dependencies]
 serde = { version = "1", features = ["derive"] }

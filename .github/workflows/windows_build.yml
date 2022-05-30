@@ -1,5 +1,5 @@
 ---
-name: Windows Binaries
+name: Windows Build and Test
 
 # at the moment this only builds the kanidm  client
 # because @yaleman got tired but it's enough to prove
