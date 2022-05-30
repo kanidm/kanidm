@@ -1,9 +1,11 @@
 ---
 name: Windows Binaries
 
-# this will build regardless,
-# but only push to the container registry
-# when you're committing on the master branch.
+# at the moment this only builds the kanidm  client
+# because @yaleman got tired but it's enough to prove
+# it builds and be able to administer Kanidm from 
+# Windows-land
+
 "on":
   push:
 
