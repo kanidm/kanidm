@@ -3,7 +3,7 @@ name: Windows Binaries
 
 # at the moment this only builds the kanidm  client
 # because @yaleman got tired but it's enough to prove
-# it builds and be able to administer Kanidm from 
+# it builds and be able to administer Kanidm from
 # Windows-land
 
 "on":
@@ -28,4 +28,4 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --release --bin kanidm
+          args: --release --bin kanidm --bin orca --bin kanidmd
