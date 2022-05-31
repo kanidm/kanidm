@@ -828,7 +828,7 @@ pub struct CUIntentToken {
     pub token: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CUSessionToken {
     pub token: String,
 }
@@ -864,7 +864,7 @@ impl fmt::Debug for CURequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CURegState {
     // Nothing in progress.
     None,
@@ -874,7 +874,7 @@ pub enum CURegState {
     BackupCodes(Vec<String>),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CUStatus {
     pub spn: String,
     pub displayname: String,

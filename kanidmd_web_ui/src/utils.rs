@@ -2,7 +2,7 @@ use gloo::console;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{Document, Event, HtmlElement, HtmlButtonElement, HtmlInputElement, Window};
+use web_sys::{Document, Event, HtmlButtonElement, HtmlElement, HtmlInputElement, Window};
 
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
@@ -54,7 +54,6 @@ pub fn get_inputelement_by_id(id: &str) -> Option<HtmlInputElement> {
         .get_element_by_id(id)
         .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
 }
-
 
 pub fn get_value_from_element_id(id: &str) -> Option<String> {
     document()

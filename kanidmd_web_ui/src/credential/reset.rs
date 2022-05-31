@@ -1,20 +1,27 @@
+use crate::error::*;
 use crate::utils;
 use gloo::console;
 use yew::prelude::*;
+use yew_agent::{Bridge, Bridged};
 use yew_router::prelude::*;
 
 use kanidm_proto::v1::{
-    CUIntentToken, CURegState, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType, CURequest, OperationError, PasswordFeedback
+    CUIntentToken, CURegState, CURequest, CUSessionToken, CUStatus, CredentialDetail,
+    CredentialDetailType, OperationError, PasswordFeedback,
 };
-use wasm_bindgen::UnwrapThrowExt;
 
-use qrcode::{render::svg, QrCode};
-
-use crate::error::*;
-use wasm_bindgen::JsCast;
-use wasm_bindgen::JsValue;
+use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{Request, RequestInit, RequestMode, RequestRedirect, Response};
+use web_sys::{Request, RequestInit, RequestMode, Response};
+
+use super::eventbus::{EventBus, EventBusMsg};
+use super::pwmodal::PwModalApp;
+use super::totpmodal::TotpModalApp;
+
+#[derive(PartialEq, Properties)]
+pub struct ModalProps {
+    pub token: CUSessionToken,
+}
 
 pub enum Msg {
     TokenSubmit,
@@ -25,14 +32,12 @@ pub enum Msg {
     UpdateSession {
         status: CUStatus,
     },
+    Commit,
+    Success,
     Error {
         emsg: String,
         kopid: Option<String>,
     },
-    PasswordInput,
-    PasswordResponseSuccess { status: CUStatus },
-    PasswordResponseQuality { feedback: Vec<PasswordFeedback> },
-    // PasswordCheck { check: bool },
     Ignore,
 }
 
@@ -52,6 +57,7 @@ enum State {
         token: CUSessionToken,
         status: CUStatus,
     },
+    WaitingForCommit,
     Error {
         emsg: String,
         kopid: Option<String>,
@@ -60,6 +66,7 @@ enum State {
 
 pub struct CredentialResetApp {
     state: State,
+    eventbus: Box<dyn Bridge<EventBus>>,
 }
 
 impl Component for CredentialResetApp {
@@ -105,22 +112,12 @@ impl Component for CredentialResetApp {
             None => State::TokenInput,
         };
 
-        /*
-        let state = State::Main {
-            token: CUSessionToken {
-                token: "invalid".to_string(),
-            },
-            status: CUStatus {
-                spn: "placeholder@example.com".to_string(),
-                displayname: "Lorum Ipsum Fuck You".to_string(),
-                can_commit: false,
-                primary: None,
-                mfaregstate: CURegState::None,
-            },
-        };
-        */
+        let eventbus = EventBus::bridge(ctx.link().callback(|req| match req {
+            EventBusMsg::UpdateStatus { status } => Msg::UpdateSession { status },
+            EventBusMsg::Error { emsg, kopid } => Msg::Error { emsg, kopid },
+        }));
 
-        CredentialResetApp { state }
+        CredentialResetApp { state, eventbus }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -148,96 +145,30 @@ impl Component for CredentialResetApp {
                 console::log!(format!("{:?}", status).as_str());
                 Some(State::Main { token, status })
             }
-            (Msg::PasswordInput, State::Main { token, status: _ }) => {
-                console::log!("credential::reset::update - password input");
-
-                let pw_input = utils::get_inputelement_by_id("password")
-                    .unwrap_throw();
-                let ck_input = utils::get_inputelement_by_id("password-check")
-                    .unwrap_throw();
-                let submit = utils::get_buttonelement_by_id("password-submit")
-                    .unwrap_throw();
-                let cancel = utils::get_buttonelement_by_id("password-cancel")
-                    .unwrap_throw();
-
-                pw_input.set_disabled(true);
-                ck_input.set_disabled(true);
-                submit.set_disabled(true);
-                cancel.set_disabled(true);
-
-                let pw = utils::get_value_from_element_id("password").unwrap_or_else(|| "".to_string());
-
+            (Msg::UpdateSession { status }, State::Main { token, status: _ }) => {
+                console::log!(format!("{:?}", status).as_str());
+                Some(State::Main {
+                    token: token.clone(),
+                    status,
+                })
+            }
+            (Msg::Commit, State::Main { token, status }) => {
+                console::log!(format!("{:?}", status).as_str());
                 let token_c = token.clone();
 
-                // Okay send of the request to the server.
                 ctx.link().send_future(async {
-                    match Self::submit_password_update(token_c, pw).await {
+                    match Self::commit_session(token_c).await {
                         Ok(v) => v,
                         Err(v) => v.into(),
                     }
                 });
 
+                Some(State::WaitingForCommit)
+            }
+            (Msg::Success, State::WaitingForCommit) => {
+                console::log!(format!("Yayyyyy").as_str());
                 None
             }
-            // Msg::PasswordResponseError
-            (Msg::PasswordResponseQuality { feedback }, State::Main { token, status: _ }) => {
-                console::log!("credential::reset::update - password response quality");
-
-                console::log!(format!("{:?}", feedback).as_str());
-                // Unlock the inputs.
-                // Unlock cancel
-                let pw_input = utils::get_inputelement_by_id("password")
-                    .unwrap_throw();
-                let ck_input = utils::get_inputelement_by_id("password-check")
-                    .unwrap_throw();
-                let submit = utils::get_buttonelement_by_id("password-submit")
-                    .unwrap_throw();
-                let cancel = utils::get_buttonelement_by_id("password-cancel")
-                    .unwrap_throw();
-
-                pw_input.set_disabled(false);
-                ck_input.set_disabled(false);
-                submit.set_disabled(true);
-                cancel.set_disabled(false);
-
-                // Set the feedback into a list item, and stitch it to the modal.
-
-
-
-                // No state transition
-                None
-            }
-            (Msg::PasswordResponseSuccess { status }, State::Main { token, status: _ }) => {
-                console::log!("credential::reset::update - password response success");
-                utils::modal_hide_by_id("staticPassword");
-
-                let pw_input = utils::get_inputelement_by_id("password")
-                    .unwrap_throw();
-                let ck_input = utils::get_inputelement_by_id("password-check")
-                    .unwrap_throw();
-                let submit = utils::get_buttonelement_by_id("password-submit")
-                    .unwrap_throw();
-                let cancel = utils::get_buttonelement_by_id("password-cancel")
-                    .unwrap_throw();
-
-                pw_input.set_disabled(false);
-                pw_input.set_value("");
-                ck_input.set_disabled(false);
-                ck_input.set_value("");
-                submit.set_disabled(true);
-                cancel.set_disabled(false);
-
-                // If the submit was valid, we need to reset the forms because just
-                // hiding the modal DOES NOT do this!!!
-                Some(State::Main { token: token.clone(), status })
-            }
-            /*
-            (Msg::PasswordCheck { pw, check }, State::Main { token, status: _ }) => {
-                // Update this in real time.
-                console::log!("credential::reset::update - password check");
-                None
-            }
-            */
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),
             (_, _) => unreachable!(),
         };
@@ -259,8 +190,8 @@ impl Component for CredentialResetApp {
         console::log!("credential::reset::view");
         match &self.state {
             State::TokenInput => self.view_token_input(ctx),
-            State::WaitingForStatus => self.view_waiting(ctx),
-            State::Main { token, status } => self.view_main(ctx, &status),
+            State::WaitingForStatus | State::WaitingForCommit => self.view_waiting(ctx),
+            State::Main { token, status } => self.view_main(ctx, &token, &status),
             State::Error { emsg, kopid } => self.view_error(ctx, &emsg, kopid.as_deref()),
         }
     }
@@ -320,7 +251,7 @@ impl CredentialResetApp {
         }
     }
 
-    fn view_main(&self, ctx: &Context<Self>, status: &CUStatus) -> Html {
+    fn view_main(&self, ctx: &Context<Self>, token: &CUSessionToken, status: &CUStatus) -> Html {
         if let Err(e) = crate::utils::body()
             .class_list()
             .remove_1("form-signin-body")
@@ -409,7 +340,15 @@ impl CredentialResetApp {
                     { pw_html }
 
                     <hr class="my-4" />
-                    <button class="w-100 btn btn-success btn-lg" type="submit" disabled=true>{ "Submit Changes" }</button>
+                    <button class="w-100 btn btn-success btn-lg" type="submit"
+                        disabled={ !can_commit }
+                        onclick={
+                            ctx.link()
+                                .callback(move |_| {
+                                    Msg::Commit
+                                })
+                        }
+                    >{ "Submit Changes" }</button>
                   </form>
               </div>
             </main>
@@ -437,60 +376,10 @@ impl CredentialResetApp {
               </div>
             </div>
 
-            <div class="modal fade" id="staticPassword" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="staticPasswordLabel" aria-hidden="true">
-              <div class="modal-dialog">
-                <div class="modal-content">
-                  <div class="modal-header">
-                    <h5 class="modal-title" id="staticPasswordLabel">{ "Add a New Password" }</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                  </div>
-                  <div class="modal-body">
-                    <form class="row g-3 needs-validation" novalidate=true>
-                      <label for="password" class="form-label">{ "Enter New Password" }</label>
-                      <input
-                        type="password"
-                        class="form-control"
-                        id="password"
-                        placeholder=""
-                        value=""
-                        aria-describedby="password-validation-feedback"
-                        required=true
-                        oninput={ password_modal_check_inputs }
-                      />
-                      <div id="password-validation-feedback" class="invalid-feedback">
-                        { "Make Stronger" }
-                      </div>
-                      <label for="password-check" class="form-label">{ "Repeat Password" }</label>
-                      <input
-                        type="password"
-                        class="form-control"
-                        id="password-check"
-                        placeholder=""
-                        value=""
-                        aria-describedby="password-check-feedback"
-                        required=true
-                        oninput={ password_modal_check_inputs }
-                      />
-                      <div id="password-check-feedback" class="invalid-feedback">
-                        { "Passwords do not match" }
-                      </div>
-                    </form>
-                  </div>
-                  <div class="modal-footer">
-                    <button id="password-cancel" type="button" class="btn btn-secondary" data-bs-dismiss="modal">{ "Cancel" }</button>
-                    <button id="password-submit" type="button" class="btn btn-primary"
-                        disabled=true
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::PasswordInput
-                                })
-                        }
-                    >{ "Submit" }</button>
-                  </div>
-                </div>
-              </div>
-            </div>
+            <PwModalApp token={ token.clone() } />
+
+            <TotpModalApp />
+
           </div>
         }
     }
@@ -551,18 +440,18 @@ impl CredentialResetApp {
         }
     }
 
-    async fn submit_password_update(token: CUSessionToken, pw: String) -> Result<Msg, FetchError> {
-        let intentreq_jsvalue = serde_json::to_string(&(CURequest::Password(pw), token))
+    async fn commit_session(token: CUSessionToken) -> Result<Msg, FetchError> {
+        let req_jsvalue = serde_json::to_string(&token)
             .map(|s| JsValue::from(&s))
-            .expect_throw("Failed to serialise pw curequest");
+            .expect_throw("Failed to serialise session token");
 
         let mut opts = RequestInit::new();
         opts.method("POST");
         opts.mode(RequestMode::SameOrigin);
 
-        opts.body(Some(&intentreq_jsvalue));
+        opts.body(Some(&req_jsvalue));
 
-        let request = Request::new_with_str_and_init("/v1/credential/_update", &opts)?;
+        let request = Request::new_with_str_and_init("/v1/credential/_commit", &opts)?;
         request
             .headers()
             .set("content-type", "application/json")
@@ -575,26 +464,7 @@ impl CredentialResetApp {
         let headers = resp.headers();
 
         if status == 200 {
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let status: CUStatus =
-                jsval.into_serde().expect_throw("Invalid response type");
-            Ok(Msg::PasswordResponseSuccess { status })
-
-        } else if status == 400 {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
-            let jsval = JsFuture::from(resp.json()?).await?;
-            let status: OperationError =
-                jsval.into_serde().expect_throw("Invalid response type");
-            match status {
-                OperationError::PasswordQuality(feedback) =>
-                    Ok(Msg::PasswordResponseQuality { feedback }),
-                e => {
-                    Ok(Msg::Error {
-                        emsg: format!("Invalid PWResp State Transition due to {:?}", e),
-                        kopid,
-                    })
-                }
-            }
+            Ok(Msg::Success)
         } else {
             let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
@@ -603,36 +473,3 @@ impl CredentialResetApp {
         }
     }
 }
-
-fn password_modal_check_inputs(e: InputEvent) -> () {
-    let pw = utils::get_value_from_element_id("password").unwrap_or_else(|| "".to_string());
-    let check = utils::get_value_from_input_event(e);
-
-    console::log!("credential::reset::update - password check");
-
-    match utils::get_element_by_id("password-check") {
-        Some(elem) => {
-            let _ = elem.class_list().remove_1("is-valid");
-            let _ = elem.class_list().remove_1("is-invalid");
-            let submit = utils::get_buttonelement_by_id("password-submit")
-                .unwrap_throw();
-            if pw == check {
-                let _ = elem.class_list().add_1("is-valid");
-                submit.set_disabled(false);
-            } else {
-                let _ = elem.class_list().add_1("is-invalid");
-                submit.set_disabled(true);
-            }
-        }
-        None => unreachable!(),
-    };
-    // Based on this, we can enable/disable the submit button.
-
-}
-
-
-
-
-
-
-
