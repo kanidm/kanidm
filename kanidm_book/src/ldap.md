@@ -1,13 +1,14 @@
 # LDAP
 
-While many applications can support systems like SAML or OAuth, many do not. LDAP
-has been the "lingua franca" of authentication for many years, with almost
-every application in the world being able to search and bind to LDAP. As there
-are still many of these in the world, Kanidm can host a read-only
+While many applications can support systems like SAML or OAuth, many do not. 
+LDAP has been the "lingua franca" of authentication for many years, with 
+almost every application in the world being able to search and bind to LDAP. 
+As many organization still rely on LDAP, Kanidm can host a read-only
 LDAP interface.
 
 > **WARNING** The LDAP server in Kanidm is not RFC compliant. This
-> is intentional, as Kanidm wants to cover the common use case (simple bind and search).
+> is intentional, as Kanidm wants to cover the common use case 
+> (simple bind and search).
 
 ## What is LDAP
 
