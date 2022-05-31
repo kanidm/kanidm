@@ -16,23 +16,24 @@ It's worth noting some disclaimers about Kanidm's RADIUS integration.
 
 ### One Credential - One Account
 
-Kanidm normally attempts to have credentials for each *device* and *application*
-rather than the legacy model of one to one.
+Kanidm normally attempts to have credentials for each *device* and 
+*application* rather than the legacy model of one to one.
 
-The RADIUS protocol is only able to attest a *single* credential in an authentication
-attempt, which limits us to storing a single RADIUS credential per account. However
-despite this limitation, it still greatly improves the situation by isolating the
-RADIUS credential from the primary or application credentials of the account. This
-solves many common security concerns around credential loss or disclosure,
-and prevents rogue devices from locking out accounts as they attempt to
-authenticate to Wi-Fi with expired credentials.
+The RADIUS protocol is only able to attest a *single* credential in an 
+authentication attempt, which limits us to storing a single RADIUS credential 
+per account. However, despite this limitation, it still greatly improves the 
+situation by isolating the RADIUS credential from the primary or application 
+credentials of the account. This solves many common security concerns around 
+credential loss or disclosure, and prevents rogue devices from locking out 
+accounts as they attempt to authenticate to Wi-Fi with expired credentials.
 
 ### Cleartext Credential Storage
 
 RADIUS offers many different types of tunnels and authentication mechanisms.
 However, most client devices "out of the box" only attempt a single type when 
-a WPA2-Enterprise network is selected: MSCHAPv2 with PEAP. This is a challenge-response 
-protocol that requires clear text or Windows NT LAN Manager (NTLM) credentials.
+a WPA2-Enterprise network is selected: MSCHAPv2 with PEAP. This is a 
+challenge-response protocol that requires clear text or Windows NT LAN 
+Manager (NTLM) credentials.
 
 As MSCHAPv2 with PEAP is the only practical, universal RADIUS-type supported
 on all devices with minimal configuration, we consider it imperative
@@ -40,8 +41,9 @@ that it MUST be supported as the default. Esoteric RADIUS types can be used
 as well, but this is up to administrators to test and configure.
 
 Due to this requirement, we must store the RADIUS material as clear text or
-NTLM hashes. It would be silly to think that NTLM is secure as it relies on the obsolete
-and deprecated MD4 cryptographic hash, providing only an illusion of security.
+NTLM hashes. It would be silly to think that NTLM is secure as it relies on 
+the obsolete and deprecated MD4 cryptographic hash, providing only an 
+illusion of security.
 
 This means Kanidm stores RADIUS credentials in the database as clear text.
 
@@ -49,15 +51,16 @@ We believe this is a reasonable decision and is a low risk to security because:
 
 * The access controls around RADIUS secrets by default are strong, limited
   to only self-account read and RADIUS-server read.
-* As RADIUS credentials are separate from the primary account credentials and have 
-  no other rights, their disclosure is not going to lead to a full account compromise.
-* Having the credentials in clear text allows a better user experience as clients 
-  can view the credentials at any time to enroll further devices.
+* As RADIUS credentials are separate from the primary account credentials and 
+  have no other rights, their disclosure is not going to lead to a full 
+  account compromise.
+* Having the credentials in clear text allows a better user experience as  
+  clients can view the credentials at any time to enroll further devices.
 
 ## Account Credential Configuration
 
-For an account to use RADIUS they must first generate a RADIUS secret unique to
-that account. By default, all accounts can self-create this secret.
+For an account to use RADIUS they must first generate a RADIUS secret unique 
+to that account. By default, all accounts can self-create this secret.
 
     kanidm account radius generate_secret --name william william
     kanidm account radius show_secret --name william william
@@ -66,9 +69,9 @@ that account. By default, all accounts can self-create this secret.
 
 In Kanidm, accounts which can authenticate to RADIUS must be a member
 of an allowed group. This allows you to define which users or groups may use
-a Wi-Fi or VPN infrastructure, and provides a path for revoking access to the resources
-through group management. The key point of this is that service accounts should
-not be part of this group:
+a Wi-Fi or VPN infrastructure, and provides a path for revoking access to the 
+resources through group management. The key point of this is that service 
+accounts should not be part of this group:
 
     kanidm group create --name idm_admin radius_access_allowed
     kanidm group add_members --name idm_admin radius_access_allowed william
@@ -178,12 +181,13 @@ Finally, to expose this to a Wi-Fi infrastructure, add your NAS in `config.ini`:
 
 Then re-create/run your docker instance with `-p 1812:1812 -p 1812:1812/udp` ...
 
-If you have any issues, check the logs from the RADIUS output, as they tend to indicate the cause
-of the problem. To increase the logging level you can re-run your environment with debug enabled:
+If you have any issues, check the logs from the RADIUS output, as they tend 
+to indicate the cause of the problem. To increase the logging level you can 
+re-run your environment with debug enabled:
 
     docker rm radiusd
     docker run --name radiusd -e DEBUG=True -i -t -v ...:/data kanidm/radius:latest
 
-Note the RADIUS container *is* configured to provide Tunnel-Private-Group-ID, so if you wish to use
-Wi-Fi-assigned VLANs on your infrastructure, you can assign these by groups in the config.ini as
-shown in the above examples.
+Note the RADIUS container *is* configured to provide Tunnel-Private-Group-ID, 
+so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
+assign these by groups in the config.ini as shown in the above examples.

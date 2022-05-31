@@ -50,7 +50,7 @@ You can also configure some unixd-specific options with the file /etc/kanidm/uni
 
 `pam_allowed_login_groups` defines a set of POSIX groups where membership of any of these
 groups will be allowed to login via PAM. All POSIX users and groups can be resolved by nss
-regardless of PAM login status. This may be a group name, spn or uuid.
+regardless of PAM login status. This may be a group name, spn, or uuid.
 
 `default_shell` is the default shell for users. Defaults to `/bin/sh`.
 
@@ -60,7 +60,8 @@ a trailing `/`. Defaults to `/home/`.
 `home_attr` is the default token attribute used for the home directory path. Valid
 choices are `uuid`, `name`, `spn`. Defaults to `uuid`.
 
-`home_alias` is the default token attribute used for generating symlinks pointing to the users
+`home_alias` is the default token attribute used for generating symlinks 
+pointing to the user's
 home directory. If set, this will become the value of the home path
 to nss calls. It is recommended you choose a "human friendly" attribute here.
 Valid choices are `none`, `uuid`, `name`, `spn`. Defaults to `spn`.
@@ -91,7 +92,8 @@ If it is not working, you will see an error message:
     [2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -> 
        Os { code: 111, kind: ConnectionRefused, message: "Connection refused" }
 
-For more information, see troubleshooting.
+For more information, see the
+[Troubleshooting](./pam_and_nsswitch.md#troubleshooting) section.
 
 ## nsswitch
 
@@ -126,21 +128,24 @@ You can also do the same for groups.
 > shell open while making changes (for example, root), or have access to single-user mode
 > at the machine's console.
 
-PAM (Pluggable Authentication Modules) is the mechanism a UNIX-like system uses to authenticate 
-users, and to control access to some resources. This is configured through a stack of modules
-that are executed in order to evaluate the request, and then each module may request or reuse 
-authentication token information.
+Pluggable Authentication Modules (PAM) is the mechanism a UNIX-like system 
+that authenticates users, and to control access to some resources. This is 
+configured through a stack of modules
+that are executed in order to evaluate the request, and then each module may 
+request or reuse authentication token information.
 
 ### Before You Start
 
-You *should* backup your /etc/pam.d directory from its original state as you *may* change the
-PAM configuration in a way that will cause you to be unable to authenticate to your machine.
+You *should* backup your /etc/pam.d directory from its original state as you 
+*may* change the PAM configuration in a way that will not allow you 
+to authenticate to your machine.
 
     cp -a /etc/pam.d /root/pam.d.backup
 
 ### SUSE / OpenSUSE
 
-To configure PAM on suse you must modify four files, which control the various stages of authentication.
+To configure PAM on suse you must modify four files, which control the 
+various stages of authentication:
 
     /etc/pam.d/common-account
     /etc/pam.d/common-auth
@@ -196,7 +201,8 @@ The content should look like:
     session optional    pam_env.so
 
 > **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in any stage of your
-> pam configuration, as they interfere with the correct operation of the kanidm tasks daemon.
+> PAM configuration, as they interfere with the correct operation of the 
+kanidm tasks daemon.
 
 ### Fedora / CentOS
 
@@ -206,7 +212,8 @@ The content should look like:
 >
 > You may also need to run `audit2allow` for sshd and other types to be able to access the UNIX daemon sockets.
 
-These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.
+These files are managed by authselect as symlinks. You can either work with 
+authselect, or remove the symlinks first.
 
 #### Without authselect
 If you just remove the symlinks:
@@ -281,9 +288,9 @@ First run the following command:
     authselect create-profile kanidm -b sssd
 
 A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or 
-overwrite the following 3 files: nsswitch.conf, password-auth, system-auth. password-auth 
-and system-auth should be the same as above. nsswitch should be modified for your use case, 
-but a working example looks like this:
+overwrite the following three files: nsswitch.conf, password-auth, system-auth. 
+password-auth and system-auth should be the same as above. nsswitch should be 
+modified for your use case. A working example looks like this:
 
     passwd: compat kanidm sss files systemd
     group: compat kanidm sss files systemd
@@ -326,7 +333,6 @@ Using cached token for name idm_admin
 Error -> Http(500, Some(InvalidAccountState("Missing class: account && posixaccount OR group && posixgroup")), 
     "b71f137e-39f3-4368-9e58-21d26671ae24")
 ```
-<!-- TODO is that the correct number of parentheses? It doesn't look right to me -->
 
 POSIX-enable the group with `kanidm group posix set example_group`. You should get a result similar 
 to this when you search for your group name:
@@ -366,8 +372,8 @@ To debug the pam module interactions add `debug` to the module arguments such as
 Check that the `/var/run/kanidm-unixd/sock` has permissions mode 777, and that non-root readers can see it with
 ls or other tools.
 
-Ensure that `/var/run/kanidm-unixd/task_sock` permissions mode 700, and that it is owned by the kanidm unixd
-process user.
+Ensure that `/var/run/kanidm-unixd/task_sock` has permissions mode 700, and 
+that it is owned by the kanidm unixd process user.
 
 ### Verify that You Can Access the Kanidm Server
 
@@ -395,12 +401,13 @@ For example, on a Debian machine, it's located in `/usr/lib/x86_64-linux-gnu/sec
 
 In some high-latency environments, you may need to increase the connection timeout. We set
 this low to improve response on LANs, but over the internet this may need to be increased.
-By increasing the conn timeout, you will be able to operate on higher latency links, but
-some operations may take longer to complete causing a degree of latency. 
+By increasing the conn_timeout, you will be able to operate on higher latency 
+links, but some operations may take longer to complete causing a degree of 
+latency. 
 
 By increasing the cache_timeout, you will need to refresh less often, but it may result in an 
 account lockout or group change until cache_timeout takes effect. Note that this has security 
-implications.
+implications:
 
     # /etc/kanidm/unixd
     # Seconds
