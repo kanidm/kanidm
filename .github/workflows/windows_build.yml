@@ -1,0 +1,50 @@
+---
+name: Windows Build and Test
+
+# at the moment this only builds the kanidm  client
+# because @yaleman got tired but it's enough to prove
+# it builds and be able to administer Kanidm from
+# Windows-land
+
+"on":
+  push:
+
+jobs:
+  windows_build_kanidm:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: ensure openssl and vcpkg is good
+        run: |
+          vcpkg integrate install
+          vcpkg install openssl:x64-windows-static-md
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            default: true
+            components: cargo
+      - name: build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --release -p kanidm_client -p kanidm_tools -p orca
+  windows_test_kanidm:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: ensure openssl and vcpkg is good
+        run: |
+          vcpkg integrate install
+          vcpkg install openssl:x64-windows-static-md
+      - name: Install latest stable
+        uses: actions-rs/toolchain@v1
+        with:
+            toolchain: stable
+            default: true
+            components: cargo
+      - name: Run cargo test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: -p kanidm_client -p kanidm_tools -p orca

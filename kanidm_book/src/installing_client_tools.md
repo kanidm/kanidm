@@ -14,6 +14,8 @@ Kanidm currently supports the following Linux distributions:
  * Fedora 34/35
  * CentOS Stream 9
 
+The `kanidm` client has been built and tested from Windows, but is not (yet) packaged routinely.
+
 ### OpenSUSE Tumbleweed
 
 Kanidm has been part of OpenSUSE Tumbleweed since October 2020. You can install
