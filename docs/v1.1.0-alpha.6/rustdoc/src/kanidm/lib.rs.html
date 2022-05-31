@@ -121,7 +121,7 @@
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
 
-<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">jemallocator</span>, <span class="ident">test</span>))]</span>
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">all</span>(<span class="ident">jemallocator</span>, <span class="ident">test</span>, <span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>)))]</span>
 <span class="attribute">#[<span class="ident">global_allocator</span>]</span>
 <span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">jemallocator::Jemalloc</span> <span class="op">=</span> <span class="ident">jemallocator::Jemalloc</span>;
 

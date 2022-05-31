@@ -347,6 +347,7 @@
 <span id="342">342</span>
 <span id="343">343</span>
 <span id="344">344</span>
+<span id="345">345</span>
 </pre><pre class="rust"><code><span class="attribute">#![<span class="ident">deny</span>(<span class="ident">warnings</span>)]</span>
 <span class="attribute">#![<span class="ident">warn</span>(<span class="ident">unused_extern_crates</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::todo</span>)]</span>
@@ -359,6 +360,7 @@
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::needless_pass_by_value</span>)]</span>
 <span class="attribute">#![<span class="ident">deny</span>(<span class="ident">clippy::trivially_copy_pass_by_ref</span>)]</span>
 
+<span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">not</span>(<span class="ident">target_family</span> <span class="op">=</span> <span class="string">&quot;windows&quot;</span>))]</span>
 <span class="attribute">#[<span class="ident">global_allocator</span>]</span>
 <span class="kw">static</span> <span class="ident">ALLOC</span>: <span class="ident">tikv_jemallocator::Jemalloc</span> <span class="op">=</span> <span class="ident">tikv_jemallocator::Jemalloc</span>;
 
