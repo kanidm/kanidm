@@ -130,7 +130,7 @@ The config.ini has the following template:
     ; ipaddr =              # ipv4 or ipv6 address of the NAS
     ; secret =              # Shared secret
 
-A fully configured example is:
+A fully configured example:
 
     [kanidm_client]
     ; be sure to check the listening port is correct, it's the docker internal port

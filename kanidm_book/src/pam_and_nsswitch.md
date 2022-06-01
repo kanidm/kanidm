@@ -7,8 +7,8 @@ like Kanidm into accounts that can be used on the machine for various interactiv
 ## The UNIX Daemon
 
 Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch integration. 
-The daemon can cache the accounts for users who have unreliable networks, or leave 
-the site where Kanidm is. The daemon is also able to cache missing-entry responses to reduce network 
+The daemon can cache the accounts for users who have unreliable networks, or who leave 
+the site where Kanidm is hosted. The daemon is also able to cache missing-entry responses to reduce network 
 traffic and main server load.
 
 Additionally, running the daemon means that the PAM and nsswitch integration libraries can be small, 
@@ -202,7 +202,7 @@ The content should look like:
 
 > **WARNING:** Ensure that `pam_mkhomedir` or `pam_oddjobd` are *not* present in any stage of your
 > PAM configuration, as they interfere with the correct operation of the 
-kanidm tasks daemon.
+> Kanidm tasks daemon.
 
 ### Fedora / CentOS
 
@@ -217,7 +217,8 @@ authselect, or remove the symlinks first.
 
 #### Without authselect
 If you just remove the symlinks:
-edit the content.
+
+Edit the content.
 
     # /etc/pam.d/password-auth
     auth        required                                     pam_env.so
@@ -280,6 +281,7 @@ edit the content.
 
 #### With authselect
 To work with authselect:
+
 You will need to 
 [create a new profile](https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect).
 <!--TODO this URL is too short -->
