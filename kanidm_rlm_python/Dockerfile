@@ -7,7 +7,8 @@ RUN zypper --gpg-auto-import-keys ref --force
 RUN zypper refresh
 RUN zypper install -y timezone freeradius-client freeradius-server freeradius-server-ldap \
     freeradius-server-python3 openldap2-client freeradius-server-utils hostname \
-    python3 python3-requests python3-devel && \
+    python3 python3-requests python3-devel \
+    iproute2 iputils curl && \
     zypper clean
 
 # Copy the python module to /etc/raddb
