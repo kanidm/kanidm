@@ -11,6 +11,7 @@ KEYFILE="${KANI_TMP}key.pem"
 CERTFILE="${KANI_TMP}cert.pem"
 CSRFILE="${KANI_TMP}cert.csr"
 CHAINFILE="${KANI_TMP}chain.pem"
+DHFILE="${KANI_TMP}dh.pem"
 
 if [ ! -d "${KANI_TMP}" ]; then
     echo "Creating temp kanidm dir: ${KANI_TMP}"
@@ -40,7 +41,7 @@ localityName_default            = Brisbane
 0.organizationName_default      = INSECURE EXAMPLE
 
 organizationalUnitName          = Organizational Unit Name (eg, section)
-organizationalUnitName_default =  KaniDM
+organizationalUnitName_default =  kanidm
 
 commonName                      = Common Name (eg, your name or your server\'s hostname)
 commonName_max                  = 64
@@ -88,6 +89,9 @@ openssl x509 -req -days 31 \
     -extensions v3_req -sha256
 # Create the chain
 cat "${CERTFILE}" "${CACERT}" > "${CHAINFILE}"
+
+# create the dh file for RADIUS
+openssl dhparam -in "${CAFILE}" -out "${DHFILE}" 2048
 
 echo "Certificate chain is at: ${CHAINFILE}"
 echo "Private key is at: ${KEYFILE}"

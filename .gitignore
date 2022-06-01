@@ -19,3 +19,7 @@ orca/example_profiles/small/orca-edited.toml
 docs/
 kanidm_unix_int/pam_tester/Cargo.lock
 .vscode/
+
+# python things
+**/__pycache__/**
+**/.venv/**
