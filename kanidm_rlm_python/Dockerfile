@@ -17,7 +17,9 @@ RUN zypper install -y \
     python3-devel \
     python3-pip \
     timezone \
-    iproute2 curl
+    iproute2 \
+    iputils \
+    curl
 
 RUN zypper clean
 
