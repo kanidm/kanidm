@@ -150,7 +150,7 @@
 <pre><code>brew install npm
 </code></pre>
 <h4 id="suse"><a class="header" href="#suse">SUSE</a></h4>
-<p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain.</p>
+<p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain. If you're using the Tumbleweed release, it's packaged in <code>zypper</code>.</p>
 <p>You will also need some system libraries to build this:</p>
 <pre><code>libudev-devel sqlite3-devel libopenssl-devel npm-default
 </code></pre>
@@ -164,6 +164,12 @@
 <p>Building the web ui requires additional packages:</p>
 <pre><code>perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
 </code></pre>
+<h4 id="ubuntu"><a class="header" href="#ubuntu">Ubuntu</a></h4>
+<p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain.</p>
+<p>You will also need some system libraries to build this, which can be installed by running:</p>
+<pre><code class="language-shell">sudo apt-get install libsqlite3-dev libudev-dev libssl-dev
+</code></pre>
+<p>Tested with Ubuntu 20.04.</p>
 <h3 id="get-involved"><a class="header" href="#get-involved">Get involved</a></h3>
 <p>To get started, you'll need to fork or branch, and we'll merge based on PR's.</p>
 <p>If you are a contributor to the project, simply clone:</p>
