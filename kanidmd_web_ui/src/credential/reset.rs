@@ -6,8 +6,8 @@ use yew_agent::{Bridge, Bridged};
 use yew_router::prelude::*;
 
 use kanidm_proto::v1::{
-    CUIntentToken, CURegState, CURequest, CUSessionToken, CUStatus, CredentialDetail,
-    CredentialDetailType, OperationError, PasswordFeedback,
+    CUIntentToken, CUSessionToken, CUStatus, CredentialDetail,
+    CredentialDetailType
 };
 
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
@@ -239,7 +239,7 @@ impl CredentialResetApp {
         }
     }
 
-    fn view_waiting(&self, ctx: &Context<Self>) -> Html {
+    fn view_waiting(&self, _ctx: &Context<Self>) -> Html {
         html! {
           <main class="text-center form-signin h-100">
             <div class="vert-center">
@@ -270,16 +270,26 @@ impl CredentialResetApp {
         let pw_html = match &status.primary {
             Some(CredentialDetail {
                 uuid: _,
-                claims,
+                claims: _,
                 type_: CredentialDetailType::Password,
             }) => {
                 html! {
-                    <p>{ "Password Set" }</p>
+                    <>
+                      <p>{ "Password Set" }</p>
+
+                      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
+                        { "Add TOTP" }
+                      </button>
+
+                      <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                        { "Delete this Password" }
+                      </button>
+                    </>
                 }
             }
             Some(CredentialDetail {
                 uuid: _,
-                claims,
+                claims: _,
                 type_: CredentialDetailType::GeneratedPassword,
             }) => {
                 html! {
@@ -288,7 +298,7 @@ impl CredentialResetApp {
             }
             Some(CredentialDetail {
                 uuid: _,
-                claims,
+                claims: _,
                 type_: CredentialDetailType::Webauthn(_),
             }) => {
                 html! {
@@ -297,7 +307,7 @@ impl CredentialResetApp {
             }
             Some(CredentialDetail {
                 uuid: _,
-                claims,
+                claims: _,
                 type_:
                     CredentialDetailType::PasswordMfa(
                         totp_set,
@@ -306,7 +316,13 @@ impl CredentialResetApp {
                     ),
             }) => {
                 html! {
-                    <p>{ "Mfa" }</p>
+                    <>
+                      <p>{ "Mfa" }</p>
+
+                      <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                        { "Delete this Password" }
+                      </button>
+                    </>
                 }
             }
             None => {
@@ -378,13 +394,16 @@ impl CredentialResetApp {
 
             <PwModalApp token={ token.clone() } />
 
-            <TotpModalApp />
+            <TotpModalApp token={ token.clone() }/>
+
 
           </div>
         }
+
+            // <DelPrimaryModalApp token={ token.clone() }/>
     }
 
-    fn view_error(&self, ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
+    fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {
         html! {
           <main class="form-signin">
             <div class="container">
