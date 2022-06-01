@@ -1,4 +1,3 @@
-use std::net::TcpStream;
 use std::sync::atomic::Ordering;
 
 mod common;
@@ -10,13 +9,7 @@ use kanidm::tracing_tree;
 use score::create_server_core;
 use tokio::task;
 
-fn is_free_port(port: u16) -> bool {
-    // TODO: Refactor to use `Result::is_err` in a future PR
-    match TcpStream::connect(("0.0.0.0", port)) {
-        Ok(_) => false,
-        Err(_) => true,
-    }
-}
+use crate::common::is_free_port;
 
 #[tokio::test]
 async fn test_https_middleware_headers() {

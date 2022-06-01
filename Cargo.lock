@@ -628,7 +628,7 @@ dependencies = [
  "serde_json",
  "tracing",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
 ]
 
 [[package]]
@@ -1991,7 +1991,7 @@ dependencies = [
  "tracing-subscriber",
  "url",
  "users",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "validator",
  "webauthn-authenticator-rs",
  "webauthn-rs",
@@ -2010,7 +2010,7 @@ dependencies = [
  "toml",
  "tracing",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "webauthn-rs",
 ]
 
@@ -2023,7 +2023,7 @@ dependencies = [
  "serde_json",
  "time 0.2.27",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "webauthn-rs",
 ]
 
@@ -2225,9 +2225,9 @@ dependencies = [
 
 [[package]]
 name = "lru"
-version = "0.7.5"
+version = "0.7.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "32613e41de4c47ab04970c348ca7ae7382cf116625755af070b008a15516a889"
+checksum = "8015d95cb7b2ddd3c0d32ca38283ceb1eea09b4713ee380bceb942d85a244228"
 dependencies = [
  "hashbrown 0.11.2",
 ]
@@ -2551,7 +2551,7 @@ dependencies = [
  "toml",
  "tracing",
  "tracing-subscriber",
- "uuid 1.0.0",
+ "uuid 1.1.0",
 ]
 
 [[package]]
@@ -3226,7 +3226,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "url",
- "uuid 1.0.0",
+ "uuid 1.1.0",
  "webauthn-authenticator-rs",
 ]
 
@@ -3757,9 +3757,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemalloc-sys"
-version = "0.4.3+5.2.1-patched.2"
+version = "0.5.0+5.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1792ccb507d955b46af42c123ea8863668fae24d03721e40cad6a41773dbb49"
+checksum = "aeab4310214fe0226df8bfeb893a291a58b19682e8a07e1e1d4483ad4200d315"
 dependencies = [
  "cc",
  "fs_extra",
@@ -3768,9 +3768,9 @@ dependencies = [
 
 [[package]]
 name = "tikv-jemallocator"
-version = "0.4.3"
+version = "0.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a5b7bcecfafe4998587d636f9ae9d55eb9d0499877b88757767c346875067098"
+checksum = "20612db8a13a6c06d57ec83953694185a367e16945f66565e8028d2c0bd76979"
 dependencies = [
  "libc",
  "tikv-jemalloc-sys",
@@ -4109,9 +4109,9 @@ checksum = "bc5cf98d8186244414c848017f0e2676b3fcb46807f6668a97dfe67359a3c4b7"
 
 [[package]]
 name = "uuid"
-version = "1.0.0"
+version = "1.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8cfcd319456c4d6ea10087ed423473267e1a071f3bc0aa89f80d60997843c6f0"
+checksum = "93bbc61e655a4833cf400d0d15bf3649313422fa7572886ad6dab16d79886365"
 dependencies = [
  "getrandom 0.2.6",
  "serde",
@@ -4119,9 +4119,9 @@ dependencies = [
 
 [[package]]
 name = "validator"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6d0f08911ab0fee2c5009580f04615fa868898ee57de10692a45da0c3bcc3e5e"
+checksum = "f07b0a1390e01c0fc35ebb26b28ced33c9a3808f7f9fbe94d3cc01e233bfeed5"
 dependencies = [
  "idna",
  "lazy_static",
@@ -4132,14 +4132,13 @@ dependencies = [
  "serde_json",
  "url",
  "validator_derive",
- "validator_types",
 ]
 
 [[package]]
 name = "validator_derive"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d85135714dba11a1bd0b3eb1744169266f1a38977bf4e3ff5e2e1acb8c2b7eee"
+checksum = "ea7ed5e8cf2b6bdd64a6c4ce851da25388a89327b17b88424ceced6bd5017923"
 dependencies = [
  "if_chain",
  "lazy_static",
@@ -4153,9 +4152,9 @@ dependencies = [
 
 [[package]]
 name = "validator_types"
-version = "0.14.0"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ded9d97e1d42327632f5f3bae6403c04886e2de3036261ef42deebd931a6a291"
+checksum = "d2ddf34293296847abfc1493b15c6e2f5d3cd19f57ad7d22673bf4c6278da329"
 dependencies = [
  "proc-macro2",
  "syn",

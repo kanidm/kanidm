@@ -35,7 +35,7 @@ jobs:
             default: true
             components: cargo
       - name: Run cargo test
-        run: cargo test --workspace
+        run: cargo test -j1
 
   kanidm_build:
     needs: test
@@ -70,6 +70,7 @@ jobs:
           build-args: |
             "KANIDM_BUILD_PROFILE=developer"
             "KANIDM_FEATURES="
+            "KANIDM_BUILD_OPTIONS=-j1"
           file: kanidmd/Dockerfile
   radius_build:
     needs: test

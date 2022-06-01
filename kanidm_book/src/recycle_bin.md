@@ -13,12 +13,12 @@ The recycle bin is stored as part of your main database - it is included in all
 backups and restores, just like any other data. It is also replicated between
 all servers.
 
-## How do things get into the Recycle Bin?
+## How do Things Get Into the Recycle Bin?
 
 Any delete operation of an entry will cause it to be sent to the recycle bin. No
 configuration or specification is required.
 
-## How long do items stay in the Recycle Bin?
+## How Long Do Items Stay in the Recycle Bin?
 
 Currently they stay up to 1 week before they are removed.
 
@@ -36,7 +36,7 @@ An entry can be revived with:
 
     kanidm recycle_bin revive --name admin <id>
 
-## Edge cases
+## Edge Cases
 
 The recycle bin is a best effort to restore your data - there are some cases where
 the revived entries may not be the same as their were when they were deleted. This
@@ -69,4 +69,3 @@ groups is rare - we expect recycle bin to save you in "opps" moments, and in a m
 of cases you may delete a group or a user and then restore them. To handle this series
 of steps requires extra code complexity in how we flag operations. For more,
 see [This issue on github](https://github.com/kanidm/kanidm/issues/177).
-

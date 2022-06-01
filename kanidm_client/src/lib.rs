@@ -18,11 +18,13 @@ use serde::de::DeserializeOwned;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::error::Error as SerdeJsonError;
-use std::fs::{metadata, File, Metadata};
+use std::fs::File;
+#[cfg(target_family = "unix")] // not needed for windows builds
+use std::fs::{metadata, Metadata};
 use std::io::ErrorKind;
 use std::io::Read;
 
-#[cfg(target_family = "unix")]
+#[cfg(target_family = "unix")] // not needed for windows builds
 use std::os::unix::fs::MetadataExt;
 
 use std::collections::BTreeMap;
@@ -89,6 +91,7 @@ pub struct KanidmClient {
     pub(crate) auth_session_id: RwLock<Option<String>>,
 }
 
+#[cfg(target_family = "unix")]
 fn read_file_metadata<P: AsRef<Path>>(path: &P) -> Result<Metadata, ()> {
     metadata(path).map_err(|e| {
         error!(

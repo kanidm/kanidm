@@ -4,7 +4,9 @@ IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
 CONTAINER_TOOL_ARGS ?=
 IMAGE_ARCH ?= "linux/amd64,linux/arm64"
-CONTAINER_BUILD_ARGS ?= 
+CONTAINER_BUILD_ARGS ?=
+# Example of using redis with sccache
+# --build-arg "SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379"
 CONTAINER_TOOL ?= docker
 
 BOOK_VERSION ?= master
