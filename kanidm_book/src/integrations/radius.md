@@ -82,9 +82,18 @@ To read these secrets, the RADIUS server requires an account with the
 correct privileges. This can be created and assigned through the group
 "idm_radius_servers", which is provided by default.
 
-    kanidm account create --name admin radius_service_account "Radius Service Account"
-    kanidm group add_members --name admin idm_radius_servers radius_service_account
-    kanidm account credential reset_credential --name admin radius_service_account
+First, create the account and add it to the group:
+
+```shell
+kanidm account create --name admin radius_service_account "Radius Service Account"
+kanidm group add_members --name admin idm_radius_servers radius_service_account
+```
+
+Now reset the account password, using the `admin` account:
+
+```shell
+kanidm account credential update --name admin radius_service_account
+```
 
 ## Deploying a RADIUS Container
 
@@ -104,6 +113,7 @@ The config.ini has the following template:
 
     [kanidm_client]
     url =                   # URL to the kanidm server
+    # TODO: change strict to verify_ca
     strict = false          # Strict CA verification
     ca = /data/ca.pem       # Path to the kanidm ca
     user =                  # Username of the RADIUS service account
@@ -135,7 +145,8 @@ A fully configured example:
     [kanidm_client]
     ; be sure to check the listening port is correct, it's the docker internal port
     ; not the external one if these containers are on the same host.
-    url = https://<kanidmd container name or ip>:8443
+    url = https://example.com
+    # TODO: change strict to verify_ca
     strict = true           # Adjust this if you have CA validation issues
     ca = /data/ca.crt
     user = radius_service_account
@@ -166,6 +177,8 @@ A fully configured example:
 
 You can then run the container with:
 
+    <!-- TODO: decide if we're going to tell them to build it explicitly -->
+
     docker run --name radiusd -v ...:/data kanidm/radius:latest
 
 Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:
@@ -191,3 +204,33 @@ re-run your environment with debug enabled:
 Note the RADIUS container *is* configured to provide Tunnel-Private-Group-ID, 
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
 assign these by groups in the config.ini as shown in the above examples.
+
+## Testing the RADIUS container
+
+Starting from the root directory of the repository, we'll generate some basic certificates. Run the generate script and just accept all the defaults:
+
+<!-- TODO: make this less bad -->
+```shell
+./insecure_generate_tls.sh
+<snip>
+Getting CA Private Key
+Certificate chain is at: /tmp/kanidm/chain.pem
+Private key is at: /tmp/kanidm/key.pem
+```
+
+Build the container:
+
+```shell
+make build/radiusd
+```
+
+Run the container:
+
+```shell
+docker run --rm -it --name kanidm_radius \
+    -v /tmp/kanidm/chain.pem:/etc/raddb/certs/chain.pem \
+    -v /tmp/kanidm/key.pem:/etc/raddb/certs/key.pem \
+    -v /tmp/kanidm/ca.pem:/etc/raddb/certs/ca.pem \
+    -v /tmp/kanidm/dh.pem:/etc/raddb/certs/dh.pem \
+    kanidm/radius:devel
+```
