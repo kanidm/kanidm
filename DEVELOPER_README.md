@@ -30,7 +30,7 @@ If you plan to work on the web-ui, you may also need npm for setting up some par
 
 #### SUSE
 
-You will need [rustup](https://rustup.rs/) to install a rust toolchain.
+You will need [rustup](https://rustup.rs/) to install a rust toolchain. If you're using the Tumbleweed release, it's packaged in `zypper`.
 
 You will also need some system libraries to build this:
 
@@ -49,6 +49,18 @@ You will also need some system libraries to build this:
 Building the web ui requires additional packages:
 
     perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
+
+#### Ubuntu
+
+You will need [rustup](https://rustup.rs/) to install a rust toolchain.
+
+You will also need some system libraries to build this, which can be installed by running:
+
+```shell
+sudo apt-get install libsqlite3-dev libudev-dev libssl-dev
+```
+
+Tested with Ubuntu 20.04.
 
 ### Get involved
 
