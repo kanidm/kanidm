@@ -1,4 +1,8 @@
 use crate::utils;
+
+use super::eventbus::{EventBus, EventBusMsg};
+use super::reset::{ModalProps, submit_cred_update};
+
 use gloo::console;
 use wasm_bindgen::UnwrapThrowExt;
 use web_sys::Node;
@@ -31,6 +35,8 @@ pub enum Msg {
     TotpCancel,
     TotpSubmit,
     TotpSecretReady,
+    TotpSuccess,
+    TotpAcceptSha1,
 }
 
 impl TotpModalApp {
@@ -44,10 +50,22 @@ impl TotpModalApp {
 
 impl Component for TotpModalApp {
     type Message = Msg;
-    type Properties = ();
+    type Properties = ModalProps;
 
     fn create(ctx: &Context<Self>) -> Self {
         console::log!("totp modal create");
+
+        // SEND OFF A REQUEST TO GET THE TOTP STRING
+        let token_c = ctx.props().token.clone();
+
+        ctx.link().send_future(async {
+            match submit_cred_update(token_c, CURequest::Password(pw)).await {
+                Ok(v) => v,
+                Err(v) => v.into(),
+            }
+        });
+
+        // Msg::TotpSecretReady
 
         TotpModalApp {
             state: TotpState::Init,
@@ -68,10 +86,17 @@ impl Component for TotpModalApp {
                 self.reset_and_hide();
             }
             Msg::TotpSubmit => {
+                // Send off the submit, lock the form.
                 self.check = TotpCheck::Invalid;
             }
             Msg::TotpSecretReady => {
+                // THIS IS WHATS CALLED WHEN THE SECRET IS BACK
                 self.secret = TotpSecret::Value("Secret Value".to_string());
+            }
+            Msg::TotpAcceptSha1 => {
+                
+            }
+            Msg::TotpSuccess => {
             }
         };
         true
