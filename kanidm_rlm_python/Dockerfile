@@ -3,8 +3,6 @@ FROM opensuse/tumbleweed:latest
 EXPOSE 1812 1813
 
 RUN zypper --gpg-auto-import-keys refresh --force
-# TODO: why are we doing a zypper ref twice?
-# RUN zypper refresh
 RUN zypper install -y \
     freeradius-client \
     freeradius-server \
