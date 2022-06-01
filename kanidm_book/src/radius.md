@@ -168,7 +168,7 @@ You can then run the container with:
 
     docker run --name radiusd -v ...:/data kanidm/radius:latest
 
-Authentication can be tested through the client.localhost Network Attached Storage (NAS) configuration with:
+Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:
 
     docker exec -i -t radiusd radtest <username> badpassword 127.0.0.1 10 testing123
     docker exec -i -t radiusd radtest <username> <radius show_secret value here> 127.0.0.1 10 testing123
