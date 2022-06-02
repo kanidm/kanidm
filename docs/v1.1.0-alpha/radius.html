@@ -135,67 +135,70 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="radius"><a class="header" href="#radius">RADIUS</a></h1>
-<p>RADIUS is a network protocol that is commonly used to allow wifi devices or
-VPN's to authenticate users to a network boundary. While it should not be a
-sole point of trust/authentication to an identity, it's still an important
-control for improving barriers to attackers access to network resources.</p>
+<p>Remote Authentication Dial In User Service (RADIUS) is a network protocol 
+that is commonly used to authenticate Wi-Fi devices or Virtual Private 
+Networks (VPNs). While it should not be a sole point of trust/authentication 
+to an identity, it's still an important control for protecting network resources.</p>
 <p>Kanidm has a philosophy that each account can have multiple credentials which
-are related to their devices and limited to specific resources. RADIUS is
+are related to their devices, and limited to specific resources. RADIUS is
 no exception and has a separate credential for each account to use for
 RADIUS access.</p>
 <h2 id="disclaimer"><a class="header" href="#disclaimer">Disclaimer</a></h2>
-<p>It's worth noting some disclaimers about Kanidm's RADIUS integration here</p>
+<p>It's worth noting some disclaimers about Kanidm's RADIUS integration.</p>
 <h3 id="one-credential---one-account"><a class="header" href="#one-credential---one-account">One Credential - One Account</a></h3>
-<p>Kanidm normally attempts to have credentials for each <em>device</em> and <em>application</em>
-rather than the legacy model of one to one.</p>
-<p>The RADIUS protocol is only able to attest a <em>single</em> credential in an authentication
-attempt, which limits us to storing a single RADIUS credential per account. However
-despite this limitation, it still greatly improves the situation by isolating the
-RADIUS credential from the primary or application credentials of the account. This
-solves many common security concerns around credential loss or disclosure
-and prevents rogue devices from locking out accounts as they attempt to
-authenticate to wifi with expired credentials.</p>
+<p>Kanidm normally attempts to have credentials for each <em>device</em> and 
+<em>application</em> rather than the legacy model of one to one.</p>
+<p>The RADIUS protocol is only able to attest a <em>single</em> credential in an 
+authentication attempt, which limits us to storing a single RADIUS credential 
+per account. However, despite this limitation, it still greatly improves the 
+situation by isolating the RADIUS credential from the primary or application 
+credentials of the account. This solves many common security concerns around 
+credential loss or disclosure, and prevents rogue devices from locking out 
+accounts as they attempt to authenticate to Wi-Fi with expired credentials.</p>
 <h3 id="cleartext-credential-storage"><a class="header" href="#cleartext-credential-storage">Cleartext Credential Storage</a></h3>
 <p>RADIUS offers many different types of tunnels and authentication mechanisms.
-However, most client devices &quot;out of the box&quot; only attempt a single type when you select 
-a WPA2-Enterprise network: MSCHAPv2 with PEAP. This is a challenge-response protocol 
-that requires cleartext or NTLM credentials.</p>
-<p>As MSCHAPv2 with PEAP is the only practical, universal RADIUS type supported
-on all devices with &quot;minimal&quot; configuration, we consider it imperative
+However, most client devices &quot;out of the box&quot; only attempt a single type when 
+a WPA2-Enterprise network is selected: MSCHAPv2 with PEAP. This is a 
+challenge-response protocol that requires clear text or Windows NT LAN 
+Manager (NTLM) credentials.</p>
+<p>As MSCHAPv2 with PEAP is the only practical, universal RADIUS-type supported
+on all devices with minimal configuration, we consider it imperative
 that it MUST be supported as the default. Esoteric RADIUS types can be used
 as well, but this is up to administrators to test and configure.</p>
-<p>Due to this requirement, we must store the RADIUS material as cleartext or
-NTLM hashes. It would be silly to think that NTLM is &quot;secure&quot; as it's md4
-which is only an illusion of security.</p>
-<p>This means Kanidm stores RADIUS credentials in the database as cleartext.</p>
-<p>We believe this is a reasonable decision and is a low risk to security as:</p>
+<p>Due to this requirement, we must store the RADIUS material as clear text or
+NTLM hashes. It would be silly to think that NTLM is secure as it relies on 
+the obsolete and deprecated MD4 cryptographic hash, providing only an 
+illusion of security.</p>
+<p>This means Kanidm stores RADIUS credentials in the database as clear text.</p>
+<p>We believe this is a reasonable decision and is a low risk to security because:</p>
 <ul>
-<li>The access controls around RADIUS secrets by default are &quot;strong&quot;, limited
+<li>The access controls around RADIUS secrets by default are strong, limited
 to only self-account read and RADIUS-server read.</li>
-<li>As RADIUS credentials are separate from the primary account credentials and have 
-no other rights, their disclosure is not going to lead to a full account compromise.</li>
-<li>Having the credentials in cleartext allows a better user experience as clients 
-can view the credentials at any time to enrol further devices.</li>
+<li>As RADIUS credentials are separate from the primary account credentials and 
+have no other rights, their disclosure is not going to lead to a full 
+account compromise.</li>
+<li>Having the credentials in clear text allows a better user experience as<br />
+clients can view the credentials at any time to enroll further devices.</li>
 </ul>
 <h2 id="account-credential-configuration"><a class="header" href="#account-credential-configuration">Account Credential Configuration</a></h2>
-<p>For an account to use RADIUS they must first generate a RADIUS secret unique to
-that account. By default, all accounts can self-create this secret.</p>
+<p>For an account to use RADIUS they must first generate a RADIUS secret unique 
+to that account. By default, all accounts can self-create this secret.</p>
 <pre><code>kanidm account radius generate_secret --name william william
 kanidm account radius show_secret --name william william
 </code></pre>
-<h2 id="account-group-configuration"><a class="header" href="#account-group-configuration">Account group configuration</a></h2>
-<p>Kanidm enforces that accounts which can authenticate to RADIUS must be a member
+<h2 id="account-group-configuration"><a class="header" href="#account-group-configuration">Account Group Configuration</a></h2>
+<p>In Kanidm, accounts which can authenticate to RADIUS must be a member
 of an allowed group. This allows you to define which users or groups may use
-wifi or VPN infrastructure and gives a path for &quot;revoking&quot; access to the resources
-through group management. The key point of this is that service accounts should
-not be part of this group.</p>
+a Wi-Fi or VPN infrastructure, and provides a path for revoking access to the 
+resources through group management. The key point of this is that service 
+accounts should not be part of this group:</p>
 <pre><code>kanidm group create --name idm_admin radius_access_allowed
 kanidm group add_members --name idm_admin radius_access_allowed william
 </code></pre>
 <h2 id="radius-server-service-account"><a class="header" href="#radius-server-service-account">RADIUS Server Service Account</a></h2>
 <p>To read these secrets, the RADIUS server requires an account with the
 correct privileges. This can be created and assigned through the group
-&quot;idm_radius_servers&quot; which is provided by default.</p>
+&quot;idm_radius_servers&quot;, which is provided by default.</p>
 <pre><code>kanidm account create --name admin radius_service_account &quot;Radius Service Account&quot;
 kanidm group add_members --name admin idm_radius_servers radius_service_account
 kanidm account credential reset_credential --name admin radius_service_account
@@ -241,7 +244,7 @@ cache_path =            # A path to an area where cached user records can be sto
 ; ipaddr =              # ipv4 or ipv6 address of the NAS
 ; secret =              # Shared secret
 </code></pre>
-<p>A fully configured example is:</p>
+<p>A fully configured example:</p>
 <pre><code>[kanidm_client]
 ; be sure to check the listening port is correct, it's the docker internal port
 ; not the external one if these containers are on the same host.
@@ -277,24 +280,25 @@ secret = testing123
 <p>You can then run the container with:</p>
 <pre><code>docker run --name radiusd -v ...:/data kanidm/radius:latest
 </code></pre>
-<p>Authentication can be tested through the client.localhost NAS configuration with:</p>
+<p>Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:</p>
 <pre><code>docker exec -i -t radiusd radtest &lt;username&gt; badpassword 127.0.0.1 10 testing123
 docker exec -i -t radiusd radtest &lt;username&gt; &lt;radius show_secret value here&gt; 127.0.0.1 10 testing123
 </code></pre>
-<p>Finally, to expose this to a wifi infrastructure, add your NAS in <code>config.ini</code>:</p>
+<p>Finally, to expose this to a Wi-Fi infrastructure, add your NAS in <code>config.ini</code>:</p>
 <pre><code>[client.access_point]
 ipaddr = &lt;some ipadd&gt;
 secret = &lt;random value&gt;
 </code></pre>
-<p>And re-create/run your docker instance with <code>-p 1812:1812 -p 1812:1812/udp</code> ...</p>
-<p>If you have any issues, check the logs from the radius output they tend to indicate the cause
-of the problem. To increase the logging you can re-run your environment with debug enabled:</p>
+<p>Then re-create/run your docker instance with <code>-p 1812:1812 -p 1812:1812/udp</code> ...</p>
+<p>If you have any issues, check the logs from the RADIUS output, as they tend 
+to indicate the cause of the problem. To increase the logging level you can 
+re-run your environment with debug enabled:</p>
 <pre><code>docker rm radiusd
 docker run --name radiusd -e DEBUG=True -i -t -v ...:/data kanidm/radius:latest
 </code></pre>
-<p>Note the radius container <em>is</em> configured to provide Tunnel-Private-Group-ID so if you wish to use
-wifi assigned VLANs on your infrastructure, you can assign these by groups in the config.ini as
-shown in the above examples.</p>
+<p>Note the RADIUS container <em>is</em> configured to provide Tunnel-Private-Group-ID, 
+so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
+assign these by groups in the config.ini as shown in the above examples.</p>
 
                     </main>
 

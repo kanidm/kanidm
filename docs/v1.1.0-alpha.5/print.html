@@ -556,8 +556,9 @@ You need to use the UID or GID number with the <code>-u</code> argument, as the 
 usernames from the host system.</p>
 </blockquote>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="client-tools"><a class="header" href="#client-tools">Client tools</a></h1>
-<p>To interact with Kanidm as an administrator, you'll need to use our command line tools. 
-If you haven't installed them yet, <a href="installing_client_tools.html">install them now</a>.</p>
+<p>To interact with Kanidm as an administrator, you'll need to use our command 
+line tools. If you haven't installed them yet, 
+<a href="installing_client_tools.html">install them now</a>.</p>
 <h2 id="kanidm-configuration"><a class="header" href="#kanidm-configuration">Kanidm configuration</a></h2>
 <p>You can configure <code>kanidm</code> to help make commands simpler by modifying <code>~/.config/kanidm</code> 
 or <code>/etc/kanidm/config</code>.</p>
@@ -1424,30 +1425,38 @@ these to a group with a scope map due to Velociraptors high impact.</p>
 # kanidm group add_members velociraptor_users ...
 kanidm system oauth2 create_scope_map &lt;resource server name&gt; velociraptor_users openid email</code></pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="pam-and-nsswitch"><a class="header" href="#pam-and-nsswitch">PAM and nsswitch</a></h1>
-<p><a href="http://linux-pam.org">PAM</a> and <a href="https://en.wikipedia.org/wiki/Name_Service_Switch">nsswitch</a> are the core mechanisms used by Linux and BSD clients to resolve identities from an IDM service like Kanidm into accounts that can be used on the machine for various interactive tasks.</p>
-<h2 id="the-unix-daemon"><a class="header" href="#the-unix-daemon">The UNIX daemon</a></h2>
-<p>Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch integration. This is provided as the daemon can cache the accounts for users who have unreliable networks or leave the site where Kanidm is. The cache is also able to cache missing-entry responses to reduce network traffic and main server load.</p>
-<p>Additionally, the daemon means that the PAM and nsswitch integration libraries can be small, helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can create home directories on first login and supports several features related to aliases and links to these home directories.</p>
-<p>We recommend you install the client daemon from your system package manager.</p>
+<p><a href="http://linux-pam.org">PAM</a> and <a href="https://en.wikipedia.org/wiki/Name_Service_Switch">nsswitch</a> 
+are the core mechanisms used by Linux and BSD clients to resolve identities from an IDM service 
+like Kanidm into accounts that can be used on the machine for various interactive tasks.</p>
+<h2 id="the-unix-daemon"><a class="header" href="#the-unix-daemon">The UNIX Daemon</a></h2>
+<p>Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch integration. 
+The daemon can cache the accounts for users who have unreliable networks, or who leave 
+the site where Kanidm is hosted. The daemon is also able to cache missing-entry responses to reduce network 
+traffic and main server load.</p>
+<p>Additionally, running the daemon means that the PAM and nsswitch integration libraries can be small, 
+helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can 
+create home directories on first login and supports several features related to aliases and links to 
+these home directories.</p>
+<p>We recommend you install the client daemon from your system package manager:</p>
 <pre><code># OpenSUSE
 zypper in kanidm-unixd-clients
 # Fedora
 dnf install kanidm-unixd-clients
 </code></pre>
-<p>You can check the daemon is running on your Linux system with</p>
+<p>You can check the daemon is running on your Linux system with:</p>
 <pre><code>systemctl status kanidm-unixd
 </code></pre>
-<p>You can check the privileged tasks daemon is running with</p>
+<p>You can check the privileged tasks daemon is running with:</p>
 <pre><code>systemctl status kanidm-unixd-tasks
 </code></pre>
 <blockquote>
 <p><strong>NOTE</strong> The <code>kanidm_unixd_tasks</code> daemon is not required for PAM and nsswitch functionality.
-If disabled, your system will function as usual. It is however recommended due to the features
+If disabled, your system will function as usual. It is, however, recommended due to the features
 it provides supporting Kanidm's capabilities.</p>
 </blockquote>
 <p>Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
 <a href="./client_tools.html#kanidm-configuration">client_tools</a>.</p>
-<p>You can also configure some unixd specific options with the file /etc/kanidm/unixd.</p>
+<p>You can also configure some unixd-specific options with the file /etc/kanidm/unixd:</p>
 <pre><code>pam_allowed_login_groups = [&quot;posix_group&quot;]
 default_shell = &quot;/bin/sh&quot;
 home_prefix = &quot;/home/&quot;
@@ -1456,15 +1465,16 @@ home_alias = &quot;spn&quot;
 uid_attr_map = &quot;spn&quot;
 gid_attr_map = &quot;spn&quot;
 </code></pre>
-<p>The <code>pam_allowed_login_groups</code> defines a set of posix groups where membership of any of these
-groups will be allowed to login via PAM. All posix users and groups can be resolved by nss
-regardless of PAM login status. This may be a group name, spn or uuid.</p>
-<p><code>default_shell</code> is the default shell for users with none defined. Defaults to <code>/bin/sh</code>.</p>
+<p><code>pam_allowed_login_groups</code> defines a set of POSIX groups where membership of any of these
+groups will be allowed to login via PAM. All POSIX users and groups can be resolved by nss
+regardless of PAM login status. This may be a group name, spn, or uuid.</p>
+<p><code>default_shell</code> is the default shell for users. Defaults to <code>/bin/sh</code>.</p>
 <p><code>home_prefix</code> is the prepended path to where home directories are stored. Must end with
 a trailing <code>/</code>. Defaults to <code>/home/</code>.</p>
 <p><code>home_attr</code> is the default token attribute used for the home directory path. Valid
 choices are <code>uuid</code>, <code>name</code>, <code>spn</code>. Defaults to <code>uuid</code>.</p>
-<p><code>home_alias</code> is the default token attribute used for generating symlinks pointing to the users
+<p><code>home_alias</code> is the default token attribute used for generating symlinks 
+pointing to the user's
 home directory. If set, this will become the value of the home path
 to nss calls. It is recommended you choose a &quot;human friendly&quot; attribute here.
 Valid choices are <code>none</code>, <code>uuid</code>, <code>name</code>, <code>spn</code>. Defaults to <code>spn</code>.</p>
@@ -1472,42 +1482,45 @@ Valid choices are <code>none</code>, <code>uuid</code>, <code>name</code>, <code
 <p><strong>NOTICE:</strong>
 All users in Kanidm can change their name (and their spn) at any time. If you change
 <code>home_attr</code> from <code>uuid</code> you <em>must</em> have a plan on how to manage these directory renames
-in your system. We recommend that you have a stable id (like the uuid) and symlinks
-from the name to the uuid folder. Automatic support is provided for this via the unixd
+in your system. We recommend that you have a stable ID (like the UUID), and symlinks
+from the name to the UUID folder. Automatic support is provided for this via the unixd
 tasks daemon, as documented here.</p>
 </blockquote>
 <p><code>uid_attr_map</code> chooses which attribute is used for domain local users in presentation. Defaults
 to <code>spn</code>. Users from a trust will always use spn.</p>
 <p><code>gid_attr_map</code> chooses which attribute is used for domain local groups in presentation. Defaults
 to <code>spn</code>. Groups from a trust will always use spn.</p>
-<p>You can then check the communication status of the daemon as any user account.</p>
-<pre><code>$ kanidm_unixd_status
+<p>You can then check the communication status of the daemon:</p>
+<pre><code>kanidm_unixd_status
 </code></pre>
 <p>If the daemon is working, you should see:</p>
 <pre><code>[2020-02-14T05:58:37Z INFO  kanidm_unixd_status] working!
 </code></pre>
 <p>If it is not working, you will see an error message:</p>
-<pre><code>[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -&gt; Os { code: 111, kind: ConnectionRefused, message: &quot;Connection refused&quot; }
+<pre><code>[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -&gt; 
+   Os { code: 111, kind: ConnectionRefused, message: &quot;Connection refused&quot; }
 </code></pre>
-<p>For more, see troubleshooting.</p>
+<p>For more information, see the
+<a href="./pam_and_nsswitch.html#troubleshooting">Troubleshooting</a> section.</p>
 <h2 id="nsswitch"><a class="header" href="#nsswitch">nsswitch</a></h2>
 <p>When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf</p>
 <pre><code>passwd: compat kanidm
 group: compat kanidm
 </code></pre>
-<p>You can <a href="./accounts_and_groups.html#creating-accounts">create a user</a> then <a href="./posix_accounts.html#enabling-posix-attributes-on-accounts">enable posix feature on the user</a>.</p>
-<p>You can then test that the posix extended user is able to be resolved with:</p>
-<pre><code>$ getent passwd &lt;account name&gt;
-$ getent passwd testunix
+<p>You can <a href="./accounts_and_groups.html#creating-accounts">create a user</a> then 
+<a href="./posix_accounts.html#enabling-posix-attributes-on-accounts">enable POSIX feature on the user</a>.</p>
+<p>You can then test that the POSIX extended user is able to be resolved with:</p>
+<pre><code>getent passwd &lt;account name&gt;
+getent passwd testunix
 testunix:x:3524161420:3524161420:testunix:/home/testunix:/bin/sh
 </code></pre>
 <p>You can also do the same for groups.</p>
-<pre><code>$ getent group &lt;group name&gt;
-$ getent group testgroup
+<pre><code>getent group &lt;group name&gt;
+getent group testgroup
 testgroup:x:2439676479:testunix
 </code></pre>
 <blockquote>
-<p><strong>HINT</strong> Remember to also create unix password with something like 
+<p><strong>HINT</strong> Remember to also create a UNIX password with something like 
 <code>kanidm account posix set_password --name idm_admin demo_user</code>. 
 Otherwise there will be no credential for the account to authenticate. </p>
 </blockquote>
@@ -1515,20 +1528,23 @@ Otherwise there will be no credential for the account to authenticate. </p>
 <blockquote>
 <p><strong>WARNING:</strong> Modifications to PAM configuration <em>may</em> leave your system in a state
 where you are unable to login or authenticate. You should always have a recovery
-shell open while making changes (ie root), or have access to single-user mode
+shell open while making changes (for example, root), or have access to single-user mode
 at the machine's console.</p>
 </blockquote>
-<p>PAM (Pluggable Authentication Modules) is how a unix-like system allows users to authenticate
-and be authorised to start interactive sessions. This is configured through a stack of modules
-that are executed in order to evaluate the request. This is done through a series of steps
-where each module may request or reuse authentication token information.</p>
-<h3 id="before-you-start"><a class="header" href="#before-you-start">Before you start</a></h3>
-<p>You <em>should</em> backup your /etc/pam.d directory from its original state as you <em>may</em> change the
-PAM config in a way that will cause you to be unable to authenticate to your machine.</p>
+<p>Pluggable Authentication Modules (PAM) is the mechanism a UNIX-like system 
+that authenticates users, and to control access to some resources. This is 
+configured through a stack of modules
+that are executed in order to evaluate the request, and then each module may 
+request or reuse authentication token information.</p>
+<h3 id="before-you-start"><a class="header" href="#before-you-start">Before You Start</a></h3>
+<p>You <em>should</em> backup your /etc/pam.d directory from its original state as you 
+<em>may</em> change the PAM configuration in a way that will not allow you 
+to authenticate to your machine.</p>
 <pre><code>cp -a /etc/pam.d /root/pam.d.backup
 </code></pre>
 <h3 id="suse--opensuse"><a class="header" href="#suse--opensuse">SUSE / OpenSUSE</a></h3>
-<p>To configure PAM on suse you must modify four files, which control the various stages of authentication.</p>
+<p>To configure PAM on suse you must modify four files, which control the 
+various stages of authentication:</p>
 <pre><code>/etc/pam.d/common-account
 /etc/pam.d/common-auth
 /etc/pam.d/common-password
@@ -1584,19 +1600,21 @@ session optional    pam_env.so
 </code></pre>
 <blockquote>
 <p><strong>WARNING:</strong> Ensure that <code>pam_mkhomedir</code> or <code>pam_oddjobd</code> are <em>not</em> present in any stage of your
-pam configuration, as they interfere with the correct operation of the kanidm tasks daemon.</p>
+PAM configuration, as they interfere with the correct operation of the 
+Kanidm tasks daemon.</p>
 </blockquote>
 <h3 id="fedora--centos"><a class="header" href="#fedora--centos">Fedora / CentOS</a></h3>
 <blockquote>
 <p><strong>WARNING:</strong> Kanidm currently has no support for SELinux policy - this may mean you need to
 run the daemon with permissive mode for the unconfined_service_t daemon type. To do this run:
 <code>semanage permissive -a unconfined_service_t</code>. To undo this run <code>semanage permissive -d unconfined_service_t</code>.</p>
-<p>You may also need to run <code>audit2allow</code> for sshd and other types to be able to access the unix daemon sockets.</p>
+<p>You may also need to run <code>audit2allow</code> for sshd and other types to be able to access the UNIX daemon sockets.</p>
 </blockquote>
-<p>These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.</p>
+<p>These files are managed by authselect as symlinks. You can either work with 
+authselect, or remove the symlinks first.</p>
 <h4 id="without-authselect"><a class="header" href="#without-authselect">Without authselect</a></h4>
-<p>If you just remove the symlinks:
-edit the content.</p>
+<p>If you just remove the symlinks:</p>
+<p>Edit the content.</p>
 <pre><code># /etc/pam.d/password-auth
 auth        required                                     pam_env.so
 auth        required                                     pam_faildelay.so delay=2000000
@@ -1658,11 +1676,17 @@ session     required                                     pam_unix.so
 session     optional                                     pam_kanidm.so
 </code></pre>
 <h4 id="with-authselect"><a class="header" href="#with-authselect">With authselect</a></h4>
-<p>To work with authselect:
-You will need to <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect">create a new profile</a>. First run</p>
+<p>To work with authselect:</p>
+<p>You will need to 
+<a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect">create a new profile</a>.</p>
+<!--TODO this URL is too short -->
+<p>First run the following command:</p>
 <pre><code>authselect create-profile kanidm -b sssd
 </code></pre>
-<p>A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or overwrite the following 3 files: nsswitch.conf, password-auth, system-auth. password-auth and system-auth should be the same as above. nsswitch should be modified for your usecase, but a working example looks like this:</p>
+<p>A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or 
+overwrite the following three files: nsswitch.conf, password-auth, system-auth. 
+password-auth and system-auth should be the same as above. nsswitch should be 
+modified for your use case. A working example looks like this:</p>
 <pre><code>passwd: compat kanidm sss files systemd
 group: compat kanidm sss files systemd
 shadow:     files
@@ -1679,28 +1703,31 @@ protocols:  files
 publickey:  files
 rpc:        files
 </code></pre>
-<p>finally run</p>
+<p>Then run:</p>
 <pre><code>authselect select custom/kanidm
 </code></pre>
 <p>to update your profile.</p>
 <h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
-<h3 id="check-posix-status-of-group-and-config"><a class="header" href="#check-posix-status-of-group-and-config">Check POSIX-status of group and config</a></h3>
+<h3 id="check-posix-status-of-group-and-configuration"><a class="header" href="#check-posix-status-of-group-and-configuration">Check POSIX-status of Group and Configuration</a></h3>
 <p>If authentication is failing via PAM, make sure that a list of groups is configured in <code>/etc/kanidm/unixd</code>:</p>
 <pre><code>pam_allowed_login_groups = [&quot;example_group&quot;]
 </code></pre>
-<p>Check the status of the group with <code>kanidm group posix show example_group</code>. If you get something similar to the below:</p>
+<p>Check the status of the group with <code>kanidm group posix show example_group</code>. 
+If you get something similar to the following example:</p>
 <pre><code class="language-shell">&gt; kanidm group posix show example_group
 Using cached token for name idm_admin
-Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)), &quot;b71f137e-39f3-4368-9e58-21d26671ae24&quot;)
+Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)), 
+    &quot;b71f137e-39f3-4368-9e58-21d26671ae24&quot;)
 </code></pre>
-<p>POSIX-enable the group with <code>kanidm group posix set example_group</code>. You should get a result similar to this when you search for your group name:</p>
+<p>POSIX-enable the group with <code>kanidm group posix set example_group</code>. You should get a result similar 
+to this when you search for your group name:</p>
 <pre><code class="language-shell">&gt; kanidm group posix show example_group
 [ spn: example_group@kanidm.example.com, gidnumber: 3443347205 name: example_group, uuid: b71f137e-39f3-4368-9e58-21d26671ae24 ]
 </code></pre>
 <p>Also, ensure the target user is in the group by running:</p>
 <pre><code>&gt;  kanidm group list_members example_group
 </code></pre>
-<h3 id="increase-logging"><a class="header" href="#increase-logging">Increase logging</a></h3>
+<h3 id="increase-logging"><a class="header" href="#increase-logging">Increase Logging</a></h3>
 <p>For the unixd daemon, you can increase the logging with:</p>
 <pre><code>systemctl edit kanidm-unixd.service
 </code></pre>
@@ -1713,113 +1740,118 @@ Environment=&quot;RUST_LOG=kanidm=debug&quot;
 <p>To debug the pam module interactions add <code>debug</code> to the module arguments such as:</p>
 <pre><code>auth sufficient pam_kanidm.so debug
 </code></pre>
-<h3 id="check-the-socket-permissions"><a class="header" href="#check-the-socket-permissions">Check the socket permissions</a></h3>
-<p>Check that the <code>/var/run/kanidm-unixd/sock</code> is 777, and that non-root readers can see it with
+<h3 id="check-the-socket-permissions"><a class="header" href="#check-the-socket-permissions">Check the Socket Permissions</a></h3>
+<p>Check that the <code>/var/run/kanidm-unixd/sock</code> has permissions mode 777, and that non-root readers can see it with
 ls or other tools.</p>
-<p>Ensure that <code>/var/run/kanidm-unixd/task_sock</code> is 700, and that it is owned by the kanidm unixd
-process user.</p>
-<h3 id="check-you-can-access-the-kanidm-server"><a class="header" href="#check-you-can-access-the-kanidm-server">Check you can access the kanidm server</a></h3>
+<p>Ensure that <code>/var/run/kanidm-unixd/task_sock</code> has permissions mode 700, and 
+that it is owned by the kanidm unixd process user.</p>
+<h3 id="verify-that-you-can-access-the-kanidm-server"><a class="header" href="#verify-that-you-can-access-the-kanidm-server">Verify that You Can Access the Kanidm Server</a></h3>
 <p>You can check this with the client tools:</p>
 <pre><code>kanidm self whoami --name anonymous
 </code></pre>
-<h3 id="ensure-the-libraries-are-correct"><a class="header" href="#ensure-the-libraries-are-correct">Ensure the libraries are correct.</a></h3>
+<h3 id="ensure-the-libraries-are-correct"><a class="header" href="#ensure-the-libraries-are-correct">Ensure the Libraries are Correct</a></h3>
 <p>You should have:</p>
 <pre><code>/usr/lib64/libnss_kanidm.so.2
 /usr/lib64/security/pam_kanidm.so
 </code></pre>
-<p>The exact path <em>may</em> change depending on your distribution, <code>pam_unixd.so</code> should be co-located with pam_kanidm.so so looking for it findable with:</p>
+<p>The exact path <em>may</em> change depending on your distribution, <code>pam_unixd.so</code> should be co-located 
+with pam_kanidm.so. Look for it with the find command:</p>
 <pre><code>find /usr/ -name 'pam_unix.so'
 </code></pre>
 <p>For example, on a Debian machine, it's located in <code>/usr/lib/x86_64-linux-gnu/security/</code>.</p>
-<h3 id="increase-connection-timeout"><a class="header" href="#increase-connection-timeout">Increase connection timeout</a></h3>
-<p>In some high latency environments, you may need to increase the connection timeout. We set
+<h3 id="increase-connection-timeout"><a class="header" href="#increase-connection-timeout">Increase Connection Timeout</a></h3>
+<p>In some high-latency environments, you may need to increase the connection timeout. We set
 this low to improve response on LANs, but over the internet this may need to be increased.
-By increasing the conn timeout, you will be able to operate on higher latency links, but
-some operations may take longer to complete causing a degree of latency. </p>
-<p>By increasing the cache_timeout, you will need to refresh &quot;less&quot; but it may mean on an 
-account lockout or group change, that you need to wait until cache_timeout to see the effect 
-(this has security implications)</p>
+By increasing the conn_timeout, you will be able to operate on higher latency 
+links, but some operations may take longer to complete causing a degree of 
+latency. </p>
+<p>By increasing the cache_timeout, you will need to refresh less often, but it may result in an 
+account lockout or group change until cache_timeout takes effect. Note that this has security 
+implications:</p>
 <pre><code># /etc/kanidm/unixd
 # Seconds
 conn_timeout = 8
 # Cache timeout
 cache_timeout = 60
 </code></pre>
-<h3 id="invalidate-the-cache"><a class="header" href="#invalidate-the-cache">Invalidate the cache</a></h3>
+<h3 id="invalidate-or-clear-the-cache"><a class="header" href="#invalidate-or-clear-the-cache">Invalidate or Clear the Cache</a></h3>
 <p>You can invalidate the kanidm_unixd cache with:</p>
-<pre><code>$ kanidm_cache_invalidate
+<pre><code>kanidm_cache_invalidate
 </code></pre>
 <p>You can clear (wipe) the cache with:</p>
-<pre><code>$ kanidm_cache_clear
+<pre><code>kanidm_cache_clear
 </code></pre>
 <p>There is an important distinction between these two - invalidated cache items may still
 be yielded to a client request if the communication to the main Kanidm server is not
 possible. For example, you may have your laptop in a park without wifi.</p>
 <p>Clearing the cache, however, completely wipes all local data about all accounts and groups.
-If you are relying on this cached (but invalid data) you may lose access to your accounts until
+If you are relying on this cached (but invalid) data, you may lose access to your accounts until
 other communication issues have been resolved.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="radius"><a class="header" href="#radius">RADIUS</a></h1>
-<p>RADIUS is a network protocol that is commonly used to allow wifi devices or
-VPN's to authenticate users to a network boundary. While it should not be a
-sole point of trust/authentication to an identity, it's still an important
-control for improving barriers to attackers access to network resources.</p>
+<p>Remote Authentication Dial In User Service (RADIUS) is a network protocol 
+that is commonly used to authenticate Wi-Fi devices or Virtual Private 
+Networks (VPNs). While it should not be a sole point of trust/authentication 
+to an identity, it's still an important control for protecting network resources.</p>
 <p>Kanidm has a philosophy that each account can have multiple credentials which
-are related to their devices and limited to specific resources. RADIUS is
+are related to their devices, and limited to specific resources. RADIUS is
 no exception and has a separate credential for each account to use for
 RADIUS access.</p>
 <h2 id="disclaimer"><a class="header" href="#disclaimer">Disclaimer</a></h2>
-<p>It's worth noting some disclaimers about Kanidm's RADIUS integration here</p>
+<p>It's worth noting some disclaimers about Kanidm's RADIUS integration.</p>
 <h3 id="one-credential---one-account"><a class="header" href="#one-credential---one-account">One Credential - One Account</a></h3>
-<p>Kanidm normally attempts to have credentials for each <em>device</em> and <em>application</em>
-rather than the legacy model of one to one.</p>
-<p>The RADIUS protocol is only able to attest a <em>single</em> credential in an authentication
-attempt, which limits us to storing a single RADIUS credential per account. However
-despite this limitation, it still greatly improves the situation by isolating the
-RADIUS credential from the primary or application credentials of the account. This
-solves many common security concerns around credential loss or disclosure
-and prevents rogue devices from locking out accounts as they attempt to
-authenticate to wifi with expired credentials.</p>
+<p>Kanidm normally attempts to have credentials for each <em>device</em> and 
+<em>application</em> rather than the legacy model of one to one.</p>
+<p>The RADIUS protocol is only able to attest a <em>single</em> credential in an 
+authentication attempt, which limits us to storing a single RADIUS credential 
+per account. However, despite this limitation, it still greatly improves the 
+situation by isolating the RADIUS credential from the primary or application 
+credentials of the account. This solves many common security concerns around 
+credential loss or disclosure, and prevents rogue devices from locking out 
+accounts as they attempt to authenticate to Wi-Fi with expired credentials.</p>
 <h3 id="cleartext-credential-storage"><a class="header" href="#cleartext-credential-storage">Cleartext Credential Storage</a></h3>
 <p>RADIUS offers many different types of tunnels and authentication mechanisms.
-However, most client devices &quot;out of the box&quot; only attempt a single type when you select 
-a WPA2-Enterprise network: MSCHAPv2 with PEAP. This is a challenge-response protocol 
-that requires cleartext or NTLM credentials.</p>
-<p>As MSCHAPv2 with PEAP is the only practical, universal RADIUS type supported
-on all devices with &quot;minimal&quot; configuration, we consider it imperative
+However, most client devices &quot;out of the box&quot; only attempt a single type when 
+a WPA2-Enterprise network is selected: MSCHAPv2 with PEAP. This is a 
+challenge-response protocol that requires clear text or Windows NT LAN 
+Manager (NTLM) credentials.</p>
+<p>As MSCHAPv2 with PEAP is the only practical, universal RADIUS-type supported
+on all devices with minimal configuration, we consider it imperative
 that it MUST be supported as the default. Esoteric RADIUS types can be used
 as well, but this is up to administrators to test and configure.</p>
-<p>Due to this requirement, we must store the RADIUS material as cleartext or
-NTLM hashes. It would be silly to think that NTLM is &quot;secure&quot; as it's md4
-which is only an illusion of security.</p>
-<p>This means Kanidm stores RADIUS credentials in the database as cleartext.</p>
-<p>We believe this is a reasonable decision and is a low risk to security as:</p>
+<p>Due to this requirement, we must store the RADIUS material as clear text or
+NTLM hashes. It would be silly to think that NTLM is secure as it relies on 
+the obsolete and deprecated MD4 cryptographic hash, providing only an 
+illusion of security.</p>
+<p>This means Kanidm stores RADIUS credentials in the database as clear text.</p>
+<p>We believe this is a reasonable decision and is a low risk to security because:</p>
 <ul>
-<li>The access controls around RADIUS secrets by default are &quot;strong&quot;, limited
+<li>The access controls around RADIUS secrets by default are strong, limited
 to only self-account read and RADIUS-server read.</li>
-<li>As RADIUS credentials are separate from the primary account credentials and have 
-no other rights, their disclosure is not going to lead to a full account compromise.</li>
-<li>Having the credentials in cleartext allows a better user experience as clients 
-can view the credentials at any time to enrol further devices.</li>
+<li>As RADIUS credentials are separate from the primary account credentials and 
+have no other rights, their disclosure is not going to lead to a full 
+account compromise.</li>
+<li>Having the credentials in clear text allows a better user experience as<br />
+clients can view the credentials at any time to enroll further devices.</li>
 </ul>
 <h2 id="account-credential-configuration"><a class="header" href="#account-credential-configuration">Account Credential Configuration</a></h2>
-<p>For an account to use RADIUS they must first generate a RADIUS secret unique to
-that account. By default, all accounts can self-create this secret.</p>
+<p>For an account to use RADIUS they must first generate a RADIUS secret unique 
+to that account. By default, all accounts can self-create this secret.</p>
 <pre><code>kanidm account radius generate_secret --name william william
 kanidm account radius show_secret --name william william
 </code></pre>
-<h2 id="account-group-configuration"><a class="header" href="#account-group-configuration">Account group configuration</a></h2>
-<p>Kanidm enforces that accounts which can authenticate to RADIUS must be a member
+<h2 id="account-group-configuration"><a class="header" href="#account-group-configuration">Account Group Configuration</a></h2>
+<p>In Kanidm, accounts which can authenticate to RADIUS must be a member
 of an allowed group. This allows you to define which users or groups may use
-wifi or VPN infrastructure and gives a path for &quot;revoking&quot; access to the resources
-through group management. The key point of this is that service accounts should
-not be part of this group.</p>
+a Wi-Fi or VPN infrastructure, and provides a path for revoking access to the 
+resources through group management. The key point of this is that service 
+accounts should not be part of this group:</p>
 <pre><code>kanidm group create --name idm_admin radius_access_allowed
 kanidm group add_members --name idm_admin radius_access_allowed william
 </code></pre>
 <h2 id="radius-server-service-account"><a class="header" href="#radius-server-service-account">RADIUS Server Service Account</a></h2>
 <p>To read these secrets, the RADIUS server requires an account with the
 correct privileges. This can be created and assigned through the group
-&quot;idm_radius_servers&quot; which is provided by default.</p>
+&quot;idm_radius_servers&quot;, which is provided by default.</p>
 <pre><code>kanidm account create --name admin radius_service_account &quot;Radius Service Account&quot;
 kanidm group add_members --name admin idm_radius_servers radius_service_account
 kanidm account credential reset_credential --name admin radius_service_account
@@ -1865,7 +1897,7 @@ cache_path =            # A path to an area where cached user records can be sto
 ; ipaddr =              # ipv4 or ipv6 address of the NAS
 ; secret =              # Shared secret
 </code></pre>
-<p>A fully configured example is:</p>
+<p>A fully configured example:</p>
 <pre><code>[kanidm_client]
 ; be sure to check the listening port is correct, it's the docker internal port
 ; not the external one if these containers are on the same host.
@@ -1901,91 +1933,96 @@ secret = testing123
 <p>You can then run the container with:</p>
 <pre><code>docker run --name radiusd -v ...:/data kanidm/radius:latest
 </code></pre>
-<p>Authentication can be tested through the client.localhost NAS configuration with:</p>
+<p>Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:</p>
 <pre><code>docker exec -i -t radiusd radtest &lt;username&gt; badpassword 127.0.0.1 10 testing123
 docker exec -i -t radiusd radtest &lt;username&gt; &lt;radius show_secret value here&gt; 127.0.0.1 10 testing123
 </code></pre>
-<p>Finally, to expose this to a wifi infrastructure, add your NAS in <code>config.ini</code>:</p>
+<p>Finally, to expose this to a Wi-Fi infrastructure, add your NAS in <code>config.ini</code>:</p>
 <pre><code>[client.access_point]
 ipaddr = &lt;some ipadd&gt;
 secret = &lt;random value&gt;
 </code></pre>
-<p>And re-create/run your docker instance with <code>-p 1812:1812 -p 1812:1812/udp</code> ...</p>
-<p>If you have any issues, check the logs from the radius output they tend to indicate the cause
-of the problem. To increase the logging you can re-run your environment with debug enabled:</p>
+<p>Then re-create/run your docker instance with <code>-p 1812:1812 -p 1812:1812/udp</code> ...</p>
+<p>If you have any issues, check the logs from the RADIUS output, as they tend 
+to indicate the cause of the problem. To increase the logging level you can 
+re-run your environment with debug enabled:</p>
 <pre><code>docker rm radiusd
 docker run --name radiusd -e DEBUG=True -i -t -v ...:/data kanidm/radius:latest
 </code></pre>
-<p>Note the radius container <em>is</em> configured to provide Tunnel-Private-Group-ID so if you wish to use
-wifi assigned VLANs on your infrastructure, you can assign these by groups in the config.ini as
-shown in the above examples.</p>
+<p>Note the RADIUS container <em>is</em> configured to provide Tunnel-Private-Group-ID, 
+so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
+assign these by groups in the config.ini as shown in the above examples.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="ldap"><a class="header" href="#ldap">LDAP</a></h1>
-<p>While many applications can support systems like SAML or OAuth, many do not. LDAP
-has been the &quot;lingua franca&quot; of authentication for many years, with almost
-every application in the world being able to search and bind to LDAP. As there
-are still many of these in the world, Kanidm can host a read-only
-LDAP interface.</p>
+<p>While many applications can support systems like Security Assertion Markup 
+Language (SAML), or Open Authorization (OAuth), many do not. 
+Lightweight Directory Access Protocol (LDAP) has been the &quot;lingua franca&quot; of 
+authentication for many years, with almost every application in the world being 
+able to search and bind to LDAP. As many organization still rely on LDAP, Kanidm 
+can host a read-only LDAP interface.</p>
 <blockquote>
 <p><strong>WARNING</strong> The LDAP server in Kanidm is not RFC compliant. This
-is intentional, as Kanidm wants to cover the common use case (simple bind and search).</p>
+is intentional, as Kanidm wants to cover the common use case, 
+simple bind and search.</p>
 </blockquote>
 <h2 id="what-is-ldap"><a class="header" href="#what-is-ldap">What is LDAP</a></h2>
 <p>LDAP is a protocol to read data from a directory of information. It is not
 a server, but a way to communicate to a server. There are many famous LDAP
 implementations such as Active Directory, 389 Directory Server, DSEE,
-FreeIPA and many others. Because it is a standard, applications can use
+FreeIPA, and many others. Because it is a standard, applications can use
 an LDAP client library to authenticate users to LDAP, given &quot;one account&quot; for
 many applications - an IDM just like Kanidm!</p>
 <h2 id="data-mapping"><a class="header" href="#data-mapping">Data Mapping</a></h2>
-<p>Kanidm is not able to be mapped 100% to LDAP's objects. This is because LDAP
+<p>Kanidm cannot be mapped 100% to LDAP's objects. This is because LDAP
 types are simple key-values on objects which are all UTF8 strings (or subsets
 thereof) based on validation (matching) rules. Kanidm internally implements complex
-data types such as tagging on SSH keys, or multi-value credentials. These can not
+data types such as tagging on SSH keys, or multi-value credentials. These can not 
 be represented in LDAP.</p>
-<p>As well many of the structures in Kanidm don't correlate closely to LDAP. For example
-Kanidm only has a gidnumber, where LDAP's schema's define uidnumber and gidnumber.</p>
+<p>Many of the structures in Kanidm do not correlate closely to LDAP. For example
+Kanidm only has a GID number, where LDAP's schemas define both a UID number and a 
+GID number.</p>
 <p>Entries in the database also have a specific name in LDAP, related to their path
 in the directory tree. Kanidm is a flat model, so we have to emulate some tree-like
 elements, and ignore others.</p>
 <p>For this reason, when you search the LDAP interface, Kanidm will make some mapping decisions.</p>
 <ul>
 <li>The domain_info object becomes the suffix root.</li>
-<li>All other entries are direct subordinates of the domain_info for DN purposes</li>
-<li>DN's are generated from the attributes naming attributes</li>
-<li>Bind DN's can be remapped and rewritten, and may not even be a DN during bind.</li>
-<li>The Kanidm domain name is used to generate the basedn.</li>
+<li>All other entries are direct subordinates of the domain_info for DN purposes.</li>
+<li>Distinguished Names (DNs) are generated from the attributes naming attributes.</li>
+<li>Bind DNs can be remapped and rewritten, and may not even be a DN during bind.</li>
+<li>The Kanidm domain name is used to generate the base DN.</li>
 <li>The '*' and '+' operators can not be used in conjuction with attribute lists in searches.</li>
 </ul>
 <p>These decisions were made to make the path as simple and effective as possible,
 relying more on the Kanidm query and filter system than attempting to generate a tree-like
 representation of data. As almost all clients can use filters for entry selection
-we don't believe this is a limitation for consuming applications.</p>
+we don't believe this is a limitation for the consuming applications.</p>
 <h2 id="security"><a class="header" href="#security">Security</a></h2>
 <h3 id="tls-1"><a class="header" href="#tls-1">TLS</a></h3>
 <p>StartTLS is not supported due to security risks. LDAPS is the only secure method
-of communicating to any LDAP server. Kanidm if configured with certificates will
+of communicating to any LDAP server. Kanidm, if configured with certificates, will
 use them for LDAPS (and will not listen on a plaintext LDAP port). If no certificates exist
 Kanidm will listen on a plaintext LDAP port, and you MUST TLS terminate in front
 of the Kanidm system to secure data and authentication.</p>
 <h3 id="access-controls"><a class="header" href="#access-controls">Access Controls</a></h3>
-<p>LDAP only supports password authentication. As LDAP is used heavily in posix environments
+<p>LDAP only supports password authentication. As LDAP is used heavily in POSIX environments
 the LDAP bind for any DN will use its configured posix password.</p>
-<p>As the posix password is not equivalent in strength to the primary credentials of Kanidm
-(which may be MFA), the LDAP bind does not grant rights to elevated read permissions.
-All binds have the permissions of &quot;Anonymous&quot; (even if the anonymous account is locked).</p>
+<p>As the POSIX password is not equivalent in strength to the primary credentials of Kanidm
+(which may be multi-factor authentication, MFA), the LDAP bind does not grant 
+rights to elevated read permissions. All binds have the permissions of &quot;Anonymous&quot; 
+even if the anonymous account is locked.</p>
 <h2 id="server-configuration-1"><a class="header" href="#server-configuration-1">Server Configuration</a></h2>
-<p>To configure Kanidm to provide LDAP you add the argument to the <code>server.toml</code> configuration:</p>
+<p>To configure Kanidm to provide LDAP, add the argument to the <code>server.toml</code> configuration:</p>
 <pre><code>ldapbindaddress = &quot;127.0.0.1:3636&quot;
 </code></pre>
-<p>You should configure TLS certificates and keys as usual - LDAP will re-use the webserver TLS
-material.</p>
-<h2 id="showing-ldap-entries-and-attribute-maps"><a class="header" href="#showing-ldap-entries-and-attribute-maps">Showing LDAP entries and attribute maps</a></h2>
-<p>By default Kanidm is limited in what attributes are generated or remaped into LDAP entries. However,
-the server internally contains a map of extended attribute mappings for application specific requests
-that must be satisfied.</p>
+<p>You should configure TLS certificates and keys as usual - LDAP will re-use the Web 
+server TLS material.</p>
+<h2 id="showing-ldap-entries-and-attribute-maps"><a class="header" href="#showing-ldap-entries-and-attribute-maps">Showing LDAP Entries and Attribute Maps</a></h2>
+<p>By default Kanidm is limited in what attributes are generated or remapped into 
+LDAP entries. However, the server internally contains a map of extended attribute 
+mappings for application specific requests that must be satisfied.</p>
 <p>An example is that some applications expect and require a 'CN' value, even though Kanidm does not
 provide it. If the application is unable to be configured to accept &quot;name&quot; it may be necessary
-to use Kanidm's mapping feature. Today these are compiled into the server so you may need to open
+to use Kanidm's mapping feature. Currently these are compiled into the server, so you may need to open
 an issue with your requirements.</p>
 <p>To show what attribute maps exists for an entry you can use the attribute search term '+'.</p>
 <pre><code># To show Kanidm attributes
@@ -1993,8 +2030,8 @@ ldapsearch ... -x '(name=admin)' '*'
 # To show all attribute maps
 ldapsearch ... -x '(name=admin)' '+'
 </code></pre>
-<p>Attributes that are in the map, can be requested explicitly, and this can be combined with requesting
-kanidm native attributes.</p>
+<p>Attributes that are in the map can be requested explicitly, and this can be combined with requesting
+Kanidm native attributes.</p>
 <pre><code>ldapsearch ... -x '(name=admin)' cn objectClass displayname memberof
 </code></pre>
 <h2 id="example"><a class="header" href="#example">Example</a></h2>
@@ -2016,11 +2053,11 @@ spn: test1@example.com
 entryuuid: 22a65b6c-80c8-4e1a-9b76-3f3afdff8400
 </code></pre>
 <p>It is recommended that client applications filter accounts that can login with '(class=account)'
-and groups with '(class=group)'. If possible, group membership is defined in rfc2307bis or
+and groups with '(class=group)'. If possible, group membership is defined in RFC2307bis or
 Active Directory style. This means groups are determined from the &quot;memberof&quot; attribute which contains
 a DN to a group.</p>
-<p>LDAP binds can use any unique identifier of the account. The following are all valid bind DN's for
-the object listed above (if it was a posix account that is).</p>
+<p>LDAP binds can use any unique identifier of the account. The following are all valid bind DNs for
+the object listed above (if it was a POSIX account, that is).</p>
 <pre><code>ldapwhoami ... -x -D 'name=test1'
 ldapwhoami ... -x -D 'spn=test1@example.com'
 ldapwhoami ... -x -D 'test1@example.com'
@@ -2040,9 +2077,9 @@ ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
 </code></pre>
 <p>This is despite the fact:</p>
 <ul>
-<li>The first command is a certificate validation error</li>
-<li>The second is a missing LDAPS on a TLS port</li>
-<li>The third is an incorrect port</li>
+<li>The first command is a certificate validation error.</li>
+<li>The second is a missing LDAPS on a TLS port.</li>
+<li>The third is an incorrect port.</li>
 </ul>
 <p>To diagnose errors like this, you may need to add &quot;-d 1&quot; to your LDAP commands or client.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="why-tls"><a class="header" href="#why-tls">Why TLS?</a></h1>

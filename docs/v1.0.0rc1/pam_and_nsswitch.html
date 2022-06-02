@@ -135,30 +135,38 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="pam-and-nsswitch"><a class="header" href="#pam-and-nsswitch">PAM and nsswitch</a></h1>
-<p><a href="http://linux-pam.org">PAM</a> and <a href="https://en.wikipedia.org/wiki/Name_Service_Switch">nsswitch</a> are the core mechanisms used by Linux and BSD clients to resolve identities from an IDM service like Kanidm into accounts that can be used on the machine for various interactive tasks.</p>
-<h2 id="the-unix-daemon"><a class="header" href="#the-unix-daemon">The UNIX daemon</a></h2>
-<p>Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch integration. This is provided as the daemon can cache the accounts for users who have unreliable networks or leave the site where Kanidm is. The cache is also able to cache missing-entry responses to reduce network traffic and main server load.</p>
-<p>Additionally, the daemon means that the PAM and nsswitch integration libraries can be small, helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can create home directories on first login and supports several features related to aliases and links to these home directories.</p>
-<p>We recommend you install the client daemon from your system package manager.</p>
+<p><a href="http://linux-pam.org">PAM</a> and <a href="https://en.wikipedia.org/wiki/Name_Service_Switch">nsswitch</a> 
+are the core mechanisms used by Linux and BSD clients to resolve identities from an IDM service 
+like Kanidm into accounts that can be used on the machine for various interactive tasks.</p>
+<h2 id="the-unix-daemon"><a class="header" href="#the-unix-daemon">The UNIX Daemon</a></h2>
+<p>Kanidm provides a UNIX daemon that runs on any client that wants to use PAM and nsswitch integration. 
+The daemon can cache the accounts for users who have unreliable networks, or who leave 
+the site where Kanidm is hosted. The daemon is also able to cache missing-entry responses to reduce network 
+traffic and main server load.</p>
+<p>Additionally, running the daemon means that the PAM and nsswitch integration libraries can be small, 
+helping to reduce the attack surface of the machine. Similarly, a tasks daemon is available that can 
+create home directories on first login and supports several features related to aliases and links to 
+these home directories.</p>
+<p>We recommend you install the client daemon from your system package manager:</p>
 <pre><code># OpenSUSE
 zypper in kanidm-unixd-clients
 # Fedora
 dnf install kanidm-unixd-clients
 </code></pre>
-<p>You can check the daemon is running on your Linux system with</p>
+<p>You can check the daemon is running on your Linux system with:</p>
 <pre><code>systemctl status kanidm-unixd
 </code></pre>
-<p>You can check the privileged tasks daemon is running with</p>
+<p>You can check the privileged tasks daemon is running with:</p>
 <pre><code>systemctl status kanidm-unixd-tasks
 </code></pre>
 <blockquote>
 <p><strong>NOTE</strong> The <code>kanidm_unixd_tasks</code> daemon is not required for PAM and nsswitch functionality.
-If disabled, your system will function as usual. It is however recommended due to the features
+If disabled, your system will function as usual. It is, however, recommended due to the features
 it provides supporting Kanidm's capabilities.</p>
 </blockquote>
 <p>Both unixd daemons use the connection configuration from /etc/kanidm/config. This is the covered in
 <a href="./client_tools.html#kanidm-configuration">client_tools</a>.</p>
-<p>You can also configure some unixd specific options with the file /etc/kanidm/unixd.</p>
+<p>You can also configure some unixd-specific options with the file /etc/kanidm/unixd:</p>
 <pre><code>pam_allowed_login_groups = [&quot;posix_group&quot;]
 default_shell = &quot;/bin/sh&quot;
 home_prefix = &quot;/home/&quot;
@@ -167,15 +175,16 @@ home_alias = &quot;spn&quot;
 uid_attr_map = &quot;spn&quot;
 gid_attr_map = &quot;spn&quot;
 </code></pre>
-<p>The <code>pam_allowed_login_groups</code> defines a set of posix groups where membership of any of these
-groups will be allowed to login via PAM. All posix users and groups can be resolved by nss
-regardless of PAM login status. This may be a group name, spn or uuid.</p>
-<p><code>default_shell</code> is the default shell for users with none defined. Defaults to <code>/bin/sh</code>.</p>
+<p><code>pam_allowed_login_groups</code> defines a set of POSIX groups where membership of any of these
+groups will be allowed to login via PAM. All POSIX users and groups can be resolved by nss
+regardless of PAM login status. This may be a group name, spn, or uuid.</p>
+<p><code>default_shell</code> is the default shell for users. Defaults to <code>/bin/sh</code>.</p>
 <p><code>home_prefix</code> is the prepended path to where home directories are stored. Must end with
 a trailing <code>/</code>. Defaults to <code>/home/</code>.</p>
 <p><code>home_attr</code> is the default token attribute used for the home directory path. Valid
 choices are <code>uuid</code>, <code>name</code>, <code>spn</code>. Defaults to <code>uuid</code>.</p>
-<p><code>home_alias</code> is the default token attribute used for generating symlinks pointing to the users
+<p><code>home_alias</code> is the default token attribute used for generating symlinks 
+pointing to the user's
 home directory. If set, this will become the value of the home path
 to nss calls. It is recommended you choose a &quot;human friendly&quot; attribute here.
 Valid choices are <code>none</code>, <code>uuid</code>, <code>name</code>, <code>spn</code>. Defaults to <code>spn</code>.</p>
@@ -183,42 +192,45 @@ Valid choices are <code>none</code>, <code>uuid</code>, <code>name</code>, <code
 <p><strong>NOTICE:</strong>
 All users in Kanidm can change their name (and their spn) at any time. If you change
 <code>home_attr</code> from <code>uuid</code> you <em>must</em> have a plan on how to manage these directory renames
-in your system. We recommend that you have a stable id (like the uuid) and symlinks
-from the name to the uuid folder. Automatic support is provided for this via the unixd
+in your system. We recommend that you have a stable ID (like the UUID), and symlinks
+from the name to the UUID folder. Automatic support is provided for this via the unixd
 tasks daemon, as documented here.</p>
 </blockquote>
 <p><code>uid_attr_map</code> chooses which attribute is used for domain local users in presentation. Defaults
 to <code>spn</code>. Users from a trust will always use spn.</p>
 <p><code>gid_attr_map</code> chooses which attribute is used for domain local groups in presentation. Defaults
 to <code>spn</code>. Groups from a trust will always use spn.</p>
-<p>You can then check the communication status of the daemon as any user account.</p>
-<pre><code>$ kanidm_unixd_status
+<p>You can then check the communication status of the daemon:</p>
+<pre><code>kanidm_unixd_status
 </code></pre>
 <p>If the daemon is working, you should see:</p>
 <pre><code>[2020-02-14T05:58:37Z INFO  kanidm_unixd_status] working!
 </code></pre>
 <p>If it is not working, you will see an error message:</p>
-<pre><code>[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -&gt; Os { code: 111, kind: ConnectionRefused, message: &quot;Connection refused&quot; }
+<pre><code>[2020-02-14T05:58:10Z ERROR kanidm_unixd_status] Error -&gt; 
+   Os { code: 111, kind: ConnectionRefused, message: &quot;Connection refused&quot; }
 </code></pre>
-<p>For more, see troubleshooting.</p>
+<p>For more information, see the
+<a href="./pam_and_nsswitch.html#troubleshooting">Troubleshooting</a> section.</p>
 <h2 id="nsswitch"><a class="header" href="#nsswitch">nsswitch</a></h2>
 <p>When the daemon is running you can add the nsswitch libraries to /etc/nsswitch.conf</p>
 <pre><code>passwd: compat kanidm
 group: compat kanidm
 </code></pre>
-<p>You can <a href="./accounts_and_groups.html#creating-accounts">create a user</a> then <a href="./posix_accounts.html#enabling-posix-attributes-on-accounts">enable posix feature on the user</a>.</p>
-<p>You can then test that the posix extended user is able to be resolved with:</p>
-<pre><code>$ getent passwd &lt;account name&gt;
-$ getent passwd testunix
+<p>You can <a href="./accounts_and_groups.html#creating-accounts">create a user</a> then 
+<a href="./posix_accounts.html#enabling-posix-attributes-on-accounts">enable POSIX feature on the user</a>.</p>
+<p>You can then test that the POSIX extended user is able to be resolved with:</p>
+<pre><code>getent passwd &lt;account name&gt;
+getent passwd testunix
 testunix:x:3524161420:3524161420:testunix:/home/testunix:/bin/sh
 </code></pre>
 <p>You can also do the same for groups.</p>
-<pre><code>$ getent group &lt;group name&gt;
-$ getent group testgroup
+<pre><code>getent group &lt;group name&gt;
+getent group testgroup
 testgroup:x:2439676479:testunix
 </code></pre>
 <blockquote>
-<p><strong>HINT</strong> Remember to also create unix password with something like 
+<p><strong>HINT</strong> Remember to also create a UNIX password with something like 
 <code>kanidm account posix set_password --name idm_admin demo_user</code>. 
 Otherwise there will be no credential for the account to authenticate. </p>
 </blockquote>
@@ -226,20 +238,23 @@ Otherwise there will be no credential for the account to authenticate. </p>
 <blockquote>
 <p><strong>WARNING:</strong> Modifications to PAM configuration <em>may</em> leave your system in a state
 where you are unable to login or authenticate. You should always have a recovery
-shell open while making changes (ie root), or have access to single-user mode
+shell open while making changes (for example, root), or have access to single-user mode
 at the machine's console.</p>
 </blockquote>
-<p>PAM (Pluggable Authentication Modules) is how a unix-like system allows users to authenticate
-and be authorised to start interactive sessions. This is configured through a stack of modules
-that are executed in order to evaluate the request. This is done through a series of steps
-where each module may request or reuse authentication token information.</p>
-<h3 id="before-you-start"><a class="header" href="#before-you-start">Before you start</a></h3>
-<p>You <em>should</em> backup your /etc/pam.d directory from its original state as you <em>may</em> change the
-PAM config in a way that will cause you to be unable to authenticate to your machine.</p>
+<p>Pluggable Authentication Modules (PAM) is the mechanism a UNIX-like system 
+that authenticates users, and to control access to some resources. This is 
+configured through a stack of modules
+that are executed in order to evaluate the request, and then each module may 
+request or reuse authentication token information.</p>
+<h3 id="before-you-start"><a class="header" href="#before-you-start">Before You Start</a></h3>
+<p>You <em>should</em> backup your /etc/pam.d directory from its original state as you 
+<em>may</em> change the PAM configuration in a way that will not allow you 
+to authenticate to your machine.</p>
 <pre><code>cp -a /etc/pam.d /root/pam.d.backup
 </code></pre>
 <h3 id="suse--opensuse"><a class="header" href="#suse--opensuse">SUSE / OpenSUSE</a></h3>
-<p>To configure PAM on suse you must modify four files, which control the various stages of authentication.</p>
+<p>To configure PAM on suse you must modify four files, which control the 
+various stages of authentication:</p>
 <pre><code>/etc/pam.d/common-account
 /etc/pam.d/common-auth
 /etc/pam.d/common-password
@@ -295,19 +310,21 @@ session optional    pam_env.so
 </code></pre>
 <blockquote>
 <p><strong>WARNING:</strong> Ensure that <code>pam_mkhomedir</code> or <code>pam_oddjobd</code> are <em>not</em> present in any stage of your
-pam configuration, as they interfere with the correct operation of the kanidm tasks daemon.</p>
+PAM configuration, as they interfere with the correct operation of the 
+Kanidm tasks daemon.</p>
 </blockquote>
 <h3 id="fedora--centos"><a class="header" href="#fedora--centos">Fedora / CentOS</a></h3>
 <blockquote>
 <p><strong>WARNING:</strong> Kanidm currently has no support for SELinux policy - this may mean you need to
 run the daemon with permissive mode for the unconfined_service_t daemon type. To do this run:
 <code>semanage permissive -a unconfined_service_t</code>. To undo this run <code>semanage permissive -d unconfined_service_t</code>.</p>
-<p>You may also need to run <code>audit2allow</code> for sshd and other types to be able to access the unix daemon sockets.</p>
+<p>You may also need to run <code>audit2allow</code> for sshd and other types to be able to access the UNIX daemon sockets.</p>
 </blockquote>
-<p>These files are managed by authselect as symlinks. You can either work with authselect, or remove the symlinks first.</p>
+<p>These files are managed by authselect as symlinks. You can either work with 
+authselect, or remove the symlinks first.</p>
 <h4 id="without-authselect"><a class="header" href="#without-authselect">Without authselect</a></h4>
-<p>If you just remove the symlinks:
-edit the content.</p>
+<p>If you just remove the symlinks:</p>
+<p>Edit the content.</p>
 <pre><code># /etc/pam.d/password-auth
 auth        required                                     pam_env.so
 auth        required                                     pam_faildelay.so delay=2000000
@@ -369,11 +386,17 @@ session     required                                     pam_unix.so
 session     optional                                     pam_kanidm.so
 </code></pre>
 <h4 id="with-authselect"><a class="header" href="#with-authselect">With authselect</a></h4>
-<p>To work with authselect:
-You will need to <a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect">create a new profile</a>. First run</p>
+<p>To work with authselect:</p>
+<p>You will need to 
+<a href="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8/html/configuring_authentication_and_authorization_in_rhel/configuring-user-authentication-using-authselect_configuring-authentication-and-authorization-in-rhel#creating-and-deploying-your-own-authselect-profile_configuring-user-authentication-using-authselect">create a new profile</a>.</p>
+<!--TODO this URL is too short -->
+<p>First run the following command:</p>
 <pre><code>authselect create-profile kanidm -b sssd
 </code></pre>
-<p>A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or overwrite the following 3 files: nsswitch.conf, password-auth, system-auth. password-auth and system-auth should be the same as above. nsswitch should be modified for your usecase, but a working example looks like this:</p>
+<p>A new folder, /etc/authselect/custom/kanidm, should be created. Inside that folder, create or 
+overwrite the following three files: nsswitch.conf, password-auth, system-auth. 
+password-auth and system-auth should be the same as above. nsswitch should be 
+modified for your use case. A working example looks like this:</p>
 <pre><code>passwd: compat kanidm sss files systemd
 group: compat kanidm sss files systemd
 shadow:     files
@@ -390,28 +413,31 @@ protocols:  files
 publickey:  files
 rpc:        files
 </code></pre>
-<p>finally run</p>
+<p>Then run:</p>
 <pre><code>authselect select custom/kanidm
 </code></pre>
 <p>to update your profile.</p>
 <h2 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h2>
-<h3 id="check-posix-status-of-group-and-config"><a class="header" href="#check-posix-status-of-group-and-config">Check POSIX-status of group and config</a></h3>
+<h3 id="check-posix-status-of-group-and-configuration"><a class="header" href="#check-posix-status-of-group-and-configuration">Check POSIX-status of Group and Configuration</a></h3>
 <p>If authentication is failing via PAM, make sure that a list of groups is configured in <code>/etc/kanidm/unixd</code>:</p>
 <pre><code>pam_allowed_login_groups = [&quot;example_group&quot;]
 </code></pre>
-<p>Check the status of the group with <code>kanidm group posix show example_group</code>. If you get something similar to the below:</p>
+<p>Check the status of the group with <code>kanidm group posix show example_group</code>. 
+If you get something similar to the following example:</p>
 <pre><code class="language-shell">&gt; kanidm group posix show example_group
 Using cached token for name idm_admin
-Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)), &quot;b71f137e-39f3-4368-9e58-21d26671ae24&quot;)
+Error -&gt; Http(500, Some(InvalidAccountState(&quot;Missing class: account &amp;&amp; posixaccount OR group &amp;&amp; posixgroup&quot;)), 
+    &quot;b71f137e-39f3-4368-9e58-21d26671ae24&quot;)
 </code></pre>
-<p>POSIX-enable the group with <code>kanidm group posix set example_group</code>. You should get a result similar to this when you search for your group name:</p>
+<p>POSIX-enable the group with <code>kanidm group posix set example_group</code>. You should get a result similar 
+to this when you search for your group name:</p>
 <pre><code class="language-shell">&gt; kanidm group posix show example_group
 [ spn: example_group@kanidm.example.com, gidnumber: 3443347205 name: example_group, uuid: b71f137e-39f3-4368-9e58-21d26671ae24 ]
 </code></pre>
 <p>Also, ensure the target user is in the group by running:</p>
 <pre><code>&gt;  kanidm group list_members example_group
 </code></pre>
-<h3 id="increase-logging"><a class="header" href="#increase-logging">Increase logging</a></h3>
+<h3 id="increase-logging"><a class="header" href="#increase-logging">Increase Logging</a></h3>
 <p>For the unixd daemon, you can increase the logging with:</p>
 <pre><code>systemctl edit kanidm-unixd.service
 </code></pre>
@@ -424,50 +450,52 @@ Environment=&quot;RUST_LOG=kanidm=debug&quot;
 <p>To debug the pam module interactions add <code>debug</code> to the module arguments such as:</p>
 <pre><code>auth sufficient pam_kanidm.so debug
 </code></pre>
-<h3 id="check-the-socket-permissions"><a class="header" href="#check-the-socket-permissions">Check the socket permissions</a></h3>
-<p>Check that the <code>/var/run/kanidm-unixd/sock</code> is 777, and that non-root readers can see it with
+<h3 id="check-the-socket-permissions"><a class="header" href="#check-the-socket-permissions">Check the Socket Permissions</a></h3>
+<p>Check that the <code>/var/run/kanidm-unixd/sock</code> has permissions mode 777, and that non-root readers can see it with
 ls or other tools.</p>
-<p>Ensure that <code>/var/run/kanidm-unixd/task_sock</code> is 700, and that it is owned by the kanidm unixd
-process user.</p>
-<h3 id="check-you-can-access-the-kanidm-server"><a class="header" href="#check-you-can-access-the-kanidm-server">Check you can access the kanidm server</a></h3>
+<p>Ensure that <code>/var/run/kanidm-unixd/task_sock</code> has permissions mode 700, and 
+that it is owned by the kanidm unixd process user.</p>
+<h3 id="verify-that-you-can-access-the-kanidm-server"><a class="header" href="#verify-that-you-can-access-the-kanidm-server">Verify that You Can Access the Kanidm Server</a></h3>
 <p>You can check this with the client tools:</p>
 <pre><code>kanidm self whoami --name anonymous
 </code></pre>
-<h3 id="ensure-the-libraries-are-correct"><a class="header" href="#ensure-the-libraries-are-correct">Ensure the libraries are correct.</a></h3>
+<h3 id="ensure-the-libraries-are-correct"><a class="header" href="#ensure-the-libraries-are-correct">Ensure the Libraries are Correct</a></h3>
 <p>You should have:</p>
 <pre><code>/usr/lib64/libnss_kanidm.so.2
 /usr/lib64/security/pam_kanidm.so
 </code></pre>
-<p>The exact path <em>may</em> change depending on your distribution, <code>pam_unixd.so</code> should be co-located with pam_kanidm.so so looking for it findable with:</p>
+<p>The exact path <em>may</em> change depending on your distribution, <code>pam_unixd.so</code> should be co-located 
+with pam_kanidm.so. Look for it with the find command:</p>
 <pre><code>find /usr/ -name 'pam_unix.so'
 </code></pre>
 <p>For example, on a Debian machine, it's located in <code>/usr/lib/x86_64-linux-gnu/security/</code>.</p>
-<h3 id="increase-connection-timeout"><a class="header" href="#increase-connection-timeout">Increase connection timeout</a></h3>
-<p>In some high latency environments, you may need to increase the connection timeout. We set
+<h3 id="increase-connection-timeout"><a class="header" href="#increase-connection-timeout">Increase Connection Timeout</a></h3>
+<p>In some high-latency environments, you may need to increase the connection timeout. We set
 this low to improve response on LANs, but over the internet this may need to be increased.
-By increasing the conn timeout, you will be able to operate on higher latency links, but
-some operations may take longer to complete causing a degree of latency. </p>
-<p>By increasing the cache_timeout, you will need to refresh &quot;less&quot; but it may mean on an 
-account lockout or group change, that you need to wait until cache_timeout to see the effect 
-(this has security implications)</p>
+By increasing the conn_timeout, you will be able to operate on higher latency 
+links, but some operations may take longer to complete causing a degree of 
+latency. </p>
+<p>By increasing the cache_timeout, you will need to refresh less often, but it may result in an 
+account lockout or group change until cache_timeout takes effect. Note that this has security 
+implications:</p>
 <pre><code># /etc/kanidm/unixd
 # Seconds
 conn_timeout = 8
 # Cache timeout
 cache_timeout = 60
 </code></pre>
-<h3 id="invalidate-the-cache"><a class="header" href="#invalidate-the-cache">Invalidate the cache</a></h3>
+<h3 id="invalidate-or-clear-the-cache"><a class="header" href="#invalidate-or-clear-the-cache">Invalidate or Clear the Cache</a></h3>
 <p>You can invalidate the kanidm_unixd cache with:</p>
-<pre><code>$ kanidm_cache_invalidate
+<pre><code>kanidm_cache_invalidate
 </code></pre>
 <p>You can clear (wipe) the cache with:</p>
-<pre><code>$ kanidm_cache_clear
+<pre><code>kanidm_cache_clear
 </code></pre>
 <p>There is an important distinction between these two - invalidated cache items may still
 be yielded to a client request if the communication to the main Kanidm server is not
 possible. For example, you may have your laptop in a park without wifi.</p>
 <p>Clearing the cache, however, completely wipes all local data about all accounts and groups.
-If you are relying on this cached (but invalid data) you may lose access to your accounts until
+If you are relying on this cached (but invalid) data, you may lose access to your accounts until
 other communication issues have been resolved.</p>
 
                     </main>
