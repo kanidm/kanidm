@@ -24,19 +24,11 @@ The MSRV is specified in the package `Cargo.toml` files.
 #### MacOS
 
 You will need [rustup](https://rustup.rs/) to install a Rust toolchain.
-
-If you plan to work on the Web user interface, you may also need npm for setting 
-up some parts.
-
-    brew install npm
-    
-<!-- Is this working in the Web UI, instead of on the command line, or working 
-    on the Web UI, to change or customize it? -->    
-
     
 #### SUSE
 
-You will need [rustup](https://rustup.rs/) to install a rust toolchain. If you're 
+You will need [rustup](https://rustup.rs/) to install a Rust toolchain. If 
+you're 
 using the Tumbleweed release, it's packaged in `zypper`.
 
 You will also need some system libraries to build this:
@@ -194,8 +186,10 @@ Then you are able to build the UI:
 
 The "developer" profile for kanidmd will automatically use the pkg output in this folder.
 
-Setting different developer profiles while building is done by setting the environment v
-ariable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in `/profiles`. 
+Setting different developer profiles while building is done by setting the 
+environment 
+variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in 
+`/profiles`. 
 
 For example: `KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd`
 
