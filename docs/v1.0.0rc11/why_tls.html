@@ -136,24 +136,23 @@
                     <main>
                         <h1 id="why-tls"><a class="header" href="#why-tls">Why TLS?</a></h1>
 <p>You may have noticed that Kanidm requires you to configure TLS in
-your container - or that you provide something <em>with</em> TLS in front like haproxy.</p>
+your container - or that you provide something <em>with</em> TLS in front, like haproxy.</p>
 <p>This is due to a single setting on the server - <code>secure_cookies</code></p>
 <h2 id="what-are-secure-cookies"><a class="header" href="#what-are-secure-cookies">What are Secure Cookies?</a></h2>
-<p><code>secure-cookies</code> is a flag set in cookies that &quot;asks&quot; a client to transmit them
-back to the origin site if and only if https is present in the URL.</p>
-<p>CA verification is <em>not</em> checked - you can use invalid, out of date certificates,
-or even certificates where the <code>subjectAltName</code> does not match, but the client
-must see https:// as the destination else it <em>will not</em> send the cookies.</p>
-<h2 id="how-does-that-affect-kanidm"><a class="header" href="#how-does-that-affect-kanidm">How does that affect Kanidm?</a></h2>
+<p><code>secure-cookies</code> is a flag set in cookies that asks a client to transmit them
+back to the origin site if and only if HTTPS is present in the URL.</p>
+<p>Certificate authority (CA) verification is <em>not</em> checked - you can use invalid, 
+out of date certificates, or even certificates where the <code>subjectAltName</code> does 
+not match, but the client must see https:// as the destination else it <em>will not</em> 
+send the cookies.</p>
+<h2 id="how-does-that-affect-kanidm"><a class="header" href="#how-does-that-affect-kanidm">How Does That Affect Kanidm?</a></h2>
 <p>Kanidm's authentication system is a stepped challenge response design, where you
 initially request an &quot;intent&quot; to authenticate. Once you establish this intent,
 the server sets up a session-id into a cookie, and informs the client of
 what authentication methods can proceed.</p>
-<p>When you then go to continue the authentication, if you do NOT have a https url,
-the cookie with the session-id is not transmitted. The server detects this as
-an invalid-state request in the authentication design and immediately disconnects
-you from attempting to continue the authentication as you may be using an insecure
-channel.</p>
+<p>If you do NOT have a HTTPS URL, the cookie with the session-id is not transmitted. 
+The server detects this as an invalid-state request in the authentication design, 
+and immediately breaks the connection, because it appears insecure.</p>
 <p>Simply put, we are trying to use settings like secure_cookies to add constraints
 to the server so that you <em>must</em> perform and adhere to best practices - such
 as having TLS present on your communication channels.</p>

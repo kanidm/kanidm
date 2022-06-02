@@ -2084,24 +2084,23 @@ ldapsearch -H ldap://127.0.0.1:3389 -b 'dc=example,dc=com' -x '(name=test1)'
 <p>To diagnose errors like this, you may need to add &quot;-d 1&quot; to your LDAP commands or client.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="why-tls"><a class="header" href="#why-tls">Why TLS?</a></h1>
 <p>You may have noticed that Kanidm requires you to configure TLS in
-your container - or that you provide something <em>with</em> TLS in front like haproxy.</p>
+your container - or that you provide something <em>with</em> TLS in front, like haproxy.</p>
 <p>This is due to a single setting on the server - <code>secure_cookies</code></p>
 <h2 id="what-are-secure-cookies"><a class="header" href="#what-are-secure-cookies">What are Secure Cookies?</a></h2>
-<p><code>secure-cookies</code> is a flag set in cookies that &quot;asks&quot; a client to transmit them
-back to the origin site if and only if https is present in the URL.</p>
-<p>CA verification is <em>not</em> checked - you can use invalid, out of date certificates,
-or even certificates where the <code>subjectAltName</code> does not match, but the client
-must see https:// as the destination else it <em>will not</em> send the cookies.</p>
-<h2 id="how-does-that-affect-kanidm"><a class="header" href="#how-does-that-affect-kanidm">How does that affect Kanidm?</a></h2>
+<p><code>secure-cookies</code> is a flag set in cookies that asks a client to transmit them
+back to the origin site if and only if HTTPS is present in the URL.</p>
+<p>Certificate authority (CA) verification is <em>not</em> checked - you can use invalid, 
+out of date certificates, or even certificates where the <code>subjectAltName</code> does 
+not match, but the client must see https:// as the destination else it <em>will not</em> 
+send the cookies.</p>
+<h2 id="how-does-that-affect-kanidm"><a class="header" href="#how-does-that-affect-kanidm">How Does That Affect Kanidm?</a></h2>
 <p>Kanidm's authentication system is a stepped challenge response design, where you
 initially request an &quot;intent&quot; to authenticate. Once you establish this intent,
 the server sets up a session-id into a cookie, and informs the client of
 what authentication methods can proceed.</p>
-<p>When you then go to continue the authentication, if you do NOT have a https url,
-the cookie with the session-id is not transmitted. The server detects this as
-an invalid-state request in the authentication design and immediately disconnects
-you from attempting to continue the authentication as you may be using an insecure
-channel.</p>
+<p>If you do NOT have a HTTPS URL, the cookie with the session-id is not transmitted. 
+The server detects this as an invalid-state request in the authentication design, 
+and immediately breaks the connection, because it appears insecure.</p>
 <p>Simply put, we are trying to use settings like secure_cookies to add constraints
 to the server so that you <em>must</em> perform and adhere to best practices - such
 as having TLS present on your communication channels.</p>
@@ -2111,38 +2110,39 @@ as having TLS present on your communication channels.</p>
 <pre><code>cargo doc --document-private-items --open --no-deps
 </code></pre>
 <h3 id="rust-documentation"><a class="header" href="#rust-documentation">Rust Documentation</a></h3>
-<p>A list of links to the library documentation is <a href="https://kanidm.com/documentation/">here</a>.</p>
+<p>A list of links to the library documentation is at 
+<a href="https://kanidm.com/documentation/">kanidm.com/documentation</a>.</p>
 <h3 id="minimum-supported-rust-version"><a class="header" href="#minimum-supported-rust-version">Minimum Supported Rust Version</a></h3>
 <p>The MSRV is specified in the package <code>Cargo.toml</code> files.</p>
 <h3 id="dependencies"><a class="header" href="#dependencies">Dependencies</a></h3>
 <h4 id="macos"><a class="header" href="#macos">MacOS</a></h4>
-<p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain.</p>
-<p>If you plan to work on the web-ui, you may also need npm for setting up some parts.</p>
-<pre><code>brew install npm
-</code></pre>
+<p>You will need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
 <h4 id="suse"><a class="header" href="#suse">SUSE</a></h4>
-<p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain. If you're using the Tumbleweed release, it's packaged in <code>zypper</code>.</p>
+<p>You will need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain. If 
+you're 
+using the Tumbleweed release, it's packaged in <code>zypper</code>.</p>
 <p>You will also need some system libraries to build this:</p>
 <pre><code>libudev-devel sqlite3-devel libopenssl-devel npm-default
 </code></pre>
 <h4 id="fedora"><a class="header" href="#fedora">Fedora</a></h4>
-<p>You will need to install the rust toolchain packages.</p>
+<p>You need to install the Rust toolchain packages:</p>
 <pre><code>rust cargo
 </code></pre>
 <p>You will also need some system libraries to build this:</p>
 <pre><code>systemd-devel sqlite-devel openssl-devel pam-devel
 </code></pre>
-<p>Building the web ui requires additional packages:</p>
+<p>Building the Web UI requires additional packages:</p>
 <pre><code>perl-FindBin perl-File-Compare rust-std-static-wasm32-unknown-unknown
 </code></pre>
 <h4 id="ubuntu"><a class="header" href="#ubuntu">Ubuntu</a></h4>
-<p>You will need <a href="https://rustup.rs/">rustup</a> to install a rust toolchain.</p>
+<p>You need <a href="https://rustup.rs/">rustup</a> to install a Rust toolchain.</p>
 <p>You will also need some system libraries to build this, which can be installed by running:</p>
 <pre><code class="language-shell">sudo apt-get install libsqlite3-dev libudev-dev libssl-dev
 </code></pre>
 <p>Tested with Ubuntu 20.04.</p>
-<h3 id="get-involved"><a class="header" href="#get-involved">Get involved</a></h3>
-<p>To get started, you'll need to fork or branch, and we'll merge based on PR's.</p>
+<h3 id="get-involved"><a class="header" href="#get-involved">Get Involved</a></h3>
+<p>To get started, you'll need to fork or branch, and we'll merge based on pull
+requests.</p>
 <p>If you are a contributor to the project, simply clone:</p>
 <pre><code class="language-shell">git clone git@github.com:kanidm/kanidm.git
 </code></pre>
@@ -2151,23 +2151,27 @@ as having TLS present on your communication channels.</p>
 cd kanidm
 git remote add myfork git@github.com:&lt;YOUR USERNAME&gt;/kanidm.git
 </code></pre>
-<p>Select an issue (always feel free to reach out to us for advice!), and create a branch to start working:</p>
+<p>Select an issue (always feel free to reach out to us for advice!), and create a 
+branch to start working:</p>
 <pre><code class="language-shell">git branch &lt;feature-branch-name&gt;
 git checkout &lt;feature-branch-name&gt;
 cargo test
 </code></pre>
-<p>When you are ready for review (even if the feature isn't complete and you just want some advice)</p>
+<p>When you are ready for review (even if the feature isn't complete and you just 
+want some advice):</p>
 <ol>
 <li>Run the test suite: <code>cargo test --workspace</code></li>
 <li>Ensure rust formatting standards are followed: <code>cargo fmt --check</code></li>
-<li>Try following the suggestions from clippy, after running <code>cargo clippy</code>. This is not a blocker on us accepting your code!</li>
+<li>Try following the suggestions from clippy, after running <code>cargo clippy</code>. 
+This is not a blocker on us accepting your code!</li>
 <li>Then commit your changes:</li>
 </ol>
 <pre><code class="language-shell">git commit -m 'Commit message' change_file.rs ...
 git push &lt;myfork/origin&gt; &lt;feature-branch-name&gt;
 </code></pre>
-<p>If you receive advice or make further changes, just keep commiting to the branch, and pushing to your branch.
-When we are happy with the code, we'll merge in GitHub, meaning you can now clean up your branch.</p>
+<p>If you receive advice or make further changes, just keep commiting to the branch, 
+and pushing to your branch. When we are happy with the code, we'll merge in GitHub, 
+meaning you can now clean up your branch.</p>
 <pre><code>git checkout master
 git pull
 git branch -D &lt;feature-branch-name&gt;
@@ -2179,14 +2183,20 @@ git pull
 git checkout &lt;feature-branch-name&gt;
 git rebase master
 </code></pre>
-<p>Then be sure to fix any merge issues or other comments as they arise. If you have issues, you can always stop and reset with:</p>
+<p>Then be sure to fix any merge issues or other comments as they arise. If you 
+have issues, you can always stop and reset with:</p>
 <pre><code>git rebase --abort
 </code></pre>
 <h3 id="development-server-quickstart-for-interactive-testing"><a class="header" href="#development-server-quickstart-for-interactive-testing">Development Server Quickstart for Interactive Testing</a></h3>
-<p>After getting the code, you will need a rust environment. Please investigate <a href="https://rustup.rs">rustup</a> for your platform to establish this.</p>
-<p>Once you have the source code, you need certificates to use with the server, because without certificates, authentication will fail. </p>
-<p>We recommend using <a href="https://letsencrypt.org">Let's Encrypt</a>, but if this is not possible, please use our insecure cert tool (<code>insecure_generate_tls.sh</code>). The insecure cert tool creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
-<p>You can now build and run the server with the commands below. It will use a database in <code>/tmp/kanidm.db</code>.</p>
+<p>After getting the code, you will need a rust environment. Please investigate 
+<a href="https://rustup.rs">rustup</a> for your platform to establish this.</p>
+<p>Once you have the source code, you need encryption certificates to use with the server, 
+because without certificates, authentication will fail. </p>
+<p>We recommend using <a href="https://letsencrypt.org">Let's Encrypt</a>, but if this is not 
+possible, please use our insecure certificate tool (<code>insecure_generate_tls.sh</code>). The 
+insecure certificate tool creates <code>/tmp/kanidm</code> and puts some self-signed certificates there.</p>
+<p>You can now build and run the server with the commands below. It will use a database 
+in <code>/tmp/kanidm.db</code>.</p>
 <p>Create the initial database and generate an <code>admin</code> username:</p>
 <pre><code>cargo run --bin kanidmd recover_account -c ./examples/insecure_server.toml -n admin
 &lt;snip&gt;
@@ -2206,19 +2216,24 @@ cargo run --bin kanidm -- login -H https://localhost:8443 -D admin -C /tmp/kanid
 cargo run --bin kanidm -- self whoami -H https://localhost:8443 -D admin -C /tmp/kanidm/ca.pem
 </code></pre>
 <h3 id="building-the-web-ui"><a class="header" href="#building-the-web-ui">Building the Web UI</a></h3>
-<p><strong>NOTE:</strong> There is a pre-packaged version of the Web UI at <code>/kanidmd_web_ui/pkg/</code>, which can be used directly. This means you don't need to build the Web UI yourself</p>
-<p>The web UI uses rust wasm rather than javascript. To build this you need to set up the environment.</p>
+<p><strong>NOTE:</strong> There is a pre-packaged version of the Web UI at <code>/kanidmd_web_ui/pkg/</code>, 
+which can be used directly. This means you don't need to build the Web UI yourself.</p>
+<p>The Web UI uses Rust WebAssembly rather than Javascript. To build this you need 
+to set up the environment:</p>
 <pre><code>cargo install wasm-pack
 npm install --global rollup
 </code></pre>
-<p>Then you are able to build the UI.</p>
+<p>Then you are able to build the UI:</p>
 <pre><code>cd kanidmd_web_ui/
 ./build_wasm.sh
 </code></pre>
 <p>The &quot;developer&quot; profile for kanidmd will automatically use the pkg output in this folder.</p>
-<p>Setting different developer profiles while building is done by setting the environment variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in <code>/profiles</code>. </p>
+<p>Setting different developer profiles while building is done by setting the 
+environment 
+variable KANIDM_BUILD_PROFILE to one of the bare filename of the TOML files in 
+<code>/profiles</code>. </p>
 <p>For example: <code>KANIDM_BUILD_PROFILE=release_suse_generic cargo build --release --bin kanidmd</code></p>
-<h3 id="build-a-kanidm-container"><a class="header" href="#build-a-kanidm-container">Build a kanidm container</a></h3>
+<h3 id="build-a-kanidm-container"><a class="header" href="#build-a-kanidm-container">Build a Kanidm Container</a></h3>
 <p>Build a container with the current branch using:</p>
 <pre><code>make &lt;TARGET&gt;
 </code></pre>
@@ -2233,18 +2248,24 @@ npm install --global rollup
 <tr><td><code>CONTAINER_TOOL</code></td><td>Use an alternative container build tool.</td><td><code>docker</code></td></tr>
 <tr><td><code>BOOK_VERSION</code></td><td>Sets version used when building the documentation book.</td><td><code>master</code></td></tr>
 </tbody></table>
-<h4 id="container-build-examples"><a class="header" href="#container-build-examples">Container build examples</a></h4>
+<h4 id="container-build-examples"><a class="header" href="#container-build-examples">Container Build Examples</a></h4>
 <p>Build a <code>kanidm</code> container using <code>podman</code>:</p>
 <pre><code>CONTAINER_TOOL=podman make build/kanidmd
 </code></pre>
 <p>Build a <code>kanidm</code> container and use a redis build cache:</p>
 <pre><code>CONTAINER_BUILD_ARGS='--build-arg &quot;SCCACHE_REDIS=redis://redis.dev.blackhats.net.au:6379&quot;' make build/kanidmd
 </code></pre>
-<h4 id="automatically-built-containers"><a class="header" href="#automatically-built-containers">Automatically built containers</a></h4>
-<p>To speed up testing across platforms, we're leveraging GitHub actions to build containers for test use.</p>
-<p>Whenever code is merged with the <code>master</code> branch of Kanidm, containers are automatically built for <code>kanidmd</code> and <code>radius</code>. Sometimes they fail to build, but we'll try and keep them avilable.</p>
-<p>To find information on the packages, <a href="https://github.com/orgs/kanidm/packages?repo_name=kanidm">visit the Kanidm packages page here</a>.</p>
-<p>An example command for pulling and running the radius container is below. You'll need to <a href="https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry">authenticate with the GitHub container registry first</a>.</p>
+<h4 id="automatically-built-containers"><a class="header" href="#automatically-built-containers">Automatically Built Containers</a></h4>
+<p>To speed up testing across platforms, we're leveraging GitHub actions to build 
+containers for test use.</p>
+<p>Whenever code is merged with the <code>master</code> branch of Kanidm, containers are automatically 
+built for <code>kanidmd</code> and <code>radius</code>. Sometimes they fail to build, but we'll try to 
+keep them avilable.</p>
+<p>To find information on the packages, 
+<a href="https://github.com/orgs/kanidm/packages?repo_name=kanidm">visit the Kanidm packages page</a>.</p>
+<p>An example command for pulling and running the radius container is below. You'll 
+need to 
+<a href="https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry">authenticate with the GitHub container registry first</a>.</p>
 <pre><code class="language-shell">docker pull ghcr.io/kanidm/radius:devel
 docker run --rm -it \
     -v $(pwd)/config.ini:/data/config.ini \
