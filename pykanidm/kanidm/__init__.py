@@ -2,13 +2,15 @@
 
 import json
 import logging
-from typing import Any, Dict, List, Optional, TypedDict
+from typing import Any, Dict, List, Optional #, TypedDict
 
 import requests
 
 from .exceptions import AuthInitFailed, AuthMechUnknown, AuthCredFailed, ServerURLNotSet
 from .types import KanidmClientConfig, AuthInitResponse
 from .utils import load_config
+
+#TODO: are we going to make this asyncio? it'd make sense.
 
 class KanidmClient():
     """ Kanidm ciient module """
@@ -37,6 +39,7 @@ class KanidmClient():
             self.session = requests.Session()
         else:
             self.session = session
+        self.session_id: Optional[str] = None
 
 
     def parse_config_data(
@@ -73,7 +76,7 @@ class KanidmClient():
         return f"{self.uri}/v1/auth"
 
     def _auth_init(self, username: str) -> requests.Response:
-        """ init step """
+        """ init step, starts the auth session, sets the class-local session ID """
         init_auth = {"step": {"init": username}}
 
         response = self.session.post(
@@ -83,12 +86,61 @@ class KanidmClient():
             timeout=self.connect_timeout,
             )
         if response.status_code != 200:
-            logging.debug("Failed to authenticate, response from sever: %s", response.json())
+            logging.debug(
+                "Failed to authenticate, response from server: %s",
+                response.json(),
+                )
             raise AuthInitFailed
         response.raise_for_status()
+
         if "x-kanidm-auth-session-id" not in response.headers:
             raise ValueError("Missing x-kanidm-auth-session-id header in init auth response")
+        #TODO: setting the class-local session id, do we want this?
+        self.session_id = response.headers['x-kanidm-auth-session-id']
+        logging.info("cookies:\n%s", response.cookies)
+        logging.info("headers:\n%s", response.headers)
         return response
+
+    def session_header(
+        self,
+        session_id: Optional[str]=None,
+        ) -> Dict[str, str]:
+        """ create a headers dict from a session id """
+
+        if session_id is None and self.session_id is not None:
+            session_id = self.session_id
+        elif self.session_id is None:
+            #TODO: maybe try this automagically?
+            raise ValueError("You need to start a session first")
+        #TODO: perhaps allow this to take a dict and update it, too?
+        return {
+            "X-KANIDM-AUTH-SESSION-ID": session_id,
+        }
+
+    def _auth_begin(
+        self,
+        username: str,
+        method: str,
+        session_id: str,
+        ) -> requests.Response:
+        """ the 'begin' step """
+
+        begin_auth = {
+            "step": {
+                "begin": "password",
+                }
+            }
+
+        response = self.session.post(
+            self.auth_url,
+            json=begin_auth,
+            verify=self.verify_ca,
+            timeout=self.connect_timeout,
+            headers=self.session_header(),
+            )
+        if response.status_code != 200:
+            logging.error("Failed to authenticate: %s", response.json())
+            raise Exception("AuthBeginFailed")
 
     def authenticate(
         self,
@@ -109,9 +161,8 @@ class KanidmClient():
             raise ValueError(f"Username and Password need to be set somewhere, got {username}:{password}")
 
         response = self._auth_init(username)
-        headers = {
-            "X-KANIDM-AUTH-SESSION-ID": response.headers["x-kanidm-auth-session-id"],
-        }
+        session_id = response.headers["x-kanidm-auth-session-id"]
+        headers = self.session_header(session_id)
 
         # {'sessionid': '00000000-5fe5-46e1-06b6-b830dd035a10', 'state': {'choose': ['password']}}
         #TODO: actually type the response properly
@@ -120,22 +171,16 @@ class KanidmClient():
         #    raise ValueError("'state' field missing from auth response")
         #if "choose" not in response_json['state']:
         #    raise ValueError("'choose' field missing from auth response")
-        if 'password' not in auth_init_response.state.choose:
-            logging.error("Invalid auth mech presented: %s", auth_init_response.dict())
-            raise AuthMechUnknown
 
-        begin_auth = {"step": {"begin": "password"}}
+        if len(auth_init_response.state.choose) == 0:
+            logging.warning("No auth mechanisms for %s", username)
+            #TODO: Should this be an exception?
+        #if 'password' not in auth_init_response.state.choose:
+        #    logging.error("Invalid auth mech presented: %s", auth_init_response.dict())
+        #    raise AuthMechUnknown
+        auth_method = "password"
 
-        response = self.session.post(
-            self.auth_url,
-            json=begin_auth,
-            verify=self.verify_ca,
-            timeout=self.connect_timeout,
-            headers=headers,
-            )
-        if response.status_code != 200:
-            logging.error("Failed to authenticate: %s", response.json())
-            raise Exception("AuthBeginFailed")
+        auth_begin = self._auth_begin(username, auth_method, session_id)
 
         cred_auth = {"step": { "cred": {"password": password}}}
         response = self.session.post(
