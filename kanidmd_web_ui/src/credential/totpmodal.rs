@@ -1,14 +1,20 @@
+use crate::error::*;
 use crate::utils;
 
 use super::eventbus::{EventBus, EventBusMsg};
-use super::reset::{ModalProps, submit_cred_update};
+use super::reset::ModalProps;
 
 use gloo::console;
-use wasm_bindgen::UnwrapThrowExt;
 use web_sys::Node;
 use yew::prelude::*;
+use yew_agent::{Dispatched, Dispatcher};
+
+use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
+use wasm_bindgen_futures::JsFuture;
+use web_sys::{Request, RequestInit, RequestMode, Response};
 
 use qrcode::{render::svg, QrCode};
+use kanidm_proto::v1::{CURequest, CURegState, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret};
 
 enum TotpState {
     Init,
@@ -18,25 +24,39 @@ enum TotpState {
 enum TotpCheck {
     Init,
     Invalid,
+    Sha1Accept
 }
 
-enum TotpSecret {
+enum TotpValue {
     Init,
-    Value(String),
+    Secret(TotpSecret),
 }
 
 pub struct TotpModalApp {
     state: TotpState,
     check: TotpCheck,
-    secret: TotpSecret,
+    secret: TotpValue,
 }
 
 pub enum Msg {
     TotpCancel,
     TotpSubmit,
-    TotpSecretReady,
-    TotpSuccess,
+    TotpSecretReady(TotpSecret),
+    TotpTryAgain,
+    TotpInvalidSha1,
+    Error { emsg: String, kopid: Option<String> },
     TotpAcceptSha1,
+    TotpSuccess,
+    TotpClearInvalid,
+}
+
+impl From<FetchError> for Msg {
+    fn from(fe: FetchError) -> Self {
+        Msg::Error {
+            emsg: fe.as_string(),
+            kopid: None,
+        }
+    }
 }
 
 impl TotpModalApp {
@@ -44,7 +64,62 @@ impl TotpModalApp {
         utils::modal_hide_by_id("staticTotpCreate");
         self.state = TotpState::Init;
         self.check = TotpCheck::Init;
-        self.secret = TotpSecret::Init;
+        self.secret = TotpValue::Init;
+    }
+
+    async fn submit_totp_update(token: CUSessionToken, req: CURequest) -> Result<Msg, FetchError> {
+        let req_jsvalue = serde_json::to_string(&(req, token))
+            .map(|s| JsValue::from(&s))
+            .expect_throw("Failed to serialise pw curequest");
+
+        let mut opts = RequestInit::new();
+        opts.method("POST");
+        opts.mode(RequestMode::SameOrigin);
+
+        opts.body(Some(&req_jsvalue));
+
+        let request = Request::new_with_str_and_init("/v1/credential/_update", &opts)?;
+        request
+            .headers()
+            .set("content-type", "application/json")
+            .expect_throw("failed to set header");
+
+        let window = utils::window();
+        let resp_value = JsFuture::from(window.fetch_with_request(&request)).await?;
+        let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
+        let status = resp.status();
+        let headers = resp.headers();
+
+        let kopid = headers.get("x-kanidm-opid").ok().flatten();
+
+        if status == 200 {
+            let jsval = JsFuture::from(resp.json()?).await?;
+            let status: CUStatus = jsval.into_serde().expect_throw("Invalid response type");
+
+            EventBus::dispatcher().send(EventBusMsg::UpdateStatus { status: status.clone() });
+
+            Ok(match status.mfaregstate {
+                CURegState::BackupCodes(_) => {
+                    Msg::Error { emsg: "Invalid TOTP mfa reg state response".to_string(), kopid }
+                }
+                CURegState::None => {
+                    Msg::TotpSuccess
+                }
+                CURegState::TotpCheck(secret) => {
+                    Msg::TotpSecretReady(secret)
+                }
+                CURegState::TotpTryAgain => {
+                    Msg::TotpTryAgain
+                }
+                CURegState::TotpInvalidSha1 => {
+                    Msg::TotpInvalidSha1
+                }
+            })
+        } else {
+            let text = JsFuture::from(resp.text()?).await?;
+            let emsg = text.as_string().unwrap_or_else(|| "".to_string());
+            Ok(Msg::Error { emsg, kopid })
+        }
     }
 }
 
@@ -59,18 +134,16 @@ impl Component for TotpModalApp {
         let token_c = ctx.props().token.clone();
 
         ctx.link().send_future(async {
-            match submit_cred_update(token_c, CURequest::Password(pw)).await {
+            match Self::submit_totp_update(token_c, CURequest::TotpGenerate).await {
                 Ok(v) => v,
                 Err(v) => v.into(),
             }
         });
 
-        // Msg::TotpSecretReady
-
         TotpModalApp {
             state: TotpState::Init,
             check: TotpCheck::Init,
-            secret: TotpSecret::Init,
+            secret: TotpValue::Init,
         }
     }
 
@@ -81,22 +154,77 @@ impl Component for TotpModalApp {
 
     fn update(&mut self, ctx: &Context<Self>, msg: Self::Message) -> bool {
         console::log!("totp modal::update");
+        let token_c = ctx.props().token.clone();
         match msg {
             Msg::TotpCancel => {
-                self.reset_and_hide();
+                // Cancel the totp req!
+                // Should end up with a success?
+                ctx.link().send_future(async {
+                    match Self::submit_totp_update(token_c, CURequest::CancelMFAReg).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+
+                self.state = TotpState::Waiting;
             }
             Msg::TotpSubmit => {
                 // Send off the submit, lock the form.
-                self.check = TotpCheck::Invalid;
+                let totp =
+                    utils::get_value_from_element_id("totp").unwrap_or_else(|| "".to_string());
+
+                match totp.trim().parse::<u32>() {
+                    Ok(totp) => {
+                        ctx.link().send_future(async move {
+                            match Self::submit_totp_update(token_c, CURequest::TotpVerify(totp)).await {
+                                Ok(v) => v,
+                                Err(v) => v.into(),
+                            }
+                        });
+                        self.state = TotpState::Waiting;
+                    }
+                    Err(_) => {
+                        self.check = TotpCheck::Invalid;
+                        self.state = TotpState::Init;
+                    }
+                }
             }
-            Msg::TotpSecretReady => {
+            Msg::TotpSecretReady(secret) => {
                 // THIS IS WHATS CALLED WHEN THE SECRET IS BACK
-                self.secret = TotpSecret::Value("Secret Value".to_string());
+                self.secret = TotpValue::Secret(secret);
+            }
+            Msg::TotpTryAgain => {
+                self.check = TotpCheck::Invalid;
+                self.state = TotpState::Init;
+            }
+            Msg::TotpClearInvalid => {
+                self.check = TotpCheck::Init;
+            }
+            Msg::TotpInvalidSha1 => {
+                self.check = TotpCheck::Sha1Accept;
+                self.state = TotpState::Init;
             }
             Msg::TotpAcceptSha1 => {
-                
+                ctx.link().send_future(async {
+                    match Self::submit_totp_update(token_c, CURequest::TotpAcceptSha1).await {
+                        Ok(v) => v,
+                        Err(v) => v.into(),
+                    }
+                });
+
+                self.state = TotpState::Waiting;
+            }
+            Msg::TotpClearInvalid => {
+                self.check = TotpCheck::Invalid;
             }
             Msg::TotpSuccess => {
+                // Nothing to do but close and hide!
+                self.reset_and_hide();
+            }
+            Msg::Error { emsg, kopid } => {
+                // Submit the error to the parent.
+                EventBus::dispatcher().send(EventBusMsg::Error { emsg, kopid });
+                self.reset_and_hide();
             }
         };
         true
@@ -114,8 +242,16 @@ impl Component for TotpModalApp {
         console::log!("totp modal::view");
 
         let totp_class = match &self.check {
-            TotpCheck::Invalid => classes!("form-control", "is-invalid"),
+            TotpCheck::Invalid |
+            TotpCheck::Sha1Accept
+            => classes!("form-control", "is-invalid"),
             _ => classes!("form-control"),
+        };
+
+        let invalid_text = match &self.check {
+            TotpCheck::Sha1Accept => "Your authenticator appears to be broken, and uses Sha1, rather than Sha256. Are you sure you want to proceed? If you want to try with a new authenticator, enter a new code",
+            _ => "Incorrect TOTP code - Please try again",
+
         };
 
         let submit_enabled = match &self.state {
@@ -123,21 +259,42 @@ impl Component for TotpModalApp {
             _ => false,
         };
 
-        let qrcode = match &self.secret {
-            TotpSecret::Init => {
+        let submit_button = match &self.check {
+            TotpCheck::Sha1Accept => html! {
+                <button id="totp-submit" type="button" class="btn btn-warning"
+                    disabled={ !submit_enabled }
+                    onclick={
+                        ctx.link()
+                            .callback(move |_| {
+                                Msg::TotpAcceptSha1
+                            })
+                    }
+                >{ "Accept Sha1 Token" }</button>
+            },
+            _ => html! {
+                <button id="totp-submit" type="button" class="btn btn-primary"
+                    disabled={ !submit_enabled }
+                    onclick={
+                        ctx.link()
+                            .callback(move |_| {
+                                Msg::TotpSubmit
+                            })
+                    }
+                >{ "Submit" }</button>
+            },
+        };
+
+
+        let totp_secret_state = match &self.secret {
+            TotpValue::Init => {
                 html! {
-                    <button id="totp-submit" type="button" class="btn btn-primary"
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::TotpSecretReady
-                                })
-                        }
-                    >{ "Submit" }</button>
+                      <div class="spinner-border text-dark" role="status">
+                        <span class="visually-hidden">{ "Loading..." }</span>
+                      </div>
                 }
             }
-            TotpSecret::Value(secret) => {
-                let qr = QrCode::new(secret.as_str()).unwrap_throw();
+            TotpValue::Secret(secret) => {
+                let qr = QrCode::new(secret.to_uri().as_str()).unwrap_throw();
 
                 let svg = qr.render::<svg::Color>().build();
 
@@ -146,7 +303,29 @@ impl Component for TotpModalApp {
                 div.set_inner_html(svg.as_str());
 
                 let node: Node = div.into();
-                Html::VRef(node)
+                let svg_html = Html::VRef(node);
+
+                let accountname = format!("Account Name: {}", secret.accountname);
+                let issuer = format!("Issuer: {}", secret.issuer);
+                let secret_b32 = format!("Secret: {}", secret.get_secret());
+                let algo = format!("Algorithm: {}", secret.algo);
+                let step = format!("Time Step: {}", secret.step);
+
+                html! {
+                    <>
+                      <div class="col-8">
+                        { svg_html }
+                      </div>
+                      <div class="col-4">
+                        <p>{ accountname }</p>
+                        <p>{ issuer }</p>
+                        <p>{ secret_b32 }</p>
+                        <p>{ algo }</p>
+                        <p>{ step }</p>
+
+                      </div>
+                    </>
+                }
             }
         };
 
@@ -167,10 +346,10 @@ impl Component for TotpModalApp {
                   </div>
                   <div class="modal-body">
 
-                    <div>
-                      <p>{ "Qr Code Go Where?" }</p>
-
-                      { qrcode }
+                    <div class="container">
+                      <div class="row">
+                        { totp_secret_state }
+                      </div>
                     </div>
 
                     <form class="row g-3 needs-validation" novalidate=true>
@@ -182,9 +361,15 @@ impl Component for TotpModalApp {
                         placeholder=""
                         aria-describedby="totp-validation-feedback"
                         required=true
+                        oninput={
+                            ctx.link()
+                                .callback(move |_| {
+                                    Msg::TotpClearInvalid
+                                })
+                        }
                       />
                       <div id="totp-validation-feedback" class="invalid-feedback">
-                        { "Incorrect TOTP code - Please try again" }
+                        { invalid_text }
                       </div>
                     </form>
                   </div>
@@ -197,15 +382,7 @@ impl Component for TotpModalApp {
                                 })
                         }
                     >{ "Cancel" }</button>
-                    <button id="totp-submit" type="button" class="btn btn-primary"
-                        disabled={ !submit_enabled }
-                        onclick={
-                            ctx.link()
-                                .callback(move |_| {
-                                    Msg::TotpSubmit
-                                })
-                        }
-                    >{ "Submit" }</button>
+                    { submit_button }
                   </div>
                 </div>
               </div>

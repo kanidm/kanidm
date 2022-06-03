@@ -17,6 +17,7 @@ use web_sys::{Request, RequestInit, RequestMode, Response};
 use super::eventbus::{EventBus, EventBusMsg};
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
+use super::delete::DeleteApp;
 
 #[derive(PartialEq, Properties)]
 pub struct ModalProps {
@@ -396,6 +397,7 @@ impl CredentialResetApp {
 
             <TotpModalApp token={ token.clone() }/>
 
+            <DeleteApp token= { token.clone() }/>
 
           </div>
         }

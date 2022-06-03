@@ -57,7 +57,7 @@ enum MfaRegState {
     None,
     TotpInit(Totp),
     TotpTryAgain(Totp),
-    TotpInvalidSha1(Totp),
+    TotpInvalidSha1(Totp, Totp),
 }
 
 impl fmt::Debug for MfaRegState {
@@ -66,7 +66,7 @@ impl fmt::Debug for MfaRegState {
             MfaRegState::None => "MfaRegState::None",
             MfaRegState::TotpInit(_) => "MfaRegState::TotpInit",
             MfaRegState::TotpTryAgain(_) => "MfaRegState::TotpTryAgain",
-            MfaRegState::TotpInvalidSha1(_) => "MfaRegState::TotpInvalidSha1",
+            MfaRegState::TotpInvalidSha1(_, _) => "MfaRegState::TotpInvalidSha1",
         };
         write!(f, "{}", t)
     }
@@ -168,7 +168,7 @@ impl From<&CredentialUpdateSession> for CredentialUpdateSessionStatus {
                     token.to_proto(session.account.name.as_str(), session.account.spn.as_str()),
                 ),
                 MfaRegState::TotpTryAgain(_) => MfaRegStateStatus::TotpTryAgain,
-                MfaRegState::TotpInvalidSha1(_) => MfaRegStateStatus::TotpInvalidSha1,
+                MfaRegState::TotpInvalidSha1(_, _) => MfaRegStateStatus::TotpInvalidSha1,
             },
         }
     }
@@ -1015,7 +1015,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         // Are we in a totp reg state?
         match &session.mfaregstate {
-            MfaRegState::TotpInit(totp_token) | MfaRegState::TotpTryAgain(totp_token) => {
+            MfaRegState::TotpInit(totp_token) | MfaRegState::TotpTryAgain(totp_token) |
+            MfaRegState::TotpInvalidSha1(totp_token, _)
+            => {
                 if totp_token.verify(totp_chal, &ct) {
                     // It was valid. Update the credential.
                     let ncred = session
@@ -1041,7 +1043,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     if token_sha1.verify(totp_chal, &ct) {
                         // Greeeaaaaaatttt it's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
-                        session.mfaregstate = MfaRegState::TotpInvalidSha1(token_sha1);
+                        session.mfaregstate = MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);
                         Ok(session.deref().into())
                     } else {
                         // Let them check again, it's a typo.
@@ -1068,7 +1070,7 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         // Are we in a totp reg state?
         match &session.mfaregstate {
-            MfaRegState::TotpInvalidSha1(token_sha1) => {
+            MfaRegState::TotpInvalidSha1(_, token_sha1) => {
                 // They have accepted it as sha1
                 let ncred = session
                     .primary

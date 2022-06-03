@@ -25,4 +25,4 @@ if [ -n "${1}" ]; then
 fi
 
 #shellcheck disable=SC2086
-cargo run --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"
+RUST_LOG=debug cargo run --bin kanidmd -- ${COMMAND} -c "${CONFIG_FILE}"
