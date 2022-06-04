@@ -22,4 +22,4 @@
 
 # Integration Examples
 
-  - [Kubernetes Ingress](k8s_ingress_example.md)
+  - [Kubernetes Ingress](examples/k8s_ingress_example.md)
