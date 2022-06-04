@@ -33,6 +33,11 @@ enum State {
     Authenticated(String),
 }
 
+#[derive(PartialEq, Properties)]
+pub struct ViewProps {
+    pub token: String,
+}
+
 pub struct ViewsApp {
     state: State,
 }
@@ -43,9 +48,14 @@ pub enum ViewsMsg {
 
 fn switch(route: &ViewRoute) -> Html {
     console::log!("views::switch");
+
+    // safety - can't panic because to get to this location we MUST be authenticated!
+    let token = models::get_bearer_token()
+        .expect_throw("Invalid state, bearer token must be present!");
+
     match route {
         ViewRoute::Apps => html! { <AppsApp /> },
-        ViewRoute::Security => html! { <SecurityApp /> },
+        ViewRoute::Security => html! { <SecurityApp token={ token } /> },
         ViewRoute::NotFound => html! {
             <Redirect<Route> to={Route::NotFound}/>
         },
@@ -62,6 +72,8 @@ impl Component for ViewsApp {
         let state = models::get_bearer_token()
             .map(State::Authenticated)
             .unwrap_or(State::LoginRequired);
+
+        // Check if the token is valid.
 
         ViewsApp { state }
     }

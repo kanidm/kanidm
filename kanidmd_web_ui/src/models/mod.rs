@@ -11,6 +11,10 @@ use crate::manager::Route;
 use crate::views::ViewRoute;
 use serde::{Deserialize, Serialize};
 
+use kanidm_proto::v1::{
+    CUSessionToken, CUStatus
+};
+
 pub fn get_bearer_token() -> Option<String> {
     let prev_session: Result<String, _> = PersistentStorage::get("kanidm_bearer_token");
     console::log!(format!("kanidm_bearer_token -> {:?}", prev_session).as_str());
@@ -74,3 +78,14 @@ pub fn pop_login_hint() -> Option<String> {
     TemporaryStorage::delete("login_hint");
     l.ok()
 }
+
+pub fn push_cred_update_session(s: (CUSessionToken, CUStatus)) {
+    TemporaryStorage::set("cred_update_session", s).expect_throw("failed to set cred session token");
+}
+
+pub fn pop_cred_update_session() -> Option<(CUSessionToken, CUStatus)> {
+    let l: Result<(CUSessionToken, CUStatus), _> = TemporaryStorage::get("cred_update_session");
+    TemporaryStorage::delete("cred_update_session");
+    l.ok()
+}
+

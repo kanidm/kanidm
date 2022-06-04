@@ -395,6 +395,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 
 [[package]]
+name = "base64urlsafedata"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b080c44c552d34075dba9dfd9df2b150459fdbc25622180bcb7e541d2bf01283"
+dependencies = [
+ "base64 0.13.0",
+ "serde",
+]
+
+[[package]]
 name = "bincode"
 version = "1.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -614,6 +624,19 @@ dependencies = [
  "bitflags",
  "textwrap",
  "unicode-width",
+]
+
+[[package]]
+name = "compact_jwt"
+version = "0.2.1"
+dependencies = [
+ "base64 0.13.0",
+ "base64urlsafedata",
+ "serde",
+ "serde_json",
+ "tracing",
+ "url",
+ "uuid 1.0.0",
 ]
 
 [[package]]
@@ -1949,7 +1972,7 @@ dependencies = [
  "async-trait",
  "base64 0.13.0",
  "chrono",
- "compact_jwt",
+ "compact_jwt 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "compiled-uuid",
  "concread",
  "criterion",
@@ -2031,7 +2054,7 @@ dependencies = [
 name = "kanidm_tools"
 version = "1.1.0-alpha.8"
 dependencies = [
- "compact_jwt",
+ "compact_jwt 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "dialoguer",
  "kanidm_client",
  "kanidm_proto",
@@ -2086,6 +2109,7 @@ dependencies = [
 name = "kanidmd_web_ui"
 version = "1.1.0-alpha.8"
 dependencies = [
+ "compact_jwt 0.2.1",
  "gloo 0.7.0",
  "js-sys",
  "kanidm_proto",
@@ -3207,7 +3231,7 @@ dependencies = [
  "async-std",
  "async-trait",
  "base64 0.13.0",
- "compact_jwt",
+ "compact_jwt 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures",
  "futures-util",
  "kanidm",

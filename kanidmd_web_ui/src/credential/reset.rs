@@ -1,5 +1,7 @@
 use crate::error::*;
 use crate::utils;
+use crate::models;
+
 use gloo::console;
 use yew::prelude::*;
 use yew_agent::{Bridge, Bridged};
@@ -77,12 +79,19 @@ impl Component for CredentialResetApp {
     fn create(ctx: &Context<Self>) -> Self {
         console::log!("credential::reset::create");
 
+        // On a page refresh/reload, should we restart a session that *may* have existed?
+        // This could be achieved with local storage
+
+        // Where did we come from?
+
+
         // Inject our class to centre everything.
         if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
             console::log!(format!("class_list add error -> {:?}", e));
         };
 
-        // Can we pre-load in a session token?
+        // Can we pre-load in a session token? This occures when we are sent a
+        // credential reset from the views UI.
 
         /* Were we given a token for the reset? */
 
@@ -99,8 +108,10 @@ impl Component for CredentialResetApp {
             })
             .ok();
 
-        let state = match query {
-            Some(cu_intent) => {
+        let m_session = models::pop_cred_update_session();
+
+        let state = match (query, m_session) {
+            (Some(cu_intent), None) => {
                 // Go straight to go! Collect 200!
                 ctx.link().send_future(async {
                     match Self::exchange_intent_token(cu_intent.token).await {
@@ -110,7 +121,17 @@ impl Component for CredentialResetApp {
                 });
                 State::WaitingForStatus
             }
-            None => State::TokenInput,
+            (None, Some((token, status))) => {
+                State::Main { token, status }
+            }
+            (None, None) =>
+                State::TokenInput,
+            (Some(_), Some(_)) => {
+                State::Error {
+                    emsg: "Invalid State - Reset link and memory session both are available!".to_string(),
+                    kopid: None,
+                }
+            }
         };
 
         let eventbus = EventBus::bridge(ctx.link().callback(|req| match req {
@@ -167,7 +188,10 @@ impl Component for CredentialResetApp {
                 Some(State::WaitingForCommit)
             }
             (Msg::Success, State::WaitingForCommit) => {
-                console::log!(format!("Yayyyyy").as_str());
+                let loc = models::pop_return_location();
+                console::log!(format!("credential was updated, try going to -> {:?}", loc));
+                loc.goto(&ctx.link().history().expect_throw("failed to read history"));
+
                 None
             }
             (Msg::Error { emsg, kopid }, _) => Some(State::Error { emsg, kopid }),

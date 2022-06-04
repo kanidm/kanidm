@@ -248,7 +248,17 @@ impl Component for PwModalApp {
                     ></button>
                   </div>
                   <div class="modal-body">
-                    <form class="row g-3 needs-validation" novalidate=true>
+                    <form class="row g-3 needs-validation" novalidate=true
+                        onsubmit={ ctx.link().callback(move |e: FocusEvent| {
+                            console::log!("pw modal::on form submit prevent default");
+                            e.prevent_default();
+                            if submit_enabled {
+                                Msg::PasswordSubmit
+                            } else {
+                                Msg::PasswordCancel
+                            }
+                        } ) }
+                    >
                       <label for="password" class="form-label">{ "Enter New Password" }</label>
                       <input
                         type="password"

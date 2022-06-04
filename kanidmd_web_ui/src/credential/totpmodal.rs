@@ -352,7 +352,12 @@ impl Component for TotpModalApp {
                       </div>
                     </div>
 
-                    <form class="row g-3 needs-validation" novalidate=true>
+                    <form class="row g-3 needs-validation" novalidate=true
+                        onsubmit={ ctx.link().callback(|e: FocusEvent| {
+                            e.prevent_default();
+                            Msg::TotpSubmit
+                        } ) }
+                    >
                       <label for="totp" class="form-label">{ "Enter a TOTP" }</label>
                       <input
                         type="totp"
