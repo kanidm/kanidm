@@ -23,6 +23,8 @@ types-requests = "^2.27.29"
 pytest = "^7.1.2"
 types-toml = "^0.10.7"
 pylint-pydantic = "^0.1.4"
+coverage = "^6.4.1"
+pylint-pytest = "^1.1.2"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -30,8 +32,8 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pylint.MASTER]
 max-line-length=150
-disable="W0511"
+disable="W0511,raise-missing-from"
 extension-pkg-whitelist="pydantic"
 # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
-load-plugins="pylint_pydantic"
+load-plugins="pylint_pydantic,pylint_pytest"
 
