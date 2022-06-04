@@ -1,36 +1,34 @@
 # Kubernetes Ingress 
 
-Guard your k8s ingress with kanidm authentication and authorization.
-
+Guard your Kubernetes ingress with Kanidm authentication and authorization.
 
 ## Prerequisites
 
 The following are used in this example:
 
+- [Kanidm](installing_the_server.html)
 - [Kubernetes v1.23](https://docs.k0sproject.io/v1.23.6+k0s.2/install/)
 - [Nginx Ingress](https://kubernetes.github.io/ingress-nginx/deploy/)
 - [CertManager - With Cluster Issuer](https://cert-manager.io/docs/installation/)
-- [Kanidm](https://kanidm.github.io/kanidm/master/installing_the_server.html#installing-the-server)
 - [ShellCheck](https://github.com/koalaman/shellcheck#user-content-installing)
 
-The links go to suggested install pages.
-
-You can setup your certs manually instead of using CertManager if you are comfortable with that. If it is your first time setting up CertManager take your time with install and validation. For the http01 solver the ingress port (8089) needs to be accessible from the internet.
-
+You can setup your certificatess manually instead of using CertManager if you are comfortable doign so. If it is your first time setting up CertManager, take your time with install and validation. For the `http01` solver the ingress port (8089) needs to be accessible from the internet.
 
 ## Instructions
 
 1. Install the kubernetes dashboard
-```sh
+
+```shell
 kubectl create -f https://raw.githubusercontent.com/kubernetes/kops/master/addons/kubernetes-dashboard/v1.10.1.yaml
 ```
 
-1. Replace every <string> (drop the <>) with appropriate values and run the following script:
-```sh
+2. Create a script from the content below, replacing every `<string>` (drop the `<>`) with appropriate values, then run it. This will example users, groups and the OAUTH2 configuration.
+
+```shell
 #!/bin/sh
 
 # Analysis self for common errors.
-shellcheck ./*.sh
+shellcheck ./*.sh || exit 1
 
 # Create User
 kanidm account create k8s_example_user
@@ -51,11 +49,12 @@ kanidm system oauth2 create_scope_map "$name" k8s_example_group openid email pro
 kanidm system oauth2 get "$name" --name admin
 
 ## For <cookie_secret>
+echo "Generating cookie secret:"
 docker run -ti --rm python:3-alpine python -c 'import secrets,base64; print(base64.b64encode(base64.b64encode(secrets.token_bytes(16))));' 
-
 ```
 
-3. Replace every <string> (drop the <>) with appropriate values and save to file k8s.kanidm-nginx-auth-example.yaml
+3. Create a file called `k8s.kanidm-nginx-auth-example.yaml` with the block below, replacing every `<string>` (drop the `<>`) with appropriate values. 
+
 ```yaml
 ---
 apiVersion: networking.k8s.io/v1
@@ -166,18 +165,15 @@ spec:
   tls:
   - hosts:
     - <hostname>
-    secretName: <hostname(with-instead of .)>-ingress-tls
+    secretName: <hostname>-ingress-tls # replace . with - in the hostname
 ```
 
-4. Apply k8s configuration:
-```sh
-#!/bin/sh
+4. Apply the configuration by running the following command:
 
-# Analysis self for common errors.
-shellcheck ./*.sh
-
-# Apply yaml from step 3
+```shell
 kubectl apply -f k8s.kanidm-nginx-auth-example.yaml
 ```
 
-5. Check deployment with kubctl -n kube-system get/describe/logs and go to <hostname> in your browser once it is finished deploying.
+5. Check your deployment succeeded by running `kubctl -n kube-system get/describe/logs` 
+
+Once it has finished deploying, you should be able to access it at `http://<hostname>`, which will prompt you for authentication.

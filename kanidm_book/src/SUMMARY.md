@@ -4,8 +4,6 @@
 - [Installing the Server](./installing_the_server.md)
   - [Server Configuration](./server_configuration.md)
   - [Security Hardening](./security_hardening.md)
-
-
 - [Client Tools](./client_tools.md)
   - [Installing client tools](./installing_client_tools.md)
 - [Accounts and Groups](./accounts_and_groups.md)
@@ -21,3 +19,7 @@
 - [LDAP](./ldap.md)
 - [Why TLS?](./why_tls.md)
 - [Developer Guide](DEVELOPER_README.md)
+
+# Implementation Examples
+
+  - [Kubernetes Ingress](k8s_ingress_example.md)
