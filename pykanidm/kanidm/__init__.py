@@ -1,20 +1,21 @@
 """ Kanidm python module """
 
-import json
 import logging
-from typing import Any, Dict, List, Optional #, TypedDict
+from typing import Any, Dict, Optional
 
+from pydantic import ValidationError
 import requests
 
-from .exceptions import AuthInitFailed, AuthMechUnknown, AuthCredFailed, ServerURLNotSet
-from .types import KanidmClientConfig, AuthInitResponse
+from .exceptions import AuthBeginFailed, AuthInitFailed, AuthCredFailed, AuthMechUnknown, ServerURLNotSet
+from .types import AuthBeginResponse, AuthStepPasswordResponse, KanidmClientConfig, AuthInitResponse
 from .utils import load_config
 
-#TODO: are we going to make this asyncio? it'd make sense.
+#TODO: going to make this asyncio, once the flows and stuff are worked out
 
 class KanidmClient():
     """ Kanidm ciient module """
 
+    # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
         config: Optional[str]=None,
@@ -39,7 +40,7 @@ class KanidmClient():
             self.session = requests.Session()
         else:
             self.session = session
-        self.session_id: Optional[str] = None
+        self.sessionid: Optional[str] = None
 
 
     def parse_config_data(
@@ -47,7 +48,11 @@ class KanidmClient():
         config_data: Dict[str, Any],
         ) -> None:
         """ hand it a config dict and it'll configure the client """
-        config_object = KanidmClientConfig.parse_obj(config_data)
+        try:
+            config_object = KanidmClientConfig.parse_obj(config_data)
+        except ValidationError as validation_error:
+            raise ValueError(f"Failed to validate configuration: {validation_error}")
+
         if config_object.uri:
             self.uri = config_object.uri
         if config_object.connect_timeout:
@@ -75,7 +80,7 @@ class KanidmClient():
             raise ServerURLNotSet("You didn't set the server URL")
         return f"{self.uri}/v1/auth"
 
-    def _auth_init(self, username: str) -> requests.Response:
+    def auth_init(self, username: str) -> AuthInitResponse:
         """ init step, starts the auth session, sets the class-local session ID """
         init_auth = {"step": {"init": username}}
 
@@ -86,48 +91,34 @@ class KanidmClient():
             timeout=self.connect_timeout,
             )
         if response.status_code != 200:
+
             logging.debug(
                 "Failed to authenticate, response from server: %s",
-                response.json(),
+                response.content,
                 )
-            raise AuthInitFailed
+            #TODO: mock test this
+            raise AuthInitFailed(response.content)
         response.raise_for_status()
 
         if "x-kanidm-auth-session-id" not in response.headers:
-            raise ValueError("Missing x-kanidm-auth-session-id header in init auth response")
+            logging.debug("response.content: %s", response.content)
+            logging.debug("response.headers: %s", response.headers)
+            raise ValueError(f"Missing x-kanidm-auth-session-id header in init auth response: {response.headers}")
         #TODO: setting the class-local session id, do we want this?
-        self.session_id = response.headers['x-kanidm-auth-session-id']
-        logging.info("cookies:\n%s", response.cookies)
-        logging.info("headers:\n%s", response.headers)
-        return response
+        self.sessionid = response.headers['x-kanidm-auth-session-id']
+        retval = AuthInitResponse.parse_obj(response.json())
+        retval.response = response
+        return retval
 
-    def session_header(
+    def auth_begin(
         self,
-        session_id: Optional[str]=None,
-        ) -> Dict[str, str]:
-        """ create a headers dict from a session id """
-
-        if session_id is None and self.session_id is not None:
-            session_id = self.session_id
-        elif self.session_id is None:
-            #TODO: maybe try this automagically?
-            raise ValueError("You need to start a session first")
-        #TODO: perhaps allow this to take a dict and update it, too?
-        return {
-            "X-KANIDM-AUTH-SESSION-ID": session_id,
-        }
-
-    def _auth_begin(
-        self,
-        username: str,
-        method: str,
-        session_id: str,
+        method: str="password", #TODO: do we want a default auth mech to be set?
         ) -> requests.Response:
         """ the 'begin' step """
 
         begin_auth = {
             "step": {
-                "begin": "password",
+                "begin": method,
                 }
             }
 
@@ -139,48 +130,51 @@ class KanidmClient():
             headers=self.session_header(),
             )
         if response.status_code != 200:
-            logging.error("Failed to authenticate: %s", response.json())
-            raise Exception("AuthBeginFailed")
+            #TODO: write mocked test for this
+            raise AuthBeginFailed(response.content)
+        response.raise_for_status()
 
-    def authenticate(
+        retobject = AuthBeginResponse.parse_obj(response.json())
+        retobject.response = response
+        return response
+
+    def authenticate_password(
         self,
         username: Optional[str]=None,
         password: Optional[str]=None,
-        ) -> str:
+        ) -> AuthStepPasswordResponse:
         """ authenticates with a username and password, returns the auth token """
-        if (username is None and password is not None) or \
-            (username is not None and password is None):
-            #pylint: disable=line-too-long
-            raise ValueError("If authenticate() call with username is none, password has to be as well, to use class-internal values")
         if username is None and password is None:
             if self.username is None or self.password is None:
-                raise ValueError("Need username and password to be specified somewhere before calling authenticate")
+                raise ValueError("Need username/password to be in caller or class settings before calling authenticate_password")
             username = self.username
             password = self.password
         if username is None or password is None:
             raise ValueError(f"Username and Password need to be set somewhere, got {username}:{password}")
 
-        response = self._auth_init(username)
-        session_id = response.headers["x-kanidm-auth-session-id"]
-        headers = self.session_header(session_id)
+        auth_init = self.auth_init(username)
 
-        # {'sessionid': '00000000-5fe5-46e1-06b6-b830dd035a10', 'state': {'choose': ['password']}}
-        #TODO: actually type the response properly
-        auth_init_response = AuthInitResponse.parse_obj(response.json())
-        #if "state" not in response_json:
-        #    raise ValueError("'state' field missing from auth response")
-        #if "choose" not in response_json['state']:
-        #    raise ValueError("'choose' field missing from auth response")
+        if len(auth_init.state.choose) == 0:
+            # there's no mechanisms at all?
+            raise AuthMechUnknown(f"No auth mechanisms for {username}")
+        auth_begin = self.auth_begin(
+            method="password",
+            )
+        # does a little bit of validation
+        auth_begin_object = AuthBeginResponse.parse_obj(auth_begin.json())
+        auth_begin_object.response = auth_begin
+        return self.auth_step_password(password=password)
 
-        if len(auth_init_response.state.choose) == 0:
-            logging.warning("No auth mechanisms for %s", username)
-            #TODO: Should this be an exception?
-        #if 'password' not in auth_init_response.state.choose:
-        #    logging.error("Invalid auth mech presented: %s", auth_init_response.dict())
-        #    raise AuthMechUnknown
-        auth_method = "password"
+    def auth_step_password(
+        self,
+        password: Optional[str] = None,
+        ) -> AuthStepPasswordResponse:
+        """ does the password auth step """
 
-        auth_begin = self._auth_begin(username, auth_method, session_id)
+        if password is None:
+            password=self.password
+        if password is None:
+            raise ValueError("Password has to be passed to auth_step_password or in self.password!")
 
         cred_auth = {"step": { "cred": {"password": password}}}
         response = self.session.post(
@@ -188,23 +182,37 @@ class KanidmClient():
             json=cred_auth,
             verify=self.verify_ca,
             timeout=self.connect_timeout,
-            headers=headers,
+            headers=self.session_header(),
             )
-        json_response = response.json()
         if response.status_code != 200:
-            logging.error("Failed to authenticate, response: %s", json_response)
-            raise AuthCredFailed
+            logging.error("Failed to authenticate, response: %s", response.content)
+            raise AuthCredFailed("Failed password authentication!")
 
+        #TODO: handle json dump fail
+        result = AuthStepPasswordResponse.parse_obj(response.json())
+        result.response = response
+        print(f"auth_step_password: {result.dict()}")
         # Get the token
-        try:
-            return_token: str = json_response['state']['success']
-            return return_token
-        except KeyError:
-            logging.error(
-                "Authentication failed, couldn't find token in response: %s",
-                response.content,
-                )
-            raise Exception("AuthCredFailed") # pylint: disable=raise-missing-from
+        if result.state.success is not None:
+            return result
+        raise AuthCredFailed
 
+    def session_header(
+        self,
+        sessionid: Optional[str]=None,
+        ) -> Dict[str, str]:
+        """ create a headers dict from a session id """
+        #TODO: perhaps allow session_header to take a dict and update it, too?
+
+        if sessionid is not None:
+            return {
+                "X-KANIDM-AUTH-SESSION-ID": sessionid,
+            }
+
+        if self.sessionid is not None:
+            return {
+                "X-KANIDM-AUTH-SESSION-ID": self.sessionid,
+            }
+        raise ValueError("Class doesn't have a sessionid stored and none was provided")
 
 #TODO: ssl validation validate

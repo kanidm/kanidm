@@ -1,3 +1,9 @@
+# kanidm_rlm_python
+
+A FREERadius kanidm client module per the [module docs](https://wiki.freeradius.org/modules/Rlm_python).
+
+** NOTE ** These docs are in development, sorry.
+
 Testing Process
 ===============
 
@@ -14,8 +20,6 @@ Testing Process
     cargo run -- group add_members -D admin idm_radius_servers radius_service_account
     cargo run -- account credential set_password radius_service_account -D admin
     cargo run -- account radius generate_secret admin -D admin
-
-
 
     cd kanidm_rlm_python/
     KANIDM_RLM_CONFIG=./test_data/config.ini python3 kanidmradius.py test
