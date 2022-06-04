@@ -12,7 +12,7 @@ The following are used in this example:
 - [CertManager - With Cluster Issuer](https://cert-manager.io/docs/installation/)
 - [ShellCheck](https://github.com/koalaman/shellcheck#user-content-installing)
 
-You can setup your certificatess manually instead of using CertManager if you are comfortable doign so. If it is your first time setting up CertManager, take your time with install and validation. For the `http01` solver the ingress port (8089) needs to be accessible from the internet.
+You can setup your certificates manually instead of using CertManager if you are comfortable doign so. If it is your first time setting up CertManager, take your time with install and validation. For the `http01` solver the ingress port (8089) needs to be accessible from the internet.
 
 ## Instructions
 
