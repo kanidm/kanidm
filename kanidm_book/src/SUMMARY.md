@@ -20,6 +20,6 @@
 - [Why TLS?](./why_tls.md)
 - [Developer Guide](DEVELOPER_README.md)
 
-# Implementation Examples
+# Integration Examples
 
   - [Kubernetes Ingress](k8s_ingress_example.md)
