@@ -19,6 +19,7 @@ use kanidm_proto::v1::OperationError::PasswordQuality;
 use kanidm_proto::v1::{CUIntentToken, CURegState, CUSessionToken, CUStatus};
 use std::fmt;
 use std::str::FromStr;
+use url::Url;
 
 impl AccountOpt {
     pub fn debug(&self) -> bool {
@@ -393,7 +394,9 @@ impl AccountCredential {
                     .idm_account_credential_update_begin(aopt.aopts.account_id.as_str())
                     .await
                 {
-                    Ok(cusession_token) => credential_update_exec(cusession_token, client).await,
+                    Ok((cusession_token, custatus)) => {
+                        credential_update_exec(cusession_token, custatus, client).await
+                    }
                     Err(e) => {
                         error!("Error starting credential update -> {:?}", e);
                     }
@@ -402,14 +405,16 @@ impl AccountCredential {
             AccountCredential::Reset(aopt) => {
                 let client = aopt.copt.to_unauth_client();
                 let cuintent_token = CUIntentToken {
-                    intent_token: aopt.token.clone(),
+                    token: aopt.token.clone(),
                 };
 
                 match client
                     .idm_account_credential_update_exchange(cuintent_token)
                     .await
                 {
-                    Ok(cusession_token) => credential_update_exec(cusession_token, client).await,
+                    Ok((cusession_token, custatus)) => {
+                        credential_update_exec(cusession_token, custatus, client).await
+                    }
                     Err(e) => {
                         error!("Error starting credential reset -> {:?}", e);
                     }
@@ -417,18 +422,44 @@ impl AccountCredential {
             }
             AccountCredential::CreateResetLink(aopt) => {
                 let client = aopt.copt.to_client().await;
+
+                // What's the client url?
                 match client
                     .idm_account_credential_update_intent(aopt.aopts.account_id.as_str())
                     .await
                 {
                     Ok(cuintent_token) => {
+                        let mut url = Url::parse(client.get_url()).expect("Invalid server url.");
+                        url.set_path("/ui/reset");
+                        url.query_pairs_mut()
+                            .append_pair("token", cuintent_token.token.as_str());
+
                         println!("success!");
-                        println!("Send the person the following command");
-                        println!("");
                         println!(
-                            "kanidm account credential reset link {}",
-                            cuintent_token.intent_token
+                            "Send the person one of the following to allow the credential reset"
                         );
+                        println!("scan:");
+                        let code = match QrCode::new(url.as_str()) {
+                            Ok(c) => c,
+                            Err(e) => {
+                                error!("Failed to generate QR code -> {:?}", e);
+                                return;
+                            }
+                        };
+                        let image = code
+                            .render::<unicode::Dense1x2>()
+                            .dark_color(unicode::Dense1x2::Light)
+                            .light_color(unicode::Dense1x2::Dark)
+                            .build();
+                        println!("{}", image);
+
+                        println!("");
+                        println!("link: {}", url.as_str());
+                        println!(
+                            "command: kanidm account credential reset {}",
+                            cuintent_token.token
+                        );
+                        println!("");
                     }
                     Err(e) => {
                         error!("Error starting credential reset -> {:?}", e);
@@ -702,8 +733,41 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
     }
 */
 
-async fn credential_update_exec(session_token: CUSessionToken, client: KanidmClient) {
+fn display_status(status: CUStatus) {
+    let CUStatus {
+        spn,
+        displayname,
+        can_commit,
+        primary,
+        mfaregstate: _,
+    } = status;
+
+    println!("spn: {}", spn);
+    println!("Name: {}", displayname);
+    if let Some(cred_detail) = &primary {
+        println!("Primary Credential:");
+        print!("{}", cred_detail);
+    } else {
+        println!("Primary Credential:");
+        println!("  not set");
+    }
+
+    // We may need to be able to display if there are dangling
+    // curegstates, but the cli ui statemachine can match the
+    // server so it may not be needed?
+
+    println!("Can Commit: {}", can_commit);
+}
+
+async fn credential_update_exec(
+    session_token: CUSessionToken,
+    status: CUStatus,
+    client: KanidmClient,
+) {
     trace!("started credential update exec");
+    // Show the initial status,
+    display_status(status);
+    // Setup to work
     loop {
         // Display Prompt
         let input: String = Input::new()
@@ -735,21 +799,7 @@ async fn credential_update_exec(session_token: CUSessionToken, client: KanidmCli
                     .idm_account_credential_update_status(&session_token)
                     .await
                 {
-                    Ok(status) => {
-                        if let Some(cred_detail) = status.primary {
-                            println!("Primary Credential:");
-                            print!("{}", cred_detail);
-                        } else {
-                            println!("Primary Credential:");
-                            println!("  not set");
-                        }
-
-                        // We may need to be able to display if there are dangling
-                        // curegstates, but the cli ui statemachine can match the
-                        // server so it may not be needed?
-
-                        println!("Can Commit: {}", status.can_commit);
-                    }
+                    Ok(status) => display_status(status),
                     Err(e) => {
                         eprintln!("An error occured -> {:?}", e);
                     }

@@ -34,7 +34,7 @@ use kanidm_proto::v1::Entry as ProtoEntry;
 use kanidm_proto::v1::Modify as ProtoModify;
 use kanidm_proto::v1::ModifyList as ProtoModifyList;
 use kanidm_proto::v1::{
-    AccountPersonSet, AccountUnixExtend, CUIntentToken, CUSessionToken, CreateRequest,
+    AccountPersonSet, AccountUnixExtend, CUIntentToken, CUSessionToken, CUStatus, CreateRequest,
     DeleteRequest, GroupUnixExtend, ModifyRequest, SetCredentialRequest, SetCredentialResponse,
 };
 
@@ -667,7 +667,7 @@ impl QueryServerWriteV1 {
         uat: Option<String>,
         uuid_or_name: String,
         eventid: Uuid,
-    ) -> Result<CUSessionToken, OperationError> {
+    ) -> Result<(CUSessionToken, CUStatus), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmCredentialUpdate>", {
@@ -697,8 +697,13 @@ impl QueryServerWriteV1 {
                     );
                     e
                 })
-                .map(|tok| CUSessionToken {
-                    session_token: tok.token_enc,
+                .map(|(tok, sta)| {
+                    (
+                        CUSessionToken {
+                            token: tok.token_enc,
+                        },
+                        sta.into(),
+                    )
                 })
         });
         res
@@ -750,7 +755,7 @@ impl QueryServerWriteV1 {
                     e
                 })
                 .map(|tok| CUIntentToken {
-                    intent_token: tok.intent_id,
+                    token: tok.intent_id,
                 })
         });
         res
@@ -766,12 +771,12 @@ impl QueryServerWriteV1 {
         &self,
         intent_token: CUIntentToken,
         eventid: Uuid,
-    ) -> Result<CUSessionToken, OperationError> {
+    ) -> Result<(CUSessionToken, CUStatus), OperationError> {
         let ct = duration_from_epoch_now();
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmCredentialExchangeIntent>", {
             let intent_token = CredentialUpdateIntentToken {
-                intent_id: intent_token.intent_token,
+                intent_id: intent_token.token,
             };
 
             idms_prox_write
@@ -784,8 +789,13 @@ impl QueryServerWriteV1 {
                     );
                     e
                 })
-                .map(|tok| CUSessionToken {
-                    session_token: tok.token_enc,
+                .map(|(tok, sta)| {
+                    (
+                        CUSessionToken {
+                            token: tok.token_enc,
+                        },
+                        sta.into(),
+                    )
                 })
         });
         res
@@ -806,7 +816,7 @@ impl QueryServerWriteV1 {
         let mut idms_prox_write = self.idms.proxy_write_async(ct).await;
         let res = spanned!("actors::v1_write::handle<IdmCredentialUpdateCommit>", {
             let session_token = CredentialUpdateSessionToken {
-                token_enc: session_token.session_token,
+                token_enc: session_token.token,
             };
 
             idms_prox_write

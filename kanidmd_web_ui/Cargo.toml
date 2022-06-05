@@ -25,11 +25,16 @@ wasm-bindgen-futures = { version = "^0.4.30" }
 kanidm_proto = { path = "../kanidm_proto" }
 
 webauthn-rs = { version = "^0.3.2", default-features = false, features = ["wasm"] }
+qrcode = { version = "^0.12.0", default-features = false, features = ["svg"] }
 
 yew-router = "^0.16.0"
 yew = "^0.19.3"
+yew-agent = "^0.1.0"
 gloo = "^0.7.0"
 js-sys = "^0.3.57"
+
+compact_jwt = { version = "^0.2.2", default-features = false, features = ["unsafe_release_without_verify"] }
+# compact_jwt = { path = "../../compact_jwt" , default-features = false, features = ["unsafe_release_without_verify"] }
 
 [dependencies.web-sys]
 version = "^0.3.57"
@@ -44,6 +49,7 @@ features = [
     "Event",
     "FocusEvent",
     "Headers",
+    "HtmlButtonElement",
     "HtmlDocument",
     "Navigator",
     "PublicKeyCredential",

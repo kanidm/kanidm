@@ -10,6 +10,7 @@ use yew::functional::*;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
+use crate::credential::reset::CredentialResetApp;
 use crate::login::LoginApp;
 use crate::oauth2::Oauth2App;
 use crate::views::{ViewRoute, ViewsApp};
@@ -30,8 +31,11 @@ pub enum Route {
     #[at("/ui/oauth2")]
     Oauth2,
 
+    #[at("/ui/reset")]
+    CredentialReset,
+
     #[not_found]
-    #[at("/404")]
+    #[at("/ui/404")]
     NotFound,
 }
 
@@ -51,6 +55,7 @@ fn switch(route: &Route) -> Html {
         Route::Login => html! { <LoginApp /> },
         Route::Oauth2 => html! { <Oauth2App /> },
         Route::Views => html! { <ViewsApp /> },
+        Route::CredentialReset => html! { <CredentialResetApp /> },
         Route::NotFound => {
             html! {
                 <main>

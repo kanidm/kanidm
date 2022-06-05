@@ -770,12 +770,12 @@ impl Component for LoginApp {
         // May need to set these classes?
         // <body class="html-body form-body">
         html! {
-        <main class="form-signin">
+          <main class="form-signin">
             <div class="container">
-                <h2>{ "Kanidm Alpha 🦀" }</h2>
+              <h2>{ "Kanidm Alpha 🦀" }</h2>
             </div>
-                { self.view_state(ctx) }
-        </main>
+            { self.view_state(ctx) }
+          </main>
         }
     }
 

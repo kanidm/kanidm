@@ -1,7 +1,8 @@
 use gloo::console;
+use wasm_bindgen::prelude::*;
 use wasm_bindgen::{JsCast, UnwrapThrowExt};
 pub use web_sys::InputEvent;
-use web_sys::{Document, Event, HtmlElement, HtmlInputElement, Window};
+use web_sys::{Document, Event, HtmlButtonElement, HtmlElement, HtmlInputElement, Window};
 
 pub fn window() -> Window {
     web_sys::window().expect_throw("Unable to retrieve window")
@@ -34,4 +35,42 @@ pub fn get_value_from_input_event(e: InputEvent) -> String {
     let event_target = event.target().unwrap_throw();
     let target: HtmlInputElement = event_target.dyn_into().unwrap_throw();
     target.value()
+}
+
+pub fn get_element_by_id(id: &str) -> Option<HtmlElement> {
+    document()
+        .get_element_by_id(id)
+        .and_then(|element| element.dyn_into::<web_sys::HtmlElement>().ok())
+}
+
+pub fn get_buttonelement_by_id(id: &str) -> Option<HtmlButtonElement> {
+    document()
+        .get_element_by_id(id)
+        .and_then(|element| element.dyn_into::<web_sys::HtmlButtonElement>().ok())
+}
+
+pub fn get_inputelement_by_id(id: &str) -> Option<HtmlInputElement> {
+    document()
+        .get_element_by_id(id)
+        .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
+}
+
+pub fn get_value_from_element_id(id: &str) -> Option<String> {
+    document()
+        .get_element_by_id(id)
+        .and_then(|element| element.dyn_into::<web_sys::HtmlInputElement>().ok())
+        .map(|element| element.value())
+}
+
+#[wasm_bindgen(inline_js = "export function modal_hide(m) {
+    var elem = document.getElementById(m);
+    var modal = bootstrap.Modal.getInstance(elem);
+    modal.hide();
+}")]
+extern "C" {
+    fn modal_hide(m: &str);
+}
+
+pub fn modal_hide_by_id(id: &str) {
+    modal_hide(id);
 }
