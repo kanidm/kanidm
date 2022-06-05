@@ -23,7 +23,7 @@ tide = "^0.16.0"
 tide-openssl = "^0.1.1"
 
 futures-util = "^0.3.21"
-tokio = { version = "^1.18.0", features = ["net", "sync", "io-util", "macros"] }
+tokio = { version = "^1.19.1", features = ["net", "sync", "io-util", "macros"] }
 tokio-util = { version = "^0.7.2", features = ["codec"] }
 tokio-openssl = "^0.6.3"
 openssl = "^0.10.38"
