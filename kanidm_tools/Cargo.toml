@@ -42,7 +42,7 @@ shellexpand = "^2.1.0"
 rayon = "^1.5.3"
 time = { version = "=0.2.27", features = ["serde", "std"] }
 qrcode = { version = "^0.12.0", default-features = false }
-compact_jwt = "^0.2.1"
+compact_jwt = "^0.2.2"
 
 zxcvbn = "^2.2.1"
 
