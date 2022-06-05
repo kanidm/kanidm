@@ -26,3 +26,6 @@
 - [RADIUS](integrations/radius.md)
 - [LDAP](integrations/ldap.md)
 
+# Integration Examples
+
+- [Kubernetes Ingress](examples/k8s_ingress_example.md)
