@@ -748,6 +748,8 @@
 <span id="743">743</span>
 <span id="744">744</span>
 <span id="745">745</span>
+<span id="746">746</span>
+<span id="747">747</span>
 </pre><pre class="rust"><code><span class="kw">mod</span> <span class="ident">oauth2</span>;
 <span class="kw">mod</span> <span class="ident">v1</span>;
 
@@ -883,7 +885,9 @@
                 <span class="ident">OperationError::NoMatchingEntries</span> =&gt; {
                     <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::NotFound</span>)
                 }
-                <span class="ident">OperationError::EmptyRequest</span> <span class="op">|</span> <span class="ident">OperationError::SchemaViolation</span>(<span class="kw">_</span>) =&gt; {
+                <span class="ident">OperationError::PasswordQuality</span>(<span class="kw">_</span>)
+                <span class="op">|</span> <span class="ident">OperationError::EmptyRequest</span>
+                <span class="op">|</span> <span class="ident">OperationError::SchemaViolation</span>(<span class="kw">_</span>) =&gt; {
                     <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::BadRequest</span>)
                 }
                 <span class="kw">_</span> =&gt; <span class="ident">tide::Response::new</span>(<span class="ident">tide::StatusCode::InternalServerError</span>),

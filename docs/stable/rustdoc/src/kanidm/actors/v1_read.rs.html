@@ -2354,7 +2354,7 @@
         <span class="kw">let</span> <span class="ident">idms_cred_update</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">cred_update_transaction_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;IdmCredentialUpdateStatus&gt;&quot;</span>, {
             <span class="kw">let</span> <span class="ident">session_token</span> <span class="op">=</span> <span class="ident">CredentialUpdateSessionToken</span> {
-                <span class="ident">token_enc</span>: <span class="ident">session_token</span>.<span class="ident">session_token</span>,
+                <span class="ident">token_enc</span>: <span class="ident">session_token</span>.<span class="ident">token</span>,
             };
 
             <span class="ident">idms_cred_update</span>
@@ -2387,7 +2387,7 @@
         <span class="kw">let</span> <span class="ident">idms_cred_update</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">cred_update_transaction_async</span>().<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_read::handle&lt;IdmCredentialUpdate&gt;&quot;</span>, {
             <span class="kw">let</span> <span class="ident">session_token</span> <span class="op">=</span> <span class="ident">CredentialUpdateSessionToken</span> {
-                <span class="ident">token_enc</span>: <span class="ident">session_token</span>.<span class="ident">session_token</span>,
+                <span class="ident">token_enc</span>: <span class="ident">session_token</span>.<span class="ident">token</span>,
             };
 
             <span class="macro">debug!</span>(<span class="question-mark">?</span><span class="ident">scr</span>);

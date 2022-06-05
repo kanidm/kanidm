@@ -2045,6 +2045,25 @@
 <span id="2040">2040</span>
 <span id="2041">2041</span>
 <span id="2042">2042</span>
+<span id="2043">2043</span>
+<span id="2044">2044</span>
+<span id="2045">2045</span>
+<span id="2046">2046</span>
+<span id="2047">2047</span>
+<span id="2048">2048</span>
+<span id="2049">2049</span>
+<span id="2050">2050</span>
+<span id="2051">2051</span>
+<span id="2052">2052</span>
+<span id="2053">2053</span>
+<span id="2054">2054</span>
+<span id="2055">2055</span>
+<span id="2056">2056</span>
+<span id="2057">2057</span>
+<span id="2058">2058</span>
+<span id="2059">2059</span>
+<span id="2060">2060</span>
+<span id="2061">2061</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::access::AccessControlsTransaction</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential</span>::{<span class="ident">BackupCodes</span>, <span class="ident">Credential</span>};
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::idm::account::Account</span>;
@@ -2104,7 +2123,7 @@
     <span class="prelude-val">None</span>,
     <span class="ident">TotpInit</span>(<span class="ident">Totp</span>),
     <span class="ident">TotpTryAgain</span>(<span class="ident">Totp</span>),
-    <span class="ident">TotpInvalidSha1</span>(<span class="ident">Totp</span>),
+    <span class="ident">TotpInvalidSha1</span>(<span class="ident">Totp</span>, <span class="ident">Totp</span>),
 }
 
 <span class="kw">impl</span> <span class="ident">fmt::Debug</span> <span class="kw">for</span> <span class="ident">MfaRegState</span> {
@@ -2113,7 +2132,7 @@
             <span class="ident">MfaRegState::None</span> =&gt; <span class="string">&quot;MfaRegState::None&quot;</span>,
             <span class="ident">MfaRegState::TotpInit</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpInit&quot;</span>,
             <span class="ident">MfaRegState::TotpTryAgain</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpTryAgain&quot;</span>,
-            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpInvalidSha1&quot;</span>,
+            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="string">&quot;MfaRegState::TotpInvalidSha1&quot;</span>,
         };
         <span class="macro">write!</span>(<span class="ident">f</span>, <span class="string">&quot;{}&quot;</span>, <span class="ident">t</span>)
     }
@@ -2170,8 +2189,9 @@
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>)]</span>
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">struct</span> <span class="ident">CredentialUpdateSessionStatus</span> {
-    <span class="comment">// spn: ?</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CredentialUpdateSessionStatus</span> {
+    <span class="ident">spn</span>: <span class="ident">String</span>,
+    <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="comment">// ttl: Duration,</span>
     <span class="comment">//</span>
     <span class="ident">can_commit</span>: <span class="ident">bool</span>,
@@ -2183,6 +2203,8 @@
 <span class="kw">impl</span> <span class="ident">Into</span><span class="op">&lt;</span><span class="ident">CUStatus</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CredentialUpdateSessionStatus</span> {
     <span class="kw">fn</span> <span class="ident">into</span>(<span class="self">self</span>) -&gt; <span class="ident">CUStatus</span> {
         <span class="ident">CUStatus</span> {
+            <span class="ident">spn</span>: <span class="self">self</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
+            <span class="ident">displayname</span>: <span class="self">self</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
             <span class="ident">can_commit</span>: <span class="self">self</span>.<span class="ident">can_commit</span>,
             <span class="ident">primary</span>: <span class="self">self</span>.<span class="ident">primary</span>,
             <span class="ident">mfaregstate</span>: <span class="kw">match</span> <span class="self">self</span>.<span class="ident">mfaregstate</span> {
@@ -2201,6 +2223,9 @@
 <span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="kw-2">&amp;</span><span class="ident">CredentialUpdateSession</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">CredentialUpdateSessionStatus</span> {
     <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">session</span>: <span class="kw-2">&amp;</span><span class="ident">CredentialUpdateSession</span>) -&gt; <span class="self">Self</span> {
         <span class="ident">CredentialUpdateSessionStatus</span> {
+            <span class="ident">spn</span>: <span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">spn</span>.<span class="ident">clone</span>(),
+            <span class="ident">displayname</span>: <span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">displayname</span>.<span class="ident">clone</span>(),
+
             <span class="ident">can_commit</span>: <span class="bool-val">true</span>,
             <span class="ident">primary</span>: <span class="ident">session</span>.<span class="ident">primary</span>.<span class="ident">as_ref</span>().<span class="ident">map</span>(<span class="op">|</span><span class="ident">c</span><span class="op">|</span> <span class="ident">c</span>.<span class="ident">into</span>()),
             <span class="ident">mfaregstate</span>: <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">mfaregstate</span> {
@@ -2209,7 +2234,7 @@
                     <span class="ident">token</span>.<span class="ident">to_proto</span>(<span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">name</span>.<span class="ident">as_str</span>(), <span class="ident">session</span>.<span class="ident">account</span>.<span class="ident">spn</span>.<span class="ident">as_str</span>()),
                 ),
                 <span class="ident">MfaRegState::TotpTryAgain</span>(<span class="kw">_</span>) =&gt; <span class="ident">MfaRegStateStatus::TotpTryAgain</span>,
-                <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="kw">_</span>) =&gt; <span class="ident">MfaRegStateStatus::TotpInvalidSha1</span>,
+                <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="kw">_</span>, <span class="kw">_</span>) =&gt; <span class="ident">MfaRegStateStatus::TotpInvalidSha1</span>,
             },
         }
     }
@@ -2331,17 +2356,20 @@
         <span class="ident">intent_token_id</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">account</span>: <span class="ident">Account</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">CredentialUpdateSessionStatus</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="comment">// - stash the current state of all associated credentials</span>
         <span class="kw">let</span> <span class="ident">primary</span> <span class="op">=</span> <span class="ident">account</span>.<span class="ident">primary</span>.<span class="ident">clone</span>();
         <span class="comment">// - store account policy (if present)</span>
-
-        <span class="kw">let</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">CredentialUpdateSession</span> {
+        <span class="kw">let</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">CredentialUpdateSession</span> {
             <span class="ident">account</span>,
             <span class="ident">intent_token_id</span>,
             <span class="ident">primary</span>,
             <span class="ident">mfaregstate</span>: <span class="ident">MfaRegState::None</span>,
-        }));
+        };
+
+        <span class="kw">let</span> <span class="ident">status</span>: <span class="ident">CredentialUpdateSessionStatus</span> <span class="op">=</span> (<span class="kw-2">&amp;</span><span class="ident">session</span>).<span class="ident">into</span>();
+
+        <span class="kw">let</span> <span class="ident">session</span> <span class="op">=</span> <span class="ident">Arc::new</span>(<span class="ident">Mutex::new</span>(<span class="ident">session</span>));
 
         <span class="kw">let</span> <span class="ident">max_ttl</span> <span class="op">=</span> <span class="ident">ct</span> <span class="op">+</span> <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>;
 
@@ -2364,7 +2392,7 @@
         <span class="macro">trace!</span>(<span class="string">&quot;cred_update_sessions.insert - {}&quot;</span>, <span class="ident">sessionid</span>);
 
         <span class="comment">// - issue the CredentialUpdateToken (enc)</span>
-        <span class="prelude-val">Ok</span>(<span class="ident">CredentialUpdateSessionToken</span> { <span class="ident">token_enc</span> })
+        <span class="prelude-val">Ok</span>((<span class="ident">CredentialUpdateSessionToken</span> { <span class="ident">token_enc</span> }, <span class="ident">status</span>))
     }
 
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">init_credential_update_intent</span>(
@@ -2452,7 +2480,7 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">token</span>: <span class="ident">CredentialUpdateIntentToken</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">CredentialUpdateSessionStatus</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">CredentialUpdateIntentToken</span> { <span class="ident">intent_id</span> } <span class="op">=</span> <span class="ident">token</span>;
 
         <span class="comment">/*
@@ -2629,7 +2657,7 @@
         <span class="kw-2">&amp;mut</span> <span class="self">self</span>,
         <span class="ident">event</span>: <span class="kw-2">&amp;</span><span class="ident">InitCredentialUpdateEvent</span>,
         <span class="ident">ct</span>: <span class="ident">Duration</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">CredentialUpdateSessionStatus</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="macro">spanned!</span>(<span class="string">&quot;idm::server::credupdatesession&lt;Init&gt;&quot;</span>, {
             <span class="kw">let</span> <span class="ident">account</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">validate_init_credential_update</span>(<span class="ident">event</span>.<span class="ident">target</span>, <span class="kw-2">&amp;</span><span class="ident">event</span>.<span class="ident">ident</span>)<span class="question-mark">?</span>;
 
@@ -3051,7 +3079,9 @@
 
         <span class="comment">// Are we in a totp reg state?</span>
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">mfaregstate</span> {
-            <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">totp_token</span>) <span class="op">|</span> <span class="ident">MfaRegState::TotpTryAgain</span>(<span class="ident">totp_token</span>) =&gt; {
+            <span class="ident">MfaRegState::TotpInit</span>(<span class="ident">totp_token</span>)
+            <span class="op">|</span> <span class="ident">MfaRegState::TotpTryAgain</span>(<span class="ident">totp_token</span>)
+            <span class="op">|</span> <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">totp_token</span>, <span class="kw">_</span>) =&gt; {
                 <span class="kw">if</span> <span class="ident">totp_token</span>.<span class="ident">verify</span>(<span class="ident">totp_chal</span>, <span class="kw-2">&amp;</span><span class="ident">ct</span>) {
                     <span class="comment">// It was valid. Update the credential.</span>
                     <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">session</span>
@@ -3077,7 +3107,8 @@
                     <span class="kw">if</span> <span class="ident">token_sha1</span>.<span class="ident">verify</span>(<span class="ident">totp_chal</span>, <span class="kw-2">&amp;</span><span class="ident">ct</span>) {
                         <span class="comment">// Greeeaaaaaatttt it&#39;s a broken app. Let&#39;s check the user</span>
                         <span class="comment">// knows this is broken, before we proceed.</span>
-                        <span class="ident">session</span>.<span class="ident">mfaregstate</span> <span class="op">=</span> <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">token_sha1</span>);
+                        <span class="ident">session</span>.<span class="ident">mfaregstate</span> <span class="op">=</span>
+                            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">totp_token</span>.<span class="ident">clone</span>(), <span class="ident">token_sha1</span>);
                         <span class="prelude-val">Ok</span>(<span class="ident">session</span>.<span class="ident">deref</span>().<span class="ident">into</span>())
                     } <span class="kw">else</span> {
                         <span class="comment">// Let them check again, it&#39;s a typo.</span>
@@ -3104,7 +3135,7 @@
 
         <span class="comment">// Are we in a totp reg state?</span>
         <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="ident">session</span>.<span class="ident">mfaregstate</span> {
-            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="ident">token_sha1</span>) =&gt; {
+            <span class="ident">MfaRegState::TotpInvalidSha1</span>(<span class="kw">_</span>, <span class="ident">token_sha1</span>) =&gt; {
                 <span class="comment">// They have accepted it as sha1</span>
                 <span class="kw">let</span> <span class="ident">ncred</span> <span class="op">=</span> <span class="ident">session</span>
                     .<span class="ident">primary</span>
@@ -3269,8 +3300,9 @@
 <span class="attribute">#[<span class="ident">cfg</span>(<span class="ident">test</span>)]</span>
 <span class="kw">mod</span> <span class="ident">tests</span> {
     <span class="kw">use</span> <span class="kw">super</span>::{
-        <span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">InitCredentialUpdateEvent</span>, <span class="ident">InitCredentialUpdateIntentEvent</span>,
-        <span class="ident">MfaRegStateStatus</span>, <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>, <span class="ident">MAXIMUM_INTENT_TTL</span>, <span class="ident">MINIMUM_INTENT_TTL</span>,
+        <span class="ident">CredentialUpdateSessionStatus</span>, <span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">InitCredentialUpdateEvent</span>,
+        <span class="ident">InitCredentialUpdateIntentEvent</span>, <span class="ident">MfaRegStateStatus</span>, <span class="ident">MAXIMUM_CRED_UPDATE_TTL</span>,
+        <span class="ident">MAXIMUM_INTENT_TTL</span>, <span class="ident">MINIMUM_INTENT_TTL</span>,
     };
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::totp::Totp</span>;
     <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::event</span>::{<span class="ident">AuthEvent</span>, <span class="ident">AuthResult</span>, <span class="ident">CreateEvent</span>};
@@ -3395,7 +3427,10 @@
         })
     }
 
-    <span class="kw">fn</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">CredentialUpdateSessionToken</span> {
+    <span class="kw">fn</span> <span class="ident">setup_test_session</span>(
+        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
+    ) -&gt; (<span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">CredentialUpdateSessionStatus</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
 
         <span class="kw">let</span> <span class="ident">e2</span> <span class="op">=</span> <span class="macro">entry_init!</span>(
@@ -3427,7 +3462,10 @@
         <span class="ident">cur</span>.<span class="ident">expect</span>(<span class="string">&quot;Failed to start update&quot;</span>)
     }
 
-    <span class="kw">fn</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>, <span class="ident">ct</span>: <span class="ident">Duration</span>) -&gt; <span class="ident">CredentialUpdateSessionToken</span> {
+    <span class="kw">fn</span> <span class="ident">renew_test_session</span>(
+        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
+        <span class="ident">ct</span>: <span class="ident">Duration</span>,
+    ) -&gt; (<span class="ident">CredentialUpdateSessionToken</span>, <span class="ident">CredentialUpdateSessionStatus</span>) {
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">proxy_write</span>(<span class="ident">ct</span>);
 
         <span class="kw">let</span> <span class="ident">testperson</span> <span class="op">=</span> <span class="ident">idms_prox_write</span>
@@ -3638,7 +3676,7 @@
                        <span class="ident">idms</span>: <span class="kw-2">&amp;</span><span class="ident">IdmServer</span>,
                        <span class="ident">_idms_delayed</span>: <span class="kw-2">&amp;mut</span> <span class="ident">IdmServerDelayed</span><span class="op">|</span> {
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
 
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
             <span class="comment">// The session exists</span>
@@ -3668,7 +3706,7 @@
             <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
 
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
@@ -3698,7 +3736,7 @@
             <span class="macro">assert!</span>(<span class="ident">check_testperson_password</span>(<span class="ident">idms</span>, <span class="ident">test_pw</span>, <span class="ident">ct</span>).<span class="ident">is_some</span>());
 
             <span class="comment">// Test deleting the pw</span>
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
             <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
@@ -3734,7 +3772,7 @@
             <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
             <span class="comment">// Setup the PW</span>
@@ -3793,7 +3831,7 @@
             <span class="comment">// No need to test delete of the whole cred, we already did with pw above.</span>
 
             <span class="comment">// If we remove TOTP, show it reverts back.</span>
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
             <span class="kw">let</span> <span class="ident">c_status</span> <span class="op">=</span> <span class="ident">cutxn</span>
@@ -3823,7 +3861,7 @@
             <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
             <span class="comment">// Setup the PW</span>
@@ -3894,7 +3932,7 @@
                     <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
                 <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-                <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
                 <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
                 <span class="comment">// Setup the PW</span>
@@ -3970,7 +4008,7 @@
                 <span class="macro">assert!</span>(<span class="ident">r</span>.<span class="ident">is_ok</span>());
 
                 <span class="comment">// Renew to start the next steps</span>
-                <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+                <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">renew_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
                 <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
                 <span class="comment">// Only 7 codes left.</span>
@@ -4033,7 +4071,7 @@
             <span class="kw">let</span> <span class="ident">test_pw</span> <span class="op">=</span> <span class="string">&quot;fo3EitierohF9AelaNgiem0Ei6vup4equo1Oogeevaetehah8Tobeengae3Ci0ooh0uki&quot;</span>;
             <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">Duration::from_secs</span>(<span class="ident">TEST_CURRENT_TIME</span>);
 
-            <span class="kw">let</span> <span class="ident">cust</span> <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
+            <span class="kw">let</span> (<span class="ident">cust</span>, <span class="kw">_</span>) <span class="op">=</span> <span class="ident">setup_test_session</span>(<span class="ident">idms</span>, <span class="ident">ct</span>);
             <span class="kw">let</span> <span class="ident">cutxn</span> <span class="op">=</span> <span class="ident">idms</span>.<span class="ident">cred_update_transaction</span>();
 
             <span class="comment">// Setup the PW</span>

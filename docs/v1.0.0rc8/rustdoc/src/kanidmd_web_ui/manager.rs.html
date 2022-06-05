@@ -104,6 +104,11 @@
 <span id="99">99</span>
 <span id="100">100</span>
 <span id="101">101</span>
+<span id="102">102</span>
+<span id="103">103</span>
+<span id="104">104</span>
+<span id="105">105</span>
+<span id="106">106</span>
 </pre><pre class="rust"><code><span class="doccomment">//! This is the top level router of the web ui for kanidm. It decides based on the incoming</span>
 <span class="doccomment">//! request, where to direct this too, and if the requirements for that request have been</span>
 <span class="doccomment">//! met before rendering. For example, if you land here with an oauth request, but you are</span>
@@ -116,6 +121,7 @@
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
 <span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
 
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::credential::reset::CredentialResetApp</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::login::LoginApp</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::oauth2::Oauth2App</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::views</span>::{<span class="ident">ViewRoute</span>, <span class="ident">ViewsApp</span>};
@@ -136,8 +142,11 @@
     <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/oauth2&quot;</span>)]</span>
     <span class="ident">Oauth2</span>,
 
+    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/reset&quot;</span>)]</span>
+    <span class="ident">CredentialReset</span>,
+
     <span class="attribute">#[<span class="ident">not_found</span>]</span>
-    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/404&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">at</span>(<span class="string">&quot;/ui/404&quot;</span>)]</span>
     <span class="ident">NotFound</span>,
 }
 
@@ -157,6 +166,7 @@
         <span class="ident">Route::Login</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">LoginApp</span> <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">Route::Oauth2</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">Oauth2App</span> <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">Route::Views</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">ViewsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
+        <span class="ident">Route::CredentialReset</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">CredentialResetApp</span> <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">Route::NotFound</span> =&gt; {
             <span class="macro">html!</span> {
                 <span class="op">&lt;</span><span class="ident">main</span><span class="op">&gt;</span>

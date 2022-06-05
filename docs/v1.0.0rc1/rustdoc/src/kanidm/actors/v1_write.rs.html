@@ -1567,6 +1567,16 @@
 <span id="1562">1562</span>
 <span id="1563">1563</span>
 <span id="1564">1564</span>
+<span id="1565">1565</span>
+<span id="1566">1566</span>
+<span id="1567">1567</span>
+<span id="1568">1568</span>
+<span id="1569">1569</span>
+<span id="1570">1570</span>
+<span id="1571">1571</span>
+<span id="1572">1572</span>
+<span id="1573">1573</span>
+<span id="1574">1574</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::iter</span>;
 <span class="kw">use</span> <span class="ident">std::sync::Arc</span>;
 <span class="kw">use</span> <span class="ident">std::time::Duration</span>;
@@ -1603,7 +1613,7 @@
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::Modify</span> <span class="kw">as</span> <span class="ident">ProtoModify</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1::ModifyList</span> <span class="kw">as</span> <span class="ident">ProtoModifyList</span>;
 <span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{
-    <span class="ident">AccountPersonSet</span>, <span class="ident">AccountUnixExtend</span>, <span class="ident">CUIntentToken</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CreateRequest</span>,
+    <span class="ident">AccountPersonSet</span>, <span class="ident">AccountUnixExtend</span>, <span class="ident">CUIntentToken</span>, <span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>, <span class="ident">CreateRequest</span>,
     <span class="ident">DeleteRequest</span>, <span class="ident">GroupUnixExtend</span>, <span class="ident">ModifyRequest</span>, <span class="ident">SetCredentialRequest</span>, <span class="ident">SetCredentialResponse</span>,
 };
 
@@ -2236,7 +2246,7 @@
         <span class="ident">uat</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
         <span class="ident">uuid_or_name</span>: <span class="ident">String</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_write_async</span>(<span class="ident">ct</span>).<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_write::handle&lt;IdmCredentialUpdate&gt;&quot;</span>, {
@@ -2266,8 +2276,13 @@
                     );
                     <span class="ident">e</span>
                 })
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">CUSessionToken</span> {
-                    <span class="ident">session_token</span>: <span class="ident">tok</span>.<span class="ident">token_enc</span>,
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">tok</span>, <span class="ident">sta</span>)<span class="op">|</span> {
+                    (
+                        <span class="ident">CUSessionToken</span> {
+                            <span class="ident">token</span>: <span class="ident">tok</span>.<span class="ident">token_enc</span>,
+                        },
+                        <span class="ident">sta</span>.<span class="ident">into</span>(),
+                    )
                 })
         });
         <span class="ident">res</span>
@@ -2319,7 +2334,7 @@
                     <span class="ident">e</span>
                 })
                 .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">CUIntentToken</span> {
-                    <span class="ident">intent_token</span>: <span class="ident">tok</span>.<span class="ident">intent_id</span>,
+                    <span class="ident">token</span>: <span class="ident">tok</span>.<span class="ident">intent_id</span>,
                 })
         });
         <span class="ident">res</span>
@@ -2335,12 +2350,12 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         <span class="ident">intent_token</span>: <span class="ident">CUIntentToken</span>,
         <span class="ident">eventid</span>: <span class="ident">Uuid</span>,
-    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">CUSessionToken</span>, <span class="ident">OperationError</span><span class="op">&gt;</span> {
+    ) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>), <span class="ident">OperationError</span><span class="op">&gt;</span> {
         <span class="kw">let</span> <span class="ident">ct</span> <span class="op">=</span> <span class="ident">duration_from_epoch_now</span>();
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_write_async</span>(<span class="ident">ct</span>).<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_write::handle&lt;IdmCredentialExchangeIntent&gt;&quot;</span>, {
             <span class="kw">let</span> <span class="ident">intent_token</span> <span class="op">=</span> <span class="ident">CredentialUpdateIntentToken</span> {
-                <span class="ident">intent_id</span>: <span class="ident">intent_token</span>.<span class="ident">intent_token</span>,
+                <span class="ident">intent_id</span>: <span class="ident">intent_token</span>.<span class="ident">token</span>,
             };
 
             <span class="ident">idms_prox_write</span>
@@ -2353,8 +2368,13 @@
                     );
                     <span class="ident">e</span>
                 })
-                .<span class="ident">map</span>(<span class="op">|</span><span class="ident">tok</span><span class="op">|</span> <span class="ident">CUSessionToken</span> {
-                    <span class="ident">session_token</span>: <span class="ident">tok</span>.<span class="ident">token_enc</span>,
+                .<span class="ident">map</span>(<span class="op">|</span>(<span class="ident">tok</span>, <span class="ident">sta</span>)<span class="op">|</span> {
+                    (
+                        <span class="ident">CUSessionToken</span> {
+                            <span class="ident">token</span>: <span class="ident">tok</span>.<span class="ident">token_enc</span>,
+                        },
+                        <span class="ident">sta</span>.<span class="ident">into</span>(),
+                    )
                 })
         });
         <span class="ident">res</span>
@@ -2375,7 +2395,7 @@
         <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">idms_prox_write</span> <span class="op">=</span> <span class="self">self</span>.<span class="ident">idms</span>.<span class="ident">proxy_write_async</span>(<span class="ident">ct</span>).<span class="kw">await</span>;
         <span class="kw">let</span> <span class="ident">res</span> <span class="op">=</span> <span class="macro">spanned!</span>(<span class="string">&quot;actors::v1_write::handle&lt;IdmCredentialUpdateCommit&gt;&quot;</span>, {
             <span class="kw">let</span> <span class="ident">session_token</span> <span class="op">=</span> <span class="ident">CredentialUpdateSessionToken</span> {
-                <span class="ident">token_enc</span>: <span class="ident">session_token</span>.<span class="ident">session_token</span>,
+                <span class="ident">token_enc</span>: <span class="ident">session_token</span>.<span class="ident">token</span>,
             };
 
             <span class="ident">idms_prox_write</span>

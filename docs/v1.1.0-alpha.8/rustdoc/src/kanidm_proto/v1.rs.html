@@ -990,6 +990,8 @@
 <span id="985">985</span>
 <span id="986">986</span>
 <span id="987">987</span>
+<span id="988">988</span>
+<span id="989">989</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
 <span class="kw">use</span> <span class="ident">std::cmp::Ordering</span>;
 <span class="kw">use</span> <span class="ident">std::collections::BTreeMap</span>;
@@ -1817,12 +1819,12 @@ pub struct AccountOrgPersonExtend {
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUIntentToken</span> {
-    <span class="kw">pub</span> <span class="ident">intent_token</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">PartialEq</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUSessionToken</span> {
-    <span class="kw">pub</span> <span class="ident">session_token</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
@@ -1856,7 +1858,7 @@ pub struct AccountOrgPersonExtend {
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">CURegState</span> {
     <span class="comment">// Nothing in progress.</span>
     <span class="prelude-val">None</span>,
@@ -1866,8 +1868,10 @@ pub struct AccountOrgPersonExtend {
     <span class="ident">BackupCodes</span>(<span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Clone</span>, <span class="ident">Serialize</span>, <span class="ident">Deserialize</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CUStatus</span> {
+    <span class="kw">pub</span> <span class="ident">spn</span>: <span class="ident">String</span>,
+    <span class="kw">pub</span> <span class="ident">displayname</span>: <span class="ident">String</span>,
     <span class="kw">pub</span> <span class="ident">can_commit</span>: <span class="ident">bool</span>,
     <span class="kw">pub</span> <span class="ident">primary</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">CredentialDetail</span><span class="op">&gt;</span>,
     <span class="kw">pub</span> <span class="ident">mfaregstate</span>: <span class="ident">CURegState</span>,

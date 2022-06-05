@@ -166,15 +166,135 @@
 <span id="161">161</span>
 <span id="162">162</span>
 <span id="163">163</span>
-</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
+<span id="164">164</span>
+<span id="165">165</span>
+<span id="166">166</span>
+<span id="167">167</span>
+<span id="168">168</span>
+<span id="169">169</span>
+<span id="170">170</span>
+<span id="171">171</span>
+<span id="172">172</span>
+<span id="173">173</span>
+<span id="174">174</span>
+<span id="175">175</span>
+<span id="176">176</span>
+<span id="177">177</span>
+<span id="178">178</span>
+<span id="179">179</span>
+<span id="180">180</span>
+<span id="181">181</span>
+<span id="182">182</span>
+<span id="183">183</span>
+<span id="184">184</span>
+<span id="185">185</span>
+<span id="186">186</span>
+<span id="187">187</span>
+<span id="188">188</span>
+<span id="189">189</span>
+<span id="190">190</span>
+<span id="191">191</span>
+<span id="192">192</span>
+<span id="193">193</span>
+<span id="194">194</span>
+<span id="195">195</span>
+<span id="196">196</span>
+<span id="197">197</span>
+<span id="198">198</span>
+<span id="199">199</span>
+<span id="200">200</span>
+<span id="201">201</span>
+<span id="202">202</span>
+<span id="203">203</span>
+<span id="204">204</span>
+<span id="205">205</span>
+<span id="206">206</span>
+<span id="207">207</span>
+<span id="208">208</span>
+<span id="209">209</span>
+<span id="210">210</span>
+<span id="211">211</span>
+<span id="212">212</span>
+<span id="213">213</span>
+<span id="214">214</span>
+<span id="215">215</span>
+<span id="216">216</span>
+<span id="217">217</span>
+<span id="218">218</span>
+<span id="219">219</span>
+<span id="220">220</span>
+<span id="221">221</span>
+<span id="222">222</span>
+<span id="223">223</span>
+<span id="224">224</span>
+<span id="225">225</span>
+<span id="226">226</span>
+<span id="227">227</span>
+<span id="228">228</span>
+<span id="229">229</span>
+<span id="230">230</span>
+<span id="231">231</span>
+<span id="232">232</span>
+<span id="233">233</span>
+<span id="234">234</span>
+<span id="235">235</span>
+<span id="236">236</span>
+<span id="237">237</span>
+<span id="238">238</span>
+<span id="239">239</span>
+<span id="240">240</span>
+<span id="241">241</span>
+<span id="242">242</span>
+<span id="243">243</span>
+<span id="244">244</span>
+<span id="245">245</span>
+<span id="246">246</span>
+<span id="247">247</span>
+<span id="248">248</span>
+<span id="249">249</span>
+<span id="250">250</span>
+<span id="251">251</span>
+<span id="252">252</span>
+<span id="253">253</span>
+<span id="254">254</span>
+<span id="255">255</span>
+<span id="256">256</span>
+<span id="257">257</span>
+<span id="258">258</span>
+<span id="259">259</span>
+<span id="260">260</span>
+<span id="261">261</span>
+<span id="262">262</span>
+<span id="263">263</span>
+<span id="264">264</span>
+<span id="265">265</span>
+<span id="266">266</span>
+<span id="267">267</span>
+<span id="268">268</span>
+<span id="269">269</span>
+<span id="270">270</span>
+<span id="271">271</span>
+<span id="272">272</span>
+<span id="273">273</span>
+<span id="274">274</span>
+<span id="275">275</span>
+<span id="276">276</span>
+<span id="277">277</span>
+<span id="278">278</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::error</span>::<span class="kw-2">*</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::models</span>;
+<span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::utils</span>;
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
-<span class="kw">use</span> <span class="ident">wasm_bindgen::UnwrapThrowExt</span>;
 <span class="kw">use</span> <span class="ident">yew::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::manager::Route</span>;
 <span class="kw">use</span> <span class="ident">yew_router::prelude</span>::<span class="kw-2">*</span>;
 
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+<span class="kw">use</span> <span class="ident">wasm_bindgen</span>::{<span class="ident">JsCast</span>, <span class="ident">JsValue</span>, <span class="ident">UnwrapThrowExt</span>};
+<span class="kw">use</span> <span class="ident">wasm_bindgen_futures::JsFuture</span>;
+<span class="kw">use</span> <span class="ident">web_sys</span>::{<span class="ident">Request</span>, <span class="ident">RequestInit</span>, <span class="ident">RequestMode</span>, <span class="ident">Response</span>};
 
 <span class="kw">mod</span> <span class="ident">apps</span>;
 <span class="kw">mod</span> <span class="ident">components</span>;
@@ -198,7 +318,14 @@
 
 <span class="kw">enum</span> <span class="ident">State</span> {
     <span class="ident">LoginRequired</span>,
+    <span class="ident">Verifying</span>,
     <span class="ident">Authenticated</span>(<span class="ident">String</span>),
+    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">PartialEq</span>, <span class="ident">Properties</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ViewProps</span> {
+    <span class="kw">pub</span> <span class="ident">token</span>: <span class="ident">String</span>,
 }
 
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ViewsApp</span> {
@@ -206,14 +333,30 @@
 }
 
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">ViewsMsg</span> {
+    <span class="ident">Verified</span>(<span class="ident">String</span>),
     <span class="ident">Logout</span>,
+    <span class="ident">Error</span> { <span class="ident">emsg</span>: <span class="ident">String</span>, <span class="ident">kopid</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> },
+}
+
+<span class="kw">impl</span> <span class="ident">From</span><span class="op">&lt;</span><span class="ident">FetchError</span><span class="op">&gt;</span> <span class="kw">for</span> <span class="ident">ViewsMsg</span> {
+    <span class="kw">fn</span> <span class="ident">from</span>(<span class="ident">fe</span>: <span class="ident">FetchError</span>) -&gt; <span class="self">Self</span> {
+        <span class="ident">ViewsMsg::Error</span> {
+            <span class="ident">emsg</span>: <span class="ident">fe</span>.<span class="ident">as_string</span>(),
+            <span class="ident">kopid</span>: <span class="prelude-val">None</span>,
+        }
+    }
 }
 
 <span class="kw">fn</span> <span class="ident">switch</span>(<span class="ident">route</span>: <span class="kw-2">&amp;</span><span class="ident">ViewRoute</span>) -&gt; <span class="ident">Html</span> {
     <span class="macro">console::log!</span>(<span class="string">&quot;views::switch&quot;</span>);
+
+    <span class="comment">// safety - can&#39;t panic because to get to this location we MUST be authenticated!</span>
+    <span class="kw">let</span> <span class="ident">token</span> <span class="op">=</span>
+        <span class="ident">models::get_bearer_token</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid state, bearer token must be present!&quot;</span>);
+
     <span class="kw">match</span> <span class="ident">route</span> {
         <span class="ident">ViewRoute::Apps</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">AppsApp</span> <span class="op">/</span><span class="op">&gt;</span> },
-        <span class="ident">ViewRoute::Security</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">SecurityApp</span> <span class="op">/</span><span class="op">&gt;</span> },
+        <span class="ident">ViewRoute::Security</span> =&gt; <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">SecurityApp</span> <span class="ident">token</span><span class="op">=</span>{ <span class="ident">token</span> } <span class="op">/</span><span class="op">&gt;</span> },
         <span class="ident">ViewRoute::NotFound</span> =&gt; <span class="macro">html!</span> {
             <span class="op">&lt;</span><span class="ident">Redirect</span><span class="op">&lt;</span><span class="ident">Route</span><span class="op">&gt;</span> <span class="ident">to</span><span class="op">=</span>{<span class="ident">Route::NotFound</span>}<span class="op">/</span><span class="op">&gt;</span>
         },
@@ -224,12 +367,26 @@
     <span class="kw">type</span> <span class="ident">Message</span> <span class="op">=</span> <span class="ident">ViewsMsg</span>;
     <span class="kw">type</span> <span class="ident">Properties</span> <span class="op">=</span> ();
 
-    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
+    <span class="kw">fn</span> <span class="ident">create</span>(<span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="self">Self</span> {
         <span class="macro">console::log!</span>(<span class="string">&quot;views::create&quot;</span>);
 
-        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="ident">models::get_bearer_token</span>()
-            .<span class="ident">map</span>(<span class="ident">State::Authenticated</span>)
-            .<span class="ident">unwrap_or</span>(<span class="ident">State::LoginRequired</span>);
+        <span class="comment">// Ensure the token is valid before we proceed. Could be</span>
+        <span class="comment">// due to a session expiry or something else, but we want to make</span>
+        <span class="comment">// sure we are really authenticated before we proceed.</span>
+        <span class="kw">let</span> <span class="ident">state</span> <span class="op">=</span> <span class="kw">match</span> <span class="ident">models::get_bearer_token</span>() {
+            <span class="prelude-val">Some</span>(<span class="ident">token</span>) =&gt; {
+                <span class="comment">// Send off the validation event.</span>
+                <span class="ident">ctx</span>.<span class="ident">link</span>().<span class="ident">send_future</span>(<span class="kw">async</span> {
+                    <span class="kw">match</span> <span class="ident"><span class="self">Self</span>::check_token_valid</span>(<span class="ident">token</span>).<span class="kw">await</span> {
+                        <span class="prelude-val">Ok</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>,
+                        <span class="prelude-val">Err</span>(<span class="ident">v</span>) =&gt; <span class="ident">v</span>.<span class="ident">into</span>(),
+                    }
+                });
+
+                <span class="ident">State::Verifying</span>
+            }
+            <span class="prelude-val">None</span> =&gt; <span class="ident">State::LoginRequired</span>,
+        };
 
         <span class="ident">ViewsApp</span> { <span class="ident">state</span> }
     }
@@ -242,9 +399,17 @@
     <span class="kw">fn</span> <span class="ident">update</span>(<span class="kw-2">&amp;mut</span> <span class="self">self</span>, <span class="ident">_ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>, <span class="ident">msg</span>: <span class="ident"><span class="self">Self</span>::Message</span>) -&gt; <span class="ident">bool</span> {
         <span class="macro">console::log!</span>(<span class="string">&quot;views::update&quot;</span>);
         <span class="kw">match</span> <span class="ident">msg</span> {
+            <span class="ident">ViewsMsg::Verified</span>(<span class="ident">token</span>) =&gt; {
+                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Authenticated</span>(<span class="ident">token</span>);
+                <span class="bool-val">true</span>
+            }
             <span class="ident">ViewsMsg::Logout</span> =&gt; {
                 <span class="ident">models::clear_bearer_token</span>();
                 <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::LoginRequired</span>;
+                <span class="bool-val">true</span>
+            }
+            <span class="ident">ViewsMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
+                <span class="self">self</span>.<span class="ident">state</span> <span class="op">=</span> <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> };
                 <span class="bool-val">true</span>
             }
         }
@@ -255,7 +420,7 @@
     }
 
     <span class="kw">fn</span> <span class="ident">view</span>(<span class="kw-2">&amp;</span><span class="self">self</span>, <span class="ident">ctx</span>: <span class="kw-2">&amp;</span><span class="ident">Context</span><span class="op">&lt;</span><span class="self">Self</span><span class="op">&gt;</span>) -&gt; <span class="ident">Html</span> {
-        <span class="kw">match</span> <span class="self">self</span>.<span class="ident">state</span> {
+        <span class="kw">match</span> <span class="kw-2">&amp;</span><span class="self">self</span>.<span class="ident">state</span> {
             <span class="ident">State::LoginRequired</span> =&gt; {
                 <span class="comment">// Where are we?</span>
                 <span class="kw">let</span> <span class="ident">loc</span> <span class="op">=</span> <span class="ident">ctx</span>
@@ -274,7 +439,37 @@
                     .<span class="ident">push</span>(<span class="ident">Route::Login</span>);
                 <span class="macro">html!</span> { <span class="op">&lt;</span><span class="ident">div</span><span class="op">&gt;</span><span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span> }
             }
+            <span class="ident">State::Verifying</span> =&gt; {
+                <span class="macro">html!</span> {
+                  <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;text-center form-signin h-100&quot;</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;vert-center&quot;</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;spinner-border text-dark&quot;</span> <span class="ident">role</span><span class="op">=</span><span class="string">&quot;status&quot;</span><span class="op">&gt;</span>
+                        <span class="op">&lt;</span><span class="ident">span</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;visually-hidden&quot;</span><span class="op">&gt;</span>{ <span class="string">&quot;Loading...&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">span</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
+                }
+            }
             <span class="ident">State::Authenticated</span>(<span class="kw">_</span>) =&gt; <span class="self">self</span>.<span class="ident">view_authenticated</span>(<span class="ident">ctx</span>),
+            <span class="ident">State::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> } =&gt; {
+                <span class="macro">html!</span> {
+                  <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
+                      <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;An Error Occured 🥺&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>{ <span class="ident">emsg</span>.<span class="ident">to_string</span>() }<span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">p</span><span class="op">&gt;</span>
+                        {
+                            <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Some</span>(<span class="ident">opid</span>) <span class="op">=</span> <span class="ident">kopid</span>.<span class="ident">as_ref</span>() {
+                                <span class="macro">format!</span>(<span class="string">&quot;Operation ID: {}&quot;</span>, <span class="ident">opid</span>)
+                            } <span class="kw">else</span> {
+                                <span class="string">&quot;Local Error&quot;</span>.<span class="ident">to_string</span>()
+                            }
+                        }
+                    <span class="op">&lt;</span><span class="op">/</span><span class="ident">p</span><span class="op">&gt;</span>
+                  <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
+                }
+            }
         }
     }
 }
@@ -327,6 +522,41 @@
           <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
         <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
           }
+    }
+
+    <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">check_token_valid</span>(<span class="ident">token</span>: <span class="ident">String</span>) -&gt; <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">ViewsMsg</span>, <span class="ident">FetchError</span><span class="op">&gt;</span> {
+        <span class="kw">let</span> <span class="kw-2">mut</span> <span class="ident">opts</span> <span class="op">=</span> <span class="ident">RequestInit::new</span>();
+        <span class="ident">opts</span>.<span class="ident">method</span>(<span class="string">&quot;GET&quot;</span>);
+        <span class="ident">opts</span>.<span class="ident">mode</span>(<span class="ident">RequestMode::SameOrigin</span>);
+
+        <span class="kw">let</span> <span class="ident">request</span> <span class="op">=</span> <span class="ident">Request::new_with_str_and_init</span>(<span class="string">&quot;/v1/auth/valid&quot;</span>, <span class="kw-2">&amp;</span><span class="ident">opts</span>)<span class="question-mark">?</span>;
+
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;content-type&quot;</span>, <span class="string">&quot;application/json&quot;</span>)
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+        <span class="ident">request</span>
+            .<span class="ident">headers</span>()
+            .<span class="ident">set</span>(<span class="string">&quot;authorization&quot;</span>, <span class="macro">format!</span>(<span class="string">&quot;Bearer {}&quot;</span>, <span class="ident">token</span>).<span class="ident">as_str</span>())
+            .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set header&quot;</span>);
+
+        <span class="kw">let</span> <span class="ident">window</span> <span class="op">=</span> <span class="ident">utils::window</span>();
+        <span class="kw">let</span> <span class="ident">resp_value</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">window</span>.<span class="ident">fetch_with_request</span>(<span class="kw-2">&amp;</span><span class="ident">request</span>)).<span class="kw">await</span><span class="question-mark">?</span>;
+        <span class="kw">let</span> <span class="ident">resp</span>: <span class="ident">Response</span> <span class="op">=</span> <span class="ident">resp_value</span>.<span class="ident">dyn_into</span>().<span class="ident">expect_throw</span>(<span class="string">&quot;Invalid response type&quot;</span>);
+        <span class="kw">let</span> <span class="ident">status</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">status</span>();
+
+        <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">200</span> {
+            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Verified</span>(<span class="ident">token</span>))
+        } <span class="kw">else</span> <span class="kw">if</span> <span class="ident">status</span> <span class="op">==</span> <span class="number">401</span> {
+            <span class="comment">// Not valid, re-auth</span>
+            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Logout</span>)
+        } <span class="kw">else</span> {
+            <span class="kw">let</span> <span class="ident">headers</span> <span class="op">=</span> <span class="ident">resp</span>.<span class="ident">headers</span>();
+            <span class="kw">let</span> <span class="ident">kopid</span> <span class="op">=</span> <span class="ident">headers</span>.<span class="ident">get</span>(<span class="string">&quot;x-kanidm-opid&quot;</span>).<span class="ident">ok</span>().<span class="ident">flatten</span>();
+            <span class="kw">let</span> <span class="ident">text</span> <span class="op">=</span> <span class="ident">JsFuture::from</span>(<span class="ident">resp</span>.<span class="ident">text</span>()<span class="question-mark">?</span>).<span class="kw">await</span><span class="question-mark">?</span>;
+            <span class="kw">let</span> <span class="ident">emsg</span> <span class="op">=</span> <span class="ident">text</span>.<span class="ident">as_string</span>().<span class="ident">unwrap_or_else</span>(<span class="op">|</span><span class="op">|</span> <span class="string">&quot;&quot;</span>.<span class="ident">to_string</span>());
+            <span class="prelude-val">Ok</span>(<span class="ident">ViewsMsg::Error</span> { <span class="ident">emsg</span>, <span class="ident">kopid</span> })
+        }
     }
 }
 </code></pre></div>

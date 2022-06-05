@@ -79,6 +79,19 @@
 <span id="74">74</span>
 <span id="75">75</span>
 <span id="76">76</span>
+<span id="77">77</span>
+<span id="78">78</span>
+<span id="79">79</span>
+<span id="80">80</span>
+<span id="81">81</span>
+<span id="82">82</span>
+<span id="83">83</span>
+<span id="84">84</span>
+<span id="85">85</span>
+<span id="86">86</span>
+<span id="87">87</span>
+<span id="88">88</span>
+<span id="89">89</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">kanidm_proto::oauth2::AuthorisationRequest</span>;
 
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
@@ -91,6 +104,8 @@
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::manager::Route</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::views::ViewRoute</span>;
 <span class="kw">use</span> <span class="ident">serde</span>::{<span class="ident">Deserialize</span>, <span class="ident">Serialize</span>};
+
+<span class="kw">use</span> <span class="ident">kanidm_proto::v1</span>::{<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>};
 
 <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">get_bearer_token</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span> {
     <span class="kw">let</span> <span class="ident">prev_session</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">PersistentStorage::get</span>(<span class="string">&quot;kanidm_bearer_token&quot;</span>);
@@ -153,6 +168,17 @@
     <span class="kw">let</span> <span class="ident">l</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span><span class="ident">String</span>, <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">TemporaryStorage::get</span>(<span class="string">&quot;login_hint&quot;</span>);
     <span class="macro">console::log!</span>(<span class="macro">format!</span>(<span class="string">&quot;login_hint -&gt; {:?}&quot;</span>, <span class="ident">l</span>).<span class="ident">as_str</span>());
     <span class="ident">TemporaryStorage::delete</span>(<span class="string">&quot;login_hint&quot;</span>);
+    <span class="ident">l</span>.<span class="ident">ok</span>()
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">push_cred_update_session</span>(<span class="ident">s</span>: (<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>)) {
+    <span class="ident">TemporaryStorage::set</span>(<span class="string">&quot;cred_update_session&quot;</span>, <span class="ident">s</span>)
+        .<span class="ident">expect_throw</span>(<span class="string">&quot;failed to set cred session token&quot;</span>);
+}
+
+<span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">pop_cred_update_session</span>() -&gt; <span class="prelude-ty">Option</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>)<span class="op">&gt;</span> {
+    <span class="kw">let</span> <span class="ident">l</span>: <span class="prelude-ty">Result</span><span class="op">&lt;</span>(<span class="ident">CUSessionToken</span>, <span class="ident">CUStatus</span>), <span class="kw">_</span><span class="op">&gt;</span> <span class="op">=</span> <span class="ident">TemporaryStorage::get</span>(<span class="string">&quot;cred_update_session&quot;</span>);
+    <span class="ident">TemporaryStorage::delete</span>(<span class="string">&quot;cred_update_session&quot;</span>);
     <span class="ident">l</span>.<span class="ident">ok</span>()
 }
 </code></pre></div>
