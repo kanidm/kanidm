@@ -237,7 +237,7 @@ We recommend you have the following before continuing:
     kubectl delete namespace kanidm-example
     ```
 
-2. Remove the objects create for this example from Kanidm:
+2. Remove the objects created for this example from Kanidm:
    1. Delete the account created in section Instructions step 1.
    2. Delete the group created in section Instructions step 2.
    3. Delete the OAuth2 resource created in section Instructions step 3.
