@@ -1,6 +1,6 @@
 use crate::error::*;
-use crate::utils;
 use crate::models;
+use crate::utils;
 
 use gloo::console;
 use yew::prelude::*;
@@ -8,18 +8,17 @@ use yew_agent::{Bridge, Bridged};
 use yew_router::prelude::*;
 
 use kanidm_proto::v1::{
-    CUIntentToken, CUSessionToken, CUStatus, CredentialDetail,
-    CredentialDetailType
+    CUIntentToken, CUSessionToken, CUStatus, CredentialDetail, CredentialDetailType,
 };
 
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
+use super::delete::DeleteApp;
 use super::eventbus::{EventBus, EventBusMsg};
 use super::pwmodal::PwModalApp;
 use super::totpmodal::TotpModalApp;
-use super::delete::DeleteApp;
 
 #[derive(PartialEq, Properties)]
 pub struct ModalProps {
@@ -84,7 +83,6 @@ impl Component for CredentialResetApp {
 
         // Where did we come from?
 
-
         // Inject our class to centre everything.
         if let Err(e) = crate::utils::body().class_list().add_1("form-signin-body") {
             console::log!(format!("class_list add error -> {:?}", e));
@@ -121,17 +119,13 @@ impl Component for CredentialResetApp {
                 });
                 State::WaitingForStatus
             }
-            (None, Some((token, status))) => {
-                State::Main { token, status }
-            }
-            (None, None) =>
-                State::TokenInput,
-            (Some(_), Some(_)) => {
-                State::Error {
-                    emsg: "Invalid State - Reset link and memory session both are available!".to_string(),
-                    kopid: None,
-                }
-            }
+            (None, Some((token, status))) => State::Main { token, status },
+            (None, None) => State::TokenInput,
+            (Some(_), Some(_)) => State::Error {
+                emsg: "Invalid State - Reset link and memory session both are available!"
+                    .to_string(),
+                kopid: None,
+            },
         };
 
         let eventbus = EventBus::bridge(ctx.link().callback(|req| match req {
@@ -301,6 +295,7 @@ impl CredentialResetApp {
                 html! {
                     <>
                       <p>{ "Password Set" }</p>
+                      <p>{ "Mfa Disabled" }</p>
 
                       <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
                         { "Add TOTP" }
@@ -342,10 +337,15 @@ impl CredentialResetApp {
             }) => {
                 html! {
                     <>
-                      <p>{ "Mfa" }</p>
+                      <p>{ "Password Set" }</p>
+                      <p>{ "Mfa Enabled" }</p>
+
+                      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#staticTotpCreate">
+                        { "Reset TOTP" }
+                      </button>
 
                       <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
-                        { "Delete this Password" }
+                        { "Delete this MFA Credential" }
                       </button>
                     </>
                 }
@@ -426,7 +426,7 @@ impl CredentialResetApp {
           </div>
         }
 
-            // <DelPrimaryModalApp token={ token.clone() }/>
+        // <DelPrimaryModalApp token={ token.clone() }/>
     }
 
     fn view_error(&self, _ctx: &Context<Self>, msg: &str, kopid: Option<&str>) -> Html {

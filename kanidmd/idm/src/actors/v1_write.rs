@@ -697,9 +697,14 @@ impl QueryServerWriteV1 {
                     );
                     e
                 })
-                .map(|(tok, sta) | (CUSessionToken {
-                    token: tok.token_enc,
-                }, sta.into()))
+                .map(|(tok, sta)| {
+                    (
+                        CUSessionToken {
+                            token: tok.token_enc,
+                        },
+                        sta.into(),
+                    )
+                })
         });
         res
     }
@@ -784,9 +789,14 @@ impl QueryServerWriteV1 {
                     );
                     e
                 })
-                .map(|(tok, sta) | (CUSessionToken {
-                    token: tok.token_enc,
-                }, sta.into()))
+                .map(|(tok, sta)| {
+                    (
+                        CUSessionToken {
+                            token: tok.token_enc,
+                        },
+                        sta.into(),
+                    )
+                })
         });
         res
     }

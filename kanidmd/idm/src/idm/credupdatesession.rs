@@ -290,8 +290,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         intent_token_id: Option<String>,
         account: Account,
         ct: Duration,
-    ) -> Result<
-    (CredentialUpdateSessionToken, CredentialUpdateSessionStatus ), OperationError> {
+    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         // - stash the current state of all associated credentials
         let primary = account.primary.clone();
         // - store account policy (if present)
@@ -305,7 +304,6 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         let status: CredentialUpdateSessionStatus = (&session).into();
 
         let session = Arc::new(Mutex::new(session));
-
 
         let max_ttl = ct + MAXIMUM_CRED_UPDATE_TTL;
 
@@ -416,7 +414,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         token: CredentialUpdateIntentToken,
         ct: Duration,
-    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus ), OperationError> {
+    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         let CredentialUpdateIntentToken { intent_id } = token;
 
         /*
@@ -593,7 +591,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         &mut self,
         event: &InitCredentialUpdateEvent,
         ct: Duration,
-    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus ), OperationError> {
+    ) -> Result<(CredentialUpdateSessionToken, CredentialUpdateSessionStatus), OperationError> {
         spanned!("idm::server::credupdatesession<Init>", {
             let account = self.validate_init_credential_update(event.target, &event.ident)?;
 
@@ -1015,9 +1013,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 
         // Are we in a totp reg state?
         match &session.mfaregstate {
-            MfaRegState::TotpInit(totp_token) | MfaRegState::TotpTryAgain(totp_token) |
-            MfaRegState::TotpInvalidSha1(totp_token, _)
-            => {
+            MfaRegState::TotpInit(totp_token)
+            | MfaRegState::TotpTryAgain(totp_token)
+            | MfaRegState::TotpInvalidSha1(totp_token, _) => {
                 if totp_token.verify(totp_chal, &ct) {
                     // It was valid. Update the credential.
                     let ncred = session
@@ -1043,7 +1041,8 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
                     if token_sha1.verify(totp_chal, &ct) {
                         // Greeeaaaaaatttt it's a broken app. Let's check the user
                         // knows this is broken, before we proceed.
-                        session.mfaregstate = MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);
+                        session.mfaregstate =
+                            MfaRegState::TotpInvalidSha1(totp_token.clone(), token_sha1);
                         Ok(session.deref().into())
                     } else {
                         // Let them check again, it's a typo.
@@ -1235,8 +1234,9 @@ impl<'a> IdmServerCredUpdateTransaction<'a> {
 #[cfg(test)]
 mod tests {
     use super::{
-        CredentialUpdateSessionToken, CredentialUpdateSessionStatus, InitCredentialUpdateEvent, InitCredentialUpdateIntentEvent,
-        MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL, MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
+        CredentialUpdateSessionStatus, CredentialUpdateSessionToken, InitCredentialUpdateEvent,
+        InitCredentialUpdateIntentEvent, MfaRegStateStatus, MAXIMUM_CRED_UPDATE_TTL,
+        MAXIMUM_INTENT_TTL, MINIMUM_INTENT_TTL,
     };
     use crate::credential::totp::Totp;
     use crate::event::{AuthEvent, AuthResult, CreateEvent};
@@ -1361,7 +1361,10 @@ mod tests {
         })
     }
 
-    fn setup_test_session(idms: &IdmServer, ct: Duration) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus)  {
+    fn setup_test_session(
+        idms: &IdmServer,
+        ct: Duration,
+    ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
         let mut idms_prox_write = idms.proxy_write(ct);
 
         let e2 = entry_init!(
@@ -1393,7 +1396,10 @@ mod tests {
         cur.expect("Failed to start update")
     }
 
-    fn renew_test_session(idms: &IdmServer, ct: Duration) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
+    fn renew_test_session(
+        idms: &IdmServer,
+        ct: Duration,
+    ) -> (CredentialUpdateSessionToken, CredentialUpdateSessionStatus) {
         let mut idms_prox_write = idms.proxy_write(ct);
 
         let testperson = idms_prox_write

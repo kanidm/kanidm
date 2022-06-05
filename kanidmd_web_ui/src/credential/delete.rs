@@ -13,7 +13,9 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
-use kanidm_proto::v1::{CURequest, CURegState, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret};
+use kanidm_proto::v1::{
+    CURegState, CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret,
+};
 
 enum State {
     Init,
@@ -75,7 +77,9 @@ impl DeleteApp {
             let jsval = JsFuture::from(resp.json()?).await?;
             let status: CUStatus = jsval.into_serde().expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus { status: status.clone() });
+            EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
+                status: status.clone(),
+            });
 
             Ok(Msg::Success)
         } else {
@@ -93,9 +97,7 @@ impl Component for DeleteApp {
     fn create(ctx: &Context<Self>) -> Self {
         console::log!("delete modal create");
 
-        DeleteApp {
-            state: State::Init,
-        }
+        DeleteApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -193,5 +195,3 @@ impl Component for DeleteApp {
         }
     }
 }
-
-

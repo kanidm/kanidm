@@ -13,8 +13,10 @@ use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
 use web_sys::{Request, RequestInit, RequestMode, Response};
 
+use kanidm_proto::v1::{
+    CURegState, CURequest, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret,
+};
 use qrcode::{render::svg, QrCode};
-use kanidm_proto::v1::{CURequest, CURegState, CUSessionToken, CUStatus, OperationError, PasswordFeedback, TotpSecret};
 
 enum TotpState {
     Init,
@@ -24,7 +26,7 @@ enum TotpState {
 enum TotpCheck {
     Init,
     Invalid,
-    Sha1Accept
+    Sha1Accept,
 }
 
 enum TotpValue {
@@ -96,24 +98,19 @@ impl TotpModalApp {
             let jsval = JsFuture::from(resp.json()?).await?;
             let status: CUStatus = jsval.into_serde().expect_throw("Invalid response type");
 
-            EventBus::dispatcher().send(EventBusMsg::UpdateStatus { status: status.clone() });
+            EventBus::dispatcher().send(EventBusMsg::UpdateStatus {
+                status: status.clone(),
+            });
 
             Ok(match status.mfaregstate {
-                CURegState::BackupCodes(_) => {
-                    Msg::Error { emsg: "Invalid TOTP mfa reg state response".to_string(), kopid }
-                }
-                CURegState::None => {
-                    Msg::TotpSuccess
-                }
-                CURegState::TotpCheck(secret) => {
-                    Msg::TotpSecretReady(secret)
-                }
-                CURegState::TotpTryAgain => {
-                    Msg::TotpTryAgain
-                }
-                CURegState::TotpInvalidSha1 => {
-                    Msg::TotpInvalidSha1
-                }
+                CURegState::BackupCodes(_) => Msg::Error {
+                    emsg: "Invalid TOTP mfa reg state response".to_string(),
+                    kopid,
+                },
+                CURegState::None => Msg::TotpSuccess,
+                CURegState::TotpCheck(secret) => Msg::TotpSecretReady(secret),
+                CURegState::TotpTryAgain => Msg::TotpTryAgain,
+                CURegState::TotpInvalidSha1 => Msg::TotpInvalidSha1,
             })
         } else {
             let text = JsFuture::from(resp.text()?).await?;
@@ -176,7 +173,9 @@ impl Component for TotpModalApp {
                 match totp.trim().parse::<u32>() {
                     Ok(totp) => {
                         ctx.link().send_future(async move {
-                            match Self::submit_totp_update(token_c, CURequest::TotpVerify(totp)).await {
+                            match Self::submit_totp_update(token_c, CURequest::TotpVerify(totp))
+                                .await
+                            {
                                 Ok(v) => v,
                                 Err(v) => v.into(),
                             }
@@ -242,9 +241,7 @@ impl Component for TotpModalApp {
         console::log!("totp modal::view");
 
         let totp_class = match &self.check {
-            TotpCheck::Invalid |
-            TotpCheck::Sha1Accept
-            => classes!("form-control", "is-invalid"),
+            TotpCheck::Invalid | TotpCheck::Sha1Accept => classes!("form-control", "is-invalid"),
             _ => classes!("form-control"),
         };
 
@@ -283,7 +280,6 @@ impl Component for TotpModalApp {
                 >{ "Submit" }</button>
             },
         };
-
 
         let totp_secret_state = match &self.secret {
             TotpValue::Init => {

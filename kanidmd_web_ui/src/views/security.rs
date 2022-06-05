@@ -1,19 +1,17 @@
 use crate::error::*;
-use crate::utils;
 use crate::models;
+use crate::utils;
 
 use crate::manager::Route;
-use crate::views::{ViewRoute, ViewProps};
+use crate::views::{ViewProps, ViewRoute};
 
-use std::str::FromStr;
 use compact_jwt::{Jws, JwsUnverified};
 use gloo::console;
+use std::str::FromStr;
 use yew::prelude::*;
 use yew_router::prelude::*;
 
-use kanidm_proto::v1::{
-    CUSessionToken, CUStatus, UserAuthToken
-};
+use kanidm_proto::v1::{CUSessionToken, CUStatus, UserAuthToken};
 
 use wasm_bindgen::{JsCast, JsValue, UnwrapThrowExt};
 use wasm_bindgen_futures::JsFuture;
@@ -22,8 +20,14 @@ use web_sys::{Request, RequestInit, RequestMode, Response};
 pub enum Msg {
     // Nothing
     RequestCredentialUpdate,
-    BeginCredentialUpdate { token: CUSessionToken, status: CUStatus },
-    Error { emsg: String, kopid: Option<String> },
+    BeginCredentialUpdate {
+        token: CUSessionToken,
+        status: CUStatus,
+    },
+    Error {
+        emsg: String,
+        kopid: Option<String>,
+    },
 }
 
 impl From<FetchError> for Msg {
@@ -51,9 +55,7 @@ impl Component for SecurityApp {
 
     fn create(_ctx: &Context<Self>) -> Self {
         console::log!("views::security::create");
-        SecurityApp {
-            state: State::Init
-        }
+        SecurityApp { state: State::Init }
     }
 
     fn changed(&mut self, _ctx: &Context<Self>) -> bool {
@@ -69,8 +71,8 @@ impl Component for SecurityApp {
                 // The uuid we want to submit against - hint, it's us.
                 let token = ctx.props().token.clone();
 
-                let jwtu = JwsUnverified::from_str(&token)
-                    .expect_throw("Invalid UAT, unable to parse");
+                let jwtu =
+                    JwsUnverified::from_str(&token).expect_throw("Invalid UAT, unable to parse");
 
                 let uat: Jws<UserAuthToken> = jwtu
                     .unsafe_release_without_verification()
@@ -114,8 +116,7 @@ impl Component for SecurityApp {
 
     fn view(&self, ctx: &Context<Self>) -> Html {
         let submit_enabled = match self.state {
-            State::Init |
-            State::Error { .. } => true,
+            State::Init | State::Error { .. } => true,
             State::Waiting => false,
         };
 
@@ -125,14 +126,14 @@ impl Component for SecurityApp {
                     Some(k) => format!("An error occured - {} - {}", emsg, k),
                     None => format!("An error occured - {} - No Operation ID", emsg),
                 };
-                html!{
+                html! {
                   <div class="alert alert-danger alert-dismissible fade show" role="alert">
                     { message }
                     <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
                   </div>
                 }
             }
-            _ => html!{ <></> },
+            _ => html! { <></> },
         };
 
         html! {
@@ -199,5 +200,3 @@ impl SecurityApp {
         }
     }
 }
-
-

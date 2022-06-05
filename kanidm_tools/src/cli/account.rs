@@ -394,7 +394,9 @@ impl AccountCredential {
                     .idm_account_credential_update_begin(aopt.aopts.account_id.as_str())
                     .await
                 {
-                    Ok((cusession_token, custatus)) => credential_update_exec(cusession_token, custatus, client).await,
+                    Ok((cusession_token, custatus)) => {
+                        credential_update_exec(cusession_token, custatus, client).await
+                    }
                     Err(e) => {
                         error!("Error starting credential update -> {:?}", e);
                     }
@@ -410,7 +412,9 @@ impl AccountCredential {
                     .idm_account_credential_update_exchange(cuintent_token)
                     .await
                 {
-                    Ok((cusession_token, custatus)) => credential_update_exec(cusession_token, custatus, client).await,
+                    Ok((cusession_token, custatus)) => {
+                        credential_update_exec(cusession_token, custatus, client).await
+                    }
                     Err(e) => {
                         error!("Error starting credential reset -> {:?}", e);
                     }
@@ -427,10 +431,13 @@ impl AccountCredential {
                     Ok(cuintent_token) => {
                         let mut url = Url::parse(client.get_url()).expect("Invalid server url.");
                         url.set_path("/ui/reset");
-                        url.query_pairs_mut().append_pair("token", cuintent_token.token.as_str());
+                        url.query_pairs_mut()
+                            .append_pair("token", cuintent_token.token.as_str());
 
                         println!("success!");
-                        println!("Send the person one of the following to allow the credential reset");
+                        println!(
+                            "Send the person one of the following to allow the credential reset"
+                        );
                         println!("scan:");
                         let code = match QrCode::new(url.as_str()) {
                             Ok(c) => c,
@@ -449,7 +456,7 @@ impl AccountCredential {
                         println!("");
                         println!("link: {}", url.as_str());
                         println!(
-                                 "command: kanidm account credential reset {}",
+                            "command: kanidm account credential reset {}",
                             cuintent_token.token
                         );
                         println!("");
@@ -727,7 +734,7 @@ async fn totp_enroll_prompt(session_token: &CUSessionToken, client: &KanidmClien
 */
 
 fn display_status(status: CUStatus) {
-     let CUStatus {
+    let CUStatus {
         spn,
         displayname,
         can_commit,
@@ -735,24 +742,28 @@ fn display_status(status: CUStatus) {
         mfaregstate: _,
     } = status;
 
-                        println!("spn: {}", spn);
-                        println!("Name: {}", displayname);
-                        if let Some(cred_detail) = &primary {
-                            println!("Primary Credential:");
-                            print!("{}", cred_detail);
-                        } else {
-                            println!("Primary Credential:");
-                            println!("  not set");
-                        }
+    println!("spn: {}", spn);
+    println!("Name: {}", displayname);
+    if let Some(cred_detail) = &primary {
+        println!("Primary Credential:");
+        print!("{}", cred_detail);
+    } else {
+        println!("Primary Credential:");
+        println!("  not set");
+    }
 
-                        // We may need to be able to display if there are dangling
-                        // curegstates, but the cli ui statemachine can match the
-                        // server so it may not be needed?
+    // We may need to be able to display if there are dangling
+    // curegstates, but the cli ui statemachine can match the
+    // server so it may not be needed?
 
-                        println!("Can Commit: {}", can_commit);
+    println!("Can Commit: {}", can_commit);
 }
 
-async fn credential_update_exec(session_token: CUSessionToken, status: CUStatus, client: KanidmClient) {
+async fn credential_update_exec(
+    session_token: CUSessionToken,
+    status: CUStatus,
+    client: KanidmClient,
+) {
     trace!("started credential update exec");
     // Show the initial status,
     display_status(status);
