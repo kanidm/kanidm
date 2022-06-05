@@ -313,7 +313,12 @@ impl CredentialResetApp {
                 type_: CredentialDetailType::GeneratedPassword,
             }) => {
                 html! {
-                    <p>{ "Genie" }</p>
+                  <>
+                    <p>{ "Generated Password" }</p>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                      { "Delete this Password" }
+                    </button>
+                  </>
                 }
             }
             Some(CredentialDetail {
@@ -322,7 +327,12 @@ impl CredentialResetApp {
                 type_: CredentialDetailType::Webauthn(_),
             }) => {
                 html! {
-                    <p>{ "Invalid!" }</p>
+                  <>
+                    <p>{ "Webauthn Only - Will migrate to trusted devices in a future update" }</p>
+                    <button type="button" class="btn btn-danger" data-bs-toggle="modal" data-bs-target="#staticDeletePrimaryCred">
+                      { "Delete this Password" }
+                    </button>
+                  </>
                 }
             }
             Some(CredentialDetail {
