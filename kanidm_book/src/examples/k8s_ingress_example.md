@@ -12,6 +12,7 @@ The following are used in this example:
 - [A Domain Name](https://domains.google/)
 - [CertManager - With Cluster Issuer](https://cert-manager.io/docs/installation/)
 - [ShellCheck](https://github.com/koalaman/shellcheck#user-content-installing)
+- [modem7/docker-starwars](https://github.com/modem7/docker-starwars) - An example web site.
 
 You can set up your certificates manually instead of using CertManager if you are comfortable doing so. If it is your first time setting up CertManager, take your time with installation and validation. For the `http01` solver the ingress port (8089) needs to be accessible from the internet - DNS validation is recommended.
 
