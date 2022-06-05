@@ -13,7 +13,7 @@ repository = "https://github.com/kanidm/kanidm/"
 [dependencies]
 serde = { version = "^1.0.137", features = ["derive"] }
 serde_json = "^1.0.80"
-uuid = { version = "^1.1.0", features = ["serde"] }
+uuid = { version = "^1.1.1", features = ["serde"] }
 base32 = "^0.4.0"
 webauthn-rs = { version = "^0.3.2", default-features = false, features = ["wasm"] }
 # Can not upgrade due to breaking timezone apis.
