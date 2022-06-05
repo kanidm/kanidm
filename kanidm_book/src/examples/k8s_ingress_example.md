@@ -38,7 +38,7 @@ We recommend you have the following before continuing:
 
     This will deploy the following to your cluster:
     - [modem7/docker-starwars](https://github.com/modem7/docker-starwars) - An example web site.
-    - [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/) - A OAuth2 proxy is used as an OAuth2 client with NGINX [Authentication Based on Subrequest Result]([Authentication Based on Subrequest Result](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/)).
+    - [OAuth2 Proxy](https://oauth2-proxy.github.io/oauth2-proxy/) - A OAuth2 proxy is used as an OAuth2 client with NGINX [Authentication Based on Subrequest Result](https://docs.nginx.com/nginx/admin-guide/security-controls/configuring-subrequest-authentication/).
 
     ```yaml
     ---
