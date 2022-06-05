@@ -25,8 +25,6 @@ def test_auth_init(client_configfile: KanidmClient) -> None:
     print(result.dict())
     assert result.sessionid
 
-
-
 def test_auth_begin(client_configfile: KanidmClient) -> None:
     """ tests the auth begin step """
     print("Starting client...")
