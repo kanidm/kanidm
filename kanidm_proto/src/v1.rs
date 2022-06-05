@@ -825,12 +825,12 @@ pub enum SetCredentialResponse {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CUIntentToken {
-    pub intent_token: String,
+    pub token: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct CUSessionToken {
-    pub session_token: String,
+    pub token: String,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -864,7 +864,7 @@ impl fmt::Debug for CURequest {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CURegState {
     // Nothing in progress.
     None,
@@ -874,8 +874,10 @@ pub enum CURegState {
     BackupCodes(Vec<String>),
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CUStatus {
+    pub spn: String,
+    pub displayname: String,
     pub can_commit: bool,
     pub primary: Option<CredentialDetail>,
     pub mfaregstate: CURegState,

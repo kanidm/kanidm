@@ -359,7 +359,7 @@ impl Component for Oauth2App {
     }
 
     fn view(&self, ctx: &Context<Self>) -> Html {
-        console::log!("login::view");
+        console::log!("oauth2::view");
         match &self.state {
             State::LoginRequired => {
                 // <body class="html-body form-body">

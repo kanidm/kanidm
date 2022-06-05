@@ -983,7 +983,7 @@ impl QueryServerReadV1 {
         let idms_cred_update = self.idms.cred_update_transaction_async().await;
         let res = spanned!("actors::v1_read::handle<IdmCredentialUpdateStatus>", {
             let session_token = CredentialUpdateSessionToken {
-                token_enc: session_token.session_token,
+                token_enc: session_token.token,
             };
 
             idms_cred_update
@@ -1016,7 +1016,7 @@ impl QueryServerReadV1 {
         let idms_cred_update = self.idms.cred_update_transaction_async().await;
         let res = spanned!("actors::v1_read::handle<IdmCredentialUpdate>", {
             let session_token = CredentialUpdateSessionToken {
-                token_enc: session_token.session_token,
+                token_enc: session_token.token,
             };
 
             debug!(?scr);

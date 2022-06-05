@@ -133,7 +133,9 @@ pub fn to_tide_response<T: Serialize>(
                 OperationError::NoMatchingEntries => {
                     tide::Response::new(tide::StatusCode::NotFound)
                 }
-                OperationError::EmptyRequest | OperationError::SchemaViolation(_) => {
+                OperationError::PasswordQuality(_)
+                | OperationError::EmptyRequest
+                | OperationError::SchemaViolation(_) => {
                     tide::Response::new(tide::StatusCode::BadRequest)
                 }
                 _ => tide::Response::new(tide::StatusCode::InternalServerError),

@@ -1394,7 +1394,7 @@ async fn test_server_credential_update_session_pw() {
     // Logout, we don't need any auth now.
     let _ = rsclient.logout();
     // Exchange the intent token
-    let session_token = rsclient
+    let (session_token, _status) = rsclient
         .idm_account_credential_update_exchange(intent_token)
         .await
         .unwrap();
@@ -1458,7 +1458,7 @@ async fn test_server_credential_update_session_totp_pw() {
     // Logout, we don't need any auth now, the intent tokens care for it.
     let _ = rsclient.logout();
     // Exchange the intent token
-    let session_token = rsclient
+    let (session_token, _statu) = rsclient
         .idm_account_credential_update_exchange(intent_token)
         .await
         .unwrap();
@@ -1523,7 +1523,7 @@ async fn test_server_credential_update_session_totp_pw() {
     // We are now authed as the demo_account
 
     // Self create the session and remove the totp now.
-    let session_token = rsclient
+    let (session_token, _status) = rsclient
         .idm_account_credential_update_begin("demo_account")
         .await
         .unwrap();

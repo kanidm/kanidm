@@ -66,10 +66,10 @@ all backgrounds.
 * CLI for administration
 * WebUI for self-service with wifi enrollment, claim management and more.
 * RBAC/Claims/Policy (limited by time and credential scope)
+* OIDC/Oauth
 
 ### Upcoming Focus Areas
 
-* OIDC/Oauth
 * Replication (async multiple active write servers, read-only servers)
 
 ### Future

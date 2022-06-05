@@ -21,7 +21,7 @@ tracing-subscriber = "^0.3.11"
 
 structopt = { version = "^0.3.26", default-features = false }
 
-uuid = { version = "^1.1.0", features = ["serde", "v4" ] }
+uuid = { version = "^1.1.1", features = ["serde", "v4" ] }
 csv = "1.1.6"
 serde = { version = "^1.0.137", features = ["derive"] }
 serde_json = "^1.0.80"
@@ -32,8 +32,8 @@ toml = "^0.5.9"
 kanidm_proto = { path = "../kanidm_proto" }
 kanidm_client = { path = "../kanidm_client" }
 
-tokio = { version = "^1.18.0", features = ["rt-multi-thread"] }
-tokio-util = { version = "^0.7.2", features = ["codec"] }
+tokio = { version = "^1.19.1", features = ["rt-multi-thread"] }
+tokio-util = { version = "^0.7.3", features = ["codec"] }
 tokio-openssl = "^0.6.3"
 futures-util = { version = "^0.3.21", features = ["sink"] }
 openssl = "^0.10.38"

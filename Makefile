@@ -44,7 +44,7 @@ buildx: buildx/kanidmd buildx/radiusd
 build/kanidmd:	## build kanidmd images
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
-		--build-arg "KANIDM_BUILD_PROFILE=developer" \
+		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
 
@@ -97,7 +97,6 @@ book_versioned:
 
 clean_book:
 	rm -rf ./docs
-
 
 install-tools: ## install tools in local environment
 install-tools:

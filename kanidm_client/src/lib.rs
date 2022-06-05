@@ -1627,7 +1627,7 @@ impl KanidmClient {
     pub async fn idm_account_credential_update_begin(
         &self,
         id: &str,
-    ) -> Result<CUSessionToken, ClientError> {
+    ) -> Result<(CUSessionToken, CUStatus), ClientError> {
         self.perform_get_request(format!("/v1/account/{}/_credential/_update", id).as_str())
             .await
     }
@@ -1635,7 +1635,7 @@ impl KanidmClient {
     pub async fn idm_account_credential_update_exchange(
         &self,
         intent_token: CUIntentToken,
-    ) -> Result<CUSessionToken, ClientError> {
+    ) -> Result<(CUSessionToken, CUStatus), ClientError> {
         // We don't need to send the UAT with these, which is why we use the different path.
         self.perform_simple_post_request("/v1/credential/_exchange_intent", &intent_token)
             .await

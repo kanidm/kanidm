@@ -3,6 +3,13 @@ body {
   height: 100%;
 }
 
+.form-cred-reset-body {
+  width: 100%;
+  max-width: 500px;
+  padding: 15px;
+  margin: auto;
+}
+
 .form-signin-body {
   display: flex;
   align-items: center;
@@ -140,3 +147,10 @@ body {
   border-color: transparent;
   box-shadow: 0 0 0 3px rgba(255, 255, 255, .25);
 }
+
+.vert-center {
+  height: 80%;
+  display: flex;
+  align-items: center;
+}
+
