@@ -62,25 +62,30 @@ class KanidmClientConfig(BaseModel):
     """ configuration file definition for kanidm client config
     from struct KanidmClientConfig in kanidm_client/src/lib.rs
     """
-    uri: str
+    uri: Optional[str] = None
     verify_ca: bool = True
     verify_hostnames: bool = True
-    ca_path: Optional[str]
+    ca_path: Optional[str] = None
 
-    radius_service_username: Optional[str]
-    radius_service_password: Optional[str]
-    username: Optional[str]
-    password: Optional[str]
+    radius_service_username: Optional[str] = None
+    radius_service_password: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
-    #TODO: make sure this parses and sets
     connect_timeout: int = 30
 
+    # pylint: disable=too-few-public-methods
+    class Config:
+        """ configuration for the settings class """
+        env_prefix = 'kanidm_'
+
     @validator("uri")
-    def validate_uri(cls, value: str) -> str:
+    def validate_uri(cls, value: Optional[str]) -> str:
         """ validator """
-        uri = urlparse(value)
-        valid_schemes = ["http", "https"]
-        if uri.scheme not in valid_schemes:
-            raise ValueError(f"Invalid URL Scheme for uri='{value}': '{uri.scheme}' - expected one of {valid_schemes}")
+        if value is not None:
+            uri = urlparse(value)
+            valid_schemes = ["http", "https"]
+            if uri.scheme not in valid_schemes:
+                raise ValueError(f"Invalid URL Scheme for uri='{value}': '{uri.scheme}' - expected one of {valid_schemes}")
 
         return value

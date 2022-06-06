@@ -1,13 +1,14 @@
 """ Kanidm python module """
 
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional
 
 from pydantic import ValidationError
 import requests
 
 from .exceptions import AuthBeginFailed, AuthInitFailed, AuthCredFailed, AuthMechUnknown, ServerURLNotSet
-from .types import AuthBeginResponse, AuthStepPasswordResponse, KanidmClientConfig, AuthInitResponse
+from .types import AuthBeginResponse, AuthStepPasswordResponse, AuthInitResponse, KanidmClientConfig
 from .utils import load_config
 
 #TODO: going to make this asyncio, once the flows and stuff are worked out
@@ -18,23 +19,21 @@ class KanidmClient():
     # pylint: disable=too-many-instance-attributes
     def __init__(
         self,
-        config: Optional[str]=None,
+        config_file: Optional[Path]=None,
         uri: Optional[str]=None,
         session: Optional[requests.Session]=None,
         ) -> None:
         """ set up the client module"""
 
-        self.uri: Optional[str] = None
-        self.username: Optional[str] = None
-        self.password: Optional[str] = None
-        self.connect_timeout = 30
+        self.config = KanidmClientConfig(uri=uri)
 
-        if config is not None:
-            config_data = load_config(config)
-            self.parse_config_data(config_data)
+        if config_file is not None:
+            if not isinstance(config_file, Path):
+                config_file = Path(config_file)
+            config_data = load_config(config_file.expanduser().resolve())
+            self.config = self.config.parse_obj(config_data)
 
-        if uri is not None:
-            self.uri = uri
+        print(self.config.dict())
 
         if session is None:
             self.session = requests.Session()
@@ -42,6 +41,8 @@ class KanidmClient():
             self.session = session
         self.sessionid: Optional[str] = None
 
+        if self.config.uri is None:
+            raise ValueError("Please intitialize this with a server URI")
 
     def parse_config_data(
         self,
@@ -49,36 +50,15 @@ class KanidmClient():
         ) -> None:
         """ hand it a config dict and it'll configure the client """
         try:
-            config_object = KanidmClientConfig.parse_obj(config_data)
+            self.config.parse_obj(config_data)
         except ValidationError as validation_error:
             raise ValueError(f"Failed to validate configuration: {validation_error}")
-
-        if config_object.uri:
-            self.uri = config_object.uri
-        if config_object.connect_timeout:
-            self.connect_timeout = config_object.connect_timeout
-        if config_object.verify_ca:
-            self.verify_ca = config_object.verify_ca
-        if config_object.verify_hostnames:
-            self.verify_hostnames = config_object.verify_hostnames
-
-        if config_object.username:
-            self.username = config_object.username
-        if config_object.password:
-            self.password = config_object.password
-
-        if config_object.radius_service_username:
-            self.username = config_object.radius_service_username
-        if config_object.radius_service_password:
-            self.password = config_object.radius_service_password
-
-
     @property
     def auth_url(self) -> str:
         """ gets the authentication url endpoint """
-        if self.uri is None:
+        if self.config.uri is None:
             raise ServerURLNotSet("You didn't set the server URL")
-        return f"{self.uri}/v1/auth"
+        return f"{self.config.uri}/v1/auth"
 
     def auth_init(self, username: str) -> AuthInitResponse:
         """ init step, starts the auth session, sets the class-local session ID """
@@ -87,8 +67,8 @@ class KanidmClient():
         response = self.session.post(
             self.auth_url,
             json=init_auth,
-            verify=self.verify_ca,
-            timeout=self.connect_timeout,
+            verify=self.config.verify_ca,
+            timeout=self.config.connect_timeout,
             )
         if response.status_code != 200:
 
@@ -125,8 +105,8 @@ class KanidmClient():
         response = self.session.post(
             self.auth_url,
             json=begin_auth,
-            verify=self.verify_ca,
-            timeout=self.connect_timeout,
+            verify=self.config.verify_ca,
+            timeout=self.config.connect_timeout,
             headers=self.session_header(),
             )
         if response.status_code != 200:
@@ -145,12 +125,12 @@ class KanidmClient():
         ) -> AuthStepPasswordResponse:
         """ authenticates with a username and password, returns the auth token """
         if username is None and password is None:
-            if self.username is None or self.password is None:
+            if self.config.username is None or self.config.password is None:
                 raise ValueError("Need username/password to be in caller or class settings before calling authenticate_password")
-            username = self.username
-            password = self.password
+            username = self.config.username
+            password = self.config.password
         if username is None or password is None:
-            raise ValueError(f"Username and Password need to be set somewhere, got {username}:{password}")
+            raise ValueError(f"Username and Password need to be set somewhere!")
 
         auth_init = self.auth_init(username)
 
@@ -172,7 +152,7 @@ class KanidmClient():
         """ does the password auth step """
 
         if password is None:
-            password=self.password
+            password=self.config.password
         if password is None:
             raise ValueError("Password has to be passed to auth_step_password or in self.password!")
 
@@ -180,8 +160,8 @@ class KanidmClient():
         response = self.session.post(
             self.auth_url,
             json=cred_auth,
-            verify=self.verify_ca,
-            timeout=self.connect_timeout,
+            verify=self.config.verify_ca,
+            timeout=self.config.connect_timeout,
             headers=self.session_header(),
             )
         if response.status_code != 200:
