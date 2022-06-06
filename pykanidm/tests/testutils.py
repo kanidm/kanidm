@@ -1,5 +1,7 @@
 """ reusable widgets for testing """
 
+from pathlib import Path
+
 import pytest
 from kanidm import KanidmClient
 
@@ -11,4 +13,4 @@ def client() -> KanidmClient:
 @pytest.fixture(scope="function")
 def client_configfile() -> KanidmClient:
     """ sets up a client from a config file """
-    return KanidmClient(config="~/.config/kanidm")
+    return KanidmClient(config_file=Path("~/.config/kanidm"))

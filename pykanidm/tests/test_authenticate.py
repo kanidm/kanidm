@@ -17,10 +17,10 @@ logging.basicConfig(level=logging.DEBUG)
 def test_auth_init(client_configfile: KanidmClient) -> None:
     """ tests the auth init step """
     print("Starting client...")
-    print(f"Doing auth_init for {client_configfile.username}")
-    if client_configfile.username is None:
+    print(f"Doing auth_init for {client_configfile.config.username}")
+    if client_configfile.config.username is None:
         raise ValueError("This path shouldn't be possible in the test!")
-    result = client_configfile.auth_init(client_configfile.username)
+    result = client_configfile.auth_init(client_configfile.config.username)
     print(f"{result=}")
     print(result.dict())
     assert result.sessionid
@@ -29,16 +29,16 @@ def test_auth_begin(client_configfile: KanidmClient) -> None:
     """ tests the auth begin step """
     print("Starting client...")
     # client = KanidmClient(config="~/.config/kanidm")
-    print(f"Doing auth_init for {client_configfile.username}")
-    if client_configfile.username is None:
+    print(f"Doing auth_init for {client_configfile.config.username}")
+    if client_configfile.config.username is None:
         raise ValueError("This path shouldn't be possible in the test!")
-    result = client_configfile.auth_init(client_configfile.username)
+    result = client_configfile.auth_init(client_configfile.config.username)
     print(f"{result=}")
     print("Result dict:")
     print(result.dict())
     assert result.sessionid
 
-    print(f"Doing auth_begin for {client_configfile.username}")
+    print(f"Doing auth_begin for {client_configfile.config.username}")
     begin_result = client_configfile.auth_begin(
         # username=client.username,
         method="password",
@@ -54,7 +54,7 @@ def test_auth_begin(client_configfile: KanidmClient) -> None:
 def test_authenticate_flow(client_configfile: KanidmClient) -> None:
     """ tests the authenticate() flow """
     print("Starting client...")
-    print(f"Doing client.authenticate for {client_configfile.username}")
+    print(f"Doing client.authenticate for {client_configfile.config.username}")
     result = client_configfile.authenticate_password()
     print(result)
     #print(f"{result=}")
@@ -66,21 +66,17 @@ def test_authenticate_flow(client_configfile: KanidmClient) -> None:
 def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
     """ tests the authenticate() flow with a valid (hopefully) usernamd and invalid password """
     print("Starting client...")
-    if client_configfile.uri is None or \
-        client_configfile.username is None or \
-            client_configfile.password is None:
+    if client_configfile.config.uri is None or \
+        client_configfile.config.username is None or \
+            client_configfile.config.password is None:
         pytest.skip("Please ensure you have a username, password and uri in the config")
-    print(f"Doing client.authenticate for {client_configfile.username}")
+    print(f"Doing client.authenticate for {client_configfile.config.username}")
     with pytest.raises((AuthCredFailed,AuthInitFailed)):
         result = client_configfile.authenticate_password(
-            username=client_configfile.username,
+            username=client_configfile.config.username,
             password="cheese",
             )
         print(result)
-    #print(f"{result=}")
-    #print(result.json())
-    #assert result.json()['sessionid']
-
 
 #TODO: mock a call to auth_init when a 200 response is not returned, raises AuthInitFailed
 #TODO: mock a call to auth_init when "x-kanidm-auth-session-id" not in response.headers, raises ValueError
@@ -99,18 +95,18 @@ def test_authenticate_inputs_validation(client: KanidmClient) -> None:
     with pytest.raises(ValueError):
         client.authenticate_password(password="cheese")
 
-    client.password = None
-    client.username = "crabby"
+    client.config.password = None
+    client.config.username = "crabby"
     with pytest.raises(ValueError):
         client.authenticate_password()
 
-    client.password = "cR4bzR0ol"
-    client.username = None
+    client.config.password = "cR4bzR0ol"
+    client.config.username = None
     with pytest.raises(ValueError):
         client.authenticate_password()
 
-    client.username = None
-    client.password = None
+    client.config.username = None
+    client.config.password = None
     with pytest.raises(ValueError):
         client.authenticate_password()
 
