@@ -57,7 +57,7 @@ Token Usage
 This will require that during calls to /v1/auth/valid that the token can be re-issued with an
 updated refresh time for the client. Clients will need to be modified to accomodate this.
 
-When any api endpoint is called, if the token is valid and does not need a refresh:
+When any API endpoint is called, if the token is valid and does not need a refresh:
 
 * If no session id is stored, assume the token is VALID and we have a replication delay.
 * If a session is found and active, respond Ok
