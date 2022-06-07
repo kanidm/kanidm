@@ -99,7 +99,7 @@ that cleanups always occur correctly and allow the refresh windows to pass. 25% 
 Updates
 =======
 
-We may wish to allow updates to the session state to reflect things such as a change of IP of the session
+We may wish to allow updates to the session state to reflect things such as a change of client IP of the session
 in response to a call to auth/valid. We may wish to use the delayed update mechanism for this.
 
 
