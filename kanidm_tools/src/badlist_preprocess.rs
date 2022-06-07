@@ -16,6 +16,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use kanidm_proto::v1::Modify;
 
+use clap::Parser;
 use rayon::prelude::*;
 use tracing::{debug, error, info};
 

@@ -10,6 +10,7 @@
 
 use std::path::PathBuf;
 
+use clap::Parser;
 use kanidm_client::{ClientError, KanidmClientBuilder};
 
 use tracing::{debug, error};
