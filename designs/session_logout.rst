@@ -85,7 +85,7 @@ Oauth2 rfc7009 revoke
 
 Oauth2 will need refresh tokens issued along with access tokens. The same rules apply as above for
 user auth tokens. When a refresh is required, the oauth2 session id looked up to find the corresponding
-session and it's validity.
+session and its validity.
 
 Clean Up
 ========
