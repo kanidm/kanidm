@@ -44,7 +44,7 @@ On logout, if the session id is found, its state is transitioned to the expired 
 details are changed.
 
 If the session id is NOT found, a session stub is created, with the expired state. Since we lack the
-metadata of the "creation" of the session, this is why we use the stub form that only lists the id and
+metadata of the "creation" of the session, this is why we use the stub form that only lists the ID and
 its expiry.
 
 On a replication attribute conflict, an expired state will always "overrule" an active state, even
