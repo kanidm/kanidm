@@ -65,7 +65,7 @@ When any api endpoint is called, if the token is valid and does not need a refre
 
 When auth/valid is called, if the token requires a refresh:
 
-* If no session id is found, assume it is revoked and indicate unauthorised. (This can happen if the session is cleaned up post expiry, and the refresh token is used)
+* If no session ID is found, assume it is revoked and indicate unauthorised. This can happen if the session is cleaned up after it has expired, and the refresh token is used.
 * If a session is found and active, respond Ok
 * If a session is found and expired, respond unauthorized.
 
