@@ -80,7 +80,7 @@ Sessions can be revoked provided the user has the ability to "write" to the sess
 allows access controls to be used, and other users to administer another users session when delegation
 is required.
 
-Oauth2 rfc7009 revoke
+OAuth 2.0 (RFC7009) revoke
 =====================
 
 OAuth 2.0 will need refresh tokens issued along with access tokens. The same rules apply as above for
