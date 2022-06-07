@@ -36,11 +36,13 @@ fn main() {
         &mut KanidmdParser::command(),
         "kanidmd",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut KanidmdParser::command(),
         "kanidmd",
         comp_dir,
-    );
+    )
+    .ok();
 }

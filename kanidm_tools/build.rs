@@ -31,37 +31,43 @@ fn main() {
         &mut SshAuthorizedOpt::command(),
         "kanidm_ssh_authorizedkeys_direct",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut SshAuthorizedOpt::command(),
         "kanidm_ssh_authorizedkeys_direct",
         comp_dir.clone(),
-    );
+    )
+    .ok();
 
     generate_to(
         Shell::Bash,
         &mut BadlistProcOpt::command(),
         "kanidm_badlist_preprocess",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut BadlistProcOpt::command(),
         "kanidm_badlist_preprocess",
         comp_dir.clone(),
-    );
+    )
+    .ok();
 
     generate_to(
         Shell::Bash,
         &mut KanidmClientParser::command(),
         "kanidm",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut KanidmClientParser::command(),
         "kanidm",
         comp_dir,
-    );
+    )
+    .ok();
 }

@@ -34,50 +34,58 @@ fn main() {
         &mut SshAuthorizedOpt::command(),
         "kanidm_ssh_authorizedkeys",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut SshAuthorizedOpt::command(),
         "kanidm_ssh_authorizedkeys",
         comp_dir.clone(),
-    );
+    )
+    .ok();
 
     generate_to(
         Shell::Zsh,
         &mut CacheInvalidateOpt::command(),
         "kanidm_cache_invalidate",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Bash,
         &mut CacheInvalidateOpt::command(),
         "kanidm_cache_invalidate",
         comp_dir.clone(),
-    );
+    )
+    .ok();
 
     generate_to(
         Shell::Bash,
         &mut CacheClearOpt::command(),
         "kanidm_cache_clear",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut CacheClearOpt::command(),
         "kanidm_cache_clear",
         comp_dir.clone(),
-    );
+    )
+    .ok();
 
     generate_to(
         Shell::Bash,
         &mut UnixdStatusOpt::command(),
         "kanidm_unixd_status",
         comp_dir.clone(),
-    );
+    )
+    .ok();
     generate_to(
         Shell::Zsh,
         &mut UnixdStatusOpt::command(),
         "kanidm_unixd_status",
         comp_dir.clone(),
-    );
+    )
+    .ok();
 }
