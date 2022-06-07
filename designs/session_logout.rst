@@ -29,7 +29,7 @@ entry along with metadata about the session such as the:
 * Time the session *may* expire, if an expiry exists
 * Any limits or details (for example, sudo mode) on the session.
 * A state flag defining that the session is *active*
-* Mappings from sub-sessions through other protocols, IE oauth2 and their related session id's
+* Mappings from sub-sessions through other protocols, IE OAuth 2.0 and their related session IDs
 
 The session will need to have a refresh-time, similar to an oauth2 refresh token, or kerberos
 refresh window. This still allows each token to have a maximum usage time window, without
