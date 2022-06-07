@@ -4,7 +4,7 @@ Session Logout
 
 Currently, Kanidm relies on "short session times" to manage and limit issues with session
 disclosure, but this is obviously not optimal long term! In addition, there are systems like
-oauth2 token revocation ( https://datatracker.ietf.org/doc/html/rfc7009 ) which we may want
+OAuth 2.0 token revocation ( https://datatracker.ietf.org/doc/html/rfc7009 ) which we may want
 to use to allow global logouts across linked applications.
 
 Goals
