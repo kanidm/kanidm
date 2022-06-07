@@ -40,7 +40,7 @@ On Logout
 
 Logout events have an impact with regard to replication.
 
-On logout, if the session id is found, it's state is transitioned to the expired state. No other
+On logout, if the session id is found, its state is transitioned to the expired state. No other
 details are changed.
 
 If the session id is NOT found, a session stub is created, with the expired state. Since we lack the
