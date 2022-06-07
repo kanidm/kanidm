@@ -1,6 +1,5 @@
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct UnixdStatusOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     debug: bool,
 }
-

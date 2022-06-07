@@ -17,10 +17,10 @@ extern crate tracing;
 
 use crate::ds::DirectoryServer;
 use crate::kani::{KaniHttpServer, KaniLdapServer};
+use clap::{Parser, Subcommand};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::time::{Duration, Instant};
-use structopt::StructOpt;
 use uuid::Uuid;
 
 mod data;
@@ -177,7 +177,7 @@ impl TargetServer {
 
 #[tokio::main]
 async fn main() {
-    let opt = OrcaOpt::from_args();
+    let opt = OrcaOpt::parse();
 
     if opt.debug() {
         ::std::env::set_var(

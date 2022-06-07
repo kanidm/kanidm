@@ -19,7 +19,7 @@ path = "src/main.rs"
 [dependencies]
 kanidm = { path = "../idm" }
 score = { path = "../score" }
-structopt = { version = "^0.3.26", default-features = false }
+clap = { version = "^3.0", features = ["derive"] }
 users = "^0.11.0"
 serde = { version = "^1.0.137", features = ["derive"] }
 tokio = { version = "^1.19.1", features = ["rt-multi-thread", "macros", "signal"] }
@@ -30,5 +30,6 @@ tikv-jemallocator = "0.5"
 
 [build-dependencies]
 serde = { version = "1", features = ["derive"] }
-structopt = { version = "0.3", default-features = false }
+clap = { version = "^3.0", features = ["derive"] }
+clap_complete = "^3.1.4"
 profiles = { path = "../../profiles" }

@@ -3,8 +3,8 @@
 use std::env;
 use std::path::PathBuf;
 
-use structopt::clap::Shell;
-use structopt::StructOpt;
+use clap::{Args, IntoApp, Parser, Subcommand};
+use clap_complete::{generate_to, Shell};
 
 include!("src/opt/ssh_authorizedkeys.rs");
 include!("src/opt/badlist_preprocess.rs");
@@ -26,28 +26,42 @@ fn main() {
         std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
     }
 
-    SshAuthorizedOpt::clap().gen_completions(
-        "kanidm_ssh_authorizedkeys_direct",
+    generate_to(
         Shell::Bash,
+        &mut SshAuthorizedOpt::command(),
+        "kanidm_ssh_authorizedkeys_direct",
         comp_dir.clone(),
     );
-    SshAuthorizedOpt::clap().gen_completions(
-        "kanidm_ssh_authorizedkeys_direct",
+    generate_to(
         Shell::Zsh,
+        &mut SshAuthorizedOpt::command(),
+        "kanidm_ssh_authorizedkeys_direct",
         comp_dir.clone(),
     );
 
-    BadlistProcOpt::clap().gen_completions(
-        "kanidm_badlist_preprocess",
+    generate_to(
         Shell::Bash,
+        &mut BadlistProcOpt::command(),
+        "kanidm_badlist_preprocess",
         comp_dir.clone(),
     );
-    BadlistProcOpt::clap().gen_completions(
-        "kanidm_badlist_preprocess",
+    generate_to(
         Shell::Zsh,
+        &mut BadlistProcOpt::command(),
+        "kanidm_badlist_preprocess",
         comp_dir.clone(),
     );
 
-    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Bash, comp_dir.clone());
-    KanidmClientOpt::clap().gen_completions("kanidm", Shell::Zsh, comp_dir);
+    generate_to(
+        Shell::Bash,
+        &mut KanidmClientParser::command(),
+        "kanidm",
+        comp_dir.clone(),
+    );
+    generate_to(
+        Shell::Zsh,
+        &mut KanidmClientParser::command(),
+        "kanidm",
+        comp_dir,
+    );
 }

@@ -1,10 +1,10 @@
 #![allow(dead_code)]
 
 use std::env;
-
 use std::path::PathBuf;
-use structopt::clap::Shell;
-use structopt::StructOpt;
+
+use clap::{Args, IntoApp, Parser, Subcommand};
+use clap_complete::{generate_to, Shell};
 
 use serde::{Deserialize, Serialize};
 
@@ -31,6 +31,16 @@ fn main() {
         std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
     }
 
-    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Bash, comp_dir.clone());
-    KanidmdOpt::clap().gen_completions("kanidmd", Shell::Zsh, comp_dir);
+    generate_to(
+        Shell::Bash,
+        &mut KanidmdParser::command(),
+        "kanidmd",
+        comp_dir.clone(),
+    );
+    generate_to(
+        Shell::Zsh,
+        &mut KanidmdParser::command(),
+        "kanidmd",
+        comp_dir,
+    );
 }

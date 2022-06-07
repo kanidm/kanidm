@@ -10,8 +10,8 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
+use clap::{Args, Parser, Subcommand};
 use kanidm_cli::KanidmClientOpt;
-use structopt::StructOpt;
 
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};

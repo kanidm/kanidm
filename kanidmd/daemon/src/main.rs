@@ -38,7 +38,7 @@ use score::{
     vacuum_server_core, verify_server_core,
 };
 
-use structopt::StructOpt;
+use clap::{Args, Parser, Subcommand};
 
 include!("./opt.rs");
 
@@ -83,15 +83,25 @@ impl KanidmdOpt {
             | KanidmdOpt::Reindex(sopt)
             | KanidmdOpt::Vacuum(sopt)
             | KanidmdOpt::DomainChange(sopt)
-            | KanidmdOpt::DbScan(DbScanOpt::ListIndexes(sopt))
-            | KanidmdOpt::DbScan(DbScanOpt::ListId2Entry(sopt))
-            | KanidmdOpt::DbScan(DbScanOpt::ListIndexAnalysis(sopt)) => &sopt,
+            | KanidmdOpt::DbScan {
+                commands: DbScanOpt::ListIndexes(sopt),
+            }
+            | KanidmdOpt::DbScan {
+                commands: DbScanOpt::ListId2Entry(sopt),
+            }
+            | KanidmdOpt::DbScan {
+                commands: DbScanOpt::ListIndexAnalysis(sopt),
+            } => &sopt,
             KanidmdOpt::Backup(bopt) => &bopt.commonopts,
             KanidmdOpt::Restore(ropt) => &ropt.commonopts,
             KanidmdOpt::RecoverAccount(ropt) => &ropt.commonopts,
-            KanidmdOpt::DbScan(DbScanOpt::ListIndex(dopt)) => &dopt.commonopts,
+            KanidmdOpt::DbScan {
+                commands: DbScanOpt::ListIndex(dopt),
+            } => &dopt.commonopts,
             // KanidmdOpt::DbScan(DbScanOpt::GetIndex(dopt)) => &dopt.commonopts,
-            KanidmdOpt::DbScan(DbScanOpt::GetId2Entry(dopt)) => &dopt.commonopts,
+            KanidmdOpt::DbScan {
+                commands: DbScanOpt::GetId2Entry(dopt),
+            } => &dopt.commonopts,
         }
     }
 }
@@ -133,30 +143,30 @@ async fn main() {
     }
 
     // Read cli args, determine if we should backup/restore
-    let opt = KanidmdOpt::from_args();
+    let opt = KanidmdParser::parse();
 
     let mut config = Configuration::new();
     // Check the permissions are sane.
-    let cfg_meta = read_file_metadata(&(opt.commonopt().config_path));
+    let cfg_meta = read_file_metadata(&(opt.commands.commonopt().config_path));
     if !file_permissions_readonly(&cfg_meta) {
         eprintln!("WARNING: permissions on {} may not be secure. Should be readonly to running uid. This could be a security risk ...",
-            opt.commonopt().config_path.to_str().unwrap_or("invalid file path"));
+        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path"));
     }
 
     if cfg_meta.mode() & 0o007 != 0 {
         eprintln!("WARNING: {} has 'everyone' permission bits in the mode. This could be a security risk ...",
-            opt.commonopt().config_path.to_str().unwrap_or("invalid file path")
+        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
         );
     }
 
     if cfg_meta.uid() == cuid || cfg_meta.uid() == ceuid {
         eprintln!("WARNING: {} owned by the current uid, which may allow file permission changes. This could be a security risk ...",
-            opt.commonopt().config_path.to_str().unwrap_or("invalid file path")
+        opt.commands.commonopt().config_path.to_str().unwrap_or("invalid file path")
         );
     }
 
     // Read our config
-    let sconfig = match ServerConfig::new(&(opt.commonopt().config_path)) {
+    let sconfig = match ServerConfig::new(&(opt.commands.commonopt().config_path)) {
         Ok(c) => c,
         Err(e) => {
             eprintln!("Config Parse failure {:?}", e);
@@ -213,7 +223,7 @@ async fn main() {
     config.update_role(sconfig.role);
 
     // Apply any cli overrides, normally debug level.
-    if let Some(dll) = opt.commonopt().debug.as_ref() {
+    if let Some(dll) = opt.commands.commonopt().debug.as_ref() {
         config.update_log_level(Some(dll.clone() as u32));
     }
 
@@ -223,9 +233,9 @@ async fn main() {
     //     .format_level(false)
     //     .init();
 
-    match &opt {
+    match &opt.commands {
         KanidmdOpt::Server(_sopt) | KanidmdOpt::ConfigTest(_sopt) => {
-            let config_test = matches!(&opt, KanidmdOpt::ConfigTest(_));
+            let config_test = matches!(&opt.commands, KanidmdOpt::ConfigTest(_));
             if config_test {
                 eprintln!("Running in server configuration test mode ...");
             } else {
@@ -321,23 +331,33 @@ async fn main() {
             eprintln!("Running in domain name change mode ... this may take a long time ...");
             domain_rename_core(&config);
         }
-        KanidmdOpt::DbScan(DbScanOpt::ListIndexes(_)) => {
+        KanidmdOpt::DbScan {
+            commands: DbScanOpt::ListIndexes(_),
+        } => {
             eprintln!("👀 db scan - list indexes");
             dbscan_list_indexes_core(&config);
         }
-        KanidmdOpt::DbScan(DbScanOpt::ListId2Entry(_)) => {
+        KanidmdOpt::DbScan {
+            commands: DbScanOpt::ListId2Entry(_),
+        } => {
             eprintln!("👀 db scan - list id2entry");
             dbscan_list_id2entry_core(&config);
         }
-        KanidmdOpt::DbScan(DbScanOpt::ListIndexAnalysis(_)) => {
+        KanidmdOpt::DbScan {
+            commands: DbScanOpt::ListIndexAnalysis(_),
+        } => {
             eprintln!("👀 db scan - list index analysis");
             dbscan_list_index_analysis_core(&config);
         }
-        KanidmdOpt::DbScan(DbScanOpt::ListIndex(dopt)) => {
+        KanidmdOpt::DbScan {
+            commands: DbScanOpt::ListIndex(dopt),
+        } => {
             eprintln!("👀 db scan - list index content - {}", dopt.index_name);
             dbscan_list_index_core(&config, dopt.index_name.as_str());
         }
-        KanidmdOpt::DbScan(DbScanOpt::GetId2Entry(dopt)) => {
+        KanidmdOpt::DbScan {
+            commands: DbScanOpt::GetId2Entry(dopt),
+        } => {
             eprintln!("👀 db scan - get id2 entry - {}", dopt.id);
             dbscan_get_id2entry_core(&config, dopt.id);
         }

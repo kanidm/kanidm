@@ -13,8 +13,8 @@
 #[macro_use]
 extern crate tracing;
 
+use clap::{Parser, Subcommand};
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 include!("../opt/kanidm.rs");
 
@@ -79,15 +79,15 @@ impl SelfOpt {
 impl SystemOpt {
     pub fn debug(&self) -> bool {
         match self {
-            SystemOpt::Oauth2(oopt) => oopt.debug(),
-            SystemOpt::Domain(dopt) => dopt.debug(),
+            SystemOpt::Oauth2 { commands } => commands.debug(),
+            SystemOpt::Domain { commands } => commands.debug(),
         }
     }
 
     pub async fn exec(&self) {
         match self {
-            SystemOpt::Oauth2(oopt) => oopt.exec().await,
-            SystemOpt::Domain(dopt) => dopt.exec().await,
+            SystemOpt::Oauth2 { commands } => commands.exec().await,
+            SystemOpt::Domain { commands } => commands.exec().await,
         }
     }
 }
@@ -95,29 +95,29 @@ impl SystemOpt {
 impl KanidmClientOpt {
     pub fn debug(&self) -> bool {
         match self {
-            KanidmClientOpt::Raw(ropt) => ropt.debug(),
+            KanidmClientOpt::Raw { commands } => commands.debug(),
             KanidmClientOpt::Login(lopt) => lopt.debug(),
             KanidmClientOpt::Logout(lopt) => lopt.debug(),
-            KanidmClientOpt::Session(sopt) => sopt.debug(),
-            KanidmClientOpt::CSelf(csopt) => csopt.debug(),
-            KanidmClientOpt::Account(aopt) => aopt.debug(),
-            KanidmClientOpt::Group(gopt) => gopt.debug(),
-            KanidmClientOpt::System(sopt) => sopt.debug(),
-            KanidmClientOpt::Recycle(ropt) => ropt.debug(),
+            KanidmClientOpt::Session { commands } => commands.debug(),
+            KanidmClientOpt::CSelf { commands } => commands.debug(),
+            KanidmClientOpt::Account { commands } => commands.debug(),
+            KanidmClientOpt::Group { commands } => commands.debug(),
+            KanidmClientOpt::System { commands } => commands.debug(),
+            KanidmClientOpt::Recycle { commands } => commands.debug(),
         }
     }
 
     pub async fn exec(&self) {
         match self {
-            KanidmClientOpt::Raw(ropt) => ropt.exec().await,
+            KanidmClientOpt::Raw { commands } => commands.exec().await,
             KanidmClientOpt::Login(lopt) => lopt.exec().await,
             KanidmClientOpt::Logout(lopt) => lopt.exec().await,
-            KanidmClientOpt::Session(sopt) => sopt.exec().await,
-            KanidmClientOpt::CSelf(csopt) => csopt.exec().await,
-            KanidmClientOpt::Account(aopt) => aopt.exec().await,
-            KanidmClientOpt::Group(gopt) => gopt.exec().await,
-            KanidmClientOpt::System(sopt) => sopt.exec().await,
-            KanidmClientOpt::Recycle(ropt) => ropt.exec().await,
+            KanidmClientOpt::Session { commands } => commands.exec().await,
+            KanidmClientOpt::CSelf { commands } => commands.exec().await,
+            KanidmClientOpt::Account { commands } => commands.exec().await,
+            KanidmClientOpt::Group { commands } => commands.exec().await,
+            KanidmClientOpt::System { commands } => commands.exec().await,
+            KanidmClientOpt::Recycle { commands } => commands.exec().await,
         }
     }
 }

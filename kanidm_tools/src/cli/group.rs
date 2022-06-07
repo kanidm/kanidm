@@ -12,7 +12,7 @@ impl GroupOpt {
             GroupOpt::RemoveMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::SetMembers(gcopt) => gcopt.copt.debug,
             GroupOpt::PurgeMembers(gcopt) => gcopt.copt.debug,
-            GroupOpt::Posix(gpopt) => match gpopt {
+            GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => gcopt.copt.debug,
                 GroupPosix::Set(gcopt) => gcopt.copt.debug,
             },
@@ -107,7 +107,7 @@ impl GroupOpt {
                     Ok(_) => println!("Successfully set members for group {}", gcopt.name.as_str()),
                 }
             }
-            GroupOpt::Posix(gpopt) => match gpopt {
+            GroupOpt::Posix { commands } => match commands {
                 GroupPosix::Show(gcopt) => {
                     let client = gcopt.copt.to_client().await;
                     match client.idm_group_unix_token_get(gcopt.name.as_str()).await {

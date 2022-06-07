@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 use std::env;
 
-use structopt::clap::Shell;
-use structopt::StructOpt;
+use clap::{IntoApp, Parser};
+use clap_complete::{generate_to, Shell};
 
 use std::path::PathBuf;
 
@@ -29,31 +29,55 @@ fn main() {
         std::fs::create_dir(&comp_dir).expect("Unable to create completions dir");
     }
 
-    SshAuthorizedOpt::clap().gen_completions(
-        "kanidm_ssh_authorizedkeys",
+    generate_to(
         Shell::Bash,
-        comp_dir.clone(),
-    );
-    SshAuthorizedOpt::clap().gen_completions(
+        &mut SshAuthorizedOpt::command(),
         "kanidm_ssh_authorizedkeys",
+        comp_dir.clone(),
+    );
+    generate_to(
         Shell::Zsh,
+        &mut SshAuthorizedOpt::command(),
+        "kanidm_ssh_authorizedkeys",
         comp_dir.clone(),
     );
 
-    CacheInvalidateOpt::clap().gen_completions(
+    generate_to(
+        Shell::Zsh,
+        &mut CacheInvalidateOpt::command(),
         "kanidm_cache_invalidate",
+        comp_dir.clone(),
+    );
+    generate_to(
         Shell::Bash,
-        comp_dir.clone(),
-    );
-    CacheInvalidateOpt::clap().gen_completions(
+        &mut CacheInvalidateOpt::command(),
         "kanidm_cache_invalidate",
-        Shell::Zsh,
         comp_dir.clone(),
     );
 
-    CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Bash, comp_dir.clone());
-    CacheClearOpt::clap().gen_completions("kanidm_cache_clear", Shell::Zsh, comp_dir.clone());
+    generate_to(
+        Shell::Bash,
+        &mut CacheClearOpt::command(),
+        "kanidm_cache_clear",
+        comp_dir.clone(),
+    );
+    generate_to(
+        Shell::Zsh,
+        &mut CacheClearOpt::command(),
+        "kanidm_cache_clear",
+        comp_dir.clone(),
+    );
 
-    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Bash, comp_dir.clone());
-    UnixdStatusOpt::clap().gen_completions("kanidm_unixd_status", Shell::Zsh, comp_dir);
+    generate_to(
+        Shell::Bash,
+        &mut UnixdStatusOpt::command(),
+        "kanidm_unixd_status",
+        comp_dir.clone(),
+    );
+    generate_to(
+        Shell::Zsh,
+        &mut UnixdStatusOpt::command(),
+        "kanidm_unixd_status",
+        comp_dir.clone(),
+    );
 }

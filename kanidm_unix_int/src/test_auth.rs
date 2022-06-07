@@ -2,7 +2,7 @@
 #[macro_use]
 extern crate tracing;
 
-use structopt::StructOpt;
+use clap::Parser;
 
 use futures::executor::block_on;
 
@@ -10,17 +10,17 @@ use kanidm_unix_common::client::call_daemon;
 use kanidm_unix_common::unix_config::KanidmUnixdConfig;
 use kanidm_unix_common::unix_proto::{ClientRequest, ClientResponse};
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct ClientOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     debug: bool,
-    #[structopt(short = "D", long = "name")]
+    #[clap(short = 'D', long = "name")]
     account_id: String,
 }
 
 #[tokio::main]
 async fn main() {
-    let opt = ClientOpt::from_args();
+    let opt = ClientOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }

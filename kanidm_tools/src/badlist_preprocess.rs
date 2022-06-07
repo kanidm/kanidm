@@ -16,8 +16,8 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 
 use kanidm_proto::v1::Modify;
 
+use clap::{ArgEnum, Args, Parser, Subcommand};
 use rayon::prelude::*;
-use structopt::StructOpt;
 use tracing::{debug, error, info};
 
 include!("opt/badlist_preprocess.rs");

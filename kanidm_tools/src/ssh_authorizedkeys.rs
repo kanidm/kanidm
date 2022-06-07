@@ -12,7 +12,7 @@ use std::path::PathBuf;
 
 use kanidm_client::{ClientError, KanidmClientBuilder};
 
-use structopt::StructOpt;
+use clap::{ArgEnum, Args, Parser, Subcommand};
 use tracing::{debug, error};
 
 include!("opt/ssh_authorizedkeys.rs");
