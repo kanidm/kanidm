@@ -1,3 +1,5 @@
+use clap::{Args, Subcommand};
+
 #[derive(Debug, Args)]
 pub struct Named {
     pub name: String,
@@ -491,13 +493,6 @@ pub enum SystemOpt {
     },
 }
 
-#[derive(Debug, Parser)]
-#[clap(about = "Kanidm Client Utility")]
-pub struct KanidmClientParser {
-    #[clap(subcommand)]
-    commands: KanidmClientOpt,
-}
-
 #[derive(Debug, Subcommand)]
 #[clap(about = "Kanidm Client Utility")]
 pub enum KanidmClientOpt {
@@ -542,4 +537,11 @@ pub enum KanidmClientOpt {
         #[clap(subcommand)]
         commands: RawOpt,
     },
+}
+
+#[derive(Debug, clap::Parser)]
+#[clap(about = "Kanidm Client Utility")]
+pub struct KanidmClientParser {
+    #[clap(subcommand)]
+    pub commands: KanidmClientOpt,
 }

@@ -13,7 +13,6 @@
 #[macro_use]
 extern crate tracing;
 
-use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 include!("../opt/kanidm.rs");

@@ -10,19 +10,19 @@
 #![deny(clippy::needless_pass_by_value)]
 #![deny(clippy::trivially_copy_pass_by_ref)]
 
-use clap::{Args, Parser, Subcommand};
-use kanidm_cli::KanidmClientOpt;
+use clap::Parser;
+use kanidm_cli::KanidmClientParser;
 
 use tracing_subscriber::prelude::*;
 use tracing_subscriber::{fmt, EnvFilter};
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let opt = KanidmClientOpt::from_args();
+    let opt = KanidmClientParser::parse();
 
     let fmt_layer = fmt::layer().with_writer(std::io::stderr);
 
-    let filter_layer = if opt.debug() {
+    let filter_layer = if opt.commands.debug() {
         match EnvFilter::try_new("kanidm=debug,kanidm_client=debug,webauthn=debug,kanidm_cli=debug")
         {
             Ok(f) => f,
@@ -43,5 +43,5 @@ async fn main() {
         .with(fmt_layer)
         .init();
 
-    opt.exec().await
+    opt.commands.exec().await
 }
