@@ -12,7 +12,7 @@ Goals
 
 * When a user selects "logout" the active session is canceled
 * A user can view their list of active sessions and audit or revoke them
-* A user can view what oauth2 applications an active session has interacted with
+* A user can view which OAuth 2.0 applications an active session has been used with
 * A oauth2 application can use rfc7009 logout to revoke a token that is associated to a session
 * Revokation of a session, implies revokation of all oauth2 sessions.
 * Management of other session types that may exist in the future.
