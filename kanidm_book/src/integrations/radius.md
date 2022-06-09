@@ -100,9 +100,11 @@ kanidm account credential update --name admin radius_service_account
 We provide a RADIUS container that has all the needed integrations. 
 This container requires some cryptographic material, laid out in a volume like so:
 
+<!-- TODO: re-format the data layout etc -->
+
     data
     data/ca.pem             # This is the kanidm ca.pem
-    data/config.ini         # This is the kanidm-radius configuration.
+    data/kanidm             # This is the kanidm client configuration.
     data/certs
     data/certs/dh           # openssl dhparam -out ./dh 2048
     data/certs/key.pem      # These are the radius ca/cert/key
@@ -111,69 +113,74 @@ This container requires some cryptographic material, laid out in a volume like s
 
 The config.ini has the following template:
 
-    [kanidm_client]
-    url =                   # URL to the kanidm server
-    # TODO: change strict to verify_ca
-    strict = false          # Strict CA verification
-    ca = /data/ca.pem       # Path to the kanidm ca
-    user =                  # Username of the RADIUS service account
-    secret =                # Generated secret for the service account
+```toml
+url = "https://example.com" # URL to the kanidm server
+verify_ca = false           # Strict CA verification
+ca = /data/ca.pem           # Path to the kanidm ca
+username =                  # Username of the RADIUS service account
+password =                  # Generated secret for the service account
 
-    ; default VLANs for groups that don't specify one.
-    [DEFAULT]
-    vlan = 1
+# Default vlans for groups that don't specify one.
+radius_default_vlan = 1 
 
-    ; [group.test]          # group.<name> will have these options applied
-    ; vlan =
+#TODO: finish this
+# [radiusd]
+# ca =                    # Path to the radius server's CA
+# key =                   # Path to the radius servers key
+# cert =                  # Path to the radius servers cert
+# dh =                    # Path to the radius servers dh params
+# required_group =        # Name of a kanidm group which you must be 
+#                         # A member of to use radius.
 
-    [radiusd]
-    ca =                    # Path to the radius server's CA
-    key =                   # Path to the radius servers key
-    cert =                  # Path to the radius servers cert
-    dh =                    # Path to the radius servers dh params
-    required_group =        # Name of a kanidm group which you must be 
-                            # A member of to use radius.
-    cache_path =            # A path to an area where cached user records can be stored.
-                            # If in doubt, use /dev/shm/kanidmradiusd
+# if the user is in one of these groups, then they're allowed
+radius_required_groups = [
+    "radius_access_allowed",
+]
 
-    ; [client.localhost]    # client.<nas name> configures wifi/vpn consumers
-    ; ipaddr =              # ipv4 or ipv6 address of the NAS
-    ; secret =              # Shared secret
+radius_groups = [
+    { name = "radius_access_allowed", vlan = 10 }
+]
 
-A fully configured example:
+radius_clients = [
+    { name = "localhost", ipaddr = "127.0.0.1", secret  = "testing123" },
+    # TODO: see if this works - it gets written out to the file
+    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
+```
 
-    [kanidm_client]
-    ; be sure to check the listening port is correct, it's the docker internal port
-    ; not the external one if these containers are on the same host.
-    url = https://example.com
-    # TODO: change strict to verify_ca
-    strict = true           # Adjust this if you have CA validation issues
-    ca = /data/ca.crt
-    user = radius_service_account
-    secret =                # The generated password from above
+## A fully configured example
 
-    ; default vlans for groups that don't specify one.
-    [DEFAULT]
-    vlan = 1
+Be sure to check the listening port is correct, it's the docker internal port, not the external one if these containers are on the same host.
 
-    [group.network_admins]
-    vlan = 10
+```toml
+url = "https://example.com"
+verify_ca = true
 
-    [radiusd]
-    ca = /data/certs/ca.pem
-    key =  /data/certs/key.pem
-    cert = /data/certs/cert.pem
-    dh = /data/certs/dh
-    required_group = radius_access_allowed
-    cache_path = /dev/shm/kanidmradiusd
+#TODO: finish this
+ca = "/data/ca.crt"
 
-    [client.localhost]
-    ipaddr = 127.0.0.1
-    secret = testing123
+username = "radius_service_account"
+# The generated password from above
+password = "Cr4bj0oze" 
 
-    [client.docker]
-    ipaddr = 172.17.0.0/16
-    secret = testing123
+# default vlan for groups that don't specify one.
+radius_default_vlan = 99 
+
+# if the user is in one of these Kanidm groups, 
+# then they're allowed to authenticate
+radius_required_groups = [
+    "radius_access_allowed",
+]
+
+radius_groups = [
+    { name = "radius_access_allowed", vlan = 10 }
+]
+
+radius_clients = [
+    { name = "localhost", ipaddr = "127.0.0.1", secret = "testing123" },
+    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
+```
 
 You can then run the container with:
 
