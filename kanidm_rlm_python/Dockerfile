@@ -6,10 +6,8 @@ RUN zypper --gpg-auto-import-keys refresh --force
 RUN zypper install -y \
     freeradius-client \
     freeradius-server \
-    freeradius-server-ldap \
     freeradius-server-python3 \
     freeradius-server-utils \
-    openldap2-client \
     hostname \
     python3 \
     python3-devel \
@@ -19,6 +17,8 @@ RUN zypper install -y \
     iputils \
     curl
 
+    # freeradius-server-ldap \
+    # openldap2-client \
 RUN zypper clean
 
 
@@ -27,20 +27,15 @@ RUN zypper clean
 
 
 # Copy in the python changes, as well as the default/inner-tunnel changes
-COPY kanidm_rlm_python/mod-python3 /etc/raddb/mods-available/python3
-COPY kanidm_rlm_python/eap /etc/raddb/mods-available/eap
-COPY kanidm_rlm_python/cache /etc/raddb/mods-available/cache
-COPY kanidm_rlm_python/default /etc/raddb/sites-available/default
-COPY kanidm_rlm_python/inner-tunnel /etc/raddb/sites-available/inner-tunnel
+ADD kanidm_rlm_python/mods-available/ /etc/raddb/mods-available/
+COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/
 
 # Set a working directory of /etc/raddb
 WORKDIR /etc/raddb
-# /data volume
-# VOLUME /data
 
 # Enable the python and cache module.
 RUN ln -s ../mods-available/python3 /etc/raddb/mods-enabled/python3
-#RUN ln -s ../mods-available/cache /etc/raddb/mods-enabled/cache
+
 # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-enabled/{passwd,totp}
 
