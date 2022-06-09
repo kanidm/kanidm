@@ -193,24 +193,34 @@ Authentication can be tested through the client.localhost Network Access Server 
     docker exec -i -t radiusd radtest <username> badpassword 127.0.0.1 10 testing123
     docker exec -i -t radiusd radtest <username> <radius show_secret value here> 127.0.0.1 10 testing123
 
-Finally, to expose this to a Wi-Fi infrastructure, add your NAS in `config.ini`:
+Finally, to expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
 
-    [client.access_point]
-    ipaddr = <some ipadd>
-    secret = <random value>
+``toml
+radius_clients = [
+    { name = "access_point", ipaddr = "10.2.3.4", secret = "<a_random_value>" }
+]
+```
 
-Then re-create/run your docker instance with `-p 1812:1812 -p 1812:1812/udp` ...
+Then re-create/run your docker instance and expose the ports by adding 
+`-p 1812:1812 -p 1812:1812/udp` to the command.
 
 If you have any issues, check the logs from the RADIUS output, as they tend 
 to indicate the cause of the problem. To increase the logging level you can 
 re-run your environment with debug enabled:
 
-    docker rm radiusd
-    docker run --name radiusd -e DEBUG=True -i -t -v ...:/data kanidm/radius:latest
+```shell
+docker rm radiusd
+docker run --name radiusd \
+    -e DEBUG=True \
+    --interactive --tty \
+    --volume ...:/data \
+    kanidm/radius:latest
+```
 
-Note the RADIUS container *is* configured to provide Tunnel-Private-Group-ID, 
+Note the RADIUS container *is* configured to provide 
+[Tunnel-Private-Group-ID](https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID), 
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
-assign these by groups in the config.ini as shown in the above examples.
+assign these by groups in the config configuration as shown in the above examples.
 
 ## Testing the RADIUS container
 
@@ -231,13 +241,11 @@ Build the container:
 make build/radiusd
 ```
 
-Run the container:
+Run the container by using the pre-made script:
 
 ```shell
-docker run --rm -it --name kanidm_radius \
-    -v /tmp/kanidm/chain.pem:/etc/raddb/certs/chain.pem \
-    -v /tmp/kanidm/key.pem:/etc/raddb/certs/key.pem \
-    -v /tmp/kanidm/ca.pem:/etc/raddb/certs/ca.pem \
-    -v /tmp/kanidm/dh.pem:/etc/raddb/certs/dh.pem \
-    kanidm/radius:devel
+cd kanidm_rlm_python
+./run_radius_container.sh
 ```
+
+Test the container as above
