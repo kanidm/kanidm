@@ -27,18 +27,16 @@ RUN zypper clean
 
 
 # Copy in the python changes, as well as the default/inner-tunnel changes
-COPY mod-python3 /etc/raddb/mods-available/python3
-COPY eap /etc/raddb/mods-available/eap
-COPY cache /etc/raddb/mods-available/cache
-COPY default /etc/raddb/sites-available/default
-COPY inner-tunnel /etc/raddb/sites-available/inner-tunnel
-
+COPY kanidm_rlm_python/mod-python3 /etc/raddb/mods-available/python3
+COPY kanidm_rlm_python/eap /etc/raddb/mods-available/eap
+COPY kanidm_rlm_python/cache /etc/raddb/mods-available/cache
+COPY kanidm_rlm_python/default /etc/raddb/sites-available/default
+COPY kanidm_rlm_python/inner-tunnel /etc/raddb/sites-available/inner-tunnel
 
 # Set a working directory of /etc/raddb
 WORKDIR /etc/raddb
 # /data volume
-VOLUME /data
-
+# VOLUME /data
 
 # Enable the python and cache module.
 RUN ln -s ../mods-available/python3 /etc/raddb/mods-enabled/python3
@@ -46,28 +44,28 @@ RUN ln -s ../mods-available/python3 /etc/raddb/mods-enabled/python3
 # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-enabled/{passwd,totp}
 
-# Allows radiusd (?) to write to the directory
+# Allows the radiusd user to write to the directory
 RUN chown -R radiusd: /etc/raddb
 RUN chmod 775 /etc/raddb/certs
 RUN chmod 640 /etc/raddb/clients.conf
 
-RUN mkdir -p /tmp/kanidmradius/
-COPY ./kanidmradius/ /tmp/kanidmradius/
-COPY pyproject.toml /tmp/
+# install the packages
+RUN mkdir -p /pkg/kanidmradius/kanidmradius/
+COPY kanidm_rlm_python//kanidmradius/ /pkg/kanidmradius/kanidmradius/
+COPY kanidm_rlm_python/pyproject.toml /pkg/kanidmradius/
 
-RUN python3 -m pip install --no-cache-dir --no-warn-script-location /tmp/
-USER radiusd
+RUN mkdir -p /pkg/pykanidm/
+COPY pykanidm/ /pkg/pykanidm/
+
 # install the package and its dependencies
-# RUN python3 -m pip install requests toml
-# just yeet it into the right place
-USER root
-# RUN mkdir -p /etc/raddb/mods-config/python3/kanidmradius/
-# COPY ./kanidmradius/ /etc/raddb/mods-config/python3/kanidmradius
-RUN rm -rf /tmp/*
-
 RUN ln -s /etc/raddb/mods-config/python3/radiusd.py /usr/lib/python3.8/site-packages/
+RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm
+RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmradius
+# clean up after install
+RUN rm -rf /pkg/*
+
 
 USER radiusd
 
-COPY entrypoint.py /entrypoint.py
+COPY kanidm_rlm_python/entrypoint.py /entrypoint.py
 CMD [ "/usr/bin/python3", "/entrypoint.py" ]

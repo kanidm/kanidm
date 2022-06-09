@@ -54,24 +54,79 @@ class KanidmClient():
         except ValidationError as validation_error:
             raise ValueError(f"Failed to validate configuration: {validation_error}")
     @property
-    def auth_url(self) -> str:
+    def auth_path(self) -> str:
         """ gets the authentication url endpoint """
-        if self.config.uri is None:
-            raise ServerURLNotSet("You didn't set the server URL")
-        return f"{self.config.uri}/v1/auth"
+        return "/v1/auth"
+
+    def get_path_uri(self, path: str) -> str:
+        """ turns a path into a full URI """
+        if path.startswith("/"):
+            path = path[1:]
+        return f"{self.config.uri}{path}"
+
+    def call_get(
+        self,
+        path,
+        headers: Optional[Dict[str, str]] = None,
+        timeout: Optional[int] = None,
+        ) -> requests.Response:
+        """ does a get call to the server """
+
+        if timeout is None:
+            timeout = self.config.connect_timeout
+
+        response = self.session.get(
+            url=self.get_path_uri(path),
+            headers=headers,
+            timeout=timeout,
+            verify=self.config.verify_ca,
+        )
+        return response
+
+    def get_radius_token(
+        self,
+        username: str,
+        radius_session_id: str) -> Dict[str, Any]:
+        """ does the call to the radius token endpoint """
+        path = f"/v1/account/{username}/_radius/_token"
+        headers = {
+            'Authorization': f"Bearer {radius_session_id}",
+        }
+        return self.call_get(
+            path,
+            headers,
+            )
+
+    def call_post(
+        self,
+        path,
+        headers: Optional[Dict[str, str]] = None,
+        json: Optional[Dict[str, Any]] = None,
+        timeout: Optional[int] = None,
+        ) -> requests.Response:
+        """ does a get call to the server """
+
+        if timeout is None:
+            timeout = self.config.connect_timeout
+
+        response = self.session.post(
+            url=self.get_path_uri(path),
+            headers=headers,
+            json=json,
+            timeout=timeout,
+            verify=self.config.verify_ca,
+        )
+        return response
 
     def auth_init(self, username: str) -> AuthInitResponse:
         """ init step, starts the auth session, sets the class-local session ID """
         init_auth = {"step": {"init": username}}
 
-        response = self.session.post(
-            self.auth_url,
+        response = self.call_post(
+            path=self.auth_path,
             json=init_auth,
-            verify=self.config.verify_ca,
-            timeout=self.config.connect_timeout,
-            )
+        )
         if response.status_code != 200:
-
             logging.debug(
                 "Failed to authenticate, response from server: %s",
                 response.content,
@@ -102,11 +157,9 @@ class KanidmClient():
                 }
             }
 
-        response = self.session.post(
-            self.auth_url,
+        response = self.call_post(
+            self.auth_path,
             json=begin_auth,
-            verify=self.config.verify_ca,
-            timeout=self.config.connect_timeout,
             headers=self.session_header(),
             )
         if response.status_code != 200:
@@ -157,12 +210,9 @@ class KanidmClient():
             raise ValueError("Password has to be passed to auth_step_password or in self.password!")
 
         cred_auth = {"step": { "cred": {"password": password}}}
-        response = self.session.post(
-            self.auth_url,
+        response = self.call_post(
+            path="/v1/auth",
             json=cred_auth,
-            verify=self.config.verify_ca,
-            timeout=self.config.connect_timeout,
-            headers=self.session_header(),
             )
         if response.status_code != 200:
             logging.error("Failed to authenticate, response: %s", response.content)
@@ -172,7 +222,10 @@ class KanidmClient():
         result = AuthStepPasswordResponse.parse_obj(response.json())
         result.response = response
         print(f"auth_step_password: {result.dict()}")
-        # Get the token
+
+        # pull the token out and set it
+        #TODO: try and build this into the pydantic model
+        result.sessionid = result.state.success
         if result.state.success is not None:
             return result
         raise AuthCredFailed

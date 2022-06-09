@@ -36,7 +36,7 @@ buildx/kanidmd:
 buildx/radiusd: ## build multiarch radius images
 buildx/radiusd:
 	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform $(IMAGE_ARCH) \
-		-f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
+		-f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 buildx: buildx/kanidmd buildx/radiusd
@@ -50,7 +50,7 @@ build/kanidmd:
 
 build/radiusd:	## build radiusd image
 build/radiusd:
-	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) kanidm_rlm_python
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
 build: build/kanidmd build/radiusd
 
