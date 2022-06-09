@@ -3,8 +3,7 @@
 #pylint: disable=too-few-public-methods
 
 
-from ipaddress import IPv4Address, IPv6Address
-from typing import List, Optional, Union
+from typing import List, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, validator
@@ -76,10 +75,11 @@ class RadiusClient(BaseModel):
     ipaddr : str # the allowed client address
     secret : str # the password for that particular client
 
-    @validator("ipaddr")
-    def validate_ipaddr(cls, value: str) -> str:
-        IPv4Address(value)
-        return value
+# TODO: make this validate all network types I think? Check with valid options in freeipa client config...
+#    @validator("ipaddr")
+#    def validate_ipaddr(cls, value: str) -> str:
+#        IPv4Address(value)
+#        return value
 
 
 class KanidmClientConfig(BaseModel):
@@ -114,8 +114,9 @@ class KanidmClientConfig(BaseModel):
         """ configuration for the settings class """
         env_prefix = 'kanidm_'
 
+    #TODO: work out how to make this a constructor instead
     @classmethod
-    def parse_toml(cls, input_string: str):
+    def parse_toml(cls, input_string: str): #type: ignore
         """ loads from a string """
         return super().parse_obj(toml.loads(input_string))
 

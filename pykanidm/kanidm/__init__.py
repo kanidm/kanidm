@@ -66,7 +66,7 @@ class KanidmClient():
 
     def call_get(
         self,
-        path,
+        path: str,
         headers: Optional[Dict[str, str]] = None,
         timeout: Optional[int] = None,
         ) -> requests.Response:
@@ -86,7 +86,7 @@ class KanidmClient():
     def get_radius_token(
         self,
         username: str,
-        radius_session_id: str) -> Dict[str, Any]:
+        radius_session_id: str) -> requests.Response:
         """ does the call to the radius token endpoint """
         path = f"/v1/account/{username}/_radius/_token"
         headers = {
@@ -99,7 +99,7 @@ class KanidmClient():
 
     def call_post(
         self,
-        path,
+        path: str,
         headers: Optional[Dict[str, str]] = None,
         json: Optional[Dict[str, Any]] = None,
         timeout: Optional[int] = None,
@@ -183,7 +183,7 @@ class KanidmClient():
             username = self.config.username
             password = self.config.password
         if username is None or password is None:
-            raise ValueError(f"Username and Password need to be set somewhere!")
+            raise ValueError("Username and Password need to be set somewhere!")
 
         auth_init = self.auth_init(username)
 
@@ -225,10 +225,11 @@ class KanidmClient():
 
         # pull the token out and set it
         #TODO: try and build this into the pydantic model
+        if result.state.success is None:
+            raise AuthCredFailed
         result.sessionid = result.state.success
-        if result.state.success is not None:
-            return result
-        raise AuthCredFailed
+        return result
+
 
     def session_header(
         self,

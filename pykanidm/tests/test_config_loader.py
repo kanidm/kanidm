@@ -9,7 +9,6 @@ import pytest
 import requests
 
 from kanidm import KanidmClient
-from kanidm.exceptions import ServerURLNotSet
 from kanidm.types import KanidmClientConfig
 from kanidm.utils import load_config
 
@@ -63,7 +62,7 @@ def test_parse_config_data(client: KanidmClient) -> None:
 def test_init_with_uri() -> None:
     """ tests the class """
     testclient = KanidmClient(uri="https://example.com")
-    assert testclient.config.uri == "https://example.com"
+    assert testclient.config.uri == "https://example.com/"
 
 def test_init_with_session() -> None:
     """ tests the class """
