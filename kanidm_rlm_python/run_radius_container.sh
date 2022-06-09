@@ -6,11 +6,12 @@ fi
 
 echo "Starting the dev container..."
 #shellcheck disable=SC2068
-docker run --rm -it --name kanidm_radius \
-    -v /tmp/kanidm/chain.pem:/etc/raddb/certs/chain.pem \
-    -v /tmp/kanidm/key.pem:/etc/raddb/certs/key.pem \
+docker run --rm -it \
+    --name radiusd \
+    -v /tmp/kanidm/dh.pem:/etc/raddb/certs/dh.pem \
     -v /tmp/kanidm/ca.pem:/etc/raddb/certs/ca.pem \
-    -v "${HOME}/.config/kanidm_radius.ini:/data/config.ini" \
-    -v "${HOME}/.config/kanidm:/etc/kanidm/config" \
-    --user root -v /tmp/kanidm/dh.pem:/etc/raddb/certs/dh.pem \
+    -v /tmp/kanidm/cert.pem:/etc/raddb/certs/cert.pem \
+    -v /tmp/kanidm/chain.pem:/etc/raddb/certs/server.pem \
+    -v /tmp/kanidm/key.pem:/etc/raddb/certs/key.pem \
+    -v "${HOME}/.config/kanidm:/data/kanidm" \
     kanidm/radius:devel $@

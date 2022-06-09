@@ -60,12 +60,6 @@ def test_parse_config_data(client: KanidmClient) -> None:
     }
     client.parse_config_data(config_data=testdict)
 
-def test_uri_not_set(client: KanidmClient) -> None:
-    """ tests auth url when you've somehow failed to set the uri """
-    client.config.uri = None
-    with pytest.raises(ServerURLNotSet):
-        assert client.auth_url is not None
-
 def test_init_with_uri() -> None:
     """ tests the class """
     testclient = KanidmClient(uri="https://example.com")

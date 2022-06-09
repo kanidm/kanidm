@@ -5,9 +5,10 @@ description = ""
 authors = []
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 requests = "^2.27.1"
 toml = "^0.10.2"
+aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.13.9"

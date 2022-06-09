@@ -40,7 +40,7 @@ python3 {
 
 	#TODO: should this work?
 	mod_authenticate = ${.module}
-	func_authenticate = _authenticate
+	func_authenticate = authenticate
 
 	#mod_preacct = ${.module}
 #	func_preacct = preacct
