@@ -162,6 +162,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
     <html lang="en">
         <head>
             <meta charset="utf-8"/>
+            <meta name="viewport" content="width=device-width">
             <title>Kanidm</title>
             <link rel="stylesheet" href="/pkg/external/bootstrap.min.css" integrity="sha384-EVSTQN3/azprG1Anm3QDgpJLIm9Nao0Yz1ztcQTwFspd3yD65VohhpuuCOmLASjC"/>
             <link rel="stylesheet" href="/pkg/style.css"/>
@@ -170,7 +171,7 @@ async fn index_view(_req: tide::Request<AppState>) -> tide::Result {
             <script type="module" type="text/javascript" src="/pkg/wasmloader.js" integrity="sha384-==WASMHASH==">
             </script>
 
-            <link rel="icon" href="/pkg/favicon.svg" />
+            <link rel="icon" href="/pkg/img/favicon.png" />
         </head>
         <body>
         </body>

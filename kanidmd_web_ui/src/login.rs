@@ -772,7 +772,10 @@ impl Component for LoginApp {
         html! {
           <main class="form-signin">
             <div class="container">
-              <h2>{ "Kanidm Alpha 🦀" }</h2>
+                <center>
+                    <img src="/pkg/img/logo-square.svg" alt="Kanidm" class="kanidm_logo"/>
+                    <h2>{ "Kanidm Alpha" } </h2>
+                </center>
             </div>
             { self.view_state(ctx) }
           </main>
