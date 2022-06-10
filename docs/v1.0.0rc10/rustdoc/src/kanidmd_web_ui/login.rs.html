@@ -799,6 +799,9 @@
 <span id="794">794</span>
 <span id="795">795</span>
 <span id="796">796</span>
+<span id="797">797</span>
+<span id="798">798</span>
+<span id="799">799</span>
 </pre><pre class="rust"><code><span class="comment">// use anyhow::Error;</span>
 <span class="kw">use</span> <span class="ident">gloo::console</span>;
 <span class="kw">use</span> <span class="ident">wasm_bindgen::prelude</span>::<span class="kw-2">*</span>;
@@ -1573,7 +1576,10 @@
         <span class="macro">html!</span> {
           <span class="op">&lt;</span><span class="ident">main</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;form-signin&quot;</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="ident">div</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;container&quot;</span><span class="op">&gt;</span>
-              <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;Kanidm Alpha 🦀&quot;</span> }<span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="ident">center</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">img</span> <span class="ident">src</span><span class="op">=</span><span class="string">&quot;/pkg/img/logo-square.svg&quot;</span> <span class="ident">alt</span><span class="op">=</span><span class="string">&quot;Kanidm&quot;</span> <span class="ident">class</span><span class="op">=</span><span class="string">&quot;kanidm_logo&quot;</span><span class="op">/</span><span class="op">&gt;</span>
+                    <span class="op">&lt;</span><span class="ident">h2</span><span class="op">&gt;</span>{ <span class="string">&quot;Kanidm Alpha&quot;</span> } <span class="op">&lt;</span><span class="op">/</span><span class="ident">h2</span><span class="op">&gt;</span>
+                <span class="op">&lt;</span><span class="op">/</span><span class="ident">center</span><span class="op">&gt;</span>
             <span class="op">&lt;</span><span class="op">/</span><span class="ident">div</span><span class="op">&gt;</span>
             { <span class="self">self</span>.<span class="ident">view_state</span>(<span class="ident">ctx</span>) }
           <span class="op">&lt;</span><span class="op">/</span><span class="ident">main</span><span class="op">&gt;</span>
