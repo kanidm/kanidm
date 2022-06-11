@@ -556,7 +556,8 @@ pub fn create_https_server(
         .post(oauth2_id_scopemap_post)
         .delete(oauth2_id_scopemap_delete);
 
-    let mut self_route = appserver.at("/v1/self");
+    // TODO(mea): self -> whoami?
+    let mut self_route = appserver.at("/v1/whoami");
     self_route.at("/").get(whoami);
 
     self_route.at("/_attr/:attr").get(do_nothing);

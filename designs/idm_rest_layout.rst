@@ -145,6 +145,7 @@ account
         GET -> let's the radius server get all required details for radius to work
 
 
+TODO(mea): remove
 self
 ====
 
