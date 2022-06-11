@@ -137,68 +137,65 @@
 <span id="132">132</span>
 <span id="133">133</span>
 <span id="134">134</span>
-<span id="135">135</span>
 </pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">std::str::FromStr</span>;
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
 <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>)]</span>
     <span class="doccomment">/// Enable debug logging</span>
     <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
 }
 
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
 <span class="kw">struct</span> <span class="ident">PreProcOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;i&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;input&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;input&quot;</span>)]</span>
     <span class="doccomment">/// Path to unprocessed data in json format.</span>
     <span class="kw">pub</span> <span class="ident">input_path</span>: <span class="ident">PathBuf</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;o&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;output&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;output&quot;</span>)]</span>
     <span class="doccomment">/// Path to write the processed output.</span>
     <span class="kw">pub</span> <span class="ident">output_path</span>: <span class="ident">PathBuf</span>,
 }
 
-
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
 <span class="kw">struct</span> <span class="ident">SetupOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;target&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;target&quot;</span>)]</span>
     <span class="doccomment">/// Which service to target during this operation.</span>
     <span class="doccomment">/// Valid values are &quot;ds&quot; or &quot;kanidm&quot;</span>
     <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">TargetOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;profile&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;profile&quot;</span>)]</span>
     <span class="doccomment">/// Path to the test profile.</span>
     <span class="kw">pub</span> <span class="ident">profile_path</span>: <span class="ident">PathBuf</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
 <span class="kw">struct</span> <span class="ident">RunOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;target&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;target&quot;</span>)]</span>
     <span class="doccomment">/// Which service to target during this operation.</span>
     <span class="doccomment">/// Valid values are &quot;ds&quot; or &quot;kanidm&quot;</span>
     <span class="kw">pub</span> <span class="ident">target</span>: <span class="ident">TargetOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;test_type&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;test_type&quot;</span>)]</span>
     <span class="doccomment">/// Which type of test to run against this system</span>
     <span class="kw">pub</span> <span class="ident">test_type</span>: <span class="ident">TestTypeOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;p&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;profile&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;profile&quot;</span>)]</span>
     <span class="doccomment">/// Path to the test profile.</span>
     <span class="kw">pub</span> <span class="ident">profile_path</span>: <span class="ident">PathBuf</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TargetOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ds&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ds&quot;</span>)]</span>
     <span class="doccomment">/// Run against the ldap/ds profile</span>
     <span class="ident">Ds</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;kanidm&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;kanidm&quot;</span>)]</span>
     <span class="doccomment">/// Run against the kanidm http profile</span>
     <span class="ident">Kanidm</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;kanidm_ldap&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;kanidm_ldap&quot;</span>)]</span>
     <span class="doccomment">/// Run against the kanidm ldap profile</span>
     <span class="ident">KanidmLdap</span>,
 }
@@ -216,9 +213,9 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">enum</span> <span class="ident">TestTypeOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search-basic&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search-basic&quot;</span>)]</span>
     <span class="doccomment">/// Perform a basic search-only test</span>
     <span class="ident">SearchBasic</span>,
 }
@@ -242,8 +239,10 @@
     }
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
-<span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span><span class="op">=</span><span class="string">&quot;orca&quot;</span>, <span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Orca Load Testing Utility
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
+<span class="attribute">#[<span class="ident">clap</span>(
+    <span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;orca&quot;</span>,
+    <span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Orca Load Testing Utility
 
 Orca works in a few steps.
 
@@ -259,20 +258,19 @@ Orca works in a few steps.
 
     orca run -p example_profiles/small/orca.toml kanidm search-basic
 
-&quot;</span>)]</span>
+&quot;</span>
+)]</span>
 <span class="kw">enum</span> <span class="ident">OrcaOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;preprocess&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;preprocess&quot;</span>)]</span>
     <span class="doccomment">/// Preprocess a dataset that can be used for testing</span>
     <span class="ident">PreProc</span>(<span class="ident">PreProcOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;setup&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;setup&quot;</span>)]</span>
     <span class="doccomment">/// Setup a server as defined by a test profile</span>
     <span class="ident">Setup</span>(<span class="ident">SetupOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;run&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;run&quot;</span>)]</span>
     <span class="doccomment">/// Run the load test as defined by the test profile</span>
     <span class="ident">Run</span>(<span class="ident">RunOpt</span>),
 }
-
-
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="orca" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
 </body></html>

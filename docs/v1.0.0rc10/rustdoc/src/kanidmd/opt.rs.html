@@ -126,129 +126,145 @@
 <span id="121">121</span>
 <span id="122">122</span>
 <span id="123">123</span>
-</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span id="124">124</span>
+<span id="125">125</span>
+<span id="126">126</span>
+<span id="127">127</span>
+<span id="128">128</span>
+<span id="129">129</span>
+<span id="130">130</span>
+<span id="131">131</span>
+</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
     <span class="doccomment">/// Logging level. quiet, default, filter, verbose, perffull</span>
     <span class="ident">debug</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">LogLevel</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;c&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;config&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CONFIG&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;config&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CONFIG&quot;</span>)]</span>
     <span class="doccomment">/// Path to the server&#39;s configuration file. If it does not exist, it will be created.</span>
     <span class="ident">config_path</span>: <span class="ident">PathBuf</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">BackupOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
     <span class="doccomment">/// Output path for the backup content.</span>
     <span class="ident">path</span>: <span class="ident">PathBuf</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">RestoreOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
     <span class="doccomment">/// Restore from this path. Should be created with &quot;backup&quot;.</span>
     <span class="ident">path</span>: <span class="ident">PathBuf</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">RecoverAccountOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>)]</span>
     <span class="doccomment">/// The account name to recover credentials for.</span>
     <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">DbScanListIndex</span> {
     <span class="doccomment">/// The name of the index to list</span>
     <span class="ident">index_name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
 <span class="comment">/*
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Args)]
 struct DbScanGetIndex {
     /// The name of the index to list
     index_name: String,
     /// The name of the index key to retrieve
     key: String,
-    #[structopt(flatten)]
+    #[clap(flatten)]
     commonopts: CommonOpt,
 }
 */</span>
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">struct</span> <span class="ident">DbScanGetId2Entry</span> {
     <span class="doccomment">/// The id of the entry to display</span>
     <span class="ident">id</span>: <span class="ident">u64</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">enum</span> <span class="ident">DbScanOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_all_indexes&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_all_indexes&quot;</span>)]</span>
     <span class="doccomment">/// List all index tables that exist on the system.</span>
     <span class="ident">ListIndexes</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_index&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_index&quot;</span>)]</span>
     <span class="doccomment">/// List all content of a named index</span>
     <span class="ident">ListIndex</span>(<span class="ident">DbScanListIndex</span>),
     <span class="comment">// #[structopt(name = &quot;get_index&quot;)]</span>
     <span class="comment">// /// Display the content of a single index key</span>
     <span class="comment">// GetIndex(DbScanGetIndex),</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_id2entry&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_id2entry&quot;</span>)]</span>
     <span class="doccomment">/// List all id2entry values with reduced entry content</span>
     <span class="ident">ListId2Entry</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_id2entry&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get_id2entry&quot;</span>)]</span>
     <span class="doccomment">/// View the data of a specific entry from id2entry</span>
     <span class="ident">GetId2Entry</span>(<span class="ident">DbScanGetId2Entry</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_index_analysis&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_index_analysis&quot;</span>)]</span>
     <span class="doccomment">/// List all content of index analysis</span>
     <span class="ident">ListIndexAnalysis</span>(<span class="ident">CommonOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
-<span class="kw">enum</span> <span class="ident">KanidmdOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;server&quot;</span>)]</span>
-    <span class="doccomment">/// Start the IDM Server</span>
-    <span class="ident">Server</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;configtest&quot;</span>)]</span>
-    <span class="doccomment">/// Test the IDM Server configuration, without starting network listeners.</span>
-    <span class="ident">ConfigTest</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;backup&quot;</span>)]</span>
-    <span class="doccomment">/// Backup the database content (offline)</span>
-    <span class="ident">Backup</span>(<span class="ident">BackupOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;restore&quot;</span>)]</span>
-    <span class="doccomment">/// Restore the database content (offline)</span>
-    <span class="ident">Restore</span>(<span class="ident">RestoreOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;verify&quot;</span>)]</span>
-    <span class="doccomment">/// Verify database and entity consistency.</span>
-    <span class="ident">Verify</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;recover_account&quot;</span>)]</span>
-    <span class="doccomment">/// Recover an account&#39;s password</span>
-    <span class="ident">RecoverAccount</span>(<span class="ident">RecoverAccountOpt</span>),
-    <span class="comment">// #[structopt(name = &quot;reset_server_id&quot;)]</span>
-    <span class="comment">// ResetServerId(CommonOpt),</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reindex&quot;</span>)]</span>
-    <span class="doccomment">/// Reindex the database (offline)</span>
-    <span class="ident">Reindex</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;vacuum&quot;</span>)]</span>
-    <span class="doccomment">/// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)</span>
-    <span class="ident">Vacuum</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain_name_change&quot;</span>)]</span>
-    <span class="doccomment">/// Change the IDM domain name</span>
-    <span class="ident">DomainChange</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;db_scan&quot;</span>)]</span>
-    <span class="doccomment">/// Inspect the internal content of the database datastructures.</span>
-    <span class="ident">DbScan</span>(<span class="ident">DbScanOpt</span>),
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
+<span class="kw">struct</span> <span class="ident">KanidmdParser</span> {
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+    <span class="ident">commands</span>: <span class="ident">KanidmdOpt</span>,
 }
 
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
+<span class="kw">enum</span> <span class="ident">KanidmdOpt</span> {
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;server&quot;</span>)]</span>
+    <span class="doccomment">/// Start the IDM Server</span>
+    <span class="ident">Server</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;configtest&quot;</span>)]</span>
+    <span class="doccomment">/// Test the IDM Server configuration, without starting network listeners.</span>
+    <span class="ident">ConfigTest</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;backup&quot;</span>)]</span>
+    <span class="doccomment">/// Backup the database content (offline)</span>
+    <span class="ident">Backup</span>(<span class="ident">BackupOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;restore&quot;</span>)]</span>
+    <span class="doccomment">/// Restore the database content (offline)</span>
+    <span class="ident">Restore</span>(<span class="ident">RestoreOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;verify&quot;</span>)]</span>
+    <span class="doccomment">/// Verify database and entity consistency.</span>
+    <span class="ident">Verify</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;recover_account&quot;</span>)]</span>
+    <span class="doccomment">/// Recover an account&#39;s password</span>
+    <span class="ident">RecoverAccount</span>(<span class="ident">RecoverAccountOpt</span>),
+    <span class="comment">// #[clap(name = &quot;reset_server_id&quot;)]</span>
+    <span class="comment">// ResetServerId(CommonOpt),</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reindex&quot;</span>)]</span>
+    <span class="doccomment">/// Reindex the database (offline)</span>
+    <span class="ident">Reindex</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;vacuum&quot;</span>)]</span>
+    <span class="doccomment">/// Vacuum the database to reclaim space or change db_fs_type/page_size (offline)</span>
+    <span class="ident">Vacuum</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain_name_change&quot;</span>)]</span>
+    <span class="doccomment">/// Change the IDM domain name</span>
+    <span class="ident">DomainChange</span>(<span class="ident">CommonOpt</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;db_scan&quot;</span>)]</span>
+    <span class="doccomment">/// Inspect the internal content of the database datastructures.</span>
+    <span class="ident">DbScan</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">DbScanOpt</span>,
+    },
+}
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../" data-current-crate="kanidmd" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
 </body></html>

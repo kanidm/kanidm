@@ -954,22 +954,22 @@
 <span class="kw">impl</span> <span class="ident">AccountOpt</span> {
     <span class="kw">pub</span> <span class="kw">fn</span> <span class="ident">debug</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="ident">bool</span> {
         <span class="kw">match</span> <span class="self">self</span> {
-            <span class="ident">AccountOpt::Credential</span>(<span class="ident">acopt</span>) =&gt; <span class="ident">acopt</span>.<span class="ident">debug</span>(),
-            <span class="ident">AccountOpt::Radius</span>(<span class="ident">acopt</span>) =&gt; <span class="kw">match</span> <span class="ident">acopt</span> {
+            <span class="ident">AccountOpt::Credential</span> { <span class="ident">commands</span> } =&gt; <span class="ident">commands</span>.<span class="ident">debug</span>(),
+            <span class="ident">AccountOpt::Radius</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountRadius::Show</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountRadius::Generate</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountRadius::Delete</span>(<span class="ident">aro</span>) =&gt; <span class="ident">aro</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             },
-            <span class="ident">AccountOpt::Posix</span>(<span class="ident">apopt</span>) =&gt; <span class="kw">match</span> <span class="ident">apopt</span> {
+            <span class="ident">AccountOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountPosix::Show</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountPosix::Set</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountPosix::SetPassword</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             },
-            <span class="ident">AccountOpt::Person</span>(<span class="ident">apopt</span>) =&gt; <span class="kw">match</span> <span class="ident">apopt</span> {
+            <span class="ident">AccountOpt::Person</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountPerson::Extend</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountPerson::Set</span>(<span class="ident">apo</span>) =&gt; <span class="ident">apo</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             },
-            <span class="ident">AccountOpt::Ssh</span>(<span class="ident">asopt</span>) =&gt; <span class="kw">match</span> <span class="ident">asopt</span> {
+            <span class="ident">AccountOpt::Ssh</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountSsh::List</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountSsh::Add</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountSsh::Delete</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -978,7 +978,7 @@
             <span class="ident">AccountOpt::Get</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">AccountOpt::Delete</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">AccountOpt::Create</span>(<span class="ident">aopt</span>) =&gt; <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">AccountOpt::Validity</span>(<span class="ident">avopt</span>) =&gt; <span class="kw">match</span> <span class="ident">avopt</span> {
+            <span class="ident">AccountOpt::Validity</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountValidity::Show</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountValidity::ExpireAt</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">AccountValidity::BeginFrom</span>(<span class="ident">ano</span>) =&gt; <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
@@ -989,8 +989,8 @@
     <span class="kw">pub</span> <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">exec</span>(<span class="kw-2">&amp;</span><span class="self">self</span>) {
         <span class="kw">match</span> <span class="self">self</span> {
             <span class="comment">// id/cred/primary/set</span>
-            <span class="ident">AccountOpt::Credential</span>(<span class="ident">acopt</span>) =&gt; <span class="ident">acopt</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
-            <span class="ident">AccountOpt::Radius</span>(<span class="ident">aropt</span>) =&gt; <span class="kw">match</span> <span class="ident">aropt</span> {
+            <span class="ident">AccountOpt::Credential</span> { <span class="ident">commands</span> } =&gt; <span class="ident">commands</span>.<span class="ident">exec</span>().<span class="kw">await</span>,
+            <span class="ident">AccountOpt::Radius</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountRadius::Show</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 
@@ -1025,7 +1025,7 @@
                     }
                 }
             }, <span class="comment">// end AccountOpt::Radius</span>
-            <span class="ident">AccountOpt::Posix</span>(<span class="ident">apopt</span>) =&gt; <span class="kw">match</span> <span class="ident">apopt</span> {
+            <span class="ident">AccountOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountPosix::Show</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                     <span class="kw">match</span> <span class="ident">client</span>
@@ -1072,7 +1072,7 @@
                     }
                 }
             }, <span class="comment">// end AccountOpt::Posix</span>
-            <span class="ident">AccountOpt::Person</span>(<span class="ident">apopt</span>) =&gt; <span class="kw">match</span> <span class="ident">apopt</span> {
+            <span class="ident">AccountOpt::Person</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountPerson::Extend</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                     <span class="kw">if</span> <span class="kw">let</span> <span class="prelude-val">Err</span>(<span class="ident">e</span>) <span class="op">=</span> <span class="ident">client</span>
@@ -1100,7 +1100,7 @@
                     }
                 }
             }, <span class="comment">// end AccountOpt::Person</span>
-            <span class="ident">AccountOpt::Ssh</span>(<span class="ident">asopt</span>) =&gt; <span class="kw">match</span> <span class="ident">asopt</span> {
+            <span class="ident">AccountOpt::Ssh</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountSsh::List</span>(<span class="ident">aopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">aopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 
@@ -1176,7 +1176,7 @@
                     <span class="macro">error!</span>(<span class="string">&quot;Error -&gt; {:?}&quot;</span>, <span class="ident">e</span>)
                 }
             }
-            <span class="ident">AccountOpt::Validity</span>(<span class="ident">avopt</span>) =&gt; <span class="kw">match</span> <span class="ident">avopt</span> {
+            <span class="ident">AccountOpt::Validity</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">AccountValidity::Show</span>(<span class="ident">ano</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">ano</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
 

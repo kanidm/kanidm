@@ -88,7 +88,7 @@
 <span class="attribute">#[<span class="ident">macro_use</span>]</span>
 <span class="kw">extern</span> <span class="kw">crate</span> <span class="ident">tracing</span>;
 
-<span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
+<span class="kw">use</span> <span class="ident">clap::Parser</span>;
 
 <span class="kw">use</span> <span class="ident">futures::executor::block_on</span>;
 
@@ -96,17 +96,17 @@
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_config::KanidmUnixdConfig</span>;
 <span class="kw">use</span> <span class="ident">kanidm_unix_common::unix_proto</span>::{<span class="ident">ClientRequest</span>, <span class="ident">ClientResponse</span>};
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
 <span class="kw">struct</span> <span class="ident">ClientOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>)]</span>
     <span class="ident">debug</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;D&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;name&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;D&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;name&quot;</span>)]</span>
     <span class="ident">account_id</span>: <span class="ident">String</span>,
 }
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">ClientOpt::from_args</span>();
+    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">ClientOpt::parse</span>();
     <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span> {
         <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
     }

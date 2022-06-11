@@ -109,9 +109,9 @@
 
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 
+<span class="kw">use</span> <span class="ident">clap::Parser</span>;
 <span class="kw">use</span> <span class="ident">kanidm_client</span>::{<span class="ident">ClientError</span>, <span class="ident">KanidmClientBuilder</span>};
 
-<span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
 <span class="kw">use</span> <span class="ident">tracing</span>::{<span class="ident">debug</span>, <span class="ident">error</span>};
 
 <span class="macro">include!</span>(<span class="string">&quot;opt/ssh_authorizedkeys.rs&quot;</span>);
@@ -122,7 +122,7 @@
 <span class="comment">//</span>
 <span class="attribute">#[<span class="ident">tokio::main</span>(<span class="ident">flavor</span> <span class="op">=</span> <span class="string">&quot;current_thread&quot;</span>)]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">SshAuthorizedOpt::from_args</span>();
+    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">SshAuthorizedOpt::parse</span>();
     <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span> {
         <span class="ident">::std::env::set_var</span>(<span class="string">&quot;RUST_LOG&quot;</span>, <span class="string">&quot;kanidm=debug,kanidm_client=debug&quot;</span>);
     }

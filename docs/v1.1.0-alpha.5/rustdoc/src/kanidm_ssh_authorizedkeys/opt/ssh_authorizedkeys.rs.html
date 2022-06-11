@@ -10,13 +10,11 @@
 <span id="5">5</span>
 <span id="6">6</span>
 <span id="7">7</span>
-<span id="8">8</span>
-</pre><pre class="rust"><code>
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Parser</span>)]</span>
 <span class="kw">struct</span> <span class="ident">SshAuthorizedOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>)]</span>
     <span class="ident">debug</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
+    <span class="attribute">#[<span class="ident">clap</span>()]</span>
     <span class="ident">account_id</span>: <span class="ident">String</span>,
 }
 </code></pre></div>

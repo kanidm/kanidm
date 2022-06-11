@@ -151,7 +151,7 @@
             <span class="ident">GroupOpt::RemoveMembers</span>(<span class="ident">gcopt</span>) =&gt; <span class="ident">gcopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">GroupOpt::SetMembers</span>(<span class="ident">gcopt</span>) =&gt; <span class="ident">gcopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             <span class="ident">GroupOpt::PurgeMembers</span>(<span class="ident">gcopt</span>) =&gt; <span class="ident">gcopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
-            <span class="ident">GroupOpt::Posix</span>(<span class="ident">gpopt</span>) =&gt; <span class="kw">match</span> <span class="ident">gpopt</span> {
+            <span class="ident">GroupOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">GroupPosix::Show</span>(<span class="ident">gcopt</span>) =&gt; <span class="ident">gcopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
                 <span class="ident">GroupPosix::Set</span>(<span class="ident">gcopt</span>) =&gt; <span class="ident">gcopt</span>.<span class="ident">copt</span>.<span class="ident">debug</span>,
             },
@@ -246,7 +246,7 @@
                     <span class="prelude-val">Ok</span>(<span class="kw">_</span>) =&gt; <span class="macro">println!</span>(<span class="string">&quot;Successfully set members for group {}&quot;</span>, <span class="ident">gcopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()),
                 }
             }
-            <span class="ident">GroupOpt::Posix</span>(<span class="ident">gpopt</span>) =&gt; <span class="kw">match</span> <span class="ident">gpopt</span> {
+            <span class="ident">GroupOpt::Posix</span> { <span class="ident">commands</span> } =&gt; <span class="kw">match</span> <span class="ident">commands</span> {
                 <span class="ident">GroupPosix::Show</span>(<span class="ident">gcopt</span>) =&gt; {
                     <span class="kw">let</span> <span class="ident">client</span> <span class="op">=</span> <span class="ident">gcopt</span>.<span class="ident">copt</span>.<span class="ident">to_client</span>().<span class="kw">await</span>;
                     <span class="kw">match</span> <span class="ident">client</span>.<span class="ident">idm_group_unix_token_get</span>(<span class="ident">gcopt</span>.<span class="ident">name</span>.<span class="ident">as_str</span>()).<span class="kw">await</span> {

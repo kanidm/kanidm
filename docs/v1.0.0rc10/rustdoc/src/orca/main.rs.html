@@ -227,10 +227,10 @@
 
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::ds::DirectoryServer</span>;
 <span class="kw">use</span> <span class="ident"><span class="kw">crate</span>::kani</span>::{<span class="ident">KaniHttpServer</span>, <span class="ident">KaniLdapServer</span>};
+<span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Parser</span>, <span class="ident">Subcommand</span>};
 <span class="kw">use</span> <span class="ident">std::collections</span>::{<span class="ident">HashMap</span>, <span class="ident">HashSet</span>};
 <span class="kw">use</span> <span class="ident">std::path::PathBuf</span>;
 <span class="kw">use</span> <span class="ident">std::time</span>::{<span class="ident">Duration</span>, <span class="ident">Instant</span>};
-<span class="kw">use</span> <span class="ident">structopt::StructOpt</span>;
 <span class="kw">use</span> <span class="ident">uuid::Uuid</span>;
 
 <span class="kw">mod</span> <span class="ident">data</span>;
@@ -387,7 +387,7 @@
 
 <span class="attribute">#[<span class="ident">tokio::main</span>]</span>
 <span class="kw">async</span> <span class="kw">fn</span> <span class="ident">main</span>() {
-    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">OrcaOpt::from_args</span>();
+    <span class="kw">let</span> <span class="ident">opt</span> <span class="op">=</span> <span class="ident">OrcaOpt::parse</span>();
 
     <span class="kw">if</span> <span class="ident">opt</span>.<span class="ident">debug</span>() {
         <span class="ident">::std::env::set_var</span>(

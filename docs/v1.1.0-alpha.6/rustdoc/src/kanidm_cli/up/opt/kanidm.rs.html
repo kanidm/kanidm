@@ -505,507 +505,597 @@
 <span id="500">500</span>
 <span id="501">501</span>
 <span id="502">502</span>
-</pre><pre class="rust"><code><span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span id="503">503</span>
+<span id="504">504</span>
+<span id="505">505</span>
+<span id="506">506</span>
+<span id="507">507</span>
+<span id="508">508</span>
+<span id="509">509</span>
+<span id="510">510</span>
+<span id="511">511</span>
+<span id="512">512</span>
+<span id="513">513</span>
+<span id="514">514</span>
+<span id="515">515</span>
+<span id="516">516</span>
+<span id="517">517</span>
+<span id="518">518</span>
+<span id="519">519</span>
+<span id="520">520</span>
+<span id="521">521</span>
+<span id="522">522</span>
+<span id="523">523</span>
+<span id="524">524</span>
+<span id="525">525</span>
+<span id="526">526</span>
+<span id="527">527</span>
+<span id="528">528</span>
+<span id="529">529</span>
+<span id="530">530</span>
+<span id="531">531</span>
+<span id="532">532</span>
+<span id="533">533</span>
+<span id="534">534</span>
+<span id="535">535</span>
+<span id="536">536</span>
+<span id="537">537</span>
+<span id="538">538</span>
+<span id="539">539</span>
+<span id="540">540</span>
+<span id="541">541</span>
+<span id="542">542</span>
+<span id="543">543</span>
+<span id="544">544</span>
+<span id="545">545</span>
+<span id="546">546</span>
+<span id="547">547</span>
+</pre><pre class="rust"><code><span class="kw">use</span> <span class="ident">clap</span>::{<span class="ident">Args</span>, <span class="ident">Subcommand</span>};
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Named</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
     <span class="kw">pub</span> <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">DebugOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CommonOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;H&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;H&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;D&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;name&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_NAME&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;D&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;name&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_NAME&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">username</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;C&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;C&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupNamedMembers</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
     <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
     <span class="ident">members</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">GroupPosixOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
     <span class="ident">name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;gidnumber&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span>)]</span>
     <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupPosix</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
     <span class="ident">Show</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
     <span class="ident">Set</span>(<span class="ident">GroupPosixOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">GroupOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
     <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
     <span class="ident">Get</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
     <span class="ident">Create</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="ident">Delete</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_members&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_members&quot;</span>)]</span>
     <span class="ident">ListMembers</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_members&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_members&quot;</span>)]</span>
     <span class="ident">SetMembers</span>(<span class="ident">GroupNamedMembers</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;purge_members&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;purge_members&quot;</span>)]</span>
     <span class="ident">PurgeMembers</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_members&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_members&quot;</span>)]</span>
     <span class="ident">AddMembers</span>(<span class="ident">GroupNamedMembers</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_members&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;remove_members&quot;</span>)]</span>
     <span class="ident">RemoveMembers</span>(<span class="ident">GroupNamedMembers</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
-    <span class="ident">Posix</span>(<span class="ident">GroupPosix</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
+    <span class="ident">Posix</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">GroupPosix</span>,
+    },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountCommonOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
+    <span class="attribute">#[<span class="ident">clap</span>()]</span>
     <span class="ident">account_id</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedExpireDateTimeOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;datetime&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;datetime&quot;</span>)]</span>
     <span class="doccomment">/// An rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;</span>
     <span class="doccomment">/// or the word &quot;never&quot;, &quot;clear&quot; to remove account expiry.</span>
     <span class="ident">datetime</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedValidDateTimeOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;datetime&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;datetime&quot;</span>)]</span>
     <span class="doccomment">/// An rfc3339 time of the format &quot;YYYY-MM-DDTHH:MM:SS+TZ&quot;, &quot;2020-09-25T11:22:02+10:00&quot;</span>
     <span class="doccomment">/// or the word &quot;any&quot;, &quot;clear&quot; to remove valid from enforcement.</span>
     <span class="ident">datetime</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedTagOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
     <span class="ident">tag</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountNamedTagPkOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;tag&quot;</span>)]</span>
     <span class="ident">tag</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;pubkey&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;pubkey&quot;</span>)]</span>
     <span class="ident">pubkey</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AnonTokenOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;token&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;token&quot;</span>)]</span>
     <span class="ident">token</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountCreateOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;display_name&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;display_name&quot;</span>)]</span>
     <span class="ident">display_name</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountCredential</span> {
     <span class="doccomment">/// Interactively update and change the content of the credentials of an account</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;update&quot;</span>)]</span>
     <span class="ident">Update</span>(<span class="ident">AccountNamedOpt</span>),
     <span class="doccomment">/// Given a reset token, interactively perform a credential reset</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset&quot;</span>)]</span>
     <span class="ident">Reset</span>(<span class="ident">AnonTokenOpt</span>),
     <span class="doccomment">/// Create a reset link (token) that can be given to another person so they can</span>
     <span class="doccomment">/// recover or reset their account credentials.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_reset_link&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_reset_link&quot;</span>)]</span>
     <span class="ident">CreateResetLink</span>(<span class="ident">AccountNamedOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountRadius</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show_secret&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show_secret&quot;</span>)]</span>
     <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate_secret&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;generate_secret&quot;</span>)]</span>
     <span class="ident">Generate</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_secret&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_secret&quot;</span>)]</span>
     <span class="ident">Delete</span>(<span class="ident">AccountNamedOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountPosixOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;gidnumber&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;gidnumber&quot;</span>)]</span>
     <span class="ident">gidnumber</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">u32</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;shell&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;shell&quot;</span>)]</span>
     <span class="ident">shell</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountPosix</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
     <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
     <span class="ident">Set</span>(<span class="ident">AccountPosixOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_password&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_password&quot;</span>)]</span>
     <span class="ident">SetPassword</span>(<span class="ident">AccountNamedOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">AccountPersonOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">aopts</span>: <span class="ident">AccountCommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;mail&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;mail&quot;</span>)]</span>
     <span class="ident">mail</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;legalname&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;legalname&quot;</span>)]</span>
     <span class="ident">legalname</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountPerson</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;extend&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;extend&quot;</span>)]</span>
     <span class="ident">Extend</span>(<span class="ident">AccountPersonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set&quot;</span>)]</span>
     <span class="ident">Set</span>(<span class="ident">AccountPersonOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountSsh</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_publickeys&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list_publickeys&quot;</span>)]</span>
     <span class="ident">List</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_publickey&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;add_publickey&quot;</span>)]</span>
     <span class="ident">Add</span>(<span class="ident">AccountNamedTagPkOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_publickey&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_publickey&quot;</span>)]</span>
     <span class="ident">Delete</span>(<span class="ident">AccountNamedTagOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountValidity</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
     <span class="ident">Show</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;expire_at&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;expire_at&quot;</span>)]</span>
     <span class="ident">ExpireAt</span>(<span class="ident">AccountNamedExpireDateTimeOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;begin_from&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;begin_from&quot;</span>)]</span>
     <span class="ident">BeginFrom</span>(<span class="ident">AccountNamedValidDateTimeOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">AccountOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;credential&quot;</span>)]</span>
-    <span class="ident">Credential</span>(<span class="ident">AccountCredential</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;radius&quot;</span>)]</span>
-    <span class="ident">Radius</span>(<span class="ident">AccountRadius</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
-    <span class="ident">Posix</span>(<span class="ident">AccountPosix</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;person&quot;</span>)]</span>
-    <span class="ident">Person</span>(<span class="ident">AccountPerson</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ssh&quot;</span>)]</span>
-    <span class="ident">Ssh</span>(<span class="ident">AccountSsh</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;credential&quot;</span>)]</span>
+    <span class="ident">Credential</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountCredential</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;radius&quot;</span>)]</span>
+    <span class="ident">Radius</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountRadius</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;posix&quot;</span>)]</span>
+    <span class="ident">Posix</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountPosix</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;person&quot;</span>)]</span>
+    <span class="ident">Person</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountPerson</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;ssh&quot;</span>)]</span>
+    <span class="ident">Ssh</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountSsh</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
     <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
     <span class="ident">Get</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
     <span class="ident">Create</span>(<span class="ident">AccountCreateOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="ident">Delete</span>(<span class="ident">AccountNamedOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;validity&quot;</span>)]</span>
-    <span class="ident">Validity</span>(<span class="ident">AccountValidity</span>),
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;validity&quot;</span>)]</span>
+    <span class="ident">Validity</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountValidity</span>,
+    },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RecycleOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
     <span class="doccomment">/// List objects that are in the recycle bin</span>
     <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
     <span class="doccomment">/// Display an object from the recycle bin</span>
     <span class="ident">Get</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;revive&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;revive&quot;</span>)]</span>
     <span class="doccomment">/// Revive a recycled object into a live (accessible) state - this is the opposite of &quot;delete&quot;</span>
     <span class="ident">Revive</span>(<span class="ident">Named</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LoginOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;w&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;webauthn&quot;</span>)]</span>
-    <span class="kw">pub</span> <span class="ident">webauthn</span>: <span class="ident">bool</span>,
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
+    <span class="ident">copt</span>: <span class="ident">CommonOpt</span>,
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>)]</span>
+    <span class="ident">webauthn</span>: <span class="ident">bool</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">LogoutOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;d&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;debug&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span>, <span class="ident">long</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_DEBUG&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">debug</span>: <span class="ident">bool</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;H&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;H&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;url&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_URL&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">addr</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&quot;C&quot;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>), <span class="ident">short</span> <span class="op">=</span> <span class="string">&#39;C&#39;</span>, <span class="ident">long</span> <span class="op">=</span> <span class="string">&quot;ca&quot;</span>, <span class="ident">env</span> <span class="op">=</span> <span class="string">&quot;KANIDM_CA_PATH&quot;</span>)]</span>
     <span class="kw">pub</span> <span class="ident">ca_path</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">PathBuf</span><span class="op">&gt;</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
+    <span class="attribute">#[<span class="ident">clap</span>()]</span>
     <span class="kw">pub</span> <span class="ident">username</span>: <span class="prelude-ty">Option</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SessionOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
     <span class="doccomment">/// List current active sessions</span>
     <span class="ident">List</span>(<span class="ident">DebugOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;cleanup&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;cleanup&quot;</span>)]</span>
     <span class="doccomment">/// Remove sessions that have expired or are invalid.</span>
     <span class="ident">Cleanup</span>(<span class="ident">DebugOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">FilterOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
+    <span class="attribute">#[<span class="ident">clap</span>()]</span>
     <span class="ident">filter</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">CreateOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
     <span class="ident">file</span>: <span class="ident">PathBuf</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">ModifyOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">commonopts</span>: <span class="ident">CommonOpt</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>()]</span>
+    <span class="attribute">#[<span class="ident">clap</span>()]</span>
     <span class="ident">filter</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">parse</span>(<span class="ident">from_os_str</span>))]</span>
     <span class="ident">file</span>: <span class="ident">PathBuf</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">RawOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;search&quot;</span>)]</span>
     <span class="ident">Search</span>(<span class="ident">FilterOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
     <span class="ident">Create</span>(<span class="ident">CreateOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;modify&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;modify&quot;</span>)]</span>
     <span class="ident">Modify</span>(<span class="ident">ModifyOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="ident">Delete</span>(<span class="ident">FilterOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SelfOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;whoami&quot;</span>)]</span>
     <span class="doccomment">/// Show the current authenticated user&#39;s identity</span>
     <span class="ident">Whoami</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_password&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_password&quot;</span>)]</span>
     <span class="doccomment">/// Set the current user&#39;s password</span>
     <span class="ident">SetPassword</span>(<span class="ident">CommonOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2BasicCreateOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
     <span class="ident">displayname</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;origin&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;origin&quot;</span>)]</span>
     <span class="ident">origin</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetDisplayname</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;displayname&quot;</span>)]</span>
     <span class="ident">displayname</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2SetImplicitScopes</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
     <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2CreateScopeMapOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
     <span class="ident">group</span>: <span class="ident">String</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;scopes&quot;</span>)]</span>
     <span class="ident">scopes</span>: <span class="ident">Vec</span><span class="op">&lt;</span><span class="ident">String</span><span class="op">&gt;</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Args</span>)]</span>
 <span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">Oauth2DeleteScopeMapOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">flatten</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">flatten</span>)]</span>
     <span class="ident">nopt</span>: <span class="ident">Named</span>,
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
     <span class="ident">group</span>: <span class="ident">String</span>,
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">Oauth2Opt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;list&quot;</span>)]</span>
     <span class="doccomment">/// List all configured oauth2 resource servers</span>
     <span class="ident">List</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;get&quot;</span>)]</span>
     <span class="doccomment">/// Display a selected oauth2 resource server</span>
     <span class="ident">Get</span>(<span class="ident">Named</span>),
-    <span class="comment">// #[structopt(name = &quot;set&quot;)]</span>
+    <span class="comment">// #[clap(name = &quot;set&quot;)]</span>
     <span class="comment">// /// Set options for a selected oauth2 resource server</span>
     <span class="comment">// Set(),</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create&quot;</span>)]</span>
     <span class="doccomment">/// Create a new oauth2 resource server</span>
     <span class="ident">CreateBasic</span>(<span class="ident">Oauth2BasicCreateOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_implicit_scopes&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_implicit_scopes&quot;</span>)]</span>
     <span class="doccomment">/// Set the list of scopes that are granted to all valid accounts.</span>
     <span class="ident">SetImplictScopes</span>(<span class="ident">Oauth2SetImplicitScopes</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_scope_map&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;create_scope_map&quot;</span>)]</span>
     <span class="doccomment">/// Add a new mapping from a group to what scopes it provides</span>
     <span class="ident">CreateScopeMap</span>(<span class="ident">Oauth2CreateScopeMapOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_scope_map&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete_scope_map&quot;</span>)]</span>
     <span class="doccomment">/// Remove a mapping from groups to scopes</span>
     <span class="ident">DeleteScopeMap</span>(<span class="ident">Oauth2DeleteScopeMapOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_secrets&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_secrets&quot;</span>)]</span>
     <span class="doccomment">/// Reset the secrets associated to this resource server</span>
     <span class="ident">ResetSecrets</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;delete&quot;</span>)]</span>
     <span class="doccomment">/// Delete a oauth2 resource server</span>
     <span class="ident">Delete</span>(<span class="ident">Named</span>),
     <span class="doccomment">/// Set a new displayname for a resource server</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_displayname&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;set_displayname&quot;</span>)]</span>
     <span class="ident">SetDisplayname</span>(<span class="ident">Oauth2SetDisplayname</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;enable_pkce&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;enable_pkce&quot;</span>)]</span>
     <span class="doccomment">/// Enable PKCE on this oauth2 resource server. This defaults to being enabled.</span>
     <span class="ident">EnablePkce</span>(<span class="ident">Named</span>),
     <span class="doccomment">/// Disable PKCE on this oauth2 resource server to work around insecure clients that</span>
     <span class="doccomment">/// may not support it. You should request the client to enable PKCE!</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_insecure_client_disable_pkce&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_insecure_client_disable_pkce&quot;</span>)]</span>
     <span class="ident">DisablePkce</span>(<span class="ident">Named</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_enable_legacy_crypto&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;warning_enable_legacy_crypto&quot;</span>)]</span>
     <span class="doccomment">/// Enable legacy signing crypto on this oauth2 resource server. This defaults to being disabled.</span>
     <span class="doccomment">/// You only need to enable this for openid clients that do not support modern crytopgraphic</span>
     <span class="doccomment">/// operations.</span>
     <span class="ident">EnableLegacyCrypto</span>(<span class="ident">Named</span>),
     <span class="doccomment">/// Disable legacy signing crypto on this oauth2 resource server. This is the default.</span>
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;disable_legacy_crypto&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;disable_legacy_crypto&quot;</span>)]</span>
     <span class="ident">DisableLegacyCrypto</span>(<span class="ident">Named</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">DomainOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;show&quot;</span>)]</span>
     <span class="doccomment">/// Show information about this systems domain</span>
     <span class="ident">Show</span>(<span class="ident">CommonOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_token_key&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;reset_token_key&quot;</span>)]</span>
     <span class="doccomment">/// Reset this domain token signing key. This will cause all user sessions to be</span>
     <span class="doccomment">/// invalidated (logged out).</span>
     <span class="ident">ResetTokenKey</span>(<span class="ident">CommonOpt</span>),
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">SystemOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2&quot;</span>)]</span>
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;oauth2&quot;</span>)]</span>
     <span class="doccomment">/// Configure and display oauth2/oidc resource server configuration</span>
-    <span class="ident">Oauth2</span>(<span class="ident">Oauth2Opt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain&quot;</span>)]</span>
+    <span class="ident">Oauth2</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">Oauth2Opt</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;domain&quot;</span>)]</span>
     <span class="doccomment">/// Configure and display domain configuration</span>
-    <span class="ident">Domain</span>(<span class="ident">DomainOpt</span>),
+    <span class="ident">Domain</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">DomainOpt</span>,
+    },
 }
 
-<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">StructOpt</span>)]</span>
-<span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Kanidm Client Utility&quot;</span>)]</span>
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">Subcommand</span>)]</span>
+<span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Kanidm Client Utility&quot;</span>)]</span>
 <span class="kw">pub</span> <span class="kw">enum</span> <span class="ident">KanidmClientOpt</span> {
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;login&quot;</span>)]</span>
     <span class="doccomment">/// Login to an account to use with future cli operations</span>
     <span class="ident">Login</span>(<span class="ident">LoginOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;logout&quot;</span>)]</span>
     <span class="doccomment">/// Logout of an active cli session</span>
     <span class="ident">Logout</span>(<span class="ident">LogoutOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;session&quot;</span>)]</span>
     <span class="doccomment">/// Manage active cli sessions</span>
-    <span class="ident">Session</span>(<span class="ident">SessionOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;self&quot;</span>)]</span>
+    <span class="ident">Session</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">SessionOpt</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;self&quot;</span>)]</span>
     <span class="doccomment">/// Actions for the current authenticated account</span>
-    <span class="ident">CSelf</span>(<span class="ident">SelfOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;account&quot;</span>)]</span>
+    <span class="ident">CSelf</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">SelfOpt</span>,
+    },
     <span class="doccomment">/// Account operations</span>
-    <span class="ident">Account</span>(<span class="ident">AccountOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;group&quot;</span>)]</span>
+    <span class="ident">Account</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">AccountOpt</span>,
+    },
     <span class="doccomment">/// Group operations</span>
-    <span class="ident">Group</span>(<span class="ident">GroupOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;system&quot;</span>)]</span>
+    <span class="ident">Group</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">GroupOpt</span>,
+    },
     <span class="doccomment">/// System configuration operations</span>
-    <span class="ident">System</span>(<span class="ident">SystemOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;recycle_bin&quot;</span>)]</span>
+    <span class="ident">System</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">SystemOpt</span>,
+    },
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;recycle_bin&quot;</span>)]</span>
     <span class="doccomment">/// Recycle Bin operations</span>
-    <span class="ident">Recycle</span>(<span class="ident">RecycleOpt</span>),
-    <span class="attribute">#[<span class="ident">structopt</span>(<span class="ident">name</span> <span class="op">=</span> <span class="string">&quot;raw&quot;</span>)]</span>
+    <span class="ident">Recycle</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">RecycleOpt</span>,
+    },
     <span class="doccomment">/// Unsafe - low level, raw database operations.</span>
-    <span class="ident">Raw</span>(<span class="ident">RawOpt</span>),
+    <span class="ident">Raw</span> {
+        <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+        <span class="ident">commands</span>: <span class="ident">RawOpt</span>,
+    },
+}
+
+<span class="attribute">#[<span class="ident">derive</span>(<span class="ident">Debug</span>, <span class="ident">clap::Parser</span>)]</span>
+<span class="attribute">#[<span class="ident">clap</span>(<span class="ident">about</span> <span class="op">=</span> <span class="string">&quot;Kanidm Client Utility&quot;</span>)]</span>
+<span class="kw">pub</span> <span class="kw">struct</span> <span class="ident">KanidmClientParser</span> {
+    <span class="attribute">#[<span class="ident">clap</span>(<span class="ident">subcommand</span>)]</span>
+    <span class="kw">pub</span> <span class="ident">commands</span>: <span class="ident">KanidmClientOpt</span>,
 }
 </code></pre></div>
 </section><section id="search" class="content hidden"></section></div></main><div id="rustdoc-vars" data-root-path="../../../../" data-current-crate="kanidm_cli" data-themes="ayu,dark,light" data-resource-suffix="" data-rustdoc-version="1.61.0 (fe5b13d68 2022-05-18)" ></div>
