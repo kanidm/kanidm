@@ -13,8 +13,8 @@
 #[macro_use]
 extern crate tracing;
 
+use clap::Parser;
 use std::path::PathBuf;
-use structopt::StructOpt;
 
 use futures::executor::block_on;
 
@@ -26,7 +26,7 @@ include!("./opt/ssh_authorizedkeys.rs");
 
 #[tokio::main]
 async fn main() {
-    let opt = SshAuthorizedOpt::from_args();
+    let opt = SshAuthorizedOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }

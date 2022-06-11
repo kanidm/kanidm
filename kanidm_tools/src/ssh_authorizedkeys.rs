@@ -10,9 +10,9 @@
 
 use std::path::PathBuf;
 
+use clap::Parser;
 use kanidm_client::{ClientError, KanidmClientBuilder};
 
-use structopt::StructOpt;
 use tracing::{debug, error};
 
 include!("opt/ssh_authorizedkeys.rs");
@@ -23,7 +23,7 @@ include!("opt/ssh_authorizedkeys.rs");
 //
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
-    let opt = SshAuthorizedOpt::from_args();
+    let opt = SshAuthorizedOpt::parse();
     if opt.debug {
         ::std::env::set_var("RUST_LOG", "kanidm=debug,kanidm_client=debug");
     }

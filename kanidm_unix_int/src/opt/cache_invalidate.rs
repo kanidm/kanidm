@@ -1,7 +1,5 @@
-
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct CacheInvalidateOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     debug: bool,
 }
-

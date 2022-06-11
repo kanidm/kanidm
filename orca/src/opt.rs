@@ -1,64 +1,62 @@
 use std::str::FromStr;
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct CommonOpt {
-    #[structopt(short = "d", long = "debug")]
+    #[clap(short, long)]
     /// Enable debug logging
     pub debug: bool,
 }
 
-
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct PreProcOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub copt: CommonOpt,
-    #[structopt(parse(from_os_str), short = "i", long = "input")]
+    #[clap(parse(from_os_str), short, long = "input")]
     /// Path to unprocessed data in json format.
     pub input_path: PathBuf,
-    #[structopt(parse(from_os_str), short = "o", long = "output")]
+    #[clap(parse(from_os_str), short, long = "output")]
     /// Path to write the processed output.
     pub output_path: PathBuf,
 }
 
-
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct SetupOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub copt: CommonOpt,
-    #[structopt(name = "target")]
+    #[clap(name = "target")]
     /// Which service to target during this operation.
     /// Valid values are "ds" or "kanidm"
     pub target: TargetOpt,
-    #[structopt(parse(from_os_str), short = "p", long = "profile")]
+    #[clap(parse(from_os_str), short, long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Parser)]
 struct RunOpt {
-    #[structopt(flatten)]
+    #[clap(flatten)]
     pub copt: CommonOpt,
-    #[structopt(name = "target")]
+    #[clap(name = "target")]
     /// Which service to target during this operation.
     /// Valid values are "ds" or "kanidm"
     pub target: TargetOpt,
-    #[structopt(name = "test_type")]
+    #[clap(name = "test_type")]
     /// Which type of test to run against this system
     pub test_type: TestTypeOpt,
-    #[structopt(parse(from_os_str), short = "p", long = "profile")]
+    #[clap(parse(from_os_str), short, long = "profile")]
     /// Path to the test profile.
     pub profile_path: PathBuf,
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub(crate) enum TargetOpt {
-    #[structopt(name = "ds")]
+    #[clap(name = "ds")]
     /// Run against the ldap/ds profile
     Ds,
-    #[structopt(name = "kanidm")]
+    #[clap(name = "kanidm")]
     /// Run against the kanidm http profile
     Kanidm,
-    #[structopt(name = "kanidm_ldap")]
+    #[clap(name = "kanidm_ldap")]
     /// Run against the kanidm ldap profile
     KanidmLdap,
 }
@@ -76,9 +74,9 @@ impl FromStr for TargetOpt {
     }
 }
 
-#[derive(Debug, StructOpt)]
+#[derive(Debug, Subcommand)]
 pub(crate) enum TestTypeOpt {
-    #[structopt(name = "search-basic")]
+    #[clap(name = "search-basic")]
     /// Perform a basic search-only test
     SearchBasic,
 }
@@ -102,8 +100,10 @@ impl std::fmt::Display for TestTypeOpt {
     }
 }
 
-#[derive(Debug, StructOpt)]
-#[structopt(name="orca", about = "Orca Load Testing Utility
+#[derive(Debug, Parser)]
+#[clap(
+    name = "orca",
+    about = "Orca Load Testing Utility
 
 Orca works in a few steps.
 
@@ -119,17 +119,16 @@ Orca works in a few steps.
 
     orca run -p example_profiles/small/orca.toml kanidm search-basic
 
-")]
+"
+)]
 enum OrcaOpt {
-    #[structopt(name = "preprocess")]
+    #[clap(name = "preprocess")]
     /// Preprocess a dataset that can be used for testing
     PreProc(PreProcOpt),
-    #[structopt(name = "setup")]
+    #[clap(name = "setup")]
     /// Setup a server as defined by a test profile
     Setup(SetupOpt),
-    #[structopt(name = "run")]
+    #[clap(name = "run")]
     /// Run the load test as defined by the test profile
     Run(RunOpt),
 }
-
-
