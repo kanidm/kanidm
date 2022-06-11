@@ -28,7 +28,7 @@ use webauthn_rs::base64_data::Base64UrlSafeData;
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
     AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ConsentRequest, ErrorResponse,
-    OidcDiscoveryResponse,
+    OidcDiscoveryResponse, Consent
 };
 use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
@@ -417,7 +417,7 @@ impl Oauth2ResourceServersReadTransaction {
         uat: &UserAuthToken,
         auth_req: &AuthorisationRequest,
         ct: Duration,
-    ) -> Result<ConsentRequest, Oauth2Error> {
+    ) -> Result<Consent, Oauth2Error> {
         // due to identity processing we already know that:
         // * the session must be authenticated, and valid
         // * is within it's valid time window.
@@ -548,6 +548,20 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         }
 
+        //  Check that the scopes are the same as a previous consent (if any)
+        // If oidc, what PII is visible?
+        // TODO: Scopes map to claims:
+        //
+        // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
+        // * email - (email, email\_verified)
+        // * address - (address)
+        // * phone - (phone\_number, phone\_number\_verified)
+        //
+        // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
+
+        todo!();
+
+
         // Subseqent we then return an encrypted session handle which allows
         // the user to indicate their consent to this authorisation.
         //
@@ -644,6 +658,9 @@ impl Oauth2ResourceServersReadTransaction {
 
         let code = o2rs.token_fernet.encrypt_at_time(&code_data, ct.as_secs());
 
+        // Submit that we consented to the delayed action queue
+        todo!();
+
         Ok(AuthorisePermitSuccess {
             redirect_uri: consent_req.redirect_uri,
             state: consent_req.state,
@@ -706,6 +723,11 @@ impl Oauth2ResourceServersReadTransaction {
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
+        // todo: add refresh token grant type.
+
+        //  If it's a refresh token grant, are the consent permissions the same?
+        todo!();
+
         if token_req.grant_type != "authorization_code" {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
             return Err(Oauth2Error::InvalidRequest);
@@ -907,11 +929,14 @@ impl Oauth2ResourceServersReadTransaction {
             .token_fernet
             .encrypt_at_time(&access_token_data, ct.as_secs());
 
+        let refresh_token = todo!();
+
+
         Ok(AccessTokenResponse {
             access_token,
             token_type: "bearer".to_string(),
             expires_in,
-            refresh_token: None,
+            refresh_token,
             scope,
             id_token,
         })

@@ -185,7 +185,15 @@ pub async fn oauth2_id_delete(req: tide::Request<AppState>) -> tide::Result {
 
 pub async fn oauth2_authorise_post(mut req: tide::Request<AppState>) -> tide::Result {
     let auth_req: AuthorisationRequest = req.body_json().await?;
-    oauth2_authorise(req, auth_req).await
+    oauth2_authorise(req, auth_req)
+        .await
+        .map(|mut res| {
+            if res.status() == 302 {
+                // in post, we need the redirect not to be issued, so we mask 302 to 200
+                res.set_status(200);
+            }
+            res
+        })
 }
 
 pub async fn oauth2_authorise_get(req: tide::Request<AppState>) -> tide::Result {
@@ -266,7 +274,10 @@ pub async fn oauth2_authorise_permit_post(mut req: tide::Request<AppState>) -> t
         .await
         .map(|mut res| {
             // in post, we need the redirect not to be issued, so we mask 302 to 200
-            res.set_status(200);
+            if res.status() == 302 {
+                // in post, we need the redirect not to be issued, so we mask 302 to 200
+                res.set_status(200);
+            }
             res
         })
 }
