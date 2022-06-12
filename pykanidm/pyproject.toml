@@ -15,6 +15,7 @@ python = "^3.8"
 requests = "^2.27.1"
 toml = "^0.10.2"
 pydantic = "^1.9.1"
+aiohttp = "^3.8.1"
 
 [tool.poetry.dev-dependencies]
 pylint = "^2.13.9"
@@ -25,6 +26,8 @@ types-toml = "^0.10.7"
 pylint-pydantic = "^0.1.4"
 coverage = "^6.4.1"
 pylint-pytest = "^1.1.2"
+pytest-asyncio = "^0.18.3"
+pytest-mock = "^3.7.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -37,3 +40,6 @@ extension-pkg-whitelist="pydantic"
 # https://github.com/samuelcolvin/pydantic/issues/1961#issuecomment-759522422
 load-plugins="pylint_pydantic,pylint_pytest"
 
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"

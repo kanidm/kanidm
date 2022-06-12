@@ -14,3 +14,6 @@ class AuthMechUnknown(Exception):
 
 class ServerURLNotSet(Exception):
     """ You haven't set the URL for the server! """
+
+class NoMatchingEntries(Exception):
+    """ user not found """
