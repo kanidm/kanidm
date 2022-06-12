@@ -16,17 +16,8 @@ RUN zypper install -y \
     iproute2 \
     iputils \
     curl
-
-    # freeradius-server-ldap \
-    # openldap2-client \
 RUN zypper clean
 
-
-# Copy the python module to /etc/raddb
-# COPY kanidmradius.py /etc/raddb/
-
-
-# Copy in the python changes, as well as the default/inner-tunnel changes
 ADD kanidm_rlm_python/mods-available/ /etc/raddb/mods-available/
 COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/
 
@@ -37,6 +28,7 @@ WORKDIR /etc/raddb
 RUN ln -s ../mods-available/python3 /etc/raddb/mods-enabled/python3
 
 # disable auth via methods we don't support!
+RUN rm /etc/raddb/mods-available/sql
 RUN rm /etc/raddb/mods-enabled/{passwd,totp}
 
 # Allows the radiusd user to write to the directory
@@ -58,7 +50,6 @@ RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanid
 RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmradius
 # clean up after install
 RUN rm -rf /pkg/*
-
 
 USER radiusd
 

@@ -105,8 +105,8 @@ eap {
 	#  User-Password, or the NT-Password attributes.
 	#  'System' authentication is impossible with LEAP.
 	#
-	leap {
-	}
+	#leap {
+	#}
 
 	#  Generic Token Card.
 	#

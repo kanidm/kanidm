@@ -1,16 +1,20 @@
 """ kanidm RADIUS module """
 
+import asyncio
 from functools import reduce
 import json
 import logging
 import os
 from pathlib import Path
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
+
+import aiohttp
 
 from kanidm import KanidmClient
 from kanidm.types import AuthStepPasswordResponse
 from kanidm.utils import load_config
+from kanidm.exceptions import NoMatchingEntries
 
 from . import radiusd
 
@@ -21,97 +25,70 @@ logging.basicConfig(
 
 
 #TODO: change the config file to TOML to match the rest of Kanidm
-#TODO: allow some things to be set by environment variables, maybe?
-
-
-
-# if we're running in the container
-    # config_toml = load_config()
 
 config_paths = [
     os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"),
     "~/.config/kanidm",
 ]
 
-config_path = None
+CONFIG_PATH = None
 for config_file_path in config_paths:
-    config_path = Path(config_file_path).expanduser().resolve()
-    if config_path.exists():
+    CONFIG_PATH = Path(config_file_path).expanduser().resolve()
+    if CONFIG_PATH.exists():
         break
 
-if not config_path.exists():
+if (CONFIG_PATH is None) or (not CONFIG_PATH.exists()):
     logging.error("Failed to find configuration file, checked (%s), quitting!", config_paths)
     sys.exit(1)
-config = load_config(str(config_path))
+config = load_config(str(CONFIG_PATH))
 
-KANIDM_CLIENT = KanidmClient(config_file=config_path)
-
-
-# if os.getcwd() == "/etc/raddb":
-# GROUPS = [
-#     {
-#         "name": x.split('.')[1],
-#         "vlan": config.get(x, "vlan")
-#     }
-#     for x in config
-#     if x.startswith('group.')
-# ]
-
-# REQ_GROUP = config.get("radiusd", "required_group")
-
-# if config.get("verify_ca", True):
-#     CA = config.get("kanidm_client", "ca", fallback=True)
-# else:
-#     CA = False
-
-# USER = CONFIG.get("kanidm_client", "user")
-# SECRET = CONFIG.get("kanidm_client", "secret")
-# DEFAULT_VLAN = CONFIG.get("radiusd", "vlan")
-# TIMEOUT = 8
-
-#URL = CONFIG.get('kanidm_client', 'url')
-#AUTH_URL = f"{URL}/v1/auth"
+COOKIE_JAR = aiohttp.CookieJar()
+KANIDM_CLIENT = KanidmClient(config_file=CONFIG_PATH)
 
 def authenticate(
     acct: str,
     password: str,
     kanidm_client: KanidmClient = KANIDM_CLIENT,
-    ) -> AuthStepPasswordResponse:
-
+    ) -> Union[int, AuthStepPasswordResponse]:
+    """ authenticate the RADIUS service account to Kanidm """
     logging.error("authenticate - %s:%s", acct, password)
 
     try:
-        return kanidm_client.authenticate_password(
-            username=acct,
-            password=password
-        )
-    except Exception as error_message:
+        loop = asyncio.get_event_loop()
+        with aiohttp.client.ClientSession(cookie_jar=COOKIE_JAR) as session:
+            kanidm_client.session = session
+            return loop.run_until_complete(kanidm_client.authenticate_password(
+                username=acct,
+                password=password
+            ))
+    except Exception as error_message: #pylint: disable=broad-except
         logging.error("Failed to run kanidm.authenticate_password: %s", error_message)
     return radiusd.RLM_MODULE_FAIL
 
 #TODO: work out typing for _get_radius_token - it should have a solid type
-def _get_radius_token(
+async def _get_radius_token(
     username: Optional[str]=None,
     kanidm_client: KanidmClient=KANIDM_CLIENT,
     ) -> Dict[str, Any]:
     if username is None:
         raise ValueError("Didn't get a username for _get_radius_token")
     # authenticate as the radius service account
-    logging.debug("kanidm authenticate_password for %s", username)
-    radius_auth_response = kanidm_client.authenticate_password()
+    logging.debug("Authenticating kanidm radius service account")
+    radius_auth_response = await kanidm_client.authenticate_password()
 
     logging.debug("Getting RADIUS token for %s", username)
-    response = kanidm_client.get_radius_token(
+    response = await kanidm_client.get_radius_token(
         username=username,
         radius_session_id = radius_auth_response.sessionid,
     )
+    logging.debug("Got radius token for %s", username)
+
     if response.status_code != 200:
         logging.error("got response status code: %s", response.status_code)
         logging.error("Response content: %s", response.json())
         raise Exception("Failed to get RadiusAuthToken")
     logging.debug("Success getting RADIUS token: %s", response.json())
-    retval: Dict[str, Any] = response.json()
-    return retval
+    return response.data
 
 def check_vlan(
     acc: int, #TODO: why is this called ACC?
@@ -122,7 +99,7 @@ def check_vlan(
 
         acc is the default vlan
     """
-    logging.debug(f"{acc=}")
+    logging.debug("acc=%s", acc)
     if kanidm_client is None:
         kanidm_client = KANIDM_CLIENT
         # raise ValueError("Need to pass this a kanidm_client")
@@ -142,7 +119,6 @@ def check_vlan(
 def instantiate(args: Any) -> Any:
     """ start up radiusd """
     logging.info("Starting up!")
-    print(f"{args=}", file=sys.stderr)
     return radiusd.RLM_MODULE_OK
 
 def authorize(
@@ -162,16 +138,19 @@ def authorize(
     # )
 
     dargs = dict(args)
-    logging.debug(f"Authorise: {json.dumps(dargs)}")
+    logging.error("Authorise: %s", json.dumps(dargs))
     username = dargs['User-Name']
 
     tok = None
     try:
-        tok = _get_radius_token(username=username)
+        loop = asyncio.get_event_loop()
+        tok = loop.run_until_complete(_get_radius_token(username=username))
         logging.debug("radius_token: %s", tok)
+    except NoMatchingEntries:
+        logging.info('kanidm RLM_MODULE_NOTFOUND, got NoMatchingEntries for user %s', username)
+        return radiusd.RLM_MODULE_NOTFOUND
     except Exception as error_message: # pylint: disable=broad-except
-        logging.error("kanidm exception: %s", error_message)
-
+        logging.error("kanidm exception: %s, %s", type(error_message), error_message)
     if tok is None:
         logging.info('kanidm RLM_MODULE_NOTFOUND due to no auth token')
         return radiusd.RLM_MODULE_NOTFOUND
@@ -194,7 +173,7 @@ def authorize(
        kanidm_client.config.radius_default_vlan,
        )
     if uservlan == int(0):
-       logging.info("Invalid uservlan of 0")
+        logging.info("Invalid uservlan of 0")
 
 
     logging.info("selected vlan %s:%s", username, uservlan)
@@ -209,9 +188,9 @@ def authorize(
         ('Tunnel-Medium-Type', '6'),
         ('Tunnel-Private-Group-ID', str(uservlan)),
     )
-    config = (
+    config_object = (
         ('Cleartext-Password', str(secret)),
     )
 
     logging.info("OK! Returning details to radius for %s ...", username)
-    return (radiusd.RLM_MODULE_OK, reply, config)
+    return (radiusd.RLM_MODULE_OK, reply, config_object)

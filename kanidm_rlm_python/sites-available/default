@@ -306,7 +306,7 @@ authorize {
 	#  attributes in the request, and turning them into attributes
 	#  which are more standard.
 	#
-	#  It takes care of processing the 'raddb/mods-config/preprocess/hints' 
+	#  It takes care of processing the 'raddb/mods-config/preprocess/hints'
 	#  and the 'raddb/mods-config/preprocess/huntgroups' files.
 	preprocess
 
@@ -353,7 +353,7 @@ authorize {
 	#  the "wimax" module here means that it will fix the
 	#  Calling-Station-Id attribute to the normal format as
 	#  specified in RFC 3580 Section 3.21
-#	wimax
+	#	wimax
 
 	#
 	#  Look for IPASS style 'realm/', and if not found, look for
@@ -364,7 +364,7 @@ authorize {
 	#
 	# Look for realms in user@domain format
 	suffix
-#	ntdomain
+	#	ntdomain
 
 	#
 	#  This module takes care of EAP-MD5, EAP-TLS, and EAP-LEAP
@@ -397,12 +397,12 @@ authorize {
 	#  to read /etc/passwd or /etc/shadow directly, see the
 	#  mods-available/passwd module.
 	#
-#	unix
+	#	unix
 
 	#
 	#  Read the 'users' file.  In v3, this is located in
 	#  raddb/mods-config/files/authorize
-	files
+	#  files
 
 	#
 	#  Look in an SQL database.  The schema of the database
@@ -415,7 +415,7 @@ authorize {
 	#  If you are using /etc/smbpasswd, and are also doing
 	#  mschap authentication, the un-comment this line, and
 	#  configure the 'smbpasswd' module.
-#	smbpasswd
+	#	smbpasswd
 
 	#
 	#  The ldap module reads passwords from the LDAP database.
@@ -434,7 +434,7 @@ authorize {
 
 	#
 	#  Enforce daily limits on time spent logged in.
-#	daily
+	#	daily
 
 	#
 	expiration
@@ -459,9 +459,9 @@ authorize {
 	#  This permits you to do DB queries, for example.  If the modules
 	#  listed here return "fail", then NO response is sent.
 	#
-#	Autz-Type Status-Server {
-#
-#	}
+	#	Autz-Type Status-Server {
+	#
+	#	}
 }
 
 
@@ -528,7 +528,7 @@ authenticate {
 
 	#
 	#  Pluggable Authentication Modules.
-#	pam
+	#	pam
 
 	#  Uncomment it if you want to use ldap for authentication
 	#
@@ -541,9 +541,9 @@ authenticate {
 	#  authentication server, and knows what to do with authentication.
 	#  LDAP servers do not.
 	#
-#	Auth-Type LDAP {
-#		ldap
-#	}
+	#	Auth-Type LDAP {
+	#		ldap
+	#	}
 
 	#
 	#  Allow EAP authentication.

@@ -3,14 +3,18 @@
 #pylint: disable=too-few-public-methods
 
 
-from typing import List, Optional
+from typing import Any, Dict, List, Optional
 from urllib.parse import urlparse
 
 from pydantic import BaseModel, Field, validator
 import toml
 
-import requests
-
+class ClientResponse(BaseModel):
+    """ response from an API call """
+    content: Optional[str]
+    data: Optional[Dict[str, Any]]
+    headers: Dict[str, Any]
+    status_code: int
 
 # TODO: add validation for state
 class AuthInitResponse(BaseModel):
@@ -20,7 +24,7 @@ class AuthInitResponse(BaseModel):
         choose: List[str]
     sessionid: str
     state: _AuthInitState
-    response: Optional[requests.Response]
+    response: Optional[ClientResponse]
 
     class Config:
         """ config class """
@@ -37,7 +41,7 @@ class AuthBeginResponse(BaseModel):
     # TODO: add validation for continue_list
     sessionid: str
     state: _AuthBeginState
-    response: Optional[requests.Response]
+    response: Optional[ClientResponse]
     class Config:
         """ config class """
         arbitrary_types_allowed=True
@@ -52,7 +56,7 @@ class AuthStepPasswordResponse(BaseModel):
 
     sessionid: str
     state: _AuthStepPasswordState
-    response: Optional[requests.Response]
+    response: Optional[ClientResponse]
     class Config:
         """ config class """
         arbitrary_types_allowed = True
