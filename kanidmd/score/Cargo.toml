@@ -29,7 +29,7 @@ tokio-openssl = "^0.6.3"
 openssl = "^0.10.38"
 ldap3_proto = "^0.2.3"
 
-tracing = { version = "^0.1.34", features = ["attributes"] }
+tracing = { version = "^0.1.35", features = ["attributes"] }
 serde = { version = "^1.0.137", features = ["derive"] }
 async-trait = "^0.1.53"
 async-std = { version = "^1.11.0", features = ["tokio1"] }

@@ -16,7 +16,7 @@ path = "src/lib.rs"
 
 [dependencies]
 kanidm_proto = { path = "../../kanidm_proto" }
-tracing = { version = "^0.1.34", features = ["attributes"] }
+tracing = { version = "^0.1.35", features = ["attributes"] }
 tracing-subscriber = { version = "^0.3.11", features = ["env-filter"] }
 tracing-serde = "^0.1.3"
 
