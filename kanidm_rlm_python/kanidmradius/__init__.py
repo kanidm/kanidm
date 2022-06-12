@@ -146,8 +146,8 @@ def authorize(
         loop = asyncio.get_event_loop()
         tok = loop.run_until_complete(_get_radius_token(username=username))
         logging.debug("radius_token: %s", tok)
-    except NoMatchingEntries:
-        logging.info('kanidm RLM_MODULE_NOTFOUND, got NoMatchingEntries for user %s', username)
+    except NoMatchingEntries as error_message:
+        logging.info('kanidm RLM_MODULE_NOTFOUND after NoMatchingEntries for user %s: %s', username, error_message)
         return radiusd.RLM_MODULE_NOTFOUND
     except Exception as error_message: # pylint: disable=broad-except
         logging.error("kanidm exception: %s, %s", type(error_message), error_message)

@@ -268,7 +268,7 @@ class KanidmClient():
             headers,
             )
         if response.status_code == 404:
-            raise NoMatchingEntries(f"No user found: '{username}'")
+            raise NoMatchingEntries(f"No user found: '{username}' {response.headers['x-kanidm-opid']}")
         return response
 
 #TODO: ssl validation validate
