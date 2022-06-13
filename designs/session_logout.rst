@@ -50,6 +50,11 @@ this case.
 Token Usage / Revocation
 ========================
 
+There are two possible ways to provide session validity management. Revocation, a list of tokens
+that are no longer valid to use, and allow-lists which describe the tokens that *are* valid to use.
+
+Both are described, but we have chosen to use positive validation with limited internal negative validation lists.
+
 Positive Validation
 -------------------
 
@@ -65,7 +70,8 @@ When any API endpoint is called, if the token is valid and does not need a refre
 * If a session is found and active, respond Ok
 * If a session is found and expired, respond unauthorized.
 * If no session id is stored, and the gracewindow has not elapsed, assume the token is VALID and we have a replication delay.
-* If no session id is stored, and the gracewindow has passed, assume the token is INVALID. This can happen if the server session is cleaned up after it has expired, and the token is used.
+* If no session id is stored, and the gracewindow has passed, assume the token is INVALID. This can happen if the server session
+  is cleaned up after it has expired, and the token is used.
 
 The gracewindow as a result, must be shorter or equal to the validity length of the token.
 
@@ -75,7 +81,7 @@ still "strict" enough for security.
 The risk is setting the gracewindow too short, we may accidentally cause tokens to "appear" invalid
 when the revocation / validity lists have not yet synced due to replication latency.
 
-This allows "unlimited length" sessions since we rely on positive validation of the session existing.
+This allows "unlimited length" sessions (while refreshes occur) since we rely on positive validation of the session existing.
 
 Clean Up
 ^^^^^^^^
@@ -121,6 +127,23 @@ Items in the revocation list can be removed only after the expiry of the associa
 since the expiry then prevents the token usage. The primary bound on this method is the possible size of the
 list, and the fact that sessions must have some reasonable expiry length to allow reasonable cleanup.
 
+Why Not?
+^^^^^^^^
+
+These lists grow in an unbounded manner, and it still requires us to maintain and curate a list of
+all sessions that have ever existed. There is a risk that during a "restore" from backup, that a session
+id may be lost, meaning it could never be added to the revocation list without manual investigation
+and intervention. As a result, it is safer and more thorough for us to provide a positive validation
+system, which accurately describes the exact state of what is valid at a point in time.
+
+The specific restore scenario is that a token is issued at time A. A backup is taken now at time B.
+Next the user revokes the token at time C, and replication has not yet occured. At this point the backup
+from time B was restored.
+
+In this scenario, without access to the token itself, or without scouring logs to find the session
+id that was issued, this token is effectively "lost" and can be used until it's expiry, and would
+be difficult to revoke.
+
 Session Management
 ==================
 
@@ -149,4 +172,66 @@ Updates
 We may wish to allow updates to the session state to reflect things such as a change of client IP of the session
 in response to a call to auth/valid. We may wish to use the delayed update mechanism for this. This allows
 the user to see "changes" in the current state of the tokens usage.
+
+Refresh
+=======
+
+A key security aspect of managing refresh tokens, is preventing divergent token chains. this is where
+some refresh token is used to create multiple access or session tokens and paired refresh tokens.
+
+Since Kanidm is a distributed system with eventually consistent replication we need to be able to
+detect this state and prevent the usage of refresh tokens in this manner. This affects both user auth tokens
+and OAuth 2.0 tokens.
+
+A "worst case" scenario is when we involve system failure along with an attempted attack. In this scenario, we
+have three kanidm servers in replication.
+
+* Refresh Token A is stolen, but not used used.
+* Token A expires. The refesh is sent to Server 1. Token B is issued.
+* Before replication can occur, Server 1 goes down.
+* Stolen refesh Token A is exchanged on Server 3.
+* Token B is used on Server 2.
+* Replication between server 2 and 3 occurs.
+
+In this situation, the end goal we want is that the attackers stolen token is revoked, and the users
+legitimate token B can continue to be used.
+
+To achieve this we need to determine an order of the events. Let's assume a better scenario first.
+
+* Refresh Token A is stolen, but not used used.
+* Token A expires. The refesh is sent to Server 1. Token B is issued.
+* Token B is used on Server 1.
+* Stolen refesh Token A is exchanged on Server 1.
+
+We store a "refresh id" in the refresh token, and a issued-by id in the access token. Additionally
+we store an issued-at timestamp (from the replication CID) in both.
+
+When we exchange the refresh token, we check that it's refresh id, is the next allowed refresh id that can proceed.
+We store in the session the "latest" issued-by id + timestamp in the session,
+as well as the next "refresh token" id in the session.
+
+When an access token is used, we check not just that it is valid, but that the issued-by id is the matching
+id.
+
+When we attempt to use our access token, and the session details have NOT yet replicated, we use the
+gracewindow to assume that our issuance was *valid*.
+
+In this design we can see the following would occur.
+
+* Refresh Token A is stolen, but not used used.
+* Token A expires. The refesh is sent to Server 1. Token B is issued. (This updates the issued-by id)
+* Token B is used on Server 1. (valid, issued-by id matches)
+* Stolen refesh Token A is exchanged on Server 1. (invalid, not the currently defined refresh token)
+
+In the first case.
+
+* Refresh Token A is stolen, but not used used.
+* Token A expires. The refesh is sent to Server 1. Token B is issued. (updates the issued-by id)
+* Before replication can occur, Server 1 goes down.
+* Stolen refesh Token A is exchanged on Server 3. Token C is issued (updates the issued-by id)
+* Token B is used on Server 2. (valid, matches the current defined issued-by id)
+* Token B is used on Server 3. (valid, within gracewindow even though issued-by is incorrect)
+* Replication between server 2 and 3 occurs. (Conflict occurs in session. Second issued-by is revoked, meaning token C is now invalid)
+
+> NOTE: Refresh tokens can only be used if the session *exists* on the server as they have NO GRACEWINDOW.
 
