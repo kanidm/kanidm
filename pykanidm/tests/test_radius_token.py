@@ -26,7 +26,7 @@ async def test_radius_call(client_configfile: KanidmClient) -> None:
 
 
     if "RADIUS_USER" not in os.environ:
-        pytest.skip("Skipping this test!")
+        pytest.skip("Skipping this test - set RADIUS_USER environment variable to a valid RADIUS user.")
 
     radius_user = os.environ["RADIUS_USER"]
 
