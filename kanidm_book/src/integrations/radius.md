@@ -114,7 +114,9 @@ This container requires some cryptographic material, laid out in a volume like s
 The config.ini has the following template:
 
 ```toml
-url = "https://example.com" # URL to the kanidm server
+uri = "https://example.com" # URL to the Kanidm server
+verify_hostnames = true     # verify the hostname of the Kanidm server
+
 verify_ca = false           # Strict CA verification
 ca = /data/ca.pem           # Path to the kanidm ca
 username =                  # Username of the RADIUS service account
@@ -123,7 +125,25 @@ password =                  # Generated secret for the service account
 # Default vlans for groups that don't specify one.
 radius_default_vlan = 1 
 
-#TODO: finish this
+# A list of Kanidm groups which must be a member
+# before they can authenticate via RADIUS.
+radius_required_groups = [
+	"radius_access_allowed",
+]
+
+# A mapping between Kanidm groups and VLANS
+radius_groups = [
+    { name = "radius_access_allowed", vlan = 10 },
+]
+
+# A mapping of clients and their authentication tokens
+radius_clients = [
+    { name = "test", ipaddr = "127.0.0.1", secret  = "testing123" },
+    # TODO: see if this works - it gets written out to the file
+    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
+
+#TODO: (yaleman) finish this
 # [radiusd]
 # ca =                    # Path to the radius server's CA
 # key =                   # Path to the radius servers key
@@ -132,19 +152,6 @@ radius_default_vlan = 1
 # required_group =        # Name of a kanidm group which you must be 
 #                         # A member of to use radius.
 
-# if the user is in one of these groups, then they're allowed
-radius_required_groups = [
-    "radius_access_allowed",
-]
-
-radius_groups = [
-    { name = "radius_access_allowed", vlan = 10 }
-]
-
-radius_clients = [
-    { name = "localhost", ipaddr = "127.0.0.1", secret  = "testing123" },
-    # TODO: see if this works - it gets written out to the file
-    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
 ]
 ```
 
