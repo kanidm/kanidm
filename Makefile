@@ -106,3 +106,20 @@ prep:
 	cargo outdated -R
 	cargo audit
 
+test/pykanidm/pytest:
+	cd pykanidm && \
+	poetry install && \
+	poetry run pytest -vv
+
+test/pykanidm/pylint:
+	cd pykanidm && \
+	poetry install && \
+	poetry run pylint tests kanidm
+
+test/pykanidm/mypy:
+	cd pykanidm && \
+	poetry install && \
+	echo "Running mypy" && \
+	poetry run mypy --strict tests kanidm
+
+test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
