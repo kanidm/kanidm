@@ -45,3 +45,7 @@ load-plugins="pylint_pydantic,pylint_pytest"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["kanidm"]
+omit = ["tests"]
