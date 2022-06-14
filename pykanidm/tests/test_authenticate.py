@@ -3,8 +3,6 @@
 import logging
 import os
 
-# from typing import Any
-
 import aiohttp
 import pytest
 from pytest_mock import MockerFixture
