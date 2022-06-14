@@ -4,11 +4,10 @@ from json import dumps, loads, JSONDecodeError
 import logging
 from pathlib import Path
 import ssl
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Union
 
 
-from pydantic import BaseModel, ValidationError
-import requests
+from pydantic import ValidationError
 import aiohttp
 
 from .exceptions import (
@@ -37,6 +36,7 @@ KANIDMURLS = {
 class KanidmClient:
     """Kanidm client module
 
+    config: a `KanidmClientConfig` object, if this is set, everything else is ignored
     config_file: a `pathlib.Path` object pointing to a configuration file
     uri: kanidm base URL
     session: a `aiohttp.client.ClientSession`
@@ -48,7 +48,8 @@ class KanidmClient:
     # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(
         self,
-        config_file: Optional[Path] = None,
+        config: Optional[KanidmClientConfig] = None,
+        config_file: Optional[Union[Path, str]] = None,
         uri: Optional[str] = None,
         session: Optional[aiohttp.client.ClientSession] = None,
         verify_hostnames: bool = True,
@@ -57,33 +58,34 @@ class KanidmClient:
     ) -> None:
         """set up the client module"""
 
-        self.config = KanidmClientConfig(
-            uri=uri,
-            session=session,
-            verify_hostnames=verify_hostnames,
-            verify_certificate=verify_certificate,
-            ca_path=ca_path,
-        )
+        if config is not None:
+            self.config = config
 
-        if config_file is not None:
-            if not isinstance(config_file, Path):
-                config_file = Path(config_file)
-            config_data = load_config(config_file.expanduser().resolve())
-            self.config = self.config.parse_obj(config_data)
+        else:
+            self.config = KanidmClientConfig(
+                uri=uri,
+                session=session,
+                verify_hostnames=verify_hostnames,
+                verify_certificate=verify_certificate,
+                ca_path=ca_path,
+            )
 
-        print(self.config.dict())
+            if config_file is not None:
+                if not isinstance(config_file, Path):
+                    config_file = Path(config_file)
+                config_data = load_config(config_file.expanduser().resolve())
+                self.config = self.config.parse_obj(config_data)
 
-        self.session = session
+            self.session = session
 
         self.sessionid: Optional[str] = None
-
         if self.config.uri is None:
             raise ValueError("Please intitialize this with a server URI")
 
-        self._ssl: Optional[ssl.SSLContext] = None
+        self._ssl: Optional[Union[bool, ssl.SSLContext]] = None
         self._configure_ssl()
 
-    def _configure_ssl(self):
+    def _configure_ssl(self) -> None:
         """does the magic to set up the session stuff"""
         # if we aren't verifying things, then yololololol
         if self.config.verify_certificate is False:
@@ -91,7 +93,10 @@ class KanidmClient:
         else:
             self._ssl = ssl.create_default_context(cafile=self.config.ca_path)
         if self._ssl is not False:
-            self._ssl.check_hostname = self.config.verify_hostnames
+            # ignoring this for typing because mypy is being weird
+            # ssl.SSLContext.check_hostname is totally a thing
+            # https://docs.python.org/3/library/ssl.html#ssl.SSLContext.check_hostname
+            self._ssl.check_hostname = self.config.verify_hostnames  # type: ignore
 
     def parse_config_data(
         self,

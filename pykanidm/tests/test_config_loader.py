@@ -102,3 +102,24 @@ def test_config_invalid_uri() -> None:
     }
     with pytest.raises(pydantic.ValidationError):
         KanidmClientConfig.parse_obj(test_input)
+
+
+def test_config_none_uri() -> None:
+    """tests passing an invalid uri to the config parser"""
+
+    with pytest.raises(ValueError, match="Please intitialize this with a server URI"):
+        KanidmClient(uri=None)
+
+
+def test_config_loader_str() -> None:
+    """tests passing an invalid uri to the config parser"""
+
+    with pytest.raises(FileNotFoundError):
+        KanidmClient(config_file="hello world")
+
+
+def test_config_init() -> None:
+    """tests passing config object"""
+
+    config = KanidmClientConfig(uri="https://idp.crabzrool.test")
+    assert KanidmClient(config=config)
