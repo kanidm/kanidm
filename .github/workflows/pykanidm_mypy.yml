@@ -1,0 +1,26 @@
+name: pykanidm - mypy
+
+"on":
+  push:
+    branches:
+      - main  # Set a branch to deploy
+  pull_request:
+
+jobs:
+  pykanidm_mypy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0    # Fetch all history for .GitInfo and .Lastmod
+      - name: Set up Python 3.9
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.9'
+      - name: Running mypy
+        run: |
+          cd pykanidm
+          python --version
+          python -m pip install --quiet --no-cache-dir --upgrade poetry
+          poetry install
+          poetry run mypy --strict kanidm tests
