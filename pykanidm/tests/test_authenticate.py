@@ -2,42 +2,27 @@
 
 import logging
 import os
-from typing import Any
+
+# from typing import Any
 
 import aiohttp
 import pytest
 from pytest_mock import MockerFixture
 
-#pylint: disable=unused-import
-from testutils import client, client_configfile
+# pylint: disable=unused-import
+from testutils import client, client_configfile, MockResponse
 
 from kanidm import KanidmClient
 from kanidm.exceptions import AuthCredFailed, AuthInitFailed
 from kanidm.types import AuthBeginResponse
 
+
 logging.basicConfig(level=logging.DEBUG)
 
-class MockResponse:
-    """ mock the things """
-    def __init__(self, text: str, status: int) -> None:
-        self._text = text
-        self.status = status
-
-    async def text(self) -> str:
-        """ mock the things """
-        return self._text
-
-    #pylint: disable=invalid-name
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
-        """ mock the things """
-
-    async def __aenter__(self) -> Any:
-        """ mock the things """
-        return self
 
 @pytest.mark.asyncio
 async def test_auth_init(client_configfile: KanidmClient) -> None:
-    """ tests the auth init step """
+    """tests the auth init step"""
     print("Starting client...")
     print(f"Doing auth_init for {client_configfile.config.username}")
 
@@ -50,9 +35,10 @@ async def test_auth_init(client_configfile: KanidmClient) -> None:
     print(result.dict())
     assert result.sessionid
 
+
 @pytest.mark.asyncio
 async def test_auth_begin(client_configfile: KanidmClient) -> None:
-    """ tests the auth begin step """
+    """tests the auth begin step"""
     print(f"Doing auth_init for {client_configfile.config.username}")
 
     async with aiohttp.ClientSession() as session:
@@ -73,6 +59,10 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
         print(f"{begin_result=}")
         print(begin_result.data)
         retval = begin_result.data
+
+        if retval is None:
+            raise pytest.fail("Failed to do begin_result")
+
         retval["response"] = begin_result
 
         assert AuthBeginResponse.parse_obj(retval)
@@ -80,49 +70,55 @@ async def test_auth_begin(client_configfile: KanidmClient) -> None:
 
 @pytest.mark.asyncio
 async def test_authenticate_flow(client_configfile: KanidmClient) -> None:
-    """ tests the authenticate() flow """
+    """tests the authenticate() flow"""
     async with aiohttp.ClientSession() as session:
         print(f"Doing client.authenticate for {client_configfile.config.username}")
         client_configfile.session = session
         result = await client_configfile.authenticate_password()
     print(result)
 
+
 @pytest.mark.asyncio
 async def test_authenticate_flow_fail(client_configfile: KanidmClient) -> None:
-    """ tests the authenticate() flow with a valid (hopefully) usernamd and invalid password """
+    """tests the authenticate() flow with a valid (hopefully) usernamd and invalid password"""
     if not bool(os.getenv("RUN_SCARY_TESTS", None)):
         pytest.skip(reason="Skipping because env var RUN_SCARY_TESTS isn't set")
     print("Starting client...")
-    if client_configfile.config.uri is None or \
-        client_configfile.config.username is None or \
-            client_configfile.config.password is None:
+    if (
+        client_configfile.config.uri is None
+        or client_configfile.config.username is None
+        or client_configfile.config.password is None
+    ):
         pytest.skip("Please ensure you have a username, password and uri in the config")
     print(f"Doing client.authenticate for {client_configfile.config.username}")
 
     async with aiohttp.ClientSession() as session:
         client_configfile.session = session
-        with pytest.raises((AuthCredFailed,AuthInitFailed)):
+        with pytest.raises((AuthCredFailed, AuthInitFailed)):
             result = await client_configfile.authenticate_password(
                 username=client_configfile.config.username,
                 password="cheese",
-                )
+            )
             print(result)
 
-#TODO: mock a call to auth_init when a 200 response is not returned, raises AuthInitFailed
-#TODO: mock a call to auth_init when "x-kanidm-auth-session-id" not in response.headers, raises ValueError
+
+# TODO: mock a call to auth_init when a 200 response is not returned, raises AuthInitFailed
+# TODO: mock a call to auth_init when "x-kanidm-auth-session-id" not in response.headers, raises ValueError
 
 
-#TODO: mock a call to auth_begin when a 200 response is not returned, raises AuthBeginFailed
-#TODO: mock a call to auth_step_password when a 200 response is not returned, raises AuthCredFailed
+# TODO: mock a call to auth_begin when a 200 response is not returned, raises AuthBeginFailed
+# TODO: mock a call to auth_step_password when a 200 response is not returned, raises AuthCredFailed
 
 
 @pytest.mark.asyncio
-async def test_authenticate_inputs_validation(client: KanidmClient, mocker: MockerFixture) -> None:
-    """ tests if you pass username but not password and password but not username """
+async def test_authenticate_inputs_validation(
+    client: KanidmClient, mocker: MockerFixture
+) -> None:
+    """tests if you pass username but not password and password but not username"""
 
     resp = MockResponse("crabs are cool", 200)
 
-    mocker.patch('aiohttp.ClientSession.post', return_value=resp)
+    mocker.patch("aiohttp.ClientSession.post", return_value=resp)
 
     async with aiohttp.ClientSession() as session:
         client.session = session
@@ -144,9 +140,10 @@ async def test_authenticate_inputs_validation(client: KanidmClient, mocker: Mock
         with pytest.raises(ValueError):
             await client.authenticate_password()
 
+
 @pytest.mark.asyncio
 async def test_auth_step_password(client: KanidmClient) -> None:
-    """ tests things """
+    """tests things"""
 
     with pytest.raises(ValueError):
         async with aiohttp.ClientSession() as session:

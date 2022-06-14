@@ -4,11 +4,11 @@ from kanidm.types import AuthInitResponse
 
 
 def test_auth_init_response() -> None:
-    """ tests AuthInitResponse """
+    """tests AuthInitResponse"""
     testobj = {
-        'sessionid' : 'crabzrool',
-        'state' : {
-            'choose' : ['passwordmfa'],
+        "sessionid": "crabzrool",
+        "state": {
+            "choose": ["passwordmfa"],
         },
     }
 

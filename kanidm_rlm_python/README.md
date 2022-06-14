@@ -4,14 +4,16 @@ A FREERadius kanidm client module per the [module docs](https://wiki.freeradius.
 
 ** NOTE ** These docs are in development, sorry.
 
-Testing Process
+TODO:(yaleman) work out the dh thing
+TODO:(yaleman) document radius module things better
+TODO:(yaleman) mkdocs for pykanidm?
+
+Testing Notes
 ===============
 
     cd kanidmd
     cargo run -- recover_account -c ./server.toml -n admin
     cargo run -- server -c ./server.toml
-
-
 
     cd kanidm_tools
     cargo run -- login -D admin
