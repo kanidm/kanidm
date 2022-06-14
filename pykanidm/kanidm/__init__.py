@@ -26,8 +26,6 @@ from .types import (
 )
 from .utils import load_config
 
-# TODO: going to make this asyncio, once the flows and stuff are worked out
-
 KANIDMURLS = {
     "auth": "/v1/auth",
 }

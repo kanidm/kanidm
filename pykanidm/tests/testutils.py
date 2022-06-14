@@ -10,13 +10,19 @@ from kanidm import KanidmClient
 @pytest.fixture(scope="function")
 async def client() -> KanidmClient:
     """sets up a client with a basic thing"""
-    return KanidmClient(uri="https://idm.example.com")
+    try:
+        return KanidmClient(uri="https://idm.example.com")
+    except FileNotFoundError:
+        raise pytest.skip("Couldn't find config file...")
 
 
 @pytest.fixture(scope="function")
 async def client_configfile() -> KanidmClient:
     """sets up a client from a config file"""
-    return KanidmClient(config_file=Path("~/.config/kanidm"))
+    try:
+        return KanidmClient(config_file=Path("~/.config/kanidm"))
+    except FileNotFoundError:
+        raise pytest.skip("Couldn't find config file...")
 
 
 class MockResponse:
