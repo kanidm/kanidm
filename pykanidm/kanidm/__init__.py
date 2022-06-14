@@ -3,34 +3,67 @@
 from json import dumps, loads, JSONDecodeError
 import logging
 from pathlib import Path
+import ssl
 from typing import Any, Dict, Optional
+
 
 from pydantic import BaseModel, ValidationError
 import requests
 import aiohttp
 
-from .exceptions import AuthBeginFailed, AuthInitFailed, AuthCredFailed, AuthMechUnknown, NoMatchingEntries
-from .types import AuthBeginResponse, AuthStepPasswordResponse, AuthInitResponse, ClientResponse, KanidmClientConfig
+from .exceptions import (
+    AuthBeginFailed,
+    AuthInitFailed,
+    AuthCredFailed,
+    AuthMechUnknown,
+    NoMatchingEntries,
+)
+from .types import (
+    AuthBeginResponse,
+    AuthStepPasswordResponse,
+    AuthInitResponse,
+    ClientResponse,
+    KanidmClientConfig,
+)
 from .utils import load_config
 
-#TODO: going to make this asyncio, once the flows and stuff are worked out
+# TODO: going to make this asyncio, once the flows and stuff are worked out
 
 KANIDMURLS = {
-    "auth" : "/v1/auth",
+    "auth": "/v1/auth",
 }
-class KanidmClient():
-    """ Kanidm ciient module """
 
-    # pylint: disable=too-many-instance-attributes
+
+class KanidmClient:
+    """Kanidm client module
+
+    config_file: a `pathlib.Path` object pointing to a configuration file
+    uri: kanidm base URL
+    session: a `aiohttp.client.ClientSession`
+    verify_hostnames: verify the hostname is correct
+    verify_certificate: verify the validity of the certificate and its CA
+    ca_path: set this to a trusted CA certificate (PEM format)
+    """
+
+    # pylint: disable=too-many-instance-attributes,too-many-arguments
     def __init__(
         self,
-        config_file: Optional[Path]=None,
-        uri: Optional[str]=None,
+        config_file: Optional[Path] = None,
+        uri: Optional[str] = None,
         session: Optional[aiohttp.client.ClientSession] = None,
-        ) -> None:
-        """ set up the client module"""
+        verify_hostnames: bool = True,
+        verify_certificate: bool = True,
+        ca_path: Optional[str] = None,
+    ) -> None:
+        """set up the client module"""
 
-        self.config = KanidmClientConfig(uri=uri)
+        self.config = KanidmClientConfig(
+            uri=uri,
+            session=session,
+            verify_hostnames=verify_hostnames,
+            verify_certificate=verify_certificate,
+            ca_path=ca_path,
+        )
 
         if config_file is not None:
             if not isinstance(config_file, Path):
@@ -47,23 +80,36 @@ class KanidmClient():
         if self.config.uri is None:
             raise ValueError("Please intitialize this with a server URI")
 
+        self._ssl: Optional[ssl.SSLContext] = None
+        self._configure_ssl()
+
+    def _configure_ssl(self):
+        """does the magic to set up the session stuff"""
+        # if we aren't verifying things, then yololololol
+        if self.config.verify_certificate is False:
+            self._ssl = False
+        else:
+            self._ssl = ssl.create_default_context(cafile=self.config.ca_path)
+        if self._ssl is not False:
+            self._ssl.check_hostname = self.config.verify_hostnames
+
     def parse_config_data(
         self,
         config_data: Dict[str, Any],
-        ) -> None:
-        """ hand it a config dict and it'll configure the client """
+    ) -> None:
+        """hand it a config dict and it'll configure the client"""
         try:
             self.config.parse_obj(config_data)
         except ValidationError as validation_error:
             raise ValueError(f"Failed to validate configuration: {validation_error}")
 
     def get_path_uri(self, path: str) -> str:
-        """ turns a path into a full URI """
+        """turns a path into a full URI"""
         if path.startswith("/"):
             path = path[1:]
         return f"{self.config.uri}{path}"
 
-    #pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments
     async def _call(
         self,
         method: str,
@@ -83,7 +129,8 @@ class KanidmClient():
             headers=headers,
             timeout=timeout,
             json=json,
-            # verify=self.config.verify_ca, #TODO: ssl verify setting
+            ssl=self._ssl,
+            # verify=self.config.verify_certificate, #TODO: ssl verify setting
         ) as request:
             content = await request.content.read()
             try:
@@ -94,10 +141,10 @@ class KanidmClient():
                 logging.error("Failed to JSON Decode Response: %s", json_error)
                 response_json = {}
             response_input = {
-                "data" : response_json,
+                "data": response_json,
                 "content": content.decode("utf-8"),
-                "headers" : request.headers,
-                "status_code" : request.status,
+                "headers": request.headers,
+                "status_code": request.status,
             }
             logging.debug(dumps(response_input, default=str, indent=4))
             response = ClientResponse.parse_obj(response_input)
@@ -108,9 +155,9 @@ class KanidmClient():
         path: str,
         headers: Optional[Dict[str, str]] = None,
         timeout: Optional[int] = None,
-        ) -> ClientResponse:
-        """ does a get call to the server """
-        return await self._call( "GET", path, headers, timeout )
+    ) -> ClientResponse:
+        """does a get call to the server"""
+        return await self._call("GET", path, headers, timeout)
 
     async def call_post(
         self,
@@ -118,58 +165,60 @@ class KanidmClient():
         headers: Optional[Dict[str, str]] = None,
         json: Optional[Dict[str, Any]] = None,
         timeout: Optional[int] = None,
-        ) -> ClientResponse:
-        """ does a get call to the server """
+    ) -> ClientResponse:
+        """does a get call to the server"""
 
         return await self._call(
             method="POST", path=path, headers=headers, json=json, timeout=timeout
         )
 
     async def auth_init(self, username: str) -> AuthInitResponse:
-        """ init step, starts the auth session, sets the class-local session ID """
+        """init step, starts the auth session, sets the class-local session ID"""
         init_auth = {"step": {"init": username}}
 
         response = await self.call_post(
-            path=KANIDMURLS['auth'],
+            path=KANIDMURLS["auth"],
             json=init_auth,
         )
         if response.status_code != 200:
             logging.debug(
                 "Failed to authenticate, response from server: %s",
                 response.content,
-                )
-            #TODO: mock test this
+            )
+            # TODO: mock test this
             raise AuthInitFailed(response.content)
 
         if "x-kanidm-auth-session-id" not in response.headers:
             logging.debug("response.content: %s", response.content)
             logging.debug("response.headers: %s", response.headers)
-            raise ValueError(f"Missing x-kanidm-auth-session-id header in init auth response: {response.headers}")
-        #TODO: setting the class-local session id, do we want this?
-        self.sessionid = response.headers['x-kanidm-auth-session-id']
+            raise ValueError(
+                f"Missing x-kanidm-auth-session-id header in init auth response: {response.headers}"
+            )
+        # TODO: setting the class-local session id, do we want this?
+        self.sessionid = response.headers["x-kanidm-auth-session-id"]
         retval = AuthInitResponse.parse_obj(response.data)
         retval.response = response
         return retval
 
     async def auth_begin(
         self,
-        method: str="password", #TODO: do we want a default auth mech to be set?
-        ) -> ClientResponse:
-        """ the 'begin' step """
+        method: str = "password",  # TODO: do we want a default auth mech to be set?
+    ) -> ClientResponse:
+        """the 'begin' step"""
 
         begin_auth = {
             "step": {
                 "begin": method,
-                }
             }
+        }
 
         response = await self.call_post(
             KANIDMURLS["auth"],
             json=begin_auth,
             headers=self.session_header(),
-            )
+        )
         if response.status_code != 200:
-            #TODO: write mocked test for this
+            # TODO: write mocked test for this
             raise AuthBeginFailed(response.content)
 
         retobject = AuthBeginResponse.parse_obj(response.data)
@@ -178,13 +227,15 @@ class KanidmClient():
 
     async def authenticate_password(
         self,
-        username: Optional[str]=None,
-        password: Optional[str]=None,
-        ) -> AuthStepPasswordResponse:
-        """ authenticates with a username and password, returns the auth token """
+        username: Optional[str] = None,
+        password: Optional[str] = None,
+    ) -> AuthStepPasswordResponse:
+        """authenticates with a username and password, returns the auth token"""
         if username is None and password is None:
             if self.config.username is None or self.config.password is None:
-                raise ValueError("Need username/password to be in caller or class settings before calling authenticate_password")
+                raise ValueError(
+                    "Need username/password to be in caller or class settings before calling authenticate_password"
+                )
             username = self.config.username
             password = self.config.password
         if username is None or password is None:
@@ -197,7 +248,7 @@ class KanidmClient():
             raise AuthMechUnknown(f"No auth mechanisms for {username}")
         auth_begin = await self.auth_begin(
             method="password",
-            )
+        )
         # does a little bit of validation
         auth_begin_object = AuthBeginResponse.parse_obj(auth_begin.data)
         auth_begin_object.response = auth_begin
@@ -206,42 +257,43 @@ class KanidmClient():
     async def auth_step_password(
         self,
         password: Optional[str] = None,
-        ) -> AuthStepPasswordResponse:
-        """ does the password auth step """
+    ) -> AuthStepPasswordResponse:
+        """does the password auth step"""
 
         if password is None:
-            password=self.config.password
+            password = self.config.password
         if password is None:
-            raise ValueError("Password has to be passed to auth_step_password or in self.password!")
+            raise ValueError(
+                "Password has to be passed to auth_step_password or in self.password!"
+            )
 
-        cred_auth = {"step": { "cred": {"password": password}}}
+        cred_auth = {"step": {"cred": {"password": password}}}
         response = await self.call_post(
             path="/v1/auth",
             json=cred_auth,
-            )
+        )
         if response.status_code != 200:
             logging.debug("Failed to authenticate, response: %s", response.content)
             raise AuthCredFailed("Failed password authentication!")
 
-        #TODO: handle json dump fail
+        # TODO: handle json dump fail
         result = AuthStepPasswordResponse.parse_obj(response.data)
         result.response = response
         print(f"auth_step_password: {result.dict()}")
 
         # pull the token out and set it
-        #TODO: try and build this into the pydantic model
+        # TODO: try and build this into the pydantic model
         if result.state.success is None:
             raise AuthCredFailed
         result.sessionid = result.state.success
         return result
 
-
     def session_header(
         self,
-        sessionid: Optional[str]=None,
-        ) -> Dict[str, str]:
-        """ create a headers dict from a session id """
-        #TODO: perhaps allow session_header to take a dict and update it, too?
+        sessionid: Optional[str] = None,
+    ) -> Dict[str, str]:
+        """create a headers dict from a session id"""
+        # TODO: perhaps allow session_header to take a dict and update it, too?
 
         if sessionid is not None:
             return {
@@ -255,20 +307,22 @@ class KanidmClient():
         raise ValueError("Class doesn't have a sessionid stored and none was provided")
 
     async def get_radius_token(
-        self,
-        username: str,
-        radius_session_id: str) -> ClientResponse:
-        """ does the call to the radius token endpoint """
+        self, username: str, radius_session_id: str
+    ) -> ClientResponse:
+        """does the call to the radius token endpoint"""
         path = f"/v1/account/{username}/_radius/_token"
         headers = {
-            'Authorization': f"Bearer {radius_session_id}",
+            "Authorization": f"Bearer {radius_session_id}",
         }
         response = await self.call_get(
             path,
             headers,
-            )
+        )
         if response.status_code == 404:
-            raise NoMatchingEntries(f"No user found: '{username}' {response.headers['x-kanidm-opid']}")
+            raise NoMatchingEntries(
+                f"No user found: '{username}' {response.headers['x-kanidm-opid']}"
+            )
         return response
 
-#TODO: ssl validation validate
+
+# TODO: ssl validation validate

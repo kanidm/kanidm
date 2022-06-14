@@ -1,6 +1,6 @@
 """ type objects """
 
-#pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods
 
 
 from typing import Any, Dict, List, Optional
@@ -9,75 +9,96 @@ from urllib.parse import urlparse
 from pydantic import BaseModel, Field, validator
 import toml
 
+
 class ClientResponse(BaseModel):
-    """ response from an API call """
+    """response from an API call"""
+
     content: Optional[str]
     data: Optional[Dict[str, Any]]
     headers: Dict[str, Any]
     status_code: int
 
+
 # TODO: add validation for state
 class AuthInitResponse(BaseModel):
-    """ helps parse the response from the auth init stage """
+    """helps parse the response from the auth init stage"""
+
     class _AuthInitState(BaseModel):
-        """ sub-class for the AuthInitResponse model """
+        """sub-class for the AuthInitResponse model"""
+
         choose: List[str]
+
     sessionid: str
     state: _AuthInitState
     response: Optional[ClientResponse]
 
     class Config:
-        """ config class """
-        arbitrary_types_allowed=True
+        """config class"""
+
+        arbitrary_types_allowed = True
+
 
 class AuthBeginResponse(BaseModel):
-    """ helps parse the response from the auth 'begin' stage
+    """helps parse the response from the auth 'begin' stage
 
-    continue had to be continue_list because continue is a reserved word """
+    continue had to be continue_list because continue is a reserved word"""
 
     class _AuthBeginState(BaseModel):
-        """ helps parse the response from the auth 'begin' stage"""
+        """helps parse the response from the auth 'begin' stage"""
+
         continue_list: List[str] = Field(..., title="continue", alias="continue")
+
     # TODO: add validation for continue_list
     sessionid: str
     state: _AuthBeginState
     response: Optional[ClientResponse]
+
     class Config:
-        """ config class """
-        arbitrary_types_allowed=True
+        """config class"""
+
+        arbitrary_types_allowed = True
+
 
 class AuthStepPasswordResponse(BaseModel):
-    """ helps parse the response from the auth 'password' stage"""
+    """helps parse the response from the auth 'password' stage"""
+
     class _AuthStepPasswordState(BaseModel):
-        """ subclass to help parse the response from the auth 'step password' stage"""
+        """subclass to help parse the response from the auth 'step password' stage"""
+
         success: Optional[str]
         # TODO: add validation for continue_list
-
 
     sessionid: str
     state: _AuthStepPasswordState
     response: Optional[ClientResponse]
+
     class Config:
-        """ config class """
+        """config class"""
+
         arbitrary_types_allowed = True
 
+
 class RadiusGroup(BaseModel):
-    """ group for kanidm radius """
+    """group for kanidm radius"""
+
     name: str
     vlan: int
 
     @validator("vlan")
     def validate_vlan(cls, value: int) -> int:
-        """ validate the vlan option is above 0 """
+        """validate the vlan option is above 0"""
         if not value > 0:
             raise ValueError(f"VLAN setting has to be above 0! Got: {value}")
         return value
 
+
 class RadiusClient(BaseModel):
-    """ permitted clients for kanidm radius """
-    name : str # the name of the client
-    ipaddr : str # the allowed client address
-    secret : str # the password for that particular client
+    """permitted clients for kanidm radius"""
+
+    name: str  # the name of the client
+    ipaddr: str  # the allowed client address
+    secret: str  # the password for that particular client
+
 
 # TODO: make this validate all network types I think? Check with valid options in freeipa client config...
 #    @validator("ipaddr")
@@ -87,12 +108,14 @@ class RadiusClient(BaseModel):
 
 
 class KanidmClientConfig(BaseModel):
-    """ configuration file definition for kanidm client config
+    """configuration file definition for kanidm client config
     from struct KanidmClientConfig in kanidm_client/src/lib.rs
     """
+
     uri: Optional[str] = None
-    verify_ca: bool = True
+
     verify_hostnames: bool = True
+    verify_certificate: bool = True
     ca_path: Optional[str] = None
 
     radius_service_username: Optional[str] = None
@@ -100,8 +123,8 @@ class KanidmClientConfig(BaseModel):
 
     radius_cert_path: str = "/etc/raddb/certs/cert.pem"
     radius_key_path: str = "/etc/raddb/certs/key.pem"  # the signing key for radius TLS
-    radius_dh_path: str = "/etc/raddb/certs/dh.pem"   # the diffie-hellman output
-    radius_ca_path: str = "/etc/raddb/certs/ca.pem"   # the diffie-hellman output
+    radius_dh_path: str = "/etc/raddb/certs/dh.pem"  # the diffie-hellman output
+    radius_ca_path: str = "/etc/raddb/certs/ca.pem"  # the diffie-hellman output
 
     radius_required_groups: List[str] = []
     radius_default_vlan: int = 1
@@ -115,23 +138,26 @@ class KanidmClientConfig(BaseModel):
 
     # pylint: disable=too-few-public-methods
     class Config:
-        """ configuration for the settings class """
-        env_prefix = 'kanidm_'
+        """configuration for the settings class"""
 
-    #TODO: work out how to make this a constructor instead
+        env_prefix = "kanidm_"
+
+    # TODO: work out how to make this a constructor instead
     @classmethod
-    def parse_toml(cls, input_string: str): #type: ignore
-        """ loads from a string """
+    def parse_toml(cls, input_string: str):  # type: ignore
+        """loads from a string"""
         return super().parse_obj(toml.loads(input_string))
 
     @validator("uri")
     def validate_uri(cls, value: Optional[str]) -> Optional[str]:
-        """ validator """
+        """validator"""
         if value is not None:
             uri = urlparse(value)
             valid_schemes = ["http", "https"]
             if uri.scheme not in valid_schemes:
-                raise ValueError(f"Invalid URL Scheme for uri='{value}': '{uri.scheme}' - expected one of {valid_schemes}")
+                raise ValueError(
+                    f"Invalid URL Scheme for uri='{value}': '{uri.scheme}' - expected one of {valid_schemes}"
+                )
 
             # make sure the URI ends with a /
             if not value.endswith("/"):
