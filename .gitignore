@@ -16,7 +16,7 @@ todo.sh
 vendor.tar.*
 *.patch
 orca/example_profiles/small/orca-edited.toml
-docs/
+/docs/
 kanidm_unix_int/pam_tester/Cargo.lock
 .vscode/
 
@@ -24,3 +24,4 @@ kanidm_unix_int/pam_tester/Cargo.lock
 **/__pycache__/**
 **/.venv/**
 .coverage
+pykanidm/dist/
