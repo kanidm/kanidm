@@ -17,6 +17,7 @@
 * Euan Kemp (euank)
 * Kellin (kellinm)
 * Carla Schroder (cjschroder)
+* Thomas Sanchez (daedric)
 
 ## Acknowledgements
 
