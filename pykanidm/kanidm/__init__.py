@@ -56,7 +56,7 @@ class KanidmClient:
         verify_certificate: bool = True,
         ca_path: Optional[str] = None,
     ) -> None:
-        """set up the client module"""
+        """Constructor for KanidmClient"""
 
         if config is not None:
             self.config = config
@@ -86,8 +86,7 @@ class KanidmClient:
         self._configure_ssl()
 
     def _configure_ssl(self) -> None:
-        """does the magic to set up the session stuff"""
-        # if we aren't verifying things, then yololololol
+        """Sets up SSL configuration for the client"""
         if self.config.verify_certificate is False:
             self._ssl = False
         else:

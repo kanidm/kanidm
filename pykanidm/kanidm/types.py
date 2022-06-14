@@ -108,8 +108,10 @@ class RadiusClient(BaseModel):
 
 
 class KanidmClientConfig(BaseModel):
-    """configuration file definition for kanidm client config
-    from struct KanidmClientConfig in kanidm_client/src/lib.rs
+    """Configuration file definition for Kanidm client config
+    Based on struct KanidmClientConfig in kanidm_client/src/lib.rs
+
+    See source code for fields
     """
 
     uri: Optional[str] = None
@@ -136,13 +138,6 @@ class KanidmClientConfig(BaseModel):
 
     connect_timeout: int = 30
 
-    # pylint: disable=too-few-public-methods
-    class Config:
-        """configuration for the settings class"""
-
-        env_prefix = "kanidm_"
-
-    # TODO: work out how to make this a constructor instead
     @classmethod
     def parse_toml(cls, input_string: str):  # type: ignore
         """loads from a string"""
@@ -150,7 +145,7 @@ class KanidmClientConfig(BaseModel):
 
     @validator("uri")
     def validate_uri(cls, value: Optional[str]) -> Optional[str]:
-        """validator"""
+        """validator for the uri field"""
         if value is not None:
             uri = urlparse(value)
             valid_schemes = ["http", "https"]
