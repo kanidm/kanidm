@@ -2,10 +2,7 @@ name: pykanidm - mypy
 
 "on":
   push:
-    branches:
-      - main  # Set a branch to deploy
   pull_request:
-
 jobs:
   pykanidm_mypy:
     runs-on: ubuntu-latest

@@ -2,8 +2,6 @@ name: pykanidm - pylint
 
 "on":
   push:
-    branches:
-      - main  # Set a branch to deploy
   pull_request:
 jobs:
   pykanidm_pylint:
@@ -18,7 +16,7 @@ jobs:
           python-version: '3.9'
       - name: Running tests
         run: |
-            cd pykanidm
-            python -m pip install --quiet --no-cache-dir --upgrade poetry
-            poetry install
-            poetry run pylint tests kanidm
+          cd pykanidm
+          python -m pip install --quiet --no-cache-dir --upgrade poetry
+          poetry install
+          poetry run pylint tests kanidm

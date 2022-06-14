@@ -2,10 +2,7 @@ name: pykanidm - pytest
 
 "on":
   push:
-    branches:
-      - main  # Set a branch to deploy
   pull_request:
-
 jobs:
   pykanidm_pytest:
     runs-on: ubuntu-latest
