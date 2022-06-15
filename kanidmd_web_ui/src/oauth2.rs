@@ -134,8 +134,13 @@ impl Oauth2App {
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: AuthorisationResponse =
-                jsval.into_serde().expect_throw("Invalid response type");
+            let state: AuthorisationResponse = jsval
+                .into_serde()
+                .map_err(|e| {
+                    let e_msg = format!("serde error -> {:?}", e);
+                    console::log!(e_msg.as_str());
+                })
+                .expect_throw("Invalid response type");
             match state {
                 AuthorisationResponse::ConsentRequested {
                     client_name,

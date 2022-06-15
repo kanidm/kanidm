@@ -24,7 +24,7 @@ If you want to deploy Kanidm to see what it can do, you should read the kanidm b
 - [Kanidm book (Latest stable)](https://kanidm.github.io/kanidm/stable/)
 
 
-We also publish limited [support guidelines](https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md)).
+We also publish limited [support guidelines](https://github.com/kanidm/kanidm/blob/master/project_docs/RELEASE_AND_SUPPORT.md).
 
 ## Code of Conduct / Ethics
 

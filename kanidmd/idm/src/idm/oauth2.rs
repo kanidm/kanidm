@@ -1340,7 +1340,7 @@ mod tests {
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
 
-    use crate::event::{ModifyEvent, DeleteEvent};
+    use crate::event::{DeleteEvent, ModifyEvent};
 
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::{AuthType, UserAuthToken};
@@ -1796,7 +1796,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (secret, mut uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (secret, mut uat, ident, _) =
+                    setup_oauth2_resource_server(idms, ct, true, false);
 
                 // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
                 // allows all our other tests to pass, but it means when we specifically put the
@@ -2667,7 +2668,8 @@ mod tests {
         run_idm_test!(
             |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
                 let ct = Duration::from_secs(TEST_CURRENT_TIME);
-                let (_secret, uat, ident, o2rs_uuid) = setup_oauth2_resource_server(idms, ct, true, false);
+                let (_secret, uat, ident, o2rs_uuid) =
+                    setup_oauth2_resource_server(idms, ct, true, false);
 
                 // Assert there are no consent maps yet.
                 assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
@@ -2710,15 +2712,18 @@ mod tests {
                     .expect("Unable to process uat");
 
                 // Assert that the ident now has the consents.
-                assert!(ident.get_oauth2_consent_scopes(o2rs_uuid) == Some(&btreeset!["openid".to_string()]));
+                assert!(
+                    ident.get_oauth2_consent_scopes(o2rs_uuid)
+                        == Some(&btreeset!["openid".to_string()])
+                );
 
                 // Now trigger the delete of the RS
-                let de = unsafe { DeleteEvent::new_internal_invalid(
-                    filter!(f_eq(
+                let de = unsafe {
+                    DeleteEvent::new_internal_invalid(filter!(f_eq(
                         "oauth2_rs_name",
                         PartialValue::new_iname("test_resource_server")
-                    ))
-                ) };
+                    )))
+                };
 
                 trace!("ATTACHHERE");
                 assert!(idms_prox_write.qs_write.delete(&de).is_ok());
@@ -2733,4 +2738,3 @@ mod tests {
         )
     }
 }
-
