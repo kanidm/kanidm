@@ -1,4 +1,4 @@
-.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book
+.PHONY: help build/kanidmd build/radiusd test/kanidmd push/kanidmd push/radiusd vendor-prep doc install-tools prep vendor book clean_book test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
 
 IMAGE_BASE ?= kanidm
 IMAGE_VERSION ?= devel
@@ -24,37 +24,43 @@ buildx/kanidmd/x86_64_v3:
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
-buildx/kanidmd: ## build multiarch server images
+buildx/kanidmd: ## Build multiarch kanidm server images and push to docker hub
 buildx/kanidmd:
-	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform $(IMAGE_ARCH) \
-		-f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
+		--pull --push --platform $(IMAGE_ARCH) \
+		-f kanidmd/Dockerfile \
+		-t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/server:$(IMAGE_VERSION)
 
-buildx/radiusd: ## build multiarch radius images
+buildx/radiusd: ## Build multi-arch radius docker images and push to docker hub
 buildx/radiusd:
-	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) --pull --push --platform $(IMAGE_ARCH) \
-		-f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
+	@$(CONTAINER_TOOL) buildx build $(CONTAINER_TOOL_ARGS) \
+		--pull --push --platform $(IMAGE_ARCH) \
+		-f kanidm_rlm_python/Dockerfile \
+		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 	@$(CONTAINER_TOOL) buildx imagetools $(CONTAINER_TOOL_ARGS) inspect $(IMAGE_BASE)/radius:$(IMAGE_VERSION)
 
 buildx: buildx/kanidmd buildx/radiusd
 
-build/kanidmd:	## build kanidmd images
+build/kanidmd:	## Build the kanidmd docker image locally
 build/kanidmd:
 	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile -t $(IMAGE_BASE)/server:$(IMAGE_VERSION) \
 		--build-arg "KANIDM_BUILD_PROFILE=container_generic" \
 		--build-arg "KANIDM_FEATURES=" \
 		$(CONTAINER_BUILD_ARGS) .
 
-build/radiusd:	## build radiusd image
+build/radiusd:	## Build the radiusd docker image locally
 build/radiusd:
-	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) -f kanidm_rlm_python/Dockerfile -t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
+	@$(CONTAINER_TOOL) build $(CONTAINER_TOOL_ARGS) \
+		-f kanidm_rlm_python/Dockerfile \
+		-t $(IMAGE_BASE)/radius:$(IMAGE_VERSION) .
 
 build: build/kanidmd build/radiusd
 
-test/kanidmd:	## test kanidmd
+test/kanidmd:	## Run cargo test in docker
 test/kanidmd:
 	@$(CONTAINER_TOOL) build \
 		$(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile \
@@ -63,7 +69,12 @@ test/kanidmd:
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
-# test/radiusd:	build/radiusd	## test radiusd
+test/radiusd: ## Tun a test radius server
+	cd kanidm_rlm_python && \
+	./run_radius_container.sh
+
+test/radiusd:	build/radiusd test/radiusd
+
 
 vendor:
 	cargo vendor
@@ -71,7 +82,7 @@ vendor:
 vendor-prep: vendor
 	tar -cJf vendor.tar.xz vendor
 
-doc: ## build doc local
+doc: ## Build the rust documentation locally
 doc:
 	cargo doc --document-private-items
 
@@ -122,4 +133,5 @@ test/pykanidm/mypy:
 	echo "Running mypy" && \
 	poetry run mypy --strict tests kanidm
 
+test/pykanidm: ## run the test suite (mypy/pylint/pytest) for the kanidm python module
 test/pykanidm: test/pykanidm/pytest test/pykanidm/mypy test/pykanidm/pylint
