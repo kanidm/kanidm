@@ -6,6 +6,7 @@
 //!
 
 use crate::identity::IdentityId;
+use crate::idm::delayed::{DelayedAction, Oauth2ConsentGrant};
 use crate::idm::server::{IdmServerProxyReadTransaction, IdmServerTransaction};
 use crate::prelude::*;
 use crate::value::OAUTHSCOPE_RE;
@@ -21,14 +22,15 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::fmt;
 use std::sync::Arc;
 use time::OffsetDateTime;
+use tokio::sync::mpsc::UnboundedSender as Sender;
 use tracing::trace;
 use url::{Origin, Url};
 use webauthn_rs::base64_data::Base64UrlSafeData;
 
 pub use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ConsentRequest, ErrorResponse,
-    OidcDiscoveryResponse, Consent
+    AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod, ErrorResponse,
+    OidcDiscoveryResponse,
 };
 use kanidm_proto::oauth2::{
     ClaimType, DisplayValue, GrantType, IdTokenSignAlg, ResponseMode, ResponseType, SubjectType,
@@ -147,6 +149,23 @@ struct Oauth2AccessToken {
     pub iat: i64,
     pub nbf: i64,
     pub auth_time: Option<i64>,
+}
+
+#[derive(Debug)]
+pub enum AuthoriseResponse {
+    ConsentRequested {
+        // A pretty-name of the client
+        client_name: String,
+        // A list of scopes requested / to be issued.
+        scopes: Vec<String>,
+        // Extra PII that may be requested
+        pii_scopes: Vec<String>,
+        // The users displayname (?)
+        // pub display_name: String,
+        // The token we need to be given back to allow this to proceed
+        consent_token: String,
+    },
+    Permitted(AuthorisePermitSuccess),
 }
 
 #[derive(Debug)]
@@ -417,7 +436,7 @@ impl Oauth2ResourceServersReadTransaction {
         uat: &UserAuthToken,
         auth_req: &AuthorisationRequest,
         ct: Duration,
-    ) -> Result<Consent, Oauth2Error> {
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
         // due to identity processing we already know that:
         // * the session must be authenticated, and valid
         // * is within it's valid time window.
@@ -500,14 +519,17 @@ impl Oauth2ResourceServersReadTransaction {
         }
 
         // scopes - you need to have every requested scope or this req is denied.
-        let req_scopes: BTreeSet<_> = auth_req.scope.split_ascii_whitespace().collect();
+        let req_scopes: BTreeSet<String> = auth_req
+            .scope
+            .split_ascii_whitespace()
+            .map(str::to_string)
+            .collect();
         if req_scopes.is_empty() {
             admin_error!("Invalid oauth2 request - must contain at least one requested scope");
             return Err(Oauth2Error::InvalidRequest);
         }
 
-        // TODO: Check the scopes by our scope RE rules.
-        // Oauth2Error::InvalidScope
+        // Check the scopes by our scope regex validation rules.
         if !req_scopes.iter().all(|s| OAUTHSCOPE_RE.is_match(s)) {
             admin_error!(
                 "Invalid oauth2 request - requested scopes failed to pass validation rules"
@@ -515,22 +537,22 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::InvalidScope);
         }
 
-        let uat_scopes: BTreeSet<_> = o2rs
+        let uat_scopes: BTreeSet<String> = o2rs
             .implicit_scopes
             .iter()
-            .map(|s| s.as_str())
             .chain(
                 o2rs.scope_maps
                     .iter()
                     .filter_map(|(u, m)| {
                         if ident.is_memberof(*u) {
-                            Some(m.iter().map(|s| s.as_str()))
+                            Some(m.iter())
                         } else {
                             None
                         }
                     })
                     .flatten(),
             )
+            .cloned()
             .collect();
 
         // Needs to use s.to_string due to &&str which can't use the str::to_string
@@ -548,59 +570,106 @@ impl Oauth2ResourceServersReadTransaction {
             return Err(Oauth2Error::AccessDenied);
         }
 
-        //  Check that the scopes are the same as a previous consent (if any)
-        // If oidc, what PII is visible?
-        // TODO: Scopes map to claims:
-        //
-        // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
-        // * email - (email, email\_verified)
-        // * address - (address)
-        // * phone - (phone\_number, phone\_number\_verified)
-        //
-        // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
+        let consent_previously_granted =
+            if let Some(consent_scopes) = ident.get_oauth2_consent_scopes(o2rs.uuid) {
+                req_scopes.eq(consent_scopes)
+            } else {
+                false
+            };
 
-        todo!();
+        admin_info!(
+            "User has previously consented, permitting. {:?}",
+            req_scopes
+        );
 
+        if consent_previously_granted {
+            // Setup for the permit success
+            let xchg_code = TokenExchangeCode {
+                uat: uat.clone(),
+                code_challenge,
+                redirect_uri: auth_req.redirect_uri.clone(),
+                scopes: avail_scopes.clone(),
+                nonce: auth_req.nonce.clone(),
+            };
 
-        // Subseqent we then return an encrypted session handle which allows
-        // the user to indicate their consent to this authorisation.
-        //
-        // This session handle is what we use in "permit" to generate the redirect.
+            // Encrypt the exchange token with the fernet key of the client resource server
+            let code_data = serde_json::to_vec(&xchg_code).map_err(|e| {
+                admin_error!(err = ?e, "Unable to encode xchg_code data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
 
-        let consent_req = ConsentToken {
-            client_id: auth_req.client_id.clone(),
-            ident_id: ident.get_event_origin_id(),
-            session_id: uat.session_id,
-            state: auth_req.state.clone(),
-            code_challenge,
-            redirect_uri: auth_req.redirect_uri.clone(),
-            scopes: avail_scopes.clone(),
-            nonce: auth_req.nonce.clone(),
-        };
+            let code = o2rs.token_fernet.encrypt_at_time(&code_data, ct.as_secs());
 
-        let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
-            admin_error!(err = ?e, "Unable to encode consent data");
-            Oauth2Error::ServerError(OperationError::SerdeJsonError)
-        })?;
+            Ok(AuthoriseResponse::Permitted(AuthorisePermitSuccess {
+                redirect_uri: auth_req.redirect_uri.clone(),
+                state: auth_req.state.clone(),
+                code,
+            }))
+        } else {
+            //  Check that the scopes are the same as a previous consent (if any)
+            // If oidc, what PII is visible?
+            // TODO: Scopes map to claims:
+            //
+            // * profile - (name, family\_name, given\_name, middle\_name, nickname, preferred\_username, profile, picture, website, gender, birthdate, zoneinfo, locale, and updated\_at)
+            // * email - (email, email\_verified)
+            // * address - (address)
+            // * phone - (phone\_number, phone\_number\_verified)
+            //
+            // https://openid.net/specs/openid-connect-basic-1_0.html#StandardClaims
 
-        let consent_token = self
-            .inner
-            .fernet
-            .encrypt_at_time(&consent_data, ct.as_secs());
+            let pii_scopes = if req_scopes.contains("openid") {
+                let mut pii_scopes = Vec::with_capacity(2);
+                if req_scopes.contains("email") {
+                    pii_scopes.push("email".to_string());
+                    pii_scopes.push("email_verified".to_string());
+                }
+                pii_scopes
+            } else {
+                Vec::with_capacity(0)
+            };
 
-        Ok(ConsentRequest {
-            client_name: o2rs.displayname.clone(),
-            scopes: avail_scopes,
-            consent_token,
-        })
+            // Subseqent we then return an encrypted session handle which allows
+            // the user to indicate their consent to this authorisation.
+            //
+            // This session handle is what we use in "permit" to generate the redirect.
+
+            let consent_req = ConsentToken {
+                client_id: auth_req.client_id.clone(),
+                ident_id: ident.get_event_origin_id(),
+                session_id: uat.session_id,
+                state: auth_req.state.clone(),
+                code_challenge,
+                redirect_uri: auth_req.redirect_uri.clone(),
+                scopes: avail_scopes.clone(),
+                nonce: auth_req.nonce.clone(),
+            };
+
+            let consent_data = serde_json::to_vec(&consent_req).map_err(|e| {
+                admin_error!(err = ?e, "Unable to encode consent data");
+                Oauth2Error::ServerError(OperationError::SerdeJsonError)
+            })?;
+
+            let consent_token = self
+                .inner
+                .fernet
+                .encrypt_at_time(&consent_data, ct.as_secs());
+
+            Ok(AuthoriseResponse::ConsentRequested {
+                client_name: o2rs.displayname.clone(),
+                scopes: avail_scopes,
+                pii_scopes,
+                consent_token,
+            })
+        }
     }
 
-    pub fn check_oauth2_authorise_permit(
+    pub(crate) fn check_oauth2_authorise_permit(
         &self,
         ident: &Identity,
         uat: &UserAuthToken,
         consent_token: &str,
         ct: Duration,
+        async_tx: &Sender<DelayedAction>,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
         // Decode the consent req with our system fernet key. Use a ttl of 5 minutes.
         let consent_req: ConsentToken = self
@@ -641,12 +710,11 @@ impl Oauth2ResourceServersReadTransaction {
             })?;
 
         // Extract the state, code challenge, redirect_uri
-
         let xchg_code = TokenExchangeCode {
             uat: uat.clone(),
             code_challenge: consent_req.code_challenge,
             redirect_uri: consent_req.redirect_uri.clone(),
-            scopes: consent_req.scopes,
+            scopes: consent_req.scopes.clone(),
             nonce: consent_req.nonce,
         };
 
@@ -658,8 +726,16 @@ impl Oauth2ResourceServersReadTransaction {
 
         let code = o2rs.token_fernet.encrypt_at_time(&code_data, ct.as_secs());
 
+        // Everything is DONE! Now submit that it's all happy and the user consented correctly.
+        // this will let them bypass consent steps in the future.
         // Submit that we consented to the delayed action queue
-        todo!();
+        if let Err(_) = async_tx.send(DelayedAction::Oauth2ConsentGrant(Oauth2ConsentGrant {
+            target_uuid: uat.uuid,
+            oauth2_rs_uuid: o2rs.uuid,
+            scopes: consent_req.scopes,
+        })) {
+            admin_warn!("unable to queue delayed oauth2 consent grant, continuing ... ");
+        }
 
         Ok(AuthorisePermitSuccess {
             redirect_uri: consent_req.redirect_uri,
@@ -724,9 +800,7 @@ impl Oauth2ResourceServersReadTransaction {
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
         // todo: add refresh token grant type.
-
         //  If it's a refresh token grant, are the consent permissions the same?
-        todo!();
 
         if token_req.grant_type != "authorization_code" {
             admin_warn!("Invalid oauth2 grant_type (should be 'authorization_code')");
@@ -929,8 +1003,7 @@ impl Oauth2ResourceServersReadTransaction {
             .token_fernet
             .encrypt_at_time(&access_token_data, ct.as_secs());
 
-        let refresh_token = todo!();
-
+        let refresh_token = None;
 
         Ok(AccessTokenResponse {
             access_token,
@@ -1262,11 +1335,12 @@ fn parse_basic_authz(client_authz: &str) -> Result<(String, String), Oauth2Error
 #[cfg(test)]
 mod tests {
     use crate::event::CreateEvent;
-    use crate::idm::oauth2::Oauth2Error;
+    use crate::idm::delayed::DelayedAction;
+    use crate::idm::oauth2::{AuthoriseResponse, Oauth2Error};
     use crate::idm::server::{IdmServer, IdmServerTransaction};
     use crate::prelude::*;
 
-    use crate::event::ModifyEvent;
+    use crate::event::{ModifyEvent, DeleteEvent};
 
     use kanidm_proto::oauth2::*;
     use kanidm_proto::v1::{AuthType, UserAuthToken};
@@ -1329,7 +1403,7 @@ mod tests {
         ct: Duration,
         enable_pkce: bool,
         enable_legacy_crypto: bool,
-    ) -> (String, UserAuthToken, Identity) {
+    ) -> (String, UserAuthToken, Identity, Uuid) {
         let mut idms_prox_write = idms.proxy_write(ct);
 
         let uuid = Uuid::new_v4();
@@ -1390,7 +1464,7 @@ mod tests {
 
         idms_prox_write.commit().expect("failed to commit");
 
-        (secret, uat, ident)
+        (secret, uat, ident, uuid)
     }
 
     fn setup_idm_admin(
@@ -1417,49 +1491,65 @@ mod tests {
 
     #[test]
     fn test_idm_oauth2_basic_function() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
-            let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = idms.proxy_read();
 
-            // Get an ident/uat for now.
+                // Get an ident/uat for now.
 
-            // == Setup the authorisation request
-            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                // == Setup the authorisation request
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
-            // == Manually submit the consent token to the permit for the permit_success
-            let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
-                .expect("Failed to perform oauth2 permit");
+                // Should be in the consent phase;
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
 
-            // Check we are reflecting the CSRF properly.
-            assert!(permit_success.state == "123");
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
 
-            // == Submit the token exchange code.
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
 
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code,
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: Some("test_resource_server".to_string()),
-                client_secret: Some(secret),
-                // From the first step.
-                code_verifier,
-            };
+                // Check we are reflecting the CSRF properly.
+                assert!(permit_success.state == "123");
 
-            let token_response = idms_prox_read
-                .check_oauth2_token_exchange(None, &token_req, ct)
-                .expect("Failed to perform oauth2 token exchange");
+                // == Submit the token exchange code.
 
-            // 🎉 We got a token! In the future we can then check introspection from this point.
-            assert!(token_response.token_type == "bearer");
-        })
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: Some("test_resource_server".to_string()),
+                    client_secret: Some(secret),
+                    // From the first step.
+                    code_verifier,
+                };
+
+                let token_response = idms_prox_read
+                    .check_oauth2_token_exchange(None, &token_req, ct)
+                    .expect("Failed to perform oauth2 token exchange");
+
+                // 🎉 We got a token! In the future we can then check introspection from this point.
+                assert!(token_response.token_type == "bearer");
+            }
+        )
     }
 
     #[test]
@@ -1469,7 +1559,7 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (anon_uat, anon_ident) = setup_idm_admin(idms, ct, AuthType::Anonymous);
             let (idm_admin_uat, idm_admin_ident) = setup_idm_admin(idms, ct, AuthType::PasswordMfa);
@@ -1633,7 +1723,7 @@ mod tests {
                        _idms_delayed: &mut IdmServerDelayed| {
             // Test invalid oauth2 authorisation states/requests.
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
@@ -1657,6 +1747,15 @@ mod tests {
             let consent_request =
                 good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
+            let consent_token = if let AuthoriseResponse::ConsentRequested {
+                consent_token, ..
+            } = consent_request
+            {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
             // Invalid permits
             //  * expired token, aka past ttl.
             assert!(
@@ -1664,7 +1763,7 @@ mod tests {
                     .check_oauth2_authorise_permit(
                         &ident,
                         &uat,
-                        &consent_request.consent_token,
+                        &consent_token,
                         ct + Duration::from_secs(TOKEN_EXPIRE),
                     )
                     .unwrap_err()
@@ -1677,12 +1776,7 @@ mod tests {
 
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorise_permit(
-                        &ident2,
-                        &uat,
-                        &consent_request.consent_token,
-                        ct,
-                    )
+                    .check_oauth2_authorise_permit(&ident2, &uat, &consent_token, ct,)
                     .unwrap_err()
                     == OperationError::InvalidSessionState
             );
@@ -1690,12 +1784,7 @@ mod tests {
             //  * incorrect session id
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorise_permit(
-                        &ident,
-                        &uat2,
-                        &consent_request.consent_token,
-                        ct,
-                    )
+                    .check_oauth2_authorise_permit(&ident, &uat2, &consent_token, ct,)
                     .unwrap_err()
                     == OperationError::InvalidSessionState
             );
@@ -1704,240 +1793,275 @@ mod tests {
 
     #[test]
     fn test_idm_oauth2_invalid_token_exchange_requests() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, mut uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, mut uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
-            // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
-            // allows all our other tests to pass, but it means when we specifically put the
-            // clock forward a fraction, the fernet tokens are still valid, but the uat
-            // is not.
-            // IE
-            //   |---------------------|------------------|
-            //   TEST_CURRENT_TIME     UAT_EXPIRE         TOKEN_EXPIRE
-            //
-            // This lets us check a variety of time based cases.
-            uat.expiry = time::OffsetDateTime::unix_epoch()
-                + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1);
+                // ⚠️  We set the uat expiry time to 5 seconds from TEST_CURRENT_TIME. This
+                // allows all our other tests to pass, but it means when we specifically put the
+                // clock forward a fraction, the fernet tokens are still valid, but the uat
+                // is not.
+                // IE
+                //   |---------------------|------------------|
+                //   TEST_CURRENT_TIME     UAT_EXPIRE         TOKEN_EXPIRE
+                //
+                // This lets us check a variety of time based cases.
+                uat.expiry = time::OffsetDateTime::unix_epoch()
+                    + Duration::from_secs(TEST_CURRENT_TIME + UAT_EXPIRE - 1);
 
-            let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = idms.proxy_read();
 
-            // == Setup the authorisation request
-            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                // == Setup the authorisation request
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
-            // == Manually submit the consent token to the permit for the permit_success
-            let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
-                .expect("Failed to perform oauth2 permit");
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
 
-            // == Submit the token exchange code.
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
 
-            // Invalid token exchange
-            //  * invalid client_authz (not base64)
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code.clone(),
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: None,
-                client_secret: None,
-                // From the first step.
-                code_verifier: code_verifier.clone(),
-            };
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
 
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(Some("not base64"), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::AuthenticationRequired
-            );
+                // == Submit the token exchange code.
 
-            //  * doesn't have :
-            let client_authz = Some(base64::encode(format!("test_resource_server {}", secret)));
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::AuthenticationRequired
-            );
+                // Invalid token exchange
+                //  * invalid client_authz (not base64)
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code.clone(),
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    // From the first step.
+                    code_verifier: code_verifier.clone(),
+                };
 
-            //  * invalid client_id
-            let client_authz = Some(base64::encode(format!("NOT A REAL SERVER:{}", secret)));
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::AuthenticationRequired
-            );
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(Some("not base64"), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::AuthenticationRequired
+                );
 
-            //  * valid client_id, but invalid secret
-            let client_authz = Some(base64::encode("test_resource_server:12345"));
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::AuthenticationRequired
-            );
+                //  * doesn't have :
+                let client_authz = Some(base64::encode(format!("test_resource_server {}", secret)));
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::AuthenticationRequired
+                );
 
-            // ✅ Now the valid client_authz is in place.
-            let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
-            //  * expired exchange code (took too long)
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(
-                        client_authz.as_deref(),
-                        &token_req,
-                        ct + Duration::from_secs(TOKEN_EXPIRE)
-                    )
-                    .unwrap_err()
-                    == Oauth2Error::InvalidRequest
-            );
+                //  * invalid client_id
+                let client_authz = Some(base64::encode(format!("NOT A REAL SERVER:{}", secret)));
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::AuthenticationRequired
+                );
 
-            //  * Uat has expired!
-            // NOTE: This is setup EARLY in the test, by manipulation of the UAT expiry.
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(
-                        client_authz.as_deref(),
-                        &token_req,
-                        ct + Duration::from_secs(UAT_EXPIRE)
-                    )
-                    .unwrap_err()
-                    == Oauth2Error::AccessDenied
-            );
+                //  * valid client_id, but invalid secret
+                let client_authz = Some(base64::encode("test_resource_server:12345"));
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::AuthenticationRequired
+                );
 
-            //  * incorrect grant_type
-            let token_req = AccessTokenRequest {
-                grant_type: "INCORRECT GRANT TYPE".to_string(),
-                code: permit_success.code.clone(),
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: None,
-                client_secret: None,
-                code_verifier: code_verifier.clone(),
-            };
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::InvalidRequest
-            );
+                // ✅ Now the valid client_authz is in place.
+                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+                //  * expired exchange code (took too long)
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(
+                            client_authz.as_deref(),
+                            &token_req,
+                            ct + Duration::from_secs(TOKEN_EXPIRE)
+                        )
+                        .unwrap_err()
+                        == Oauth2Error::InvalidRequest
+                );
 
-            //  * Incorrect redirect uri
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code.clone(),
-                redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
-                client_id: None,
-                client_secret: None,
-                code_verifier,
-            };
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::InvalidRequest
-            );
+                //  * Uat has expired!
+                // NOTE: This is setup EARLY in the test, by manipulation of the UAT expiry.
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(
+                            client_authz.as_deref(),
+                            &token_req,
+                            ct + Duration::from_secs(UAT_EXPIRE)
+                        )
+                        .unwrap_err()
+                        == Oauth2Error::AccessDenied
+                );
 
-            //  * code verifier incorrect
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code,
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: None,
-                client_secret: None,
-                code_verifier: Some("12345".to_string()),
-            };
-            assert!(
-                idms_prox_read
-                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                    .unwrap_err()
-                    == Oauth2Error::InvalidRequest
-            );
-        })
+                //  * incorrect grant_type
+                let token_req = AccessTokenRequest {
+                    grant_type: "INCORRECT GRANT TYPE".to_string(),
+                    code: permit_success.code.clone(),
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    code_verifier: code_verifier.clone(),
+                };
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::InvalidRequest
+                );
+
+                //  * Incorrect redirect uri
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code.clone(),
+                    redirect_uri: Url::parse("https://totes.not.sus.org/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    code_verifier,
+                };
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::InvalidRequest
+                );
+
+                //  * code verifier incorrect
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    code_verifier: Some("12345".to_string()),
+                };
+                assert!(
+                    idms_prox_read
+                        .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                        .unwrap_err()
+                        == Oauth2Error::InvalidRequest
+                );
+            }
+        )
     }
 
     #[test]
     fn test_idm_oauth2_token_introspect() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
-            let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-            let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = idms.proxy_read();
 
-            // == Setup the authorisation request
-            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                // == Setup the authorisation request
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
-            // == Manually submit the consent token to the permit for the permit_success
-            let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
-                .expect("Failed to perform oauth2 permit");
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
 
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code.clone(),
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: None,
-                client_secret: None,
-                code_verifier,
-            };
-            let oauth2_token = idms_prox_read
-                .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                .expect("Unable to exchange for oauth2 token");
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
 
-            // Okay, now we have the token, we can check it works with introspect.
-            let intr_request = AccessTokenIntrospectRequest {
-                token: oauth2_token.access_token.clone(),
-                token_type_hint: None,
-            };
-            let intr_response = idms_prox_read
-                .check_oauth2_token_introspect(client_authz.as_deref().unwrap(), &intr_request, ct)
-                .expect("Failed to inspect token");
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
 
-            eprintln!("👉  {:?}", intr_response);
-            assert!(intr_response.active);
-            assert!(intr_response.scope.as_deref() == Some("openid"));
-            assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
-            assert!(intr_response.username.as_deref() == Some("admin@example.com"));
-            assert!(intr_response.token_type.as_deref() == Some("access_token"));
-            assert!(intr_response.iat == Some(ct.as_secs() as i64));
-            assert!(intr_response.nbf == Some(ct.as_secs() as i64));
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code.clone(),
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    code_verifier,
+                };
+                let oauth2_token = idms_prox_read
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                    .expect("Unable to exchange for oauth2 token");
 
-            drop(idms_prox_read);
-            // start a write,
+                // Okay, now we have the token, we can check it works with introspect.
+                let intr_request = AccessTokenIntrospectRequest {
+                    token: oauth2_token.access_token.clone(),
+                    token_type_hint: None,
+                };
+                let intr_response = idms_prox_read
+                    .check_oauth2_token_introspect(
+                        client_authz.as_deref().unwrap(),
+                        &intr_request,
+                        ct,
+                    )
+                    .expect("Failed to inspect token");
 
-            let idms_prox_write = idms.proxy_write(ct);
-            // Expire the account, should cause introspect to return inactive.
-            let v_expire = Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
-            let me_inv_m = unsafe {
-                ModifyEvent::new_internal_invalid(
-                    filter!(f_eq("name", PartialValue::new_iname("admin"))),
-                    ModifyList::new_list(vec![Modify::Present(
-                        AttrString::from("account_expire"),
-                        v_expire,
-                    )]),
-                )
-            };
-            // go!
-            assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
-            assert!(idms_prox_write.commit().is_ok());
+                eprintln!("👉  {:?}", intr_response);
+                assert!(intr_response.active);
+                assert!(intr_response.scope.as_deref() == Some("openid"));
+                assert!(intr_response.client_id.as_deref() == Some("test_resource_server"));
+                assert!(intr_response.username.as_deref() == Some("admin@example.com"));
+                assert!(intr_response.token_type.as_deref() == Some("access_token"));
+                assert!(intr_response.iat == Some(ct.as_secs() as i64));
+                assert!(intr_response.nbf == Some(ct.as_secs() as i64));
 
-            // start a new read
-            // check again.
-            let idms_prox_read = idms.proxy_read();
-            let intr_response = idms_prox_read
-                .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
-                .expect("Failed to inspect token");
+                drop(idms_prox_read);
+                // start a write,
 
-            assert!(!intr_response.active);
-        })
+                let idms_prox_write = idms.proxy_write(ct);
+                // Expire the account, should cause introspect to return inactive.
+                let v_expire =
+                    Value::new_datetime_epoch(Duration::from_secs(TEST_CURRENT_TIME - 1));
+                let me_inv_m = unsafe {
+                    ModifyEvent::new_internal_invalid(
+                        filter!(f_eq("name", PartialValue::new_iname("admin"))),
+                        ModifyList::new_list(vec![Modify::Present(
+                            AttrString::from("account_expire"),
+                            v_expire,
+                        )]),
+                    )
+                };
+                // go!
+                assert!(idms_prox_write.qs_write.modify(&me_inv_m).is_ok());
+                assert!(idms_prox_write.commit().is_ok());
+
+                // start a new read
+                // check again.
+                let idms_prox_read = idms.proxy_read();
+                let intr_response = idms_prox_read
+                    .check_oauth2_token_introspect(&client_authz.unwrap(), &intr_request, ct)
+                    .expect("Failed to inspect token");
+
+                assert!(!intr_response.active);
+            }
+        )
     }
 
     #[test]
@@ -1946,7 +2070,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let (uat2, ident2) = {
                 let mut idms_prox_write = idms.proxy_write(ct);
@@ -1971,8 +2095,17 @@ mod tests {
             let consent_request =
                 good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
+            let consent_token = if let AuthoriseResponse::ConsentRequested {
+                consent_token, ..
+            } = consent_request
+            {
+                consent_token
+            } else {
+                unreachable!();
+            };
+
             let reject_success = idms_prox_read
-                .check_oauth2_authorise_reject(&ident, &uat, &consent_request.consent_token, ct)
+                .check_oauth2_authorise_reject(&ident, &uat, &consent_token, ct)
                 .expect("Failed to perform oauth2 reject");
 
             assert!(reject_success == redirect_uri);
@@ -1981,12 +2114,7 @@ mod tests {
             let past_ct = Duration::from_secs(TEST_CURRENT_TIME + 301);
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorise_reject(
-                        &ident,
-                        &uat,
-                        &consent_request.consent_token,
-                        past_ct
-                    )
+                    .check_oauth2_authorise_reject(&ident, &uat, &consent_token, past_ct)
                     .unwrap_err()
                     == OperationError::CryptographyError
             );
@@ -2002,24 +2130,14 @@ mod tests {
             // Wrong UAT
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorise_reject(
-                        &ident,
-                        &uat2,
-                        &consent_request.consent_token,
-                        ct
-                    )
+                    .check_oauth2_authorise_reject(&ident, &uat2, &consent_token, ct)
                     .unwrap_err()
                     == OperationError::InvalidSessionState
             );
             // Wrong ident
             assert!(
                 idms_prox_read
-                    .check_oauth2_authorise_reject(
-                        &ident2,
-                        &uat,
-                        &consent_request.consent_token,
-                        ct
-                    )
+                    .check_oauth2_authorise_reject(&ident2, &uat, &consent_token, ct)
                     .unwrap_err()
                     == OperationError::InvalidSessionState
             );
@@ -2032,7 +2150,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, _uat, _ident) = setup_oauth2_resource_server(idms, ct, true, false);
+            let (_secret, _uat, _ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -2164,108 +2282,123 @@ mod tests {
 
     #[test]
     fn test_idm_oauth2_openid_extensions() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, true, false);
-            let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
+                let client_authz = Some(base64::encode(format!("test_resource_server:{}", secret)));
 
-            let idms_prox_read = idms.proxy_read();
+                let idms_prox_read = idms.proxy_read();
 
-            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
 
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
 
-            // == Manually submit the consent token to the permit for the permit_success
-            let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
-                .expect("Failed to perform oauth2 permit");
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
 
-            // == Submit the token exchange code.
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code,
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: None,
-                client_secret: None,
-                // From the first step.
-                code_verifier,
-            };
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
 
-            let token_response = idms_prox_read
-                .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
-                .expect("Failed to perform oauth2 token exchange");
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
+                }
 
-            // 🎉 We got a token!
-            assert!(token_response.token_type == "bearer");
+                // == Submit the token exchange code.
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: None,
+                    client_secret: None,
+                    // From the first step.
+                    code_verifier,
+                };
 
-            let id_token = token_response.id_token.expect("No id_token in response!");
-            let access_token = token_response.access_token;
+                let token_response = idms_prox_read
+                    .check_oauth2_token_exchange(client_authz.as_deref(), &token_req, ct)
+                    .expect("Failed to perform oauth2 token exchange");
 
-            let mut jwkset = idms_prox_read
-                .oauth2_openid_publickey("test_resource_server")
-                .expect("Failed to get public key");
-            let public_jwk = jwkset.keys.pop().expect("no such jwk");
+                // 🎉 We got a token!
+                assert!(token_response.token_type == "bearer");
 
-            let jws_validator =
-                JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+                let id_token = token_response.id_token.expect("No id_token in response!");
+                let access_token = token_response.access_token;
 
-            let oidc_unverified =
-                OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+                let mut jwkset = idms_prox_read
+                    .oauth2_openid_publickey("test_resource_server")
+                    .expect("Failed to get public key");
+                let public_jwk = jwkset.keys.pop().expect("no such jwk");
 
-            let iat = ct.as_secs() as i64;
+                let jws_validator =
+                    JwsValidator::try_from(&public_jwk).expect("failed to build validator");
 
-            let oidc = oidc_unverified
-                .validate(&jws_validator, iat)
-                .expect("Failed to verify oidc");
+                let oidc_unverified =
+                    OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
 
-            // Are the id_token values what we expect?
-            assert!(
-                oidc.iss
-                    == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
-                        .unwrap()
-            );
-            assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
-            assert!(oidc.aud == "test_resource_server");
-            assert!(oidc.iat == iat);
-            assert!(oidc.nbf == Some(iat));
-            assert!(oidc.exp == iat + (AUTH_SESSION_EXPIRY as i64));
-            assert!(oidc.auth_time.is_none());
-            // Is nonce correctly passed through?
-            assert!(oidc.nonce == Some("abcdef".to_string()));
-            assert!(oidc.at_hash.is_none());
-            assert!(oidc.acr.is_none());
-            assert!(oidc.amr == Some(vec!["passwordmfa".to_string()]));
-            assert!(oidc.azp == Some("test_resource_server".to_string()));
-            assert!(oidc.jti.is_none());
-            assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
-            assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
-            assert!(oidc.s_claims.scopes == vec!["openid".to_string()]);
-            assert!(oidc.claims.is_empty());
-            // Does our access token work with the userinfo endpoint?
-            // Do the id_token details line up to the userinfo?
-            let userinfo = idms_prox_read
-                .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
-                .expect("failed to get userinfo");
+                let iat = ct.as_secs() as i64;
 
-            assert!(oidc.iss == userinfo.iss);
-            assert!(oidc.sub == userinfo.sub);
-            assert!(oidc.aud == userinfo.aud);
-            assert!(oidc.iat == userinfo.iat);
-            assert!(oidc.nbf == userinfo.nbf);
-            assert!(oidc.exp == userinfo.exp);
-            assert!(userinfo.auth_time.is_none());
-            assert!(userinfo.nonce.is_none());
-            assert!(userinfo.at_hash.is_none());
-            assert!(userinfo.acr.is_none());
-            assert!(oidc.amr == userinfo.amr);
-            assert!(oidc.azp == userinfo.azp);
-            assert!(userinfo.jti.is_none());
-            assert!(oidc.s_claims == userinfo.s_claims);
-            assert!(userinfo.claims.is_empty());
-        })
+                let oidc = oidc_unverified
+                    .validate(&jws_validator, iat)
+                    .expect("Failed to verify oidc");
+
+                // Are the id_token values what we expect?
+                assert!(
+                    oidc.iss
+                        == Url::parse("https://idm.example.com/oauth2/openid/test_resource_server")
+                            .unwrap()
+                );
+                assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
+                assert!(oidc.aud == "test_resource_server");
+                assert!(oidc.iat == iat);
+                assert!(oidc.nbf == Some(iat));
+                assert!(oidc.exp == iat + (AUTH_SESSION_EXPIRY as i64));
+                assert!(oidc.auth_time.is_none());
+                // Is nonce correctly passed through?
+                assert!(oidc.nonce == Some("abcdef".to_string()));
+                assert!(oidc.at_hash.is_none());
+                assert!(oidc.acr.is_none());
+                assert!(oidc.amr == Some(vec!["passwordmfa".to_string()]));
+                assert!(oidc.azp == Some("test_resource_server".to_string()));
+                assert!(oidc.jti.is_none());
+                assert!(oidc.s_claims.name == Some("System Administrator".to_string()));
+                assert!(oidc.s_claims.preferred_username == Some("admin@example.com".to_string()));
+                assert!(oidc.s_claims.scopes == vec!["openid".to_string()]);
+                assert!(oidc.claims.is_empty());
+                // Does our access token work with the userinfo endpoint?
+                // Do the id_token details line up to the userinfo?
+                let userinfo = idms_prox_read
+                    .oauth2_openid_userinfo("test_resource_server", &access_token, ct)
+                    .expect("failed to get userinfo");
+
+                assert!(oidc.iss == userinfo.iss);
+                assert!(oidc.sub == userinfo.sub);
+                assert!(oidc.aud == userinfo.aud);
+                assert!(oidc.iat == userinfo.iat);
+                assert!(oidc.nbf == userinfo.nbf);
+                assert!(oidc.exp == userinfo.exp);
+                assert!(userinfo.auth_time.is_none());
+                assert!(userinfo.nonce.is_none());
+                assert!(userinfo.at_hash.is_none());
+                assert!(userinfo.acr.is_none());
+                assert!(oidc.amr == userinfo.amr);
+                assert!(oidc.azp == userinfo.azp);
+                assert!(userinfo.jti.is_none());
+                assert!(oidc.s_claims == userinfo.s_claims);
+                assert!(userinfo.claims.is_empty());
+            }
+        )
     }
 
     //  Check insecure pkce behaviour.
@@ -2275,7 +2408,7 @@ mod tests {
                        idms: &IdmServer,
                        _idms_delayed: &mut IdmServerDelayed| {
             let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (_secret, uat, ident) = setup_oauth2_resource_server(idms, ct, false, false);
+            let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, false);
 
             let idms_prox_read = idms.proxy_read();
 
@@ -2307,83 +2440,297 @@ mod tests {
 
     #[test]
     fn test_idm_oauth2_openid_legacy_crypto() {
-        run_idm_test!(|_qs: &QueryServer,
-                       idms: &IdmServer,
-                       _idms_delayed: &mut IdmServerDelayed| {
-            let ct = Duration::from_secs(TEST_CURRENT_TIME);
-            let (secret, uat, ident) = setup_oauth2_resource_server(idms, ct, false, true);
-            let idms_prox_read = idms.proxy_read();
-            // The public key url should offer an rs key
-            // discovery should offer RS256
-            let discovery = idms_prox_read
-                .oauth2_openid_discovery("test_resource_server")
-                .expect("Failed to get discovery");
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, false, true);
+                let idms_prox_read = idms.proxy_read();
+                // The public key url should offer an rs key
+                // discovery should offer RS256
+                let discovery = idms_prox_read
+                    .oauth2_openid_discovery("test_resource_server")
+                    .expect("Failed to get discovery");
 
-            let mut jwkset = idms_prox_read
-                .oauth2_openid_publickey("test_resource_server")
-                .expect("Failed to get public key");
+                let mut jwkset = idms_prox_read
+                    .oauth2_openid_publickey("test_resource_server")
+                    .expect("Failed to get public key");
 
-            let jwk = jwkset.keys.pop().expect("no such jwk");
-            let public_jwk = jwk.clone();
+                let jwk = jwkset.keys.pop().expect("no such jwk");
+                let public_jwk = jwk.clone();
 
-            match jwk {
-                Jwk::RSA { alg, use_, kid, .. } => {
-                    match (
-                        alg.unwrap(),
-                        &discovery.id_token_signing_alg_values_supported[0],
-                    ) {
-                        (JwaAlg::RS256, IdTokenSignAlg::RS256) => {}
-                        _ => panic!(),
+                match jwk {
+                    Jwk::RSA { alg, use_, kid, .. } => {
+                        match (
+                            alg.unwrap(),
+                            &discovery.id_token_signing_alg_values_supported[0],
+                        ) {
+                            (JwaAlg::RS256, IdTokenSignAlg::RS256) => {}
+                            _ => panic!(),
+                        };
+                        assert!(use_.unwrap() == JwkUse::Sig);
+                        assert!(kid.unwrap() == "test_resource_server")
+                    }
+                    _ => panic!(),
+                };
+
+                // Check that the id_token is signed with the correct key.
+                let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
                     };
-                    assert!(use_.unwrap() == JwkUse::Sig);
-                    assert!(kid.unwrap() == "test_resource_server")
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                // Assert that the consent was submitted
+                match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(_)) => {}
+                    _ => assert!(false),
                 }
-                _ => panic!(),
-            };
 
-            // Check that the id_token is signed with the correct key.
-            let (code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                // == Submit the token exchange code.
+                let token_req = AccessTokenRequest {
+                    grant_type: "authorization_code".to_string(),
+                    code: permit_success.code,
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    client_id: Some("test_resource_server".to_string()),
+                    client_secret: Some(secret),
+                    // From the first step.
+                    code_verifier,
+                };
 
-            let consent_request =
-                good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+                let token_response = idms_prox_read
+                    .check_oauth2_token_exchange(None, &token_req, ct)
+                    .expect("Failed to perform oauth2 token exchange");
 
-            // == Manually submit the consent token to the permit for the permit_success
-            let permit_success = idms_prox_read
-                .check_oauth2_authorise_permit(&ident, &uat, &consent_request.consent_token, ct)
-                .expect("Failed to perform oauth2 permit");
+                // 🎉 We got a token!
+                assert!(token_response.token_type == "bearer");
+                let id_token = token_response.id_token.expect("No id_token in response!");
 
-            // == Submit the token exchange code.
-            let token_req = AccessTokenRequest {
-                grant_type: "authorization_code".to_string(),
-                code: permit_success.code,
-                redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
-                client_id: Some("test_resource_server".to_string()),
-                client_secret: Some(secret),
-                // From the first step.
-                code_verifier,
-            };
+                let jws_validator =
+                    JwsValidator::try_from(&public_jwk).expect("failed to build validator");
 
-            let token_response = idms_prox_read
-                .check_oauth2_token_exchange(None, &token_req, ct)
-                .expect("Failed to perform oauth2 token exchange");
+                let oidc_unverified =
+                    OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
 
-            // 🎉 We got a token!
-            assert!(token_response.token_type == "bearer");
-            let id_token = token_response.id_token.expect("No id_token in response!");
+                let iat = ct.as_secs() as i64;
 
-            let jws_validator =
-                JwsValidator::try_from(&public_jwk).expect("failed to build validator");
+                let oidc = oidc_unverified
+                    .validate(&jws_validator, iat)
+                    .expect("Failed to verify oidc");
 
-            let oidc_unverified =
-                OidcUnverified::from_str(&id_token).expect("Failed to parse id_token");
+                assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
+            }
+        )
+    }
 
-            let iat = ct.as_secs() as i64;
+    #[test]
+    fn test_idm_oauth2_consent_granted_and_changed_workflow() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (_secret, uat, ident, _) = setup_oauth2_resource_server(idms, ct, true, false);
 
-            let oidc = oidc_unverified
-                .validate(&jws_validator, iat)
-                .expect("Failed to verify oidc");
+                let idms_prox_read = idms.proxy_read();
 
-            assert!(oidc.sub == OidcSubject::U(*UUID_ADMIN));
-        })
+                let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                // Should be in the consent phase;
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let _permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                drop(idms_prox_read);
+
+                // Assert that the consent was submitted
+                let o2cg = match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(o2cg)) => o2cg,
+                    _ => unreachable!(),
+                };
+
+                // Manually submit the consent.
+                let mut idms_prox_write = idms.proxy_write(ct);
+                assert!(idms_prox_write.process_oauth2consentgrant(&o2cg).is_ok());
+                assert!(idms_prox_write.commit().is_ok());
+
+                // == Now try the authorise again, should be in the permitted state.
+                let idms_prox_read = idms.proxy_read();
+
+                // We need to reload our identity
+                let ident = idms_prox_read
+                    .process_uat_to_identity(&uat, ct)
+                    .expect("Unable to process uat");
+
+                let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                // Should be in the consent phase;
+                let _permit_success =
+                    if let AuthoriseResponse::Permitted(permit_success) = consent_request {
+                        permit_success
+                    } else {
+                        unreachable!();
+                    };
+
+                drop(idms_prox_read);
+
+                // Great! Now change the scopes on the oauth2 instance, this revokes the permit.
+                let idms_prox_write = idms.proxy_write(ct);
+
+                let me_extend_scopes = unsafe {
+                    ModifyEvent::new_internal_invalid(
+                        filter!(f_eq(
+                            "oauth2_rs_name",
+                            PartialValue::new_iname("test_resource_server")
+                        )),
+                        ModifyList::new_list(vec![Modify::Present(
+                            AttrString::from("oauth2_rs_implicit_scopes"),
+                            Value::new_oauthscope("email").expect("invalid oauthscope"),
+                        )]),
+                    )
+                };
+
+                assert!(idms_prox_write.qs_write.modify(&me_extend_scopes).is_ok());
+                assert!(idms_prox_write.commit().is_ok());
+
+                // And do the workflow once more to see if we need to consent again.
+
+                let idms_prox_read = idms.proxy_read();
+
+                // We need to reload our identity
+                let ident = idms_prox_read
+                    .process_uat_to_identity(&uat, ct)
+                    .expect("Unable to process uat");
+
+                let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+
+                let auth_req = AuthorisationRequest {
+                    response_type: "code".to_string(),
+                    client_id: "test_resource_server".to_string(),
+                    state: "123".to_string(),
+                    pkce_request: Some(PkceRequest {
+                        code_challenge: Base64UrlSafeData(code_challenge),
+                        code_challenge_method: CodeChallengeMethod::S256,
+                    }),
+                    redirect_uri: Url::parse("https://demo.example.com/oauth2/result").unwrap(),
+                    scope: "openid email".to_string(),
+                    nonce: Some("abcdef".to_string()),
+                    oidc_ext: Default::default(),
+                    unknown_keys: Default::default(),
+                };
+
+                let consent_request = idms_prox_read
+                    .check_oauth2_authorisation(&ident, &uat, &auth_req, ct)
+                    .expect("Oauth2 authorisation failed");
+
+                // Should be in the consent phase;
+                let _consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // Success! We had to consent again due to the change :)
+            }
+        )
+    }
+
+    #[test]
+    fn test_idm_oauth2_consent_granted_refint_cleanup_on_delete() {
+        run_idm_test!(
+            |_qs: &QueryServer, idms: &IdmServer, idms_delayed: &mut IdmServerDelayed| {
+                let ct = Duration::from_secs(TEST_CURRENT_TIME);
+                let (_secret, uat, ident, o2rs_uuid) = setup_oauth2_resource_server(idms, ct, true, false);
+
+                // Assert there are no consent maps yet.
+                assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
+
+                let idms_prox_read = idms.proxy_read();
+
+                let (_code_verifier, code_challenge) = create_code_verifier!("Whar Garble");
+                let consent_request =
+                    good_authorisation_request!(idms_prox_read, &ident, &uat, ct, code_challenge);
+
+                // Should be in the consent phase;
+                let consent_token =
+                    if let AuthoriseResponse::ConsentRequested { consent_token, .. } =
+                        consent_request
+                    {
+                        consent_token
+                    } else {
+                        unreachable!();
+                    };
+
+                // == Manually submit the consent token to the permit for the permit_success
+                let _permit_success = idms_prox_read
+                    .check_oauth2_authorise_permit(&ident, &uat, &consent_token, ct)
+                    .expect("Failed to perform oauth2 permit");
+
+                drop(idms_prox_read);
+
+                // Assert that the consent was submitted
+                let o2cg = match idms_delayed.async_rx.blocking_recv() {
+                    Some(DelayedAction::Oauth2ConsentGrant(o2cg)) => o2cg,
+                    _ => unreachable!(),
+                };
+
+                // Manually submit the consent.
+                let mut idms_prox_write = idms.proxy_write(ct);
+                assert!(idms_prox_write.process_oauth2consentgrant(&o2cg).is_ok());
+
+                let ident = idms_prox_write
+                    .process_uat_to_identity(&uat, ct)
+                    .expect("Unable to process uat");
+
+                // Assert that the ident now has the consents.
+                assert!(ident.get_oauth2_consent_scopes(o2rs_uuid) == Some(&btreeset!["openid".to_string()]));
+
+                // Now trigger the delete of the RS
+                let de = unsafe { DeleteEvent::new_internal_invalid(
+                    filter!(f_eq(
+                        "oauth2_rs_name",
+                        PartialValue::new_iname("test_resource_server")
+                    ))
+                ) };
+
+                trace!("ATTACHHERE");
+                assert!(idms_prox_write.qs_write.delete(&de).is_ok());
+                // Assert the consent maps are gone.
+                let ident = idms_prox_write
+                    .process_uat_to_identity(&uat, ct)
+                    .expect("Unable to process uat");
+                assert!(ident.get_oauth2_consent_scopes(o2rs_uuid).is_none());
+
+                assert!(idms_prox_write.commit().is_ok());
+            }
+        )
     }
 }
+

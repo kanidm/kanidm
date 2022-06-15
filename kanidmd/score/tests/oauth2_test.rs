@@ -5,7 +5,7 @@ use crate::common::{setup_async_test, ADMIN_TEST_PASSWORD};
 use compact_jwt::{JwkKeySet, JwsValidator, OidcToken, OidcUnverified};
 use kanidm_proto::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, ConsentRequest, OidcDiscoveryResponse,
+    AccessTokenResponse, AuthorisationResponse, OidcDiscoveryResponse,
 };
 use oauth2_ext::PkceCodeChallenge;
 use std::collections::HashMap;
@@ -217,10 +217,17 @@ async fn test_oauth2_openid_basic_flow() {
     assert!(response.status() == reqwest::StatusCode::OK);
     assert_no_cache!(response);
 
-    let consent_req: ConsentRequest = response
+    let consent_req: AuthorisationResponse = response
         .json()
         .await
         .expect("Failed to access response body");
+
+    let consent_token =
+        if let AuthorisationResponse::ConsentRequested { consent_token, .. } = consent_req {
+            consent_token
+        } else {
+            unreachable!();
+        };
 
     // Step 2 - we now send the consent get to the server which yields a redirect with a
     // state and code.
@@ -228,7 +235,7 @@ async fn test_oauth2_openid_basic_flow() {
     let response = client
         .get(format!("{}/oauth2/authorise/permit", url))
         .bearer_auth(admin_uat)
-        .query(&[("token", consent_req.consent_token.as_str())])
+        .query(&[("token", consent_token.as_str())])
         .send()
         .await
         .expect("Failed to send request.");

@@ -17,8 +17,8 @@ use crate::idm::event::{
 use crate::idm::mfareg::{MfaRegCred, MfaRegNext, MfaRegSession};
 use crate::idm::oauth2::{
     AccessTokenIntrospectRequest, AccessTokenIntrospectResponse, AccessTokenRequest,
-    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, ConsentRequest, JwkKeySet,
-    Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
+    AccessTokenResponse, AuthorisationRequest, AuthorisePermitSuccess, AuthoriseResponse,
+    JwkKeySet, Oauth2Error, Oauth2ResourceServers, Oauth2ResourceServersReadTransaction,
     Oauth2ResourceServersWriteTransaction, OidcDiscoveryResponse, OidcToken,
 };
 use crate::idm::radius::RadiusAccount;
@@ -34,7 +34,8 @@ use crate::utils::{
 
 use crate::actors::v1_write::QueryServerWriteV1;
 use crate::idm::delayed::{
-    DelayedAction, PasswordUpgrade, UnixPasswordUpgrade, WebauthnCounterIncrement,
+    DelayedAction, Oauth2ConsentGrant, PasswordUpgrade, UnixPasswordUpgrade,
+    WebauthnCounterIncrement,
 };
 
 use hashbrown::HashSet;
@@ -138,6 +139,7 @@ pub struct IdmServerProxyReadTransaction<'a> {
     pub qs_read: QueryServerReadTransaction<'a>,
     uat_jwt_validator: CowCellReadTxn<JwsValidator>,
     oauth2rs: Oauth2ResourceServersReadTransaction,
+    async_tx: Sender<DelayedAction>,
 }
 
 pub struct IdmServerProxyWriteTransaction<'a> {
@@ -158,7 +160,7 @@ pub struct IdmServerProxyWriteTransaction<'a> {
 }
 
 pub struct IdmServerDelayed {
-    async_rx: Receiver<DelayedAction>,
+    pub(crate) async_rx: Receiver<DelayedAction>,
 }
 
 impl IdmServer {
@@ -307,6 +309,7 @@ impl IdmServer {
             qs_read: self.qs.read_async().await,
             uat_jwt_validator: self.uat_jwt_validator.read(),
             oauth2rs: self.oauth2rs.read(),
+            async_tx: self.async_tx.clone(),
         }
     }
 
@@ -1177,7 +1180,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         uat: &UserAuthToken,
         auth_req: &AuthorisationRequest,
         ct: Duration,
-    ) -> Result<ConsentRequest, Oauth2Error> {
+    ) -> Result<AuthoriseResponse, Oauth2Error> {
         self.oauth2rs
             .check_oauth2_authorisation(ident, uat, auth_req, ct)
     }
@@ -1190,7 +1193,7 @@ impl<'a> IdmServerProxyReadTransaction<'a> {
         ct: Duration,
     ) -> Result<AuthorisePermitSuccess, OperationError> {
         self.oauth2rs
-            .check_oauth2_authorise_permit(ident, uat, consent_req, ct)
+            .check_oauth2_authorise_permit(ident, uat, consent_req, ct, &self.async_tx)
     }
 
     pub fn check_oauth2_authorise_reject(
@@ -2044,6 +2047,27 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
         )
     }
 
+    pub(crate) fn process_oauth2consentgrant(
+        &mut self,
+        o2cg: &Oauth2ConsentGrant,
+    ) -> Result<(), OperationError> {
+        let modlist = ModifyList::new_list(vec![
+            Modify::Removed(
+                AttrString::from("oauth2_consent_scope_map"),
+                PartialValue::OauthScopeMap(o2cg.oauth2_rs_uuid),
+            ),
+            Modify::Present(
+                AttrString::from("oauth2_consent_scope_map"),
+                Value::OauthScopeMap(o2cg.oauth2_rs_uuid, o2cg.scopes.iter().cloned().collect()),
+            ),
+        ]);
+
+        self.qs_write.internal_modify(
+            &filter_all!(f_eq("uuid", PartialValue::new_uuid(o2cg.target_uuid))),
+            &modlist,
+        )
+    }
+
     pub(crate) fn process_delayedaction(
         &mut self,
         da: DelayedAction,
@@ -2053,6 +2077,7 @@ impl<'a> IdmServerProxyWriteTransaction<'a> {
             DelayedAction::UnixPwUpgrade(upwu) => self.process_unixpwupgrade(&upwu),
             DelayedAction::WebauthnCounterIncrement(wci) => self.process_webauthncounterinc(&wci),
             DelayedAction::BackupCodeRemoval(bcr) => self.process_backupcoderemoval(&bcr),
+            DelayedAction::Oauth2ConsentGrant(o2cg) => self.process_oauth2consentgrant(&o2cg),
         }
     }
 

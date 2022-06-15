@@ -6,6 +6,7 @@
 use crate::prelude::*;
 use kanidm_proto::v1::UserAuthToken;
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeSet;
 use std::hash::Hash;
 use std::sync::Arc;
 
@@ -159,6 +160,16 @@ impl Identity {
             IdentType::User(u) => u
                 .entry
                 .attribute_equality("memberof", &PartialValue::new_refer(group)),
+        }
+    }
+
+    pub fn get_oauth2_consent_scopes(&self, oauth2_rs: Uuid) -> Option<&BTreeSet<String>> {
+        match &self.origin {
+            IdentType::Internal => None,
+            IdentType::User(u) => u
+                .entry
+                .get_ava_as_oauthscopemaps("oauth2_consent_scope_map")
+                .and_then(|scope_map| scope_map.get(&oauth2_rs)),
         }
     }
 }

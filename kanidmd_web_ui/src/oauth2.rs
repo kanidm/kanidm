@@ -14,8 +14,8 @@ use crate::models;
 use crate::utils;
 
 pub use kanidm_proto::oauth2::{
-    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, CodeChallengeMethod,
-    ConsentRequest, ErrorResponse,
+    AccessTokenRequest, AccessTokenResponse, AuthorisationRequest, AuthorisationResponse,
+    CodeChallengeMethod, ErrorResponse,
 };
 
 enum State {
@@ -25,7 +25,13 @@ enum State {
     TokenCheck(String),
     // Token check done, lets do it.
     SubmitAuthReq(String),
-    Consent(String, ConsentRequest),
+    Consent {
+        token: String,
+        client_name: String,
+        scopes: Vec<String>,
+        pii_scopes: Vec<String>,
+        consent_token: String,
+    },
     ConsentGranted,
     ErrInvalidRequest,
 }
@@ -38,9 +44,17 @@ pub enum Oauth2Msg {
     LoginProceed,
     ConsentGranted,
     TokenValid,
-    Consent(ConsentRequest),
+    Consent {
+        client_name: String,
+        scopes: Vec<String>,
+        pii_scopes: Vec<String>,
+        consent_token: String,
+    },
     Redirect(String),
-    Error { emsg: String, kopid: Option<String> },
+    Error {
+        emsg: String,
+        kopid: Option<String>,
+    },
 }
 
 impl From<FetchError> for Oauth2Msg {
@@ -116,13 +130,36 @@ impl Oauth2App {
         let resp: Response = resp_value.dyn_into().expect_throw("Invalid response type");
         let status = resp.status();
         let headers = resp.headers();
+        let kopid = headers.get("x-kanidm-opid").ok().flatten();
 
         if status == 200 {
             let jsval = JsFuture::from(resp.json()?).await?;
-            let state: ConsentRequest = jsval.into_serde().expect_throw("Invalid response type");
-            Ok(Oauth2Msg::Consent(state))
+            let state: AuthorisationResponse =
+                jsval.into_serde().expect_throw("Invalid response type");
+            match state {
+                AuthorisationResponse::ConsentRequested {
+                    client_name,
+                    scopes,
+                    pii_scopes,
+                    consent_token,
+                } => Ok(Oauth2Msg::Consent {
+                    client_name,
+                    scopes,
+                    pii_scopes,
+                    consent_token,
+                }),
+                AuthorisationResponse::Permitted => {
+                    if let Some(loc) = headers.get("location").ok().flatten() {
+                        Ok(Oauth2Msg::Redirect(loc))
+                    } else {
+                        Ok(Oauth2Msg::Error {
+                            emsg: "no location header".to_string(),
+                            kopid,
+                        })
+                    }
+                }
+            }
         } else {
-            let kopid = headers.get("x-kanidm-opid").ok().flatten();
             let text = JsFuture::from(resp.text()?).await?;
             let emsg = text.as_string().unwrap_or_else(|| "".to_string());
             Ok(Oauth2Msg::Error { emsg, kopid })
@@ -131,9 +168,9 @@ impl Oauth2App {
 
     async fn fetch_consent_token(
         token: String,
-        consent_req: ConsentRequest,
+        consent_token: String,
     ) -> Result<Oauth2Msg, FetchError> {
-        let consentreq_jsvalue = serde_json::to_string(&consent_req.consent_token)
+        let consentreq_jsvalue = serde_json::to_string(&consent_token)
             .map(|s| JsValue::from(&s))
             .expect_throw("Failed to serialise consent_req");
 
@@ -294,9 +331,20 @@ impl Component for Oauth2App {
                 };
                 true
             }
-            Oauth2Msg::Consent(consent_req) => {
+            Oauth2Msg::Consent {
+                client_name,
+                scopes,
+                pii_scopes,
+                consent_token,
+            } => {
                 self.state = match &self.state {
-                    State::SubmitAuthReq(token) => State::Consent(token.clone(), consent_req),
+                    State::SubmitAuthReq(token) => State::Consent {
+                        token: token.clone(),
+                        client_name,
+                        scopes,
+                        pii_scopes,
+                        consent_token,
+                    },
                     _ => {
                         console::log!("Invalid state transition");
                         State::ErrInvalidRequest
@@ -306,9 +354,13 @@ impl Component for Oauth2App {
             }
             Oauth2Msg::ConsentGranted => {
                 self.state = match &self.state {
-                    State::Consent(token, consent_req) => {
+                    State::Consent {
+                        token,
+                        consent_token,
+                        ..
+                    } => {
                         let token_c = token.clone();
-                        let cr_c = (*consent_req).clone();
+                        let cr_c = consent_token.clone();
                         ctx.link().send_future(async {
                             match Self::fetch_consent_token(token_c, cr_c).await {
                                 Ok(v) => v,
@@ -380,8 +432,14 @@ impl Component for Oauth2App {
                   </main>
                 }
             }
-            State::Consent(_, query) => {
-                let client_name = query.client_name.clone();
+            State::Consent {
+                token: _,
+                client_name,
+                scopes,
+                pii_scopes,
+                consent_token,
+            } => {
+                let client_name = client_name.clone();
                 // <body class="html-body form-body">
                 html! {
                     <main class="form-signin">
