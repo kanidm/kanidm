@@ -577,12 +577,12 @@ impl Oauth2ResourceServersReadTransaction {
                 false
             };
 
-        admin_info!(
-            "User has previously consented, permitting. {:?}",
-            req_scopes
-        );
-
         if consent_previously_granted {
+            admin_info!(
+                "User has previously consented, permitting. {:?}",
+                req_scopes
+            );
+
             // Setup for the permit success
             let xchg_code = TokenExchangeCode {
                 uat: uat.clone(),
@@ -799,7 +799,7 @@ impl Oauth2ResourceServersReadTransaction {
         token_req: &AccessTokenRequest,
         ct: Duration,
     ) -> Result<AccessTokenResponse, Oauth2Error> {
-        // todo: add refresh token grant type.
+        // TODO: add refresh token grant type.
         //  If it's a refresh token grant, are the consent permissions the same?
 
         if token_req.grant_type != "authorization_code" {
