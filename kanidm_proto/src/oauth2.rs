@@ -58,7 +58,7 @@ pub struct AuthorisationRequestOidc {
 }
 
 /// When we request to authorise, it can either prompt us for consent,
-/// or it can immediately be granted due te past grant.
+/// or it can immediately be granted due the past grant.
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub enum AuthorisationResponse {
     ConsentRequested {
