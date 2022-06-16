@@ -440,11 +440,33 @@ impl Component for Oauth2App {
             State::Consent {
                 token: _,
                 client_name,
-                scopes,
+                scopes: _,
                 pii_scopes,
-                consent_token,
+                consent_token: _,
             } => {
                 let client_name = client_name.clone();
+
+                let pii_req = if pii_scopes.is_empty() {
+                    html! {
+                      <div>
+                        <p>{ "This site will not have access to your personal information" }</p>
+                        <p>{ "If this site requests personal information in the future we will check with you" }</p>
+                      </div>
+                    }
+                } else {
+                    html! {
+                      <div>
+                        <p>{ "This site has requested to see the following personal information" }</p>
+                        <ul>
+                          {
+                            pii_scopes.iter().map(|s| html! { <li>{ s }</li> } ).collect::<Html>()
+                          }
+                        </ul>
+                        <p>{ "If this site requests different personal information in the future we will check with you again" }</p>
+                      </div>
+                    }
+                };
+
                 // <body class="html-body form-body">
                 html! {
                     <main class="form-signin">
@@ -456,7 +478,9 @@ impl Component for Oauth2App {
                         } ) }
                         action="javascript:void(0);"
                       >
-                        <h1 class="h3 mb-3 fw-normal">{"Consent to Proceed to " }{ client_name }</h1>
+                        <h2 class="h3 mb-3 fw-normal">{"Consent to Proceed to " }{ client_name }</h2>
+                        { pii_req }
+
                         <button id="autofocus" class="w-100 btn btn-lg btn-primary" type="submit">{ "Proceed" }</button>
                       </form>
                     </main>
