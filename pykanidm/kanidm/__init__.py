@@ -62,7 +62,6 @@ class KanidmClient:
         else:
             self.config = KanidmClientConfig(
                 uri=uri,
-                session=session,
                 verify_hostnames=verify_hostnames,
                 verify_certificate=verify_certificate,
                 ca_path=ca_path,

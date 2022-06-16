@@ -155,7 +155,7 @@ class KanidmClientConfig(BaseModel):
     connect_timeout: int = 30
 
     @classmethod
-    def parse_toml(cls, input_string: str):  # type: ignore
+    def parse_toml(cls, input_string: str) -> Any:
         """loads from a string"""
         return super().parse_obj(toml.loads(input_string))
 

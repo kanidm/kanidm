@@ -7,6 +7,7 @@ fi
 echo "Starting the dev container..."
 #shellcheck disable=SC2068
 docker run --rm -it \
+    --network host \
     --name radiusd \
     -v /tmp/kanidm/dh.pem:/etc/raddb/certs/dh.pem \
     -v /tmp/kanidm/ca.pem:/etc/raddb/certs/ca.pem \
