@@ -1,10 +1,18 @@
 # Kanidm Python Module
 
-Docs to go here... check `/pykanidm/`.
+So far it includes:
+
+- every class and function is fully python typed
+- test coverage for 95% of code, and most of the missing bit is just when you break things
+- loading configuration files into nice models
+- basic password authentication
+- pulling RADIUS tokens
+
+TODO: a lot of things.
 
 ## Building the documentation
 
-Building it's simple, run:
+To build a static copy of the docs, run:
 
 ```shell
 docs/pykanidm/build
