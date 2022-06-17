@@ -57,6 +57,6 @@ def test_radius_client_bad_hostname() -> None:
     with pytest.raises(
         pydantic.error_wrappers.ValidationError, match="nodename nor servname provided, or not known"
     ):
-       RadiusClient(name="test", ipaddr="thiscannotpossiblywork.kanidm.example.com",secret="nothing")
+        RadiusClient(name="test", ipaddr="thiscannotpossiblywork.kanidm.example.com",secret="nothing")
 
     assert RadiusClient(name="test", ipaddr="kanidm.com",secret="nothing")
