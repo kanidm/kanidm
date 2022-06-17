@@ -131,7 +131,6 @@ class KanidmClient:
             timeout=timeout,
             json=json,
             ssl=self._ssl,
-            # verify=self.config.verify_certificate, #TODO: ssl verify setting
         ) as request:
             content = await request.content.read()
             try:

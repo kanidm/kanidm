@@ -2,9 +2,10 @@
 
 So far it includes:
 
+- asyncio methods for all calls, leveraging [aiohttp](https://pypi.org/project/aiohttp/)
 - every class and function is fully python typed
 - test coverage for 95% of code, and most of the missing bit is just when you break things
-- loading configuration files into nice models
+- loading configuration files into nice models using [pydantic](https://pypi.org/project/pydantic/)
 - basic password authentication
 - pulling RADIUS tokens
 
