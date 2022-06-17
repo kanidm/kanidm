@@ -279,7 +279,6 @@ class KanidmClient:
             logging.debug("Failed to authenticate, response: %s", response.content)
             raise AuthCredFailed("Failed password authentication!")
 
-        # TODO: handle json dump fail
         result = AuthStepPasswordResponse.parse_obj(response.data)
         result.response = response
         print(f"auth_step_password: {result.dict()}")
@@ -326,6 +325,3 @@ class KanidmClient:
                 f"No user found: '{username}' {response.headers['x-kanidm-opid']}"
             )
         return response
-
-
-# TODO: ssl validation validate
