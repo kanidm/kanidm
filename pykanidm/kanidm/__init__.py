@@ -245,7 +245,8 @@ class KanidmClient:
         auth_init = await self.auth_init(username)
 
         if len(auth_init.state.choose) == 0:
-            # there's no mechanisms at all?
+            # there's no mechanisms at all - bail
+            # TODO: write test coverage for this
             raise AuthMechUnknown(f"No auth mechanisms for {username}")
         auth_begin = await self.auth_begin(
             method="password",
@@ -274,6 +275,7 @@ class KanidmClient:
             json=cred_auth,
         )
         if response.status_code != 200:
+            # TODO: write test coverage for this
             logging.debug("Failed to authenticate, response: %s", response.content)
             raise AuthCredFailed("Failed password authentication!")
 
@@ -283,8 +285,8 @@ class KanidmClient:
         print(f"auth_step_password: {result.dict()}")
 
         # pull the token out and set it
-        # TODO: try and build this into the pydantic model
         if result.state.success is None:
+            # TODO: write test coverage for AuthCredFailed
             raise AuthCredFailed
         result.sessionid = result.state.success
         return result

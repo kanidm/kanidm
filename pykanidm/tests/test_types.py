@@ -3,7 +3,7 @@
 import pytest
 import pydantic.error_wrappers
 
-from kanidm.types import AuthInitResponse, KanidmClientConfig, RadiusGroup
+from kanidm.types import AuthInitResponse, KanidmClientConfig, RadiusGroup, RadiusClient
 
 
 def test_auth_init_response() -> None:
@@ -51,3 +51,12 @@ def test_kanidmconfig_parse_toml() -> None:
 
     config = KanidmClientConfig()
     config.parse_toml("uri = 'https://crabzrool.example.com'")
+
+def test_radius_client_bad_hostname() -> None:
+    """tests with a bad hostname"""
+    with pytest.raises(
+        pydantic.error_wrappers.ValidationError, match="nodename nor servname provided, or not known"
+    ):
+       RadiusClient(name="test", ipaddr="thiscannotpossiblywork.kanidm.example.com",secret="nothing")
+
+    assert RadiusClient(name="test", ipaddr="kanidm.com",secret="nothing")

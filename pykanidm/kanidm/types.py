@@ -123,10 +123,9 @@ class RadiusClient(BaseModel):
                 pass
         try:
             socket.gethostbyname(value)
+            return value
         except socket.gaierror as error:
             raise ValueError(f"ipaddr value ({value}) wasn't an IP Address, Network or valid hostname: {error}")
-
-        raise ValueError(f"ipaddr ({value}) wasn't an IP Address, Network or valid hostname")
 
 class KanidmClientConfig(BaseModel):
     """Configuration file definition for Kanidm client config
