@@ -115,7 +115,7 @@ def check_vlan(
     logging.debug("returning default vlan: %s", acc)
     return acc
 
-def instantiate(args: Any) -> Any:
+def instantiate(_: Any) -> Any:
     """ start up radiusd """
     logging.info("Starting up!")
     return radiusd.RLM_MODULE_OK
@@ -146,7 +146,11 @@ def authorize(
         tok = loop.run_until_complete(_get_radius_token(username=username))
         logging.debug("radius_token: %s", tok)
     except NoMatchingEntries as error_message:
-        logging.info('kanidm RLM_MODULE_NOTFOUND after NoMatchingEntries for user %s: %s', username, error_message)
+        logging.info(
+            'kanidm RLM_MODULE_NOTFOUND after NoMatchingEntries for user %s: %s',
+            username,
+            error_message,
+            )
         return radiusd.RLM_MODULE_NOTFOUND
     except Exception as error_message: # pylint: disable=broad-except
         logging.error("kanidm exception: %s, %s", type(error_message), error_message)

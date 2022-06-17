@@ -1,16 +1,15 @@
 """ tests the check_vlan function """
 
-import asyncio
+from typing import Any
 
 import aiohttp
 import pytest
-from kanidmradius import check_vlan
-
 from kanidm import KanidmClient
 from kanidm.types import KanidmClientConfig
+from kanidmradius import check_vlan
 
 @pytest.mark.asyncio
-async def test_check_vlan(event_loop) -> None:
+async def test_check_vlan(event_loop: Any) -> None:
     """ test 1 """
 
     async with aiohttp.ClientSession(loop=event_loop) as session:
