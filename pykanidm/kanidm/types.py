@@ -94,13 +94,18 @@ class RadiusGroup(BaseModel):
 
 
 class RadiusClient(BaseModel):
-    """Client config for Kanidm FreeRADIUS integration
+    """Client config for Kanidm FreeRADIUS integration,
+    this is a pydantic model.
 
     name: (str) An identifier for the client definition
+
     ipaddr: (str) A single IP Address, CIDR or
-        DNS hostname (which will be resolved on startup,
-        preferring A records over AAAA).
-        FreeRADIUS doesn't recommend using DNS.
+    DNS hostname (which will be resolved on startup,
+    preferring A records over AAAA).
+    FreeRADIUS doesn't recommend using DNS.
+
+    secret: (str) The password the client should use to
+    authenticate.
     """
 
     name: str
@@ -136,8 +141,8 @@ class KanidmClientConfig(BaseModel):
     verify_certificate: bool = True
     ca_path: Optional[str] = None
 
-    radius_service_username: Optional[str] = None
-    radius_service_password: Optional[str] = None
+    username: Optional[str] = None
+    password: Optional[str] = None
 
     radius_cert_path: str = "/etc/raddb/certs/cert.pem"
     radius_key_path: str = "/etc/raddb/certs/key.pem"  # the signing key for radius TLS
@@ -148,9 +153,6 @@ class KanidmClientConfig(BaseModel):
     radius_default_vlan: int = 1
     radius_groups: List[RadiusGroup] = []
     radius_clients: List[RadiusClient] = []
-
-    username: Optional[str] = None
-    password: Optional[str] = None
 
     connect_timeout: int = 30
 
