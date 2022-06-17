@@ -1,8 +1,10 @@
 [tool.poetry]
 name = "kanidmradius"
 version = "0.0.1"
-description = ""
-authors = []
+description = "FreeRADIUS Module for Kanidm Authentication"
+authors = [
+    "James Hodgkinson <james@terminaloutcomes.com>"
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"
