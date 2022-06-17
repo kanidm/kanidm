@@ -64,11 +64,10 @@ def authenticate(
         logging.error("Failed to run kanidm.authenticate_password: %s", error_message)
     return radiusd.RLM_MODULE_FAIL
 
-#TODO: work out typing for _get_radius_token - it should have a solid type
 async def _get_radius_token(
     username: Optional[str]=None,
     kanidm_client: KanidmClient=KANIDM_CLIENT,
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
     if username is None:
         raise ValueError("Didn't get a username for _get_radius_token")
     # authenticate as the radius service account
@@ -91,7 +90,7 @@ async def _get_radius_token(
     return response.data
 
 def check_vlan(
-    acc: int, #TODO: why is this called ACC?
+    acc: int,
     group: Dict[str, str],
     kanidm_client: Optional[KanidmClient] = None,
     ) -> int:

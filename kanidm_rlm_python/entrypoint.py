@@ -97,7 +97,6 @@ def kill_radius(
     # To make sure we really do shutdown, we actually re-block on the proc
     # again here to be sure it's done.
 
-    # TODO: returns the return code of the process, do we want to log it, or exit with the code
     proc.wait()
 
 def run_radiusd() -> None:
