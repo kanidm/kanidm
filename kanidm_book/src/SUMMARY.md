@@ -18,6 +18,8 @@
 # For Developers
 
 - [Developer Guide](DEVELOPER_README.md)
+- [Python Module](developers/python.md)
+- [RADIUS Integration](developers/radius.md)
 
 # Integrations
 

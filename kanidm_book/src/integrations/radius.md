@@ -98,20 +98,16 @@ kanidm account credential update --name admin radius_service_account
 ## Deploying a RADIUS Container
 
 We provide a RADIUS container that has all the needed integrations. 
-This container requires some cryptographic material, laid out in a volume like so:
+This container requires some cryptographic material, with the following files being in `/etc/raddb/certs`. (Modifiable in the configuration)
+   
+| filename   | description                                                   |
+| ---        | ---                                                           |
+| ca.pem     | The signing CA of the RADIUS certificate                      |
+| dh.pem     | The output of `openssl dhparam -in ca.pem -out ./dh.pem 2048` |
+| cert.pem   | The certificate for the RADIUS server                         |
+| key.pem    | The signing key for the RADIUS certificate                    |
 
-<!-- TODO: re-format the data layout etc -->
-
-    data
-    data/ca.pem             # This is the kanidm ca.pem
-    data/kanidm             # This is the kanidm client configuration.
-    data/certs
-    data/certs/dh           # openssl dhparam -out ./dh 2048
-    data/certs/key.pem      # These are the radius ca/cert/key
-    data/certs/cert.pem
-    data/certs/ca.pem
-
-The config.ini has the following template:
+The configuration file (`/data/kanidm`) has the following template:
 
 ```toml
 uri = "https://example.com" # URL to the Kanidm server
@@ -143,32 +139,25 @@ radius_clients = [
     { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
 ]
 
-#TODO: (yaleman) finish this
-# [radiusd]
-# ca =                    # Path to the radius server's CA
-# key =                   # Path to the radius servers key
-# cert =                  # Path to the radius servers cert
-# dh =                    # Path to the radius servers dh params
-# required_group =        # Name of a kanidm group which you must be 
-#                         # A member of to use radius.
+# radius_cert_path = "/etc/raddb/certs/cert.pem"
+# the signing key for radius TLS
+# radius_key_path = "/etc/raddb/certs/key.pem"   
+# the diffie-hellman output
+# radius_dh_path = "/etc/raddb/certs/dh.pem"     
+# the CA certificate
+# radius_ca_path = "/etc/raddb/certs/ca.pem"     
 
-]
 ```
 
 ## A fully configured example
 
-Be sure to check the listening port is correct, it's the docker internal port, not the external one if these containers are on the same host.
 
 ```toml
 url = "https://example.com"
-verify_ca = true
-
-#TODO: finish this
-ca = "/data/ca.crt"
 
 username = "radius_service_account"
 # The generated password from above
-password = "Cr4bj0oze" 
+password = "cr4bzr0ol" 
 
 # default vlan for groups that don't specify one.
 radius_default_vlan = 99 
@@ -189,20 +178,68 @@ radius_clients = [
 ]
 ```
 
-You can then run the container with:
+## Running a test RADIUS container
 
-    <!-- TODO: decide if we're going to tell them to build it explicitly -->
+Starting from the root directory of the repository, we'll generate some basic certificates. Run the generate script and just accept all the defaults:
 
-    docker run --name radiusd -v ...:/data kanidm/radius:latest
+From the root directory of the Kanidm repository:
+
+1. Build the container - this'll give you a container image called `kanidm/radius`  with the tag `devel`:
+
+```s
+ `make build/radiusd`
+```
+
+Once the process has completed, check the container exists in your docker environment:
+
+```s
+➜ docker image ls kanidm/radius
+REPOSITORY      TAG       IMAGE ID       CREATED              SIZE
+kanidm/radius   devel     5dabe894134c   About a minute ago   622MB
+```
+*Note:* Containers are also automatically built based on the development branch and available at `ghcr.io/kanidm/radius:devel`
+
+2. Generate some self-signed certificates  by running the script - just hit enter on all the prompts if you don't want to customise them. This'll put the files in `/tmp/kanidm`:
+
+```shell
+./insecure_generate_tls.sh
+```
+3. Run the container: 
+
+```shell
+cd kanidm_rlm_python && ./run_radius_container.sh
+```
+
+You can pass the following environment variables to `run_radius_container.sh` to set other options:
+
+- IMAGE: an alternative image such as `ghcr.io/kanidm/radius:devel`
+- CONFIG_FILE: mount your own config file
+
+eg:
+
+```shell
+IMAGE=ghcr.io/kanidm/radius:devel \
+    CONFIG_FILE=~/.config/kanidm \
+    ./run_radius_container.sh
+```
+
+## Testing authentication
 
 Authentication can be tested through the client.localhost Network Access Server (NAS) configuration with:
 
-    docker exec -i -t radiusd radtest <username> badpassword 127.0.0.1 10 testing123
-    docker exec -i -t radiusd radtest <username> <radius show_secret value here> 127.0.0.1 10 testing123
+```shell
+docker exec -i -t radiusd radtest \
+    <username> badpassword \
+    127.0.0.1 10 testing123
+    
+docker exec -i -t radiusd radtest \
+    <username> <radius show_secret value here> \
+    127.0.0.1 10 testing123
+```
 
 Finally, to expose this to a Wi-Fi infrastructure, add your NAS in the configuration:
 
-``toml
+```toml
 radius_clients = [
     { name = "access_point", ipaddr = "10.2.3.4", secret = "<a_random_value>" }
 ]
@@ -219,40 +256,15 @@ re-run your environment with debug enabled:
 docker rm radiusd
 docker run --name radiusd \
     -e DEBUG=True \
+    -p 1812:1812 \
+    -p 1812:1812/udp
     --interactive --tty \
-    --volume ...:/data \
+    --volume /tmp/kanidm:/etc/raddb/certs \
     kanidm/radius:latest
 ```
 
-Note the RADIUS container *is* configured to provide 
+Note: the RADIUS container *is* configured to provide 
 [Tunnel-Private-Group-ID](https://freeradius.org/rfc/rfc2868.html#Tunnel-Private-Group-ID), 
 so if you wish to use Wi-Fi-assigned VLANs on your infrastructure, you can 
-assign these by groups in the config configuration as shown in the above examples.
+assign these by groups in the configuration file as shown in the above examples.
 
-## Testing the RADIUS container
-
-Starting from the root directory of the repository, we'll generate some basic certificates. Run the generate script and just accept all the defaults:
-
-<!-- TODO: make this less bad -->
-```shell
-./insecure_generate_tls.sh
-<snip>
-Getting CA Private Key
-Certificate chain is at: /tmp/kanidm/chain.pem
-Private key is at: /tmp/kanidm/key.pem
-```
-
-Build the container:
-
-```shell
-make build/radiusd
-```
-
-Run the container by using the pre-made script:
-
-```shell
-cd kanidm_rlm_python
-./run_radius_container.sh
-```
-
-Test the container as above

@@ -1,0 +1,46 @@
+# This should be at /etc/kanidm/config or ~/.config/kanidm,
+# and configures kanidm clients including the FreeRADIUS server
+
+uri = "https://idm.example.com"
+
+# TODO: document this
+# verify_ca = true
+
+# enable (default) or disable TLS certificate verification
+# verify_certificate = true
+# enable (default) or disable TLS certificate hostname verification
+# verify_hostnames = true
+
+# an optional path to the CA certificate for the server URI above
+# ca_path = "/etc/kanidm/cacert.pem"
+
+# when configuring the FreeRADIUS server, set the service account details here
+username = "radius_service_account"
+password = "cr4bzr0ol"
+
+# radius_cert_path = "/etc/raddb/certs/cert.pem" #
+# radius_key_path = "/etc/raddb/certs/key.pem"   # the signing key for radius TLS
+# radius_dh_path = "/etc/raddb/certs/dh.pem"     # the diffie-hellman output
+# radius_ca_path = "/etc/raddb/certs/ca.pem"     # the CA certificate?
+
+# A list of groups, if a user is in them, they're approved for RADIUS authentication
+radius_required_groups = [
+    "radius_access_allowed",
+]
+# A mapping between Kanidm groups and VLANS
+radius_groups = [
+    { name = "radius_access_allowed", vlan = 10 },
+]
+
+# The default VLAN if the user does not fit into another group
+radius_default_vlan = 1
+
+# A list of radius clients and their passwords, which are allowed to connect,
+# typically network devices like switches and access points.
+radius_clients = [
+    { name = "test", ipaddr = "127.0.0.1", secret  = "testing123" },
+    { name = "docker" , ipaddr = "172.17.0.0/16", secret = "testing123" },
+]
+
+# The client connection timeout, in seconds.
+connect_timeout = 30

@@ -12,7 +12,6 @@ kanidm_rlm_python/test_data/certs/
 vendor.tar.gz
 kanidm_rlm_python/test_data/ca.pem
 loc.sh
-todo.sh
 vendor.tar.*
 *.patch
 orca/example_profiles/small/orca-edited.toml
@@ -25,3 +24,4 @@ kanidm_unix_int/pam_tester/Cargo.lock
 **/.venv/**
 .coverage
 pykanidm/dist/
+pykanidm/site/

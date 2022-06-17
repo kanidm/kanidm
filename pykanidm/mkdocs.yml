@@ -22,3 +22,4 @@ nav:
   - "Home": README.md
   - "KanidmClient": kanidmclient.md
   - "KanidmClientConfig": kanidmclientconfig.md
+  - "RadiusClient": radiusclient.md

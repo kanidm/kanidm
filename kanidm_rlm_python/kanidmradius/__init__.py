@@ -23,12 +23,11 @@ logging.basicConfig(
     stream=sys.stderr,
     )
 
-
-#TODO: change the config file to TOML to match the rest of Kanidm
-
+# the list of places to try
 config_paths = [
-    os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"),
-    "~/.config/kanidm",
+    os.getenv("KANIDM_RLM_CONFIG", "/data/kanidm"), # container goodness
+    "~/.config/kanidm", # for a user
+    "/etc/kanidm/kanidm", # system-wide
 ]
 
 CONFIG_PATH = None
@@ -88,6 +87,7 @@ async def _get_radius_token(
         logging.error("Response content: %s", response.json())
         raise Exception("Failed to get RadiusAuthToken")
     logging.debug("Success getting RADIUS token: %s", response.json())
+    print(response.data)
     return response.data
 
 def check_vlan(
