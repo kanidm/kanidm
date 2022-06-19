@@ -53,4 +53,4 @@ base64 = "^0.13.0"
 
 kanidm_client = { path = "../../kanidm_client" }
 url = { version = "^2.2.2", features = ["serde"] }
-reqwest = { version = "0.11.10", features=["cookies", "json", "native-tls"] }
+reqwest = { version = "0.11.11", features=["cookies", "json", "native-tls"] }
