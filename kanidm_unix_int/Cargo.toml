@@ -61,7 +61,7 @@ bytes = "^1.1.0"
 libc = "^0.2.126"
 serde = { version = "^1.0.137", features = ["derive"] }
 serde_json = "^1.0.80"
-clap = { version = "^3.0", features = ["derive"] }
+clap = { version = "^3.2", features = ["derive"] }
 
 libsqlite3-sys = "0.24.2"
 rusqlite = "^0.27.0"
@@ -84,7 +84,7 @@ lru = "^0.7.6"
 score = { path = "../kanidmd/score" }
 
 [build-dependencies]
-clap = { version = "^3.0", features = ["derive"] }
+clap = { version = "^3.2", features = ["derive"] }
 clap_complete = "^3.1.4"
 profiles = { path = "../profiles" }
 
