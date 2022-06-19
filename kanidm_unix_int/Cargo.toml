@@ -68,7 +68,7 @@ rusqlite = "^0.27.0"
 r2d2 = "^0.8.9"
 r2d2_sqlite = "^0.20.0"
 
-reqwest = "^0.11.10"
+reqwest = "^0.11.11"
 
 users = "^0.11.0"
 #async-std = { version = "^1.11.0", features = ["tokio1"] }
