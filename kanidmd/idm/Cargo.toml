@@ -28,7 +28,7 @@ async-trait = "^0.1.53"
 fernet = { version = "^0.1.4", features = ["fernet_danger_timestamps"] }
 compact_jwt = "^0.2.1"
 
-async-std = { version = "^1.11.0", features = ["tokio1"] }
+async-std = { version = "^1.12.0", features = ["tokio1"] }
 
 rand = "^0.8.5"
 toml = "^0.5.9"
