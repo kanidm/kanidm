@@ -57,18 +57,23 @@ pub struct AuthorisationRequestOidc {
     pub acr: Option<String>,
 }
 
-/// We ask our user to consent to this Authorisation Request with the
-/// following data.
+/// When we request to authorise, it can either prompt us for consent,
+/// or it can immediately be granted due the past grant.
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ConsentRequest {
-    // A pretty-name of the client
-    pub client_name: String,
-    // A list of scopes requested / to be issued.
-    pub scopes: Vec<String>,
-    // The users displayname (?)
-    // pub display_name: String,
-    // The token we need to be given back to allow this to proceed
-    pub consent_token: String,
+pub enum AuthorisationResponse {
+    ConsentRequested {
+        // A pretty-name of the client
+        client_name: String,
+        // A list of scopes requested / to be issued.
+        scopes: Vec<String>,
+        // Extra PII that may be requested
+        pii_scopes: Vec<String>,
+        // The users displayname (?)
+        // pub display_name: String,
+        // The token we need to be given back to allow this to proceed
+        consent_token: String,
+    },
+    Permitted,
 }
 
 // The resource server then contacts the token endpoint with

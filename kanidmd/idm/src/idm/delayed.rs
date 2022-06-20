@@ -6,6 +6,7 @@ pub(crate) enum DelayedAction {
     UnixPwUpgrade(UnixPasswordUpgrade),
     WebauthnCounterIncrement(WebauthnCounterIncrement),
     BackupCodeRemoval(BackupCodeRemoval),
+    Oauth2ConsentGrant(Oauth2ConsentGrant),
 }
 
 pub(crate) struct PasswordUpgrade {
@@ -27,4 +28,10 @@ pub(crate) struct WebauthnCounterIncrement {
 pub(crate) struct BackupCodeRemoval {
     pub target_uuid: Uuid,
     pub code_to_remove: String,
+}
+
+pub(crate) struct Oauth2ConsentGrant {
+    pub target_uuid: Uuid,
+    pub oauth2_rs_uuid: Uuid,
+    pub scopes: Vec<String>,
 }
