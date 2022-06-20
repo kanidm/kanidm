@@ -37,7 +37,7 @@ compact_jwt = { version = "^0.2.2", default-features = false, features = ["unsaf
 # compact_jwt = { path = "../../compact_jwt" , default-features = false, features = ["unsafe_release_without_verify"] }
 
 [dependencies.web-sys]
-version = "^0.3.57"
+version = "^0.3.58"
 features = [
     "AuthenticationExtensionsClientOutputs",
     "AuthenticatorResponse",
