@@ -60,7 +60,7 @@ build/radiusd:
 
 build: build/kanidmd build/radiusd
 
-test/kanidmd:	## Run cargo test in docker
+test/kanidmd: ## Run cargo test in docker
 test/kanidmd:
 	@$(CONTAINER_TOOL) build \
 		$(CONTAINER_TOOL_ARGS) -f kanidmd/Dockerfile \
@@ -69,7 +69,7 @@ test/kanidmd:
 		$(CONTAINER_BUILD_ARGS) .
 	@$(CONTAINER_TOOL) run --rm $(IMAGE_BASE)/server:$(IMAGE_VERSION)-builder cargo test
 
-test/radiusd: ## Tun a test radius server
+test/radiusd: ## Run a test radius server
 	cd kanidm_rlm_python && \
 	./run_radius_container.sh
 
