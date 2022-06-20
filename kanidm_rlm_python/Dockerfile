@@ -25,7 +25,7 @@ COPY kanidm_rlm_python/sites-available/ /etc/raddb/sites-available/
 WORKDIR /etc/raddb
 
 # Enable the python and cache module.
-RUN ln -s ../mods-available/python3 /etc/raddb/mods-enabled/python3
+RUN ln -s /etc/raddb/mods-available/python3 /etc/raddb/mods-enabled/python3
 
 # disable auth via methods we don't support!
 RUN rm /etc/raddb/mods-available/sql
@@ -38,14 +38,13 @@ RUN chmod 640 /etc/raddb/clients.conf
 
 # install the packages
 RUN mkdir -p /pkg/kanidmradius/kanidmradius/
-COPY kanidm_rlm_python//kanidmradius/ /pkg/kanidmradius/kanidmradius/
+COPY kanidm_rlm_python/kanidmradius/ /pkg/kanidmradius/kanidmradius/
 COPY kanidm_rlm_python/pyproject.toml /pkg/kanidmradius/
 
 RUN mkdir -p /pkg/pykanidm/
 COPY pykanidm/ /pkg/pykanidm/
 
 # install the package and its dependencies
-RUN ln -s /etc/raddb/mods-config/python3/radiusd.py /usr/lib/python3.8/site-packages/
 RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/pykanidm
 RUN python3 -m pip install --no-cache-dir --no-warn-script-location /pkg/kanidmradius
 # clean up after install
